@@ -14,9 +14,7 @@ export default async function ProgramariPage({
 
   const { status, q } = await searchParams
 
-  const business = await prisma.business.findUnique({ where: { id: businessId } })
-
-  const [bookings, customers, services, resources, staff, blockedSlots] = await Promise.all([
+  const [bookings, customers, services, resources, blockedSlots] = await Promise.all([
     prisma.booking.findMany({
       where: {
         businessId,
@@ -25,18 +23,13 @@ export default async function ProgramariPage({
           ? { customer: { OR: [{ name: { contains: q, mode: 'insensitive' } }, { phone: { contains: q, mode: 'insensitive' } }] } }
           : {}),
       },
-      include: { customer: true, service: true, staff: true, resource: true },
+      include: { customer: true, service: true, resource: true },
       orderBy: { startAt: 'desc' },
       take: 200,
     }),
     prisma.customer.findMany({ where: { businessId }, orderBy: { name: 'asc' } }),
     prisma.service.findMany({ where: { businessId, active: true }, orderBy: { name: 'asc' } }),
     prisma.resource.findMany({ where: { businessId }, orderBy: { name: 'asc' } }),
-    // afacere individuală (teamSize <= 1) — nu are sens să oferim selecție de angajat,
-    // botul/formularul alocă automat singurul membru, fără să-l ceară explicit
-    (business?.teamSize ?? 1) > 1
-      ? prisma.staff.findMany({ where: { businessId, active: true }, orderBy: { name: 'asc' } })
-      : Promise.resolve([]),
     prisma.blockedSlot.findMany({ where: { businessId } }),
   ])
 
@@ -49,7 +42,6 @@ export default async function ProgramariPage({
         customerId: b.customerId,
         serviceName: b.service.name,
         serviceId: b.serviceId,
-        staffName: b.staff?.name ?? null,
         resourceName: b.resource?.name ?? null,
         startAt: b.startAt.toISOString(),
         endAt: b.endAt.toISOString(),
@@ -58,7 +50,6 @@ export default async function ProgramariPage({
       }))}
       customers={customers.map((c) => ({ id: c.id, name: c.name ?? c.phone }))}
       services={services.map((s) => ({ id: s.id, name: s.name, durationMin: s.durationMin }))}
-      staff={staff.map((s) => ({ id: s.id, name: s.name }))}
       blockedSlots={blockedSlots.map((b) => ({ startAt: b.startAt.toISOString(), endAt: b.endAt.toISOString() }))}
       filters={{ status: status ?? '', q: q ?? '' }}
     />

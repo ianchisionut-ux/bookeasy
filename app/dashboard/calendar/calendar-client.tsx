@@ -36,10 +36,8 @@ type Event = {
   start: Date
   end: Date
   status: string
-  resourceId?: string
   customerName: string
   serviceName: string
-  staffId: string | null
   isBlocked?: false
 }
 
@@ -51,29 +49,22 @@ type BlockedEvent = {
   isBlocked: true
 }
 
-type Resource = { resourceId: string; resourceTitle: string }
-type StaffOption = { id: string; name: string }
 type BlockedSlot = { id: string; startAt: string; endAt: string; reason: string | null }
 
 export default function CalendarClient({
   events,
-  resources,
-  staffOptions,
   blockedSlots,
   minTime,
   maxTime,
 }: {
   events: Event[]
-  resources?: Resource[]
-  staffOptions: StaffOption[]
   blockedSlots: BlockedSlot[]
   minTime: string
   maxTime: string
 }) {
   const router = useRouter()
-  const hasResources = resources && resources.length > 0
   const [selected, setSelected] = useState<Event | null>(null)
-  const [view, setView] = useState<any>(hasResources ? Views.DAY : Views.WEEK)
+  const [view, setView] = useState<any>(Views.WEEK)
   const [busy, setBusy] = useState(false)
   const [blockMode, setBlockMode] = useState(false)
 
@@ -105,7 +96,7 @@ export default function CalendarClient({
   const blockRange = useCallback(
     async (start: Date, end: Date) => {
       const reason = prompt('Blochezi acest interval. Vrei să adaugi un motiv? (opțional, lasă gol dacă nu)')
-      if (reason === null) return // Anulează la prompt
+      if (reason === null) return
 
       setBusy(true)
       const res = await fetch('/api/business/blocked-slots', {
@@ -156,8 +147,8 @@ export default function CalendarClient({
   )
 
   const moveOrResize = useCallback(
-    async ({ event, start, end, resourceId }: any) => {
-      if (event.isBlocked) return // blocurile nu se mută prin drag — se șterg prin click
+    async ({ event, start, end }: any) => {
+      if (event.isBlocked) return
 
       const oldTime = new Date(event.start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })
       const newTime = new Date(start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })
@@ -172,7 +163,6 @@ export default function CalendarClient({
         body: JSON.stringify({
           startAt: new Date(start).toISOString(),
           endAt: new Date(end).toISOString(),
-          ...(resourceId ? { staffId: resourceId } : {}),
         }),
       })
 
@@ -223,9 +213,6 @@ export default function CalendarClient({
             dayRangeHeaderFormat: ({ start, end }: any) =>
               `Săpt. ${getISOWeekNumber(start)} · ${format(start, 'd MMM', { locale: ro })} – ${format(end, 'd MMM', { locale: ro })}`,
           }}
-          resources={hasResources && (view === Views.DAY || view === Views.WEEK) ? resources : undefined}
-          resourceIdAccessor="resourceId"
-          resourceTitleAccessor="resourceTitle"
           selectable
           onSelectSlot={handleSelectSlot}
           onSelectEvent={handleSelectEvent}
@@ -237,7 +224,6 @@ export default function CalendarClient({
             if (event.isBlocked) {
               return {
                 style: {
-                  backgroundColor: 'repeating-linear-gradient(45deg, #d1d5db, #d1d5db 6px, #e5e7eb 6px, #e5e7eb 12px)' as any,
                   background: 'repeating-linear-gradient(45deg, #d1d5db, #d1d5db 6px, #e5e7eb 6px, #e5e7eb 12px)',
                   border: '1px solid #9ca3af',
                   color: '#4b5563',
@@ -269,11 +255,8 @@ export default function CalendarClient({
               startAt: selected.start.toISOString(),
               endAt: selected.end.toISOString(),
               status: selected.status as BookingDetail['status'],
-              staffId: selected.staffId,
-              staffName: null,
             } as BookingDetail
           }
-          staffOptions={staffOptions}
           onClose={() => setSelected(null)}
         />
       )}

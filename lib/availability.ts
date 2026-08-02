@@ -1,12 +1,14 @@
 import { prisma } from './prisma'
 import { addMinutes } from 'date-fns'
 
+// bookeasy.ro funcționează cu o singură gestiune per salon (fără angajați multipli) —
+// un slot ocupat blochează acea oră pentru toți clienții, nu doar pentru "cineva anume"
 export async function getAvailableSlots(businessId: string, serviceId: string, date: Date) {
   const service = await prisma.service.findUnique({ where: { id: serviceId } })
   if (!service) return []
 
   if (service.type === 'APPOINTMENT') {
-    return getStaffSlots(businessId, service, date)
+    return getSingleSlotAvailability(businessId, service, date)
   }
   return getResourceAvailability(businessId, service, date)
 }
@@ -31,34 +33,21 @@ async function isRangeBlocked(businessId: string, start: Date, end: Date): Promi
   return !!blocked
 }
 
-// apelată la momentul confirmării unei rezervări — găsește UN angajat liber pentru
-// slotul exact ales, ca rezervarea să poată fi asociată real cu cineva din echipă
-export async function findAvailableStaffForSlot(
-  businessId: string,
-  serviceId: string,
-  startAt: Date
-): Promise<string | null> {
+// apelată la confirmarea finală a unei rezervări — verifică dacă intervalul exact
+// mai e liber chiar în acel moment (nu mai alocă niciun "angajat", doar validează sloul)
+export async function isSlotStillAvailable(businessId: string, serviceId: string, startAt: Date): Promise<boolean> {
   const service = await prisma.service.findUnique({ where: { id: serviceId } })
-  if (!service) return null
+  if (!service) return false
 
   const duration = service.durationMin ?? 30
   const endAt = addMinutes(startAt, duration)
 
-  // verificare "ultima clipă" — intervalul putea fi blocat între timp
-  if (await isRangeBlocked(businessId, startAt, endAt)) return null
+  if (await isRangeBlocked(businessId, startAt, endAt)) return false
 
-  const staff = await prisma.staff.findMany({ where: { businessId, active: true } })
-  if (staff.length === 0) return null
-
-  const existingBookings = await prisma.booking.findMany({
-    where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] } },
+  const conflict = await prisma.booking.findFirst({
+    where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: endAt }, endAt: { gt: startAt } },
   })
-
-  const free = staff.find(
-    (s) => !existingBookings.some((b) => b.staffId === s.id && overlaps(startAt, endAt, b.startAt, b.endAt))
-  )
-
-  return free?.id ?? null
+  return !conflict
 }
 
 // folosită de rutele API pentru rezervări manuale/mutări — verifică dacă un interval
@@ -67,10 +56,9 @@ export async function isIntervalBlocked(businessId: string, start: Date, end: Da
   return isRangeBlocked(businessId, start, end)
 }
 
-async function getStaffSlots(businessId: string, service: { id: string; durationMin: number | null }, date: Date) {
+async function getSingleSlotAvailability(businessId: string, service: { id: string; durationMin: number | null }, date: Date) {
   const weekday = date.getDay()
   const workingHours = await prisma.workingHours.findMany({ where: { businessId, weekday } })
-  const staff = await prisma.staff.findMany({ where: { businessId, active: true } })
   const existingBookings = await prisma.booking.findMany({
     where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } },
   })
@@ -87,11 +75,9 @@ async function getStaffSlots(businessId: string, service: { id: string; duration
       const slotEnd = addMinutes(cursor, duration)
 
       const blockedHere = blockedSlots.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
-      const isFree =
-        !blockedHere &&
-        staff.some((s) => !existingBookings.some((b) => b.staffId === s.id && overlaps(cursor, slotEnd, b.startAt, b.endAt)))
+      const bookedHere = existingBookings.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
 
-      if (isFree) slots.push(cursor.toISOString())
+      if (!blockedHere && !bookedHere) slots.push(cursor.toISOString())
       cursor = addMinutes(cursor, 15) // granularitate sloturi
     }
   }
@@ -111,7 +97,6 @@ async function getResourceAvailability(businessId: string, service: { id: string
   const dayEnd = new Date(dayStart)
   dayEnd.setDate(dayEnd.getDate() + 1)
 
-  // dacă întreaga zi e acoperită de un interval blocat, nicio sală nu e disponibilă acea zi
   const wholeDayBlocked = blockedSlots.some((b) => b.startAt <= dayStart && b.endAt >= dayEnd)
   if (wholeDayBlocked) return []
 

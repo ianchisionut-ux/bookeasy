@@ -23,8 +23,8 @@ export default function OnboardingStep5() {
 
   return (
     <Card>
-      <OnboardingProgress step={5} />
-      <p className="text-xs text-gray-500 mb-1">Pasul 5 din 5</p>
+      <OnboardingProgress step={4} />
+      <p className="text-xs text-gray-500 mb-1">Pasul 4 din 4</p>
       <h1 className="text-xl font-semibold mb-1">Aproape gata!</h1>
       <p className="text-sm text-gray-500 mb-6">
         Echipa bookeasy.ro conectează canalele (WhatsApp, Instagram, Facebook) pentru tine, ca

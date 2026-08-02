@@ -42,7 +42,7 @@ export default function OnboardingStep1() {
   return (
     <Card>
       <OnboardingProgress step={1} />
-      <p className="text-xs text-gray-500 mb-1">Pasul 1 din 5</p>
+      <p className="text-xs text-gray-500 mb-1">Pasul 1 din 4</p>
       <h1 className="text-xl font-semibold mb-1">Spune-ne despre afacerea ta</h1>
       <p className="text-sm text-gray-500 mb-6">
         Aceste informații apar pe pagina ta publică și în conversațiile cu clienții.

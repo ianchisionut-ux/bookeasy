@@ -15,7 +15,6 @@ type Booking = {
   customerId: string
   serviceName: string
   serviceId: string
-  staffName: string | null
   resourceName: string | null
   startAt: string
   endAt: string
@@ -52,14 +51,12 @@ export default function ProgramariManager({
   bookings,
   customers,
   services,
-  staff,
   blockedSlots,
   filters,
 }: {
   bookings: Booking[]
   customers: { id: string; name: string }[]
   services: { id: string; name: string; durationMin: number | null }[]
-  staff: { id: string; name: string }[]
   blockedSlots: { startAt: string; endAt: string }[]
   filters: { status: string; q: string }
 }) {
@@ -111,7 +108,6 @@ export default function ProgramariManager({
         <NewBookingForm
           customers={customers}
           services={services}
-          staff={staff}
           blockedSlots={blockedSlots}
           onDone={() => {
             setAdding(false)
@@ -129,7 +125,7 @@ export default function ProgramariManager({
               <th className="font-medium text-gray-500">Client</th>
               <th className="font-medium text-gray-500">Serviciu</th>
               <th className="font-medium text-gray-500">Data</th>
-              <th className="font-medium text-gray-500">Profesionist/Sală</th>
+              <th className="font-medium text-gray-500">Sală</th>
               <th className="font-medium text-gray-500">Canal</th>
               <th className="font-medium text-gray-500">Status</th>
               <th className="font-medium text-gray-500"></th>
@@ -151,7 +147,7 @@ export default function ProgramariManager({
                     <td className="font-medium">{b.customerName}</td>
                     <td>{b.serviceName}</td>
                     <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })}</td>
-                    <td className="text-gray-500">{b.staffName ?? b.resourceName ?? '—'}</td>
+                    <td className="text-gray-500">{b.resourceName ?? '—'}</td>
                     <td className="text-gray-500">{CHANNEL_LABEL[b.channel] ?? b.channel}</td>
                     <td>
                       <select
@@ -232,19 +228,16 @@ function groupByWeek(bookings: Booking[]) {
 function NewBookingForm({
   customers,
   services,
-  staff,
   blockedSlots,
   onDone,
 }: {
   customers: { id: string; name: string }[]
   services: { id: string; name: string; durationMin: number | null }[]
-  staff: { id: string; name: string }[]
   blockedSlots: { startAt: string; endAt: string }[]
   onDone: () => void
 }) {
   const [customerId, setCustomerId] = useState('')
   const [serviceId, setServiceId] = useState('')
-  const [staffId, setStaffId] = useState('')
   const [date, setDate] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -274,7 +267,6 @@ function NewBookingForm({
       body: JSON.stringify({
         customerId,
         serviceId,
-        staffId: staffId || null,
         startAt: start.toISOString(),
         endAt: end.toISOString(),
       }),
@@ -318,24 +310,11 @@ function NewBookingForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+      <div className="mb-3 max-w-xs">
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">Data și ora</label>
           <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className="input-field w-full" />
         </div>
-        {staff.length > 0 && (
-          <div>
-            <label className="text-sm text-gray-500 block mb-1.5">Profesionist (opțional)</label>
-            <select value={staffId} onChange={(e) => setStaffId(e.target.value)} className="input-field w-full">
-              <option value="">Nealocat</option>
-              {staff.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
       </div>
 
       {error && <p className="text-sm text-red-600 mb-2">{error}</p>}

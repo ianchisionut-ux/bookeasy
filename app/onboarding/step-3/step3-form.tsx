@@ -41,13 +41,13 @@ export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VEN
       body: JSON.stringify({ step: 3, data: { services } }),
     })
 
-    router.push(isSalon ? '/onboarding/step-4' : '/onboarding/step-5')
+    router.push('/onboarding/step-5')
   }
 
   return (
     <Card>
       <OnboardingProgress step={3} />
-      <p className="text-xs text-gray-500 mb-1">Pasul 3 din 5</p>
+      <p className="text-xs text-gray-500 mb-1">Pasul 3 din 4</p>
       <h1 className="text-xl font-semibold mb-1">{isSalon ? 'Ce servicii oferi?' : 'Ce săli ai disponibile?'}</h1>
       <p className="text-sm text-gray-500 mb-6">
         {isSalon

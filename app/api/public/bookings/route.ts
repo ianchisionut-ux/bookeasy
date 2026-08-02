@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { findAvailableStaffForSlot, isIntervalBlocked } from '@/lib/availability'
+import { isSlotStillAvailable, isIntervalBlocked } from '@/lib/availability'
 import { getNextSequenceNumber } from '@/lib/booking-number'
 import { createDepositCheckoutLink } from '@/lib/payments/create-checkout'
 import { z } from 'zod'
@@ -39,12 +39,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ne pare rău, intervalul tocmai a fost ocupat. Alege altă oră.' }, { status: 409 })
   }
 
-  let staffId: string | null = null
   let resourceId: string | null = null
 
   if (service.type === 'APPOINTMENT') {
-    staffId = await findAvailableStaffForSlot(businessId, serviceId, startAt)
-    if (!staffId) {
+    const stillFree = await isSlotStillAvailable(businessId, serviceId, startAt)
+    if (!stillFree) {
       return NextResponse.json({ error: 'Ne pare rău, intervalul tocmai a fost ocupat. Alege altă oră.' }, { status: 409 })
     }
   } else {
@@ -76,7 +75,6 @@ export async function POST(req: NextRequest) {
       businessId,
       customerId: customer.id,
       serviceId,
-      staffId,
       resourceId,
       startAt,
       endAt,

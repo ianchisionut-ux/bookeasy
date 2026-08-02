@@ -13,8 +13,6 @@ export type BookingDetail = {
   startAt: string
   endAt: string
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW'
-  staffId: string | null
-  staffName: string | null
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -35,16 +33,13 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> 
 
 export default function BookingEditModal({
   booking,
-  staffOptions,
   onClose,
 }: {
   booking: BookingDetail
-  staffOptions: { id: string; name: string }[]
   onClose: () => void
 }) {
   const router = useRouter()
   const [status, setStatus] = useState(booking.status)
-  const [staffId, setStaffId] = useState(booking.staffId ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -67,7 +62,6 @@ export default function BookingEditModal({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         status,
-        staffId: staffId || null,
         startAt: newStart.toISOString(),
         endAt: newEnd.toISOString(),
       }),
@@ -112,20 +106,6 @@ export default function BookingEditModal({
               className="input-field w-full"
             />
           </div>
-
-          {staffOptions.length > 0 && (
-            <div>
-              <label className="text-sm text-gray-500 block mb-1.5">Profesionist</label>
-              <select value={staffId} onChange={(e) => setStaffId(e.target.value)} className="input-field w-full">
-                <option value="">Nealocat</option>
-                {staffOptions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           <div>
             <label className="text-sm text-gray-500 block mb-1.5">Status</label>

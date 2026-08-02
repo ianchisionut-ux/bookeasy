@@ -3,9 +3,10 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import SettingsForm from './settings-form'
 import { PublicPageLinkCard } from './public-page-link-card'
-import TeamSection from './team-section'
 
-const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6]
+// Luni primul, Duminică ultima — ordinea de afișare a programului de lucru
+// (valorile 'weekday' rămân 0=Duminică...6=Sâmbătă, standardul JS getDay(), doar ordinea vizuală se schimbă)
+const WEEKDAYS_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
 export default async function SetariPage() {
   const session = await auth()
@@ -14,14 +15,11 @@ export default async function SetariPage() {
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    include: {
-      workingHours: true,
-      staff: { where: { active: true }, orderBy: { createdAt: 'asc' }, include: { _count: { select: { bookings: true } } } },
-    },
+    include: { workingHours: true },
   })
   if (!business) redirect('/login')
 
-  const workingHours = WEEKDAYS.map((weekday) => {
+  const workingHours = WEEKDAYS_DISPLAY_ORDER.map((weekday) => {
     const existing = business.workingHours.find((wh) => wh.weekday === weekday)
     return {
       weekday,
@@ -34,7 +32,7 @@ export default async function SetariPage() {
   return (
     <div className="p-4 lg:p-8 max-w-2xl">
       <h1 className="text-2xl font-semibold mb-1">Setări</h1>
-      <p className="text-sm text-gray-500 mb-6">Datele afacerii, echipa, programul de lucru și vizibilitatea publică.</p>
+      <p className="text-sm text-gray-500 mb-6">Datele afacerii, programul de lucru și vizibilitatea publică.</p>
 
       <div className="flex flex-col gap-5">
         <PublicPageLinkCard slug={business.slug} />
@@ -48,12 +46,6 @@ export default async function SetariPage() {
             publicListed: business.publicListed,
           }}
           workingHours={workingHours}
-        />
-
-        <TeamSection
-          initialTeamSize={business.teamSize}
-          initialStaff={business.staff.map((s) => ({ id: s.id, name: s.name, bookingsCount: s._count.bookings }))}
-          category={business.category}
         />
       </div>
     </div>

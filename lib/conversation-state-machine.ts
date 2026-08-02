@@ -1,6 +1,6 @@
 import { prisma } from './prisma'
 import { extractBookingIntent } from './nlu'
-import { getAvailableSlots, findAvailableStaffForSlot } from './availability'
+import { getAvailableSlots, isSlotStillAvailable } from './availability'
 import { getNextSequenceNumber } from './booking-number'
 
 export type ConversationState = {
@@ -77,8 +77,8 @@ export async function runBotStep({
 
       // verificăm din nou disponibilitatea chiar înainte de a cere numele — un alt client
       // ar fi putut ocupa slotul între timp
-      const staffId = await findAvailableStaffForSlot(businessId, currentState.serviceId!, new Date(intent.selectedSlot))
-      if (!staffId) {
+      const stillFree = await isSlotStillAvailable(businessId, currentState.serviceId!, new Date(intent.selectedSlot))
+      if (!stillFree) {
         return {
           reply: 'Ne pare rău, slotul tocmai a fost ocupat. Te rog alege altă oră din listă.',
           newState: currentState,
@@ -161,10 +161,9 @@ async function createBooking({
   const startDate = new Date(startAt)
   const endDate = new Date(startDate.getTime() + (service.durationMin ?? 30) * 60000)
 
-  // alocăm acum, la confirmarea finală, un angajat liber — verificare "ultima clipă"
-  // pentru cazul (rar dar posibil) în care altcineva a apucat același slot între timp
-  const staffId = await findAvailableStaffForSlot(businessId, serviceId, startDate)
-  if (!staffId) return { success: false }
+  // verificare "ultima clipă" — cineva ar fi putut ocupa exact acest slot între timp
+  const stillFree = await isSlotStillAvailable(businessId, serviceId, startDate)
+  if (!stillFree) return { success: false }
 
   // identificăm clientul diferit în funcție de canal — doar pe WhatsApp externalUserId
   // e efectiv numărul de telefon; pe Instagram/Facebook e un ID intern al platformei
@@ -190,7 +189,6 @@ async function createBooking({
       businessId,
       customerId: customer.id,
       serviceId,
-      staffId,
       startAt: startDate,
       endAt: endDate,
       status: 'CONFIRMED',

@@ -44,7 +44,7 @@ export default function OnboardingStep2() {
   return (
     <Card>
       <OnboardingProgress step={2} />
-      <p className="text-xs text-gray-500 mb-1">Pasul 2 din 5</p>
+      <p className="text-xs text-gray-500 mb-1">Pasul 2 din 4</p>
       <h1 className="text-xl font-semibold mb-1">Care e programul tău?</h1>
       <p className="text-sm text-gray-500 mb-6">Botul va propune clienților doar sloturi din acest program.</p>
 
