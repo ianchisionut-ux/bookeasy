@@ -20,10 +20,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const isSuperAdmin = (session as any)?.isSuperAdmin
   const businessId = (session as any)?.businessId
 
+  // super adminii "puri" (fără business propriu) nu au ce căuta în dashboard-ul de
+  // business — ei gestionează conturile clienților, nu propriul calendar/servicii.
+  // Îi trimitem direct în panoul lor separat.
+  if (isSuperAdmin && !businessId) {
+    redirect('/superadmin')
+  }
+
   let category: 'SALON' | 'EVENT_VENUE' | null = null
 
-  // super adminii pot să nu aibă businessId — nu-i forțăm prin onboarding
-  if (businessId && !isSuperAdmin) {
+  if (businessId) {
     const business = await prisma.business.findUnique({ where: { id: businessId } })
     if (business && !business.accountActive) {
       redirect('/cont-suspendat')
