@@ -150,18 +150,23 @@ export default function BookingFlow({
 
       {step === 'SERVICE' && (
         <Card>
-          <h2 className="font-medium mb-3">{isAppointment ? 'Alege serviciul' : 'Alege sala/pachetul'}</h2>
-          <div className="flex flex-col gap-2">
+          <h2 className="text-lg font-semibold mb-4">{isAppointment ? 'Selectează serviciul' : 'Alege sala/pachetul'}</h2>
+          <div className="flex flex-col gap-3">
             {services.map((s) => (
               <button
                 key={s.id}
                 onClick={() => selectService(s)}
-                className="card card-interactive text-left p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1"
+                className="card card-interactive text-left p-4 flex items-center justify-between gap-3"
               >
-                <span className="font-medium">{s.name}</span>
-                <span className="text-sm text-gray-500 whitespace-nowrap">
-                  {isAppointment && s.durationMin ? `${s.durationMin} min · ` : ''}
-                  {s.price ? `${s.price} lei` : ''}
+                <div className="min-w-0">
+                  <p className="font-semibold truncate">{s.name}</p>
+                  {isAppointment && s.durationMin && (
+                    <p className="text-sm text-gray-500 mt-0.5">{s.durationMin} min.</p>
+                  )}
+                  {s.price && <p className="font-semibold text-base mt-2">{s.price} lei</p>}
+                </div>
+                <span className="shrink-0 w-9 h-9 rounded-full border border-[var(--border-soft)] flex items-center justify-center text-lg text-gray-700">
+                  +
                 </span>
               </button>
             ))}
@@ -199,12 +204,12 @@ export default function BookingFlow({
           {loadingSlots && <p className="text-sm text-gray-500">Se verifică disponibilitatea...</p>}
 
           {!loadingSlots && isAppointment && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2.5">
               {slots.map((slot) => (
                 <button
                   key={slot}
                   onClick={() => selectSlot(slot)}
-                  className="btn-secondary text-sm py-2"
+                  className="card card-interactive text-sm font-medium py-2.5 text-center"
                 >
                   {new Date(slot).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })}
                 </button>
