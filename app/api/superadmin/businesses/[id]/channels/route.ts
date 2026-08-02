@@ -7,7 +7,8 @@ import { z } from 'zod'
 const schema = z.object({
   type: z.enum(['WHATSAPP', 'INSTAGRAM', 'FACEBOOK', 'GOOGLE_BUSINESS']),
   externalId: z.string().min(1),
-  accessToken: z.string().min(1),
+  accessToken: z.string().optional(), // "lasă gol dacă nu schimbi" — obligatoriu doar la prima conectare
+  wabaId: z.string().optional(),
   expiresInDays: z.number().optional(),
 })
 
@@ -22,7 +23,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const { type, externalId, accessToken, expiresInDays } = parsed.data
+  const { type, externalId, accessToken, wabaId, expiresInDays } = parsed.data
+
+  const existing = await prisma.channel.findUnique({ where: { type_externalId: { type, externalId } } })
+  if (!existing && !accessToken) {
+    return NextResponse.json({ error: 'Access Token e obligatoriu la prima conectare a canalului.' }, { status: 400 })
+  }
 
   const channel = await prisma.channel.upsert({
     where: { type_externalId: { type, externalId } },
@@ -30,16 +36,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       businessId,
       type,
       externalId,
-      accessToken: encrypt(accessToken),
+      wabaId: wabaId || null,
+      accessToken: encrypt(accessToken!),
       status: 'ACTIVE',
       enabledByOwner: true,
       expiresAt: expiresInDays ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000) : null,
     },
     update: {
       businessId,
-      accessToken: encrypt(accessToken),
+      ...(wabaId ? { wabaId } : {}),
+      ...(accessToken ? { accessToken: encrypt(accessToken) } : {}),
       status: 'ACTIVE',
-      expiresAt: expiresInDays ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000) : null,
+      ...(expiresInDays ? { expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000) } : {}),
     },
   })
 

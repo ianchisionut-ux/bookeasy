@@ -22,6 +22,9 @@ model Business {
   longitude          Float?
   address            String?
   publicListed       Boolean      @default(true)
+  accountActive      Boolean      @default(true)
+  stripeSecretKey    String?
+  stripeWebhookSecret String?
   timezone           String       @default("Europe/Bucharest")
   onboardingStep     Int          @default(1)
   onboardingDone     Boolean      @default(false)
@@ -179,6 +182,7 @@ model Channel {
   business       Business      @relation(fields: [businessId], references: [id])
   type           ChannelType
   externalId     String
+  wabaId         String?       // doar pentru WHATSAPP — WhatsApp Business Account ID, diferit de phone_number_id
   accessToken    String
   refreshToken   String?
   expiresAt      DateTime?

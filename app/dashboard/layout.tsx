@@ -25,6 +25,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // super adminii pot să nu aibă businessId — nu-i forțăm prin onboarding
   if (businessId && !isSuperAdmin) {
     const business = await prisma.business.findUnique({ where: { id: businessId } })
+    if (business && !business.accountActive) {
+      redirect('/cont-suspendat')
+    }
     if (business && !business.onboardingDone) {
       redirect(`/onboarding/step-${business.onboardingStep}`)
     }

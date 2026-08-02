@@ -18,6 +18,9 @@ export async function processIncomingMessage({
   text: string
   channelId: string
 }) {
+  const business = await prisma.business.findUnique({ where: { id: businessId } })
+  if (!business?.accountActive) return // cont suspendat de admin — botul nu răspunde deloc
+
   const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
 
   if (!channelRecord || channelRecord.status !== 'ACTIVE' || !channelRecord.enabledByOwner) {
