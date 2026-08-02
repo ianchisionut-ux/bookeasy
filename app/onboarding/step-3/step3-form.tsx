@@ -77,7 +77,7 @@ export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VEN
 
       <div className="rounded-2xl border border-dashed border-[var(--border-soft)] p-4">
         <p className="text-sm font-medium mb-2.5">{isSalon ? 'Adaugă serviciu' : 'Adaugă sală'}</p>
-        <div className="grid grid-cols-2 gap-2 mb-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
           <Input
             placeholder={isSalon ? 'Numele serviciului' : 'Numele sălii'}
             value={draft.name}

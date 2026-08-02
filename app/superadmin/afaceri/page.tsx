@@ -12,15 +12,16 @@ export default async function SuperAdminBusinesses() {
   })
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-1">
+    <div className="p-4 lg:p-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
         <h1 className="text-2xl font-semibold">Afaceri</h1>
         <CreateBusinessButton />
       </div>
       <p className="text-sm text-gray-500 mb-6">{businesses.length} afaceri înregistrate</p>
 
       <Card className="p-0 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="text-left border-b border-[var(--border-soft)]">
               <th className="py-3 px-5 font-medium text-gray-500">Nume</th>
@@ -63,6 +64,7 @@ export default async function SuperAdminBusinesses() {
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   )

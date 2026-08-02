@@ -59,8 +59,8 @@ export default function StaffManager({ staff }: { staff: StaffMember[] }) {
   }
 
   return (
-    <div className="p-8 max-w-2xl">
-      <div className="flex items-center justify-between mb-1">
+    <div className="p-4 lg:p-8 max-w-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
         <h1 className="text-2xl font-semibold">Echipă</h1>
         <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : '+ Adaugă angajat'}</Button>
       </div>

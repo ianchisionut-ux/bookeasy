@@ -221,7 +221,7 @@ function ChannelSection({
         <h2 className="text-xs font-semibold text-gray-500 tracking-wide">{label}</h2>
         {channel && <Pill tone={channel.status === 'ACTIVE' ? 'success' : 'neutral'}>{channel.status}</Pill>}
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">{idLabel}</label>
           <Input value={externalId} onChange={(e) => setExternalId(e.target.value)} placeholder={idPlaceholder} />
@@ -283,7 +283,7 @@ function WhatsAppSection({ businessId, channel }: { businessId: string; channel:
         {channel && <Pill tone={channel.status === 'ACTIVE' ? 'success' : 'neutral'}>{channel.status}</Pill>}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">Phone Number ID</label>
           <Input value={externalId} onChange={(e) => setExternalId(e.target.value)} placeholder="ex: 126137824372250" />
@@ -294,7 +294,7 @@ function WhatsAppSection({ businessId, channel }: { businessId: string; channel:
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mt-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">WhatsApp Business Account ID (WABA)</label>
           <Input value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="ex: 120826654809241" />
@@ -369,11 +369,11 @@ function CloneForm({ businessId, onClose }: { businessId: string; onClose: () =>
         Clonează servicii, săli, echipă și program în alt business nou — util pentru demo-uri sau
         pentru un client cu profil similar.
       </p>
-      <div className="grid grid-cols-2 gap-2 mb-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
         <Input placeholder="Slug nou (ex: salon-demo-2)" value={form.newSlug} onChange={(e) => setForm({ ...form, newSlug: e.target.value })} />
         <Input placeholder="Nume nou afacere" value={form.newName} onChange={(e) => setForm({ ...form, newName: e.target.value })} />
       </div>
-      <div className="grid grid-cols-2 gap-2 mb-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
         <Input placeholder="Email owner nou" value={form.newEmail} onChange={(e) => setForm({ ...form, newEmail: e.target.value })} />
         <Input placeholder="Parolă owner nou" type="password" value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} />
       </div>
@@ -453,7 +453,7 @@ function PaymentSection({ businessId }: { businessId: string }) {
       </select>
 
       {processor === 'STRIPE' && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-sm text-gray-500 block mb-1.5">Secret Key</label>
             <Input
@@ -479,7 +479,7 @@ function PaymentSection({ businessId }: { businessId: string }) {
       )}
 
       {processor === 'NETOPIA' && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-sm text-gray-500 block mb-1.5">API Key</label>
             <Input value={fields.netopiaApiKey} onChange={(e) => setFields({ ...fields, netopiaApiKey: e.target.value })} placeholder="Lasă gol dacă nu schimbi" type="password" />
@@ -504,7 +504,7 @@ function PaymentSection({ businessId }: { businessId: string }) {
       )}
 
       {processor === 'EUPLATESC' && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-sm text-gray-500 block mb-1.5">Merchant ID</label>
             <Input value={fields.euplatescMerchantId} onChange={(e) => setFields({ ...fields, euplatescMerchantId: e.target.value })} placeholder="Lasă gol dacă nu schimbi" type="password" />

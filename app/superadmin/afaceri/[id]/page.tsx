@@ -25,7 +25,7 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
   const totalRevenue = revenueAgg.reduce((sum, b) => sum + Number(b.service.price ?? 0), 0)
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-4 lg:p-8 max-w-3xl">
       <div className="mb-4">
         <BackLink href="/superadmin/afaceri" label="Înapoi la afaceri" />
       </div>

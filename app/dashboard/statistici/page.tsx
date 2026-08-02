@@ -15,18 +15,18 @@ export default async function StatisticiPage() {
   ])
 
   return (
-    <div className="p-8">
+    <div className="p-4 lg:p-8">
       <h1 className="text-2xl font-semibold mb-1">Statistici</h1>
       <p className="text-sm text-gray-500 mb-6">Ultimele 30 de zile</p>
 
-      <div className="grid grid-cols-3 gap-4 mb-8 max-w-2xl">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 max-w-2xl">
         <Card>
           <p className="text-sm text-gray-500 mb-1">Total rezervări</p>
           <p className="text-3xl font-semibold">{totalBookings}</p>
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 max-w-2xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
         <Card>
           <h2 className="font-medium mb-3">Pe canal</h2>
           <ul className="text-sm flex flex-col gap-2">

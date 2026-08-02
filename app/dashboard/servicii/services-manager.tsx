@@ -81,8 +81,8 @@ export default function ServicesManager({
   }
 
   return (
-    <div className="p-8 max-w-2xl">
-      <div className="flex items-center justify-between mb-1">
+    <div className="p-4 lg:p-8 max-w-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
         <h1 className="text-2xl font-semibold">{isSalon ? 'Servicii' : 'Săli'}</h1>
         <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : `+ Adaugă ${isSalon ? 'serviciu' : 'sală'}`}</Button>
       </div>
@@ -90,7 +90,7 @@ export default function ServicesManager({
 
       {adding && (
         <Card className="mb-4">
-          <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
             <Input placeholder={isSalon ? 'Numele serviciului' : 'Numele sălii'} value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
             {isSalon ? (
               <Input type="number" placeholder="Durată (min)" value={newItem.durationMin} onChange={(e) => setNewItem({ ...newItem, durationMin: e.target.value })} />
@@ -112,7 +112,7 @@ export default function ServicesManager({
           <CardInteractive key={item.id}>
             {editingId === item.id ? (
               <div>
-                <div className="grid grid-cols-2 gap-2 mb-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
                   <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
                   {isSalon ? (
                     <Input type="number" placeholder="Durată (min)" value={draft.durationMin} onChange={(e) => setDraft({ ...draft, durationMin: e.target.value })} />

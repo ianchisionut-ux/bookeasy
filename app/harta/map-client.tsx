@@ -114,7 +114,7 @@ export default function MapClient() {
 
   return (
     <div className="flex-1 flex flex-col">
-      <div className="px-6 py-3 border-b flex gap-2">
+      <div className="px-4 lg:px-6 py-3 border-b flex flex-wrap gap-2">
         <button
           onClick={() => setCategory('ALL')}
           className={`text-sm px-3 py-1.5 rounded-full border ${category === 'ALL' ? 'bg-gray-900 text-white' : ''}`}

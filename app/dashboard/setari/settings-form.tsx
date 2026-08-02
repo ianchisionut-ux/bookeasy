@@ -50,7 +50,7 @@ export default function SettingsForm({
             <label className="text-sm text-gray-500 block mb-1.5">Nume afacere</label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm text-gray-500 block mb-1.5">Telefon contact</label>
               <Input value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} />

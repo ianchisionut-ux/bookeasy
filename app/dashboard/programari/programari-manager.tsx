@@ -69,14 +69,14 @@ export default function ProgramariManager({
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-1">
+    <div className="p-4 lg:p-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
         <h1 className="text-2xl font-semibold">Programări</h1>
         <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : '+ Adaugă programare'}</Button>
       </div>
       <p className="text-sm text-gray-500 mb-6">{bookings.length} programări</p>
 
-      <form method="get" className="flex gap-2 mb-5 max-w-lg">
+      <form method="get" className="flex flex-col sm:flex-row gap-2 mb-5 max-w-lg">
         <Input name="q" defaultValue={filters.q} placeholder="Caută client (nume/telefon)..." />
         <select name="status" defaultValue={filters.status} className="input-field">
           <option value="">Toate statusurile</option>
@@ -104,7 +104,8 @@ export default function ProgramariManager({
       )}
 
       <Card className="p-0 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="text-left border-b border-[var(--border-soft)]">
               <th className="py-3 px-5 font-medium text-gray-500">Client</th>
@@ -156,6 +157,7 @@ export default function ProgramariManager({
             )}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   )
@@ -215,7 +217,7 @@ function NewBookingForm({
 
   return (
     <Card className="mb-5 max-w-2xl">
-      <div className="grid grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">Client</label>
           <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input-field w-full">
@@ -240,7 +242,7 @@ function NewBookingForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">Data și ora</label>
           <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className="input-field w-full" />

@@ -61,7 +61,7 @@ export default function OnboardingStep1() {
 
         <div>
           <label className="text-sm text-gray-500 block mb-2">Tip de afacere</label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => setForm({ ...form, category: 'SALON' })}
@@ -96,7 +96,7 @@ export default function OnboardingStep1() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-sm text-gray-500 block mb-1.5">Telefon contact</label>
             <Input

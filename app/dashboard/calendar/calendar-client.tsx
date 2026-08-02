@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
@@ -50,8 +50,22 @@ export default function CalendarClient({
   const [selected, setSelected] = useState<Event | null>(null)
   const [view, setView] = useState<any>(hasResources ? Views.DAY : Views.WEEK)
 
+  // pe telefon, vederea de săptămână/lună e ilizibilă — pornim direct pe "Zi"
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setView(Views.DAY)
+    }
+  }, [])
+
   const moveOrResize = useCallback(
     async ({ event, start, end, resourceId }: any) => {
+      const oldTime = new Date(event.start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })
+      const newTime = new Date(start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })
+      const confirmed = confirm(
+        `Muți programarea "${event.customerName} — ${event.serviceName}" din ${oldTime} în ${newTime}?`
+      )
+      if (!confirmed) return // nu apelăm API-ul — la următorul render, evenimentul revine la poziția originală (vine tot din props, neschimbate)
+
       await fetch(`/api/business/bookings/${event.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -67,12 +81,12 @@ export default function CalendarClient({
   )
 
   return (
-    <div className="h-[calc(100vh-40px)] p-8 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold">Calendar rezervări</h1>
-        <p className="text-sm text-gray-500">Trage o rezervare ca s-o muți — click pentru detalii/editare</p>
+    <div className="h-[calc(100vh-56px)] lg:h-[calc(100vh-40px)] p-4 lg:p-8 flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-4">
+        <h1 className="text-xl lg:text-2xl font-semibold">Calendar rezervări</h1>
+        <p className="text-xs lg:text-sm text-gray-500">Trage o rezervare ca s-o muți — click pentru detalii/editare</p>
       </div>
-      <div className="card p-4 flex-1 min-h-0">
+      <div className="card p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
         <DnDCalendar
           localizer={localizer}
           events={events}

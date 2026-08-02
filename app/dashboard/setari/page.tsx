@@ -28,7 +28,7 @@ export default async function SetariPage() {
   })
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-4 lg:p-8 max-w-2xl">
       <h1 className="text-2xl font-semibold mb-1">Setări</h1>
       <p className="text-sm text-gray-500 mb-6">Datele afacerii, programul de lucru, canalele și vizibilitatea publică.</p>
 

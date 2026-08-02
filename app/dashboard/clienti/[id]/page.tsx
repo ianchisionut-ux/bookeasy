@@ -15,7 +15,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   if (!customer) notFound()
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-4 lg:p-8 max-w-2xl">
       <div className="mb-4">
         <BackLink href="/dashboard/clienti" label="Înapoi la clienți" />
       </div>
