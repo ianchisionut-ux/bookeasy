@@ -1,6 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropic = new Anthropic()
+let anthropicClient: Anthropic | null = null
+function getAnthropic() {
+  if (!anthropicClient) anthropicClient = new Anthropic()
+  return anthropicClient
+}
 
 export type BookingIntent = {
   serviceId: string | null
@@ -11,7 +15,7 @@ export async function extractBookingIntent(
   text: string,
   services: { id: string; name: string }[]
 ): Promise<BookingIntent> {
-  const response = await anthropic.messages.create({
+  const response = await getAnthropic().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 300,
     tools: [

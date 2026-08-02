@@ -3,7 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+let stripeClient: Stripe | null = null
+function getStripe() {
+  if (!stripeClient) stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!)
+  return stripeClient
+}
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -17,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   let stripeCustomerId = business.stripeCustomerId
   if (!stripeCustomerId) {
-    const customer = await stripe.customers.create({
+    const customer = await getStripe().customers.create({
       email: (session as any).user?.email,
       name: business.name,
       metadata: { businessId: business.id },
@@ -26,7 +30,7 @@ export async function POST(req: NextRequest) {
     await prisma.business.update({ where: { id: business.id }, data: { stripeCustomerId } })
   }
 
-  const checkoutSession = await stripe.checkout.sessions.create({
+  const checkoutSession = await getStripe().checkout.sessions.create({
     customer: stripeCustomerId,
     mode: 'subscription',
     line_items: [{ price: plan.stripePriceId, quantity: 1 }],

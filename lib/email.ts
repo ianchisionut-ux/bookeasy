@@ -1,6 +1,16 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+let resendClient: Resend | null = null
+
+function getResend() {
+  if (!resendClient) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY nu e setat — email-urile de alertă nu pot fi trimise.')
+    }
+    resendClient = new Resend(process.env.RESEND_API_KEY)
+  }
+  return resendClient
+}
 
 const CHANNEL_LABELS: Record<string, string> = {
   WHATSAPP: 'WhatsApp',
@@ -26,7 +36,12 @@ export async function sendAlertEmail({
   daysLeft: number
   reconnectUrl: string
 }) {
-  await resend.emails.send({
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY lipsește — sar peste trimiterea email-ului de alertă.')
+    return
+  }
+
+  await getResend().emails.send({
     from: 'Notificări <alerte@bookeasy.ro>',
     to,
     subject,

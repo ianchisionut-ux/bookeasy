@@ -2,7 +2,11 @@ import Stripe from 'stripe'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+let stripeClient: Stripe | null = null
+function getStripe() {
+  if (!stripeClient) stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!)
+  return stripeClient
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -10,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!)
+    event = getStripe().webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch {
     return NextResponse.json({ error: 'invalid signature' }, { status: 400 })
   }
@@ -18,7 +22,7 @@ export async function POST(req: NextRequest) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
-      const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
+      const subscription = await getStripe().subscriptions.retrieve(session.subscription as string)
       await upsertSubscription(subscription)
       break
     }
