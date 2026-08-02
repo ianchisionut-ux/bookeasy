@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { SignOutButton } from '@/components/sign-out-button'
+import { SidebarUserBlock } from '@/components/sidebar-user-block'
 
 const NAV_ITEMS = [
   { href: '/superadmin', label: 'Prezentare generală' },
@@ -14,6 +14,8 @@ export default async function SuperAdminLayout({ children }: { children: React.R
   if (!session || !(session as any).isSuperAdmin) {
     redirect('/dashboard')
   }
+
+  const userEmail = (session as any)?.user?.email ?? 'admin'
 
   return (
     <div className="grid grid-cols-[220px_1fr] min-h-screen bg-[var(--surface-muted)]">
@@ -32,10 +34,7 @@ export default async function SuperAdminLayout({ children }: { children: React.R
           </Link>
         ))}
 
-        <div className="mt-auto pt-2">
-          <div className="h-px bg-[var(--border-soft)] mb-2" />
-          <SignOutButton className="w-full" />
-        </div>
+        <SidebarUserBlock label={userEmail} />
       </aside>
       <main>{children}</main>
     </div>

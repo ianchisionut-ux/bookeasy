@@ -12,7 +12,7 @@ export default async function CalendarPage() {
   })
 
   const bookings = await prisma.booking.findMany({
-    where: { businessId },
+    where: { businessId, status: { not: 'CANCELLED' } },
     include: { customer: true, service: true },
     orderBy: { startAt: 'asc' },
   })
@@ -24,6 +24,9 @@ export default async function CalendarPage() {
     end: b.endAt,
     status: b.status,
     resourceId: b.staffId ?? undefined,
+    customerName: b.customer.name ?? b.customer.phone,
+    serviceName: b.service.name,
+    staffId: b.staffId,
   }))
 
   const resources =
@@ -31,5 +34,7 @@ export default async function CalendarPage() {
       ? business.staff.map((s) => ({ resourceId: s.id, resourceTitle: s.name }))
       : undefined
 
-  return <CalendarClient events={events} resources={resources} />
+  const staffOptions = business?.staff.map((s) => ({ id: s.id, name: s.name })) ?? []
+
+  return <CalendarClient events={events} resources={resources} staffOptions={staffOptions} />
 }

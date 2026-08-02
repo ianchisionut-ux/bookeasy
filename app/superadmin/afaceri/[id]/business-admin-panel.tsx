@@ -10,6 +10,7 @@ import { Pill } from '@/components/ui/input'
 type Channel = { id: string; type: string; externalId: string; wabaId: string | null; status: string }
 type Business = {
   id: string
+  slug: string
   name: string
   category: 'SALON' | 'EVENT_VENUE'
   accountActive: boolean
@@ -86,6 +87,14 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
             <p className="text-sm text-gray-500">
               {business.ownerEmail ?? 'fără cont owner'} · {business.planName ?? 'fără abonament'}
             </p>
+            <a
+              href={`/${business.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-[var(--accent)] hover:underline"
+            >
+              bookeasy.ro/{business.slug} ↗
+            </a>
           </div>
           <div className="text-right text-sm">
             <p className="font-semibold">{business.bookingsCount} rezervări</p>

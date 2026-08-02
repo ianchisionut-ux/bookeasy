@@ -33,6 +33,7 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
       <BusinessAdminPanel
         business={{
           id: business.id,
+          slug: business.slug,
           name: business.name,
           category: business.category,
           accountActive: business.accountActive,

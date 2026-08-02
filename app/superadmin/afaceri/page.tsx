@@ -38,7 +38,9 @@ export default async function SuperAdminBusinesses() {
                   <Link href={`/superadmin/afaceri/${b.id}`} className="font-medium text-[var(--accent)]">
                     {b.name}
                   </Link>
-                  <p className="text-xs text-gray-500">{b.city}</p>
+                  <p className="text-xs text-gray-500">
+                    {b.city} · /{b.slug}
+                  </p>
                 </td>
                 <td>{b.category === 'SALON' ? 'Salon' : 'Spații evenimente'}</td>
                 <td>
