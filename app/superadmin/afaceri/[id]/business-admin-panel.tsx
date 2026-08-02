@@ -23,6 +23,7 @@ type Business = {
 export default function BusinessAdminPanel({ business, channels }: { business: Business; channels: Channel[] }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
+  const [showClone, setShowClone] = useState(false)
   const [name, setName] = useState(business.name)
   const [resetResult, setResetResult] = useState<{ email: string; newPassword: string } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -120,7 +121,12 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
           <button onClick={deleteForever} disabled={loading} className="btn-secondary text-red-600">
             🗑 Șterge definitiv
           </button>
+          <button onClick={() => setShowClone(true)} disabled={loading} className="btn-secondary">
+            ⧉ Clonează
+          </button>
         </div>
+
+        {showClone && <CloneForm businessId={business.id} onClose={() => setShowClone(false)} />}
 
         {resetResult && (
           <div className="mt-4 rounded-xl bg-[var(--accent-soft)] p-3 text-sm text-[var(--accent)]">
@@ -307,6 +313,73 @@ function WhatsAppSection({ businessId, channel }: { businessId: string; channel:
   )
 }
 
+function CloneForm({ businessId, onClose }: { businessId: string; onClose: () => void }) {
+  const router = useRouter()
+  const [form, setForm] = useState({ newSlug: '', newName: '', newEmail: '', newPassword: '' })
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [result, setResult] = useState<any>(null)
+
+  async function submit() {
+    setSaving(true)
+    setError('')
+    const res = await fetch(`/api/superadmin/businesses/${businessId}/clone`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(typeof data.error === 'string' ? data.error : 'Verifică datele completate.')
+      setSaving(false)
+      return
+    }
+    setResult(data)
+    setSaving(false)
+    router.refresh()
+  }
+
+  if (result) {
+    return (
+      <div className="mt-4 rounded-xl bg-[var(--accent-soft)] p-4 text-sm text-[var(--accent)]">
+        <p className="font-medium mb-1">Business clonat cu succes!</p>
+        <p>
+          {result.clonedServices} servicii · {result.clonedResources} săli · {result.clonedStaff} angajați ·{' '}
+          {result.clonedWorkingHours} intervale de program copiate.
+        </p>
+        <a href={`/superadmin/afaceri/${result.business.id}`} className="underline font-medium">
+          Deschide noul business →
+        </a>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4 border-t border-[var(--border-soft)] pt-4">
+      <p className="text-sm font-medium mb-3">
+        Clonează servicii, săli, echipă și program în alt business nou — util pentru demo-uri sau
+        pentru un client cu profil similar.
+      </p>
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <Input placeholder="Slug nou (ex: salon-demo-2)" value={form.newSlug} onChange={(e) => setForm({ ...form, newSlug: e.target.value })} />
+        <Input placeholder="Nume nou afacere" value={form.newName} onChange={(e) => setForm({ ...form, newName: e.target.value })} />
+      </div>
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <Input placeholder="Email owner nou" value={form.newEmail} onChange={(e) => setForm({ ...form, newEmail: e.target.value })} />
+        <Input placeholder="Parolă owner nou" type="password" value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} />
+      </div>
+      {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={submit} disabled={saving}>
+          {saving ? 'Se clonează...' : 'Clonează'}
+        </Button>
+        <Button variant="secondary" onClick={onClose}>
+          Anulează
+        </Button>
+      </div>
+    </div>
+  )
+}
 function PaymentSection({ businessId }: { businessId: string }) {
   const [stripeSecretKey, setStripeSecretKey] = useState('')
   const [stripeWebhookSecret, setStripeWebhookSecret] = useState('')

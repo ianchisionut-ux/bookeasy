@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card'
 import { Pill } from '@/components/ui/input'
 import Link from 'next/link'
 import BusinessRowActions from './business-row-actions'
+import CreateBusinessButton from './create-business-button'
 
 export default async function SuperAdminBusinesses() {
   const businesses = await prisma.business.findMany({
@@ -12,7 +13,10 @@ export default async function SuperAdminBusinesses() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold mb-1">Afaceri</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-2xl font-semibold">Afaceri</h1>
+        <CreateBusinessButton />
+      </div>
       <p className="text-sm text-gray-500 mb-6">{businesses.length} afaceri înregistrate</p>
 
       <Card className="p-0 overflow-hidden">
