@@ -5,11 +5,12 @@ import Link from 'next/link'
 export default async function ClientiPage({
   searchParams,
 }: {
-  searchParams: { q?: string }
+  searchParams: Promise<{ q?: string }>
 }) {
   const session = await auth()
   const businessId = (session as any)?.businessId ?? ''
-  const query = searchParams.q?.trim() ?? ''
+  const { q } = await searchParams
+  const query = q?.trim() ?? ''
 
   const customers = await prisma.customer.findMany({
     where: {
