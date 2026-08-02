@@ -66,9 +66,24 @@ export default function MapClient() {
       // fără mapId — folosim randarea clasică raster, cea mai compatibilă,
       // fără să depindă de un Map ID creat separat în Google Cloud Console
     })
-    // forțează recalcularea dimensiunilor — plasă de siguranță suplimentară,
-    // pentru orice caz în care containerul nu avea încă dimensiune finală la creare
-    window.google.maps.event.trigger(mapInstance.current, 'resize')
+  }, [loaded])
+
+  // urmărește dimensiunea reală a containerului și forțează Google Maps să se
+  // recalculeze de fiecare dată când se schimbă — repară cazul în care harta a fost
+  // creată înainte ca layout-ul paginii (ex: fontul încărcat asincron) să se stabilizeze,
+  // situație în care Google Maps "îngheață" pe o dimensiune greșită, o singură dată
+  useEffect(() => {
+    if (!loaded || !mapRef.current) return
+
+    const center = { lat: 46.1667, lng: 21.3167 }
+    const observer = new ResizeObserver(() => {
+      if (!mapInstance.current) return
+      window.google.maps.event.trigger(mapInstance.current, 'resize')
+      mapInstance.current.setCenter(center)
+    })
+    observer.observe(mapRef.current)
+
+    return () => observer.disconnect()
   }, [loaded])
 
   // fetch businesses ori de câte ori se schimbă filtrul
