@@ -2,9 +2,10 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import CustomerNotes from './customer-notes'
 
-export default async function CustomerDetailPage({ params }: { params: { id: string } }) {
+export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const customer = await prisma.customer.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { bookings: { include: { service: true }, orderBy: { startAt: 'desc' } } },
   })
 

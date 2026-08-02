@@ -17,12 +17,13 @@ const OAUTH_CONFIG = {
   },
 } as const
 
-export async function GET(req: NextRequest, { params }: { params: { provider: 'google' | 'meta' } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: 'google' | 'meta' }> }) {
+  const { provider } = await params
   const session = await auth()
   if (!session) return NextResponse.redirect(new URL('/login', req.url))
 
-  const config = OAUTH_CONFIG[params.provider]
-  const redirectUri = `${process.env.APP_URL}/api/oauth/${params.provider}/callback`
+  const config = OAUTH_CONFIG[provider]
+  const redirectUri = `${process.env.APP_URL}/api/oauth/${provider}/callback`
 
   const state = Buffer.from(
     JSON.stringify({ businessId: (session as any).businessId, nonce: crypto.randomUUID() })

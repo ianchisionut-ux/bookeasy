@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { encrypt } from '@/lib/crypto'
 
-export async function GET(req: NextRequest, { params }: { params: { provider: 'google' | 'meta' } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: 'google' | 'meta' }> }) {
+  const { provider } = await params
   const code = req.nextUrl.searchParams.get('code')
   const stateRaw = req.nextUrl.searchParams.get('state')
   if (!code || !stateRaw) {
@@ -10,10 +11,10 @@ export async function GET(req: NextRequest, { params }: { params: { provider: 'g
   }
 
   const { businessId } = JSON.parse(Buffer.from(stateRaw, 'base64url').toString())
-  const redirectUri = `${process.env.APP_URL}/api/oauth/${params.provider}/callback`
+  const redirectUri = `${process.env.APP_URL}/api/oauth/${provider}/callback`
 
   const tokenRes = await fetch(
-    params.provider === 'google'
+    provider === 'google'
       ? 'https://oauth2.googleapis.com/token'
       : 'https://graph.facebook.com/v21.0/oauth/access_token',
     {
@@ -21,8 +22,8 @@ export async function GET(req: NextRequest, { params }: { params: { provider: 'g
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         code,
-        client_id: params.provider === 'google' ? process.env.GOOGLE_CLIENT_ID! : process.env.META_APP_ID!,
-        client_secret: params.provider === 'google' ? process.env.GOOGLE_CLIENT_SECRET! : process.env.META_APP_SECRET!,
+        client_id: provider === 'google' ? process.env.GOOGLE_CLIENT_ID! : process.env.META_APP_ID!,
+        client_secret: provider === 'google' ? process.env.GOOGLE_CLIENT_SECRET! : process.env.META_APP_SECRET!,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
       }),
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: { provider: 'g
   )
   const tokenData = await tokenRes.json()
 
-  if (params.provider === 'meta') {
+  if (provider === 'meta') {
     const longLived = await fetch(
       `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.META_APP_ID}&client_secret=${process.env.META_APP_SECRET}&fb_exchange_token=${tokenData.access_token}`
     ).then((r) => r.json())
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest, { params }: { params: { provider: 'g
     }
   }
 
-  if (params.provider === 'google') {
+  if (provider === 'google') {
     const locations = await fetch('https://mybusinessbusinessinformation.googleapis.com/v1/accounts', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     }).then((r) => r.json())
@@ -79,5 +80,5 @@ export async function GET(req: NextRequest, { params }: { params: { provider: 'g
     })
   }
 
-  return NextResponse.redirect(`${process.env.APP_URL}/dashboard/canale?connected=${params.provider}`)
+  return NextResponse.redirect(`${process.env.APP_URL}/dashboard/canale?connected=${provider}`)
 }
