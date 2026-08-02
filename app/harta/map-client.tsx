@@ -18,7 +18,6 @@ type Business = {
 declare global {
   interface Window {
     google: any
-    initBookeasyMap?: () => void
     gm_authFailure?: () => void
   }
 }
@@ -43,16 +42,15 @@ export default function MapClient() {
       return
     }
     const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&callback=initBookeasyMap`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
     script.async = true
+    script.onload = () => setLoaded(true)
     script.onerror = () => setLoadError(true)
-    window.initBookeasyMap = () => setLoaded(true)
     // Google apelează asta când cheia e respinsă (referrer greșit, API dezactivat, facturare
     // neactivată etc.) — de multe ori FĂRĂ niciun mesaj vizual pe hartă, doar spațiu gol
     window.gm_authFailure = () => setLoadError(true)
     document.head.appendChild(script)
     return () => {
-      delete window.initBookeasyMap
       delete window.gm_authFailure
     }
   }, [])
