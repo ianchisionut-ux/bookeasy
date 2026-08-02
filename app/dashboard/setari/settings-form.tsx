@@ -13,7 +13,7 @@ export default function SettingsForm({
   business,
   workingHours,
 }: {
-  business: { name: string; contactPhone: string; city: string; address: string; publicListed: boolean }
+  business: { name: string; contactPhone: string; city: string; address: string; publicListed: boolean; teamSize: number }
   workingHours: WorkingHour[]
 }) {
   const [form, setForm] = useState(business)
@@ -85,6 +85,34 @@ export default function SettingsForm({
               style={{ transform: form.publicListed ? 'translateX(20px)' : 'translateX(0)' }}
             />
           </button>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-medium">Număr membri echipă</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {form.teamSize <= 1
+                ? 'Afacere individuală — calendarul rămâne simplu, fără coloane per angajat.'
+                : `${form.teamSize} membri — calendarul afișează o coloană per angajat.`}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setForm({ ...form, teamSize: Math.max(1, form.teamSize - 1) })}
+              className="w-8 h-8 rounded-full border border-[var(--border-soft)] flex items-center justify-center text-lg"
+            >
+              −
+            </button>
+            <span className="w-6 text-center font-medium">{form.teamSize}</span>
+            <button
+              onClick={() => setForm({ ...form, teamSize: form.teamSize + 1 })}
+              className="w-8 h-8 rounded-full border border-[var(--border-soft)] flex items-center justify-center text-lg"
+            >
+              +
+            </button>
+          </div>
         </div>
       </Card>
 

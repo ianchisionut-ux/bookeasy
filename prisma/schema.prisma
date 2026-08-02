@@ -24,6 +24,7 @@ model Business {
   heroImageUrl       String?
   publicListed       Boolean      @default(true)
   accountActive      Boolean      @default(true)
+  teamSize           Int          @default(1)
   paymentProcessor    PaymentProcessor? // NULL = plata online dezactivată pentru acest business
   stripeSecretKey     String?
   stripeWebhookSecret String?

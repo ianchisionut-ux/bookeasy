@@ -8,7 +8,7 @@ export default async function CalendarPage() {
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    include: { staff: { where: { active: true }, orderBy: { name: 'asc' } } },
+    include: { staff: { where: { active: true }, orderBy: { name: 'asc' } }, workingHours: true },
   })
 
   const bookings = await prisma.booking.findMany({
@@ -31,12 +31,23 @@ export default async function CalendarPage() {
     staffId: b.staffId,
   }))
 
+  // coloane per angajat doar dacă e afacere cu echipă reală (teamSize > 1) —
+  // pentru afaceri individuale (teamSize 1) calendarul rămâne simplu, o singură coloană
   const resources =
-    business?.category === 'SALON' && business.staff.length > 0
+    business?.category === 'SALON' && (business.teamSize ?? 1) > 1 && business.staff.length > 0
       ? business.staff.map((s) => ({ resourceId: s.id, resourceTitle: s.name }))
       : undefined
 
   const staffOptions = business?.staff.map((s) => ({ id: s.id, name: s.name })) ?? []
+
+  // intervalul orar afișat în calendar respectă programul real de lucru — cel mai
+  // devreme început și cel mai târziu sfârșit din toate zilele configurate
+  let minTime = '08:00'
+  let maxTime = '20:00'
+  if (business?.workingHours.length) {
+    minTime = business.workingHours.reduce((min, wh) => (wh.startTime < min ? wh.startTime : min), business.workingHours[0].startTime)
+    maxTime = business.workingHours.reduce((max, wh) => (wh.endTime > max ? wh.endTime : max), business.workingHours[0].endTime)
+  }
 
   return (
     <CalendarClient
@@ -49,6 +60,8 @@ export default async function CalendarPage() {
         endAt: b.endAt.toISOString(),
         reason: b.reason,
       }))}
+      minTime={minTime}
+      maxTime={maxTime}
     />
   )
 }

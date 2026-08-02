@@ -2,7 +2,6 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import SettingsForm from './settings-form'
-import ChannelsSection from './channels-section'
 import { PublicPageLinkCard } from './public-page-link-card'
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6]
@@ -14,7 +13,7 @@ export default async function SetariPage() {
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    include: { workingHours: true, channels: true },
+    include: { workingHours: true },
   })
   if (!business) redirect('/login')
 
@@ -31,7 +30,7 @@ export default async function SetariPage() {
   return (
     <div className="p-4 lg:p-8 max-w-2xl">
       <h1 className="text-2xl font-semibold mb-1">Setări</h1>
-      <p className="text-sm text-gray-500 mb-6">Datele afacerii, programul de lucru, canalele și vizibilitatea publică.</p>
+      <p className="text-sm text-gray-500 mb-6">Datele afacerii, programul de lucru și vizibilitatea publică.</p>
 
       <div className="flex flex-col gap-5">
         <PublicPageLinkCard slug={business.slug} />
@@ -43,12 +42,9 @@ export default async function SetariPage() {
             city: business.city ?? '',
             address: business.address ?? '',
             publicListed: business.publicListed,
+            teamSize: business.teamSize,
           }}
           workingHours={workingHours}
-        />
-
-        <ChannelsSection
-          channels={business.channels.map((c) => ({ id: c.id, type: c.type, status: c.status, enabledByOwner: c.enabledByOwner }))}
         />
       </div>
     </div>

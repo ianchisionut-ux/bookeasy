@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -121,35 +121,44 @@ export default function ProgramariManager({
             </tr>
           </thead>
           <tbody>
-            {bookings.map((b) => (
-              <tr key={b.id} className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--surface-muted)]">
-                <td className="py-3 px-5 font-medium">{b.customerName}</td>
-                <td>{b.serviceName}</td>
-                <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                <td className="text-gray-500">{b.staffName ?? b.resourceName ?? '—'}</td>
-                <td className="text-gray-500">{b.channel}</td>
-                <td>
-                  <select
-                    value={b.status}
-                    onChange={(e) => changeStatus(b.id, e.target.value)}
-                    className="input-field text-xs py-1"
-                    style={{ borderColor: 'transparent', background: 'transparent' }}
-                  >
-                    {Object.entries(STATUS_LABEL).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="pr-5">
-                  {b.status !== 'CANCELLED' && (
-                    <button onClick={() => cancelBooking(b.id)} className="text-xs text-red-600 font-medium">
-                      Anulează
-                    </button>
-                  )}
-                </td>
-              </tr>
+            {groupByWeek(bookings).map((group) => (
+              <Fragment key={`week-${group.year}-${group.week}`}>
+                <tr key={`week-${group.week}-${group.year}`} className="bg-[var(--surface-muted)]">
+                  <td colSpan={7} className="px-5 py-2 text-xs font-semibold text-gray-500">
+                    Săptămâna {group.week} · {group.rangeLabel} ({group.bookings.length} programări)
+                  </td>
+                </tr>
+                {group.bookings.map((b) => (
+                  <tr key={b.id} className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--surface-muted)]">
+                    <td className="py-3 px-5 font-medium">{b.customerName}</td>
+                    <td>{b.serviceName}</td>
+                    <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                    <td className="text-gray-500">{b.staffName ?? b.resourceName ?? '—'}</td>
+                    <td className="text-gray-500">{b.channel}</td>
+                    <td>
+                      <select
+                        value={b.status}
+                        onChange={(e) => changeStatus(b.id, e.target.value)}
+                        className="input-field text-xs py-1"
+                        style={{ borderColor: 'transparent', background: 'transparent' }}
+                      >
+                        {Object.entries(STATUS_LABEL).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="pr-5">
+                      {b.status !== 'CANCELLED' && (
+                        <button onClick={() => cancelBooking(b.id)} className="text-xs text-red-600 font-medium">
+                          Anulează
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </Fragment>
             ))}
             {bookings.length === 0 && (
               <tr>
@@ -164,6 +173,42 @@ export default function ProgramariManager({
       </Card>
     </div>
   )
+}
+
+function getISOWeekNumber(date: Date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
+function groupByWeek(bookings: Booking[]) {
+  const groups = new Map<string, { week: number; year: number; bookings: Booking[]; weekStart: Date; weekEnd: Date }>()
+
+  for (const b of bookings) {
+    const date = new Date(b.startAt)
+    const week = getISOWeekNumber(date)
+    const year = date.getFullYear()
+    const key = `${year}-${week}`
+
+    if (!groups.has(key)) {
+      const weekStart = new Date(date)
+      const dayOfWeek = (weekStart.getDay() + 6) % 7 // luni = 0
+      weekStart.setDate(weekStart.getDate() - dayOfWeek)
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekEnd.getDate() + 6)
+      groups.set(key, { week, year, bookings: [], weekStart, weekEnd })
+    }
+    groups.get(key)!.bookings.push(b)
+  }
+
+  return Array.from(groups.values())
+    .sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime())
+    .map((g) => ({
+      ...g,
+      rangeLabel: `${g.weekStart.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })} – ${g.weekEnd.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}`,
+    }))
 }
 
 function NewBookingForm({

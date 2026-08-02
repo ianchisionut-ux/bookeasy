@@ -9,6 +9,7 @@ const schema = z.object({
   city: z.string().optional(),
   address: z.string().optional(),
   publicListed: z.boolean(),
+  teamSize: z.number().min(1).max(200),
   workingHours: z.array(
     z.object({ weekday: z.number(), startTime: z.string(), endTime: z.string(), closed: z.boolean() })
   ),

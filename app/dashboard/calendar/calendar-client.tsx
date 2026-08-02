@@ -21,6 +21,14 @@ const localizer = dateFnsLocalizer({
 
 const DnDCalendar = withDragAndDrop(Calendar) as any
 
+function getISOWeekNumber(date: Date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
 type Event = {
   id: string
   title: string
@@ -51,17 +59,22 @@ export default function CalendarClient({
   resources,
   staffOptions,
   blockedSlots,
+  minTime,
+  maxTime,
 }: {
   events: Event[]
   resources?: Resource[]
   staffOptions: StaffOption[]
   blockedSlots: BlockedSlot[]
+  minTime: string
+  maxTime: string
 }) {
   const router = useRouter()
   const hasResources = resources && resources.length > 0
   const [selected, setSelected] = useState<Event | null>(null)
   const [view, setView] = useState<any>(hasResources ? Views.DAY : Views.WEEK)
   const [busy, setBusy] = useState(false)
+  const [blockMode, setBlockMode] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -78,6 +91,15 @@ export default function CalendarClient({
   }))
 
   const allEvents = [...events, ...blockedEvents]
+
+  function timeToDate(time: string) {
+    const [h, m] = time.split(':').map(Number)
+    const d = new Date()
+    d.setHours(h, m, 0, 0)
+    return d
+  }
+  const calendarMin = timeToDate(minTime)
+  const calendarMax = timeToDate(maxTime)
 
   const blockRange = useCallback(
     async (start: Date, end: Date) => {
@@ -115,20 +137,21 @@ export default function CalendarClient({
 
   const handleSelectSlot = useCallback(
     (slotInfo: { start: Date; end: Date }) => {
+      if (!blockMode) return
       blockRange(slotInfo.start, slotInfo.end)
     },
-    [blockRange]
+    [blockRange, blockMode]
   )
 
   const handleSelectEvent = useCallback(
     (event: Event | BlockedEvent) => {
       if ('isBlocked' in event && event.isBlocked) {
-        unblockSlot(event.id)
-      } else {
-        setSelected(event as Event)
+        if (blockMode) unblockSlot(event.id)
+        return
       }
+      setSelected(event as Event)
     },
-    [unblockSlot]
+    [unblockSlot, blockMode]
   )
 
   const moveOrResize = useCallback(
@@ -164,12 +187,23 @@ export default function CalendarClient({
 
   return (
     <div className="h-[calc(100vh-56px)] lg:h-[calc(100vh-40px)] p-4 lg:p-8 flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <h1 className="text-xl lg:text-2xl font-semibold">Calendar rezervări</h1>
-        <p className="text-xs lg:text-sm text-gray-500">
-          Selectează cu mouse-ul un interval liber ca să-l blochezi — click pe zonă blocată pentru a o debloca
-          {busy && <span className="text-gray-400"> · se actualizează...</span>}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-xs text-gray-500">
+            {blockMode
+              ? 'Selectează cu mouse-ul un interval ca să-l blochezi — click pe o zonă blocată pentru a o debloca'
+              : 'Click pe o rezervare pentru detalii/editare'}
+            {busy && <span className="text-gray-400"> · se actualizează...</span>}
+          </p>
+          <button
+            onClick={() => setBlockMode((v) => !v)}
+            className="btn-secondary text-sm whitespace-nowrap"
+            style={blockMode ? { background: 'var(--accent)', color: 'white', borderColor: 'var(--accent)' } : {}}
+          >
+            {blockMode ? '✓ Blocare activă — apasă ca să ieși' : '🔒 Blocare/Rezervare poziții'}
+          </button>
+        </div>
       </div>
       <div className="card p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
         <DnDCalendar
@@ -181,6 +215,12 @@ export default function CalendarClient({
           view={view}
           onView={setView}
           views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
+          min={calendarMin}
+          max={calendarMax}
+          formats={{
+            dayRangeHeaderFormat: ({ start, end }: any) =>
+              `Săpt. ${getISOWeekNumber(start)} · ${format(start, 'd MMM', { locale: ro })} – ${format(end, 'd MMM', { locale: ro })}`,
+          }}
           resources={hasResources && (view === Views.DAY || view === Views.WEEK) ? resources : undefined}
           resourceIdAccessor="resourceId"
           resourceTitleAccessor="resourceTitle"
