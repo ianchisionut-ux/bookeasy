@@ -66,6 +66,9 @@ export default function MapClient() {
       // fără mapId — folosim randarea clasică raster, cea mai compatibilă,
       // fără să depindă de un Map ID creat separat în Google Cloud Console
     })
+    // forțează recalcularea dimensiunilor — plasă de siguranță suplimentară,
+    // pentru orice caz în care containerul nu avea încă dimensiune finală la creare
+    window.google.maps.event.trigger(mapInstance.current, 'resize')
   }, [loaded])
 
   // fetch businesses ori de câte ori se schimbă filtrul
@@ -145,10 +148,10 @@ export default function MapClient() {
 
       <div className="relative flex-1">
         {!loaded && !loadError && (
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">Se încarcă harta...</div>
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500 bg-white z-10">Se încarcă harta...</div>
         )}
         {loadError && (
-          <div className="absolute inset-0 flex flex-col items-center gap-4 text-sm text-gray-500 px-6 py-8 text-center overflow-y-auto">
+          <div className="absolute inset-0 flex flex-col items-center gap-4 text-sm text-gray-500 px-6 py-8 text-center overflow-y-auto bg-white z-10">
             <p>Harta nu poate fi afișată momentan (cheie Google Maps lipsă sau invalidă).</p>
             {businesses.length > 0 && (
               <div className="w-full max-w-md flex flex-col gap-2 text-left">
@@ -164,7 +167,9 @@ export default function MapClient() {
             )}
           </div>
         )}
-        <div ref={mapRef} className="w-full h-full" style={{ display: loaded ? 'block' : 'none' }} />
+        {/* containerul hărții rămâne mereu randat, la dimensiune reală — nu-l ascundem
+            niciodată cu display:none, ca Google Maps să nu-l "vadă" la 0×0 în momentul creării */}
+        <div ref={mapRef} className="w-full h-full" />
 
         {loaded && (
           <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-md px-3 py-2 flex gap-3 text-xs z-10">
