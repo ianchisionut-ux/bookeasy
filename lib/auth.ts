@@ -1,11 +1,12 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
-import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from './prisma'
 import bcrypt from 'bcryptjs'
 
+// Nu folosim PrismaAdapter — cu Credentials + strategie JWT nu e nevoie de el,
+// iar adapter-ul ar căuta tabele (Account, Session, VerificationToken) care
+// nu există în schema noastră (avem doar User simplu, cu parolă hash-uită).
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
   session: { strategy: 'jwt' },
   providers: [
     Credentials({

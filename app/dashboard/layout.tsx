@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { redirect } from 'next/navigation'
 
 const NAV_ITEMS = [
   { href: '/dashboard/calendar', label: 'Calendar' },
@@ -13,7 +15,18 @@ const NAV_ITEMS = [
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
+  if (!session) redirect('/login')
+
   const isSuperAdmin = (session as any)?.isSuperAdmin
+  const businessId = (session as any)?.businessId
+
+  // super adminii pot să nu aibă businessId — nu-i forțăm prin onboarding
+  if (businessId && !isSuperAdmin) {
+    const business = await prisma.business.findUnique({ where: { id: businessId } })
+    if (business && !business.onboardingDone) {
+      redirect(`/onboarding/step-${business.onboardingStep}`)
+    }
+  }
 
   return (
     <div className="grid grid-cols-[220px_1fr] min-h-screen bg-[var(--surface-muted)]">

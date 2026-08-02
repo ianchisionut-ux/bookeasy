@@ -54,5 +54,7 @@ prisma/
 - [ ] Template-uri WhatsApp aprobate pentru reminder-e (mesaje proactive)
 - [ ] Configurare Stripe products/prices pentru fiecare `Plan`
 - [ ] Populare `Plan` în DB cu `stripePriceId` reale
-- [ ] Pagini `/login`, `/onboarding/step-*` (momentan doar API-ul e schițat)
-- [ ] Middleware pentru protejarea rutelor `/dashboard/*` (verificare sesiune + onboarding complet)
+- [ ] Configurare cron extern (cron-job.org) pentru `/api/cron/reminders` (Vercel Hobby permite doar cron zilnic)
+- [x] Pagini `/login`, `/signup`, `/onboarding/step-1..5` — implementate, flux complet funcțional
+- [x] Ruta NextAuth (`/api/auth/[...nextauth]`) — era lipsă, adăugată
+- [ ] Middleware suplimentar de protecție pe `/api/*` sensibile (în afară de verificările din fiecare rută)
