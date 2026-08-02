@@ -218,6 +218,7 @@ enum ChannelType {
   FACEBOOK
   GOOGLE_BUSINESS
   WEB
+  MANUAL
 }
 
 enum ChannelStatus {

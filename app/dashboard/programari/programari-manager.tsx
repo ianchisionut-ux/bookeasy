@@ -31,6 +31,15 @@ const STATUS_LABEL: Record<string, string> = {
   NO_SHOW: 'Neprezentare',
 }
 
+const CHANNEL_LABEL: Record<string, string> = {
+  WHATSAPP: 'WhatsApp',
+  INSTAGRAM: 'Instagram',
+  FACEBOOK: 'Facebook',
+  GOOGLE_BUSINESS: 'Google',
+  WEB: 'Site',
+  MANUAL: 'Manual',
+}
+
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
   PENDING: 'warning',
   CONFIRMED: 'success',
@@ -143,7 +152,7 @@ export default function ProgramariManager({
                     <td>{b.serviceName}</td>
                     <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })}</td>
                     <td className="text-gray-500">{b.staffName ?? b.resourceName ?? '—'}</td>
-                    <td className="text-gray-500">{b.channel}</td>
+                    <td className="text-gray-500">{CHANNEL_LABEL[b.channel] ?? b.channel}</td>
                     <td>
                       <select
                         value={b.status}

@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       startAt: new Date(parsed.data.startAt),
       endAt: new Date(parsed.data.endAt),
       status: parsed.data.status ?? 'CONFIRMED',
-      channel: 'WHATSAPP', // rezervare adăugată manual din dashboard — canalul nu se aplică real, dar câmpul e obligatoriu
+      channel: 'MANUAL', // rezervare adăugată manual de admin din dashboard, nu de client prin bot
       sequenceNumber,
     },
   })

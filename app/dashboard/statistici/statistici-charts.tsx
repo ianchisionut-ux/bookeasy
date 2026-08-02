@@ -25,6 +25,8 @@ const CHANNEL_LABEL: Record<string, string> = {
   INSTAGRAM: 'Instagram',
   FACEBOOK: 'Facebook',
   GOOGLE_BUSINESS: 'Google',
+  WEB: 'Site (auto-rezervare)',
+  MANUAL: 'Adăugat manual',
 }
 
 export default function StatisticiCharts({ daily, summary }: { daily: Daily[]; summary: Summary }) {
