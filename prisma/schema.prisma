@@ -1,0 +1,276 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Business & auth
+// ─────────────────────────────────────────────
+
+model Business {
+  id                 String       @id @default(cuid())
+  name               String
+  slug               String       @unique
+  category           BusinessType
+  contactPhone       String?
+  city               String?
+  latitude           Float?
+  longitude          Float?
+  address            String?
+  publicListed       Boolean      @default(true)
+  timezone           String       @default("Europe/Bucharest")
+  onboardingStep     Int          @default(1)
+  onboardingDone     Boolean      @default(false)
+  stripeCustomerId   String?
+  googlePlaceId      String?
+  rating             Decimal?
+  reviewCount        Int?
+  createdAt          DateTime     @default(now())
+
+  users              User[]
+  staff              Staff[]
+  resources          Resource[]
+  services           Service[]
+  customers          Customer[]
+  bookings           Booking[]
+  channels           Channel[]
+  workingHours       WorkingHours[]
+  conversations      Conversation[]
+  reviews            Review[]
+  subscription       Subscription?
+  missedMessageAlerts MissedMessageAlert[]
+}
+
+enum BusinessType {
+  SALON
+  EVENT_VENUE
+}
+
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  password   String
+  role       Role     @default(OWNER)
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+}
+
+enum Role {
+  OWNER
+  STAFF
+}
+
+// ─────────────────────────────────────────────
+// Resources: staff (SALON) / resources (EVENT_VENUE)
+// ─────────────────────────────────────────────
+
+model Staff {
+  id           String   @id @default(cuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id])
+  name         String
+  active       Boolean  @default(true)
+  bookings     Booking[]
+}
+
+model Resource {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id])
+  name        String
+  capacity    Int?
+  basePrice   Decimal?
+  bookings    Booking[]
+}
+
+model Service {
+  id              String      @id @default(cuid())
+  businessId      String
+  business        Business    @relation(fields: [businessId], references: [id])
+  name            String
+  type            ServiceType @default(APPOINTMENT)
+  durationMin     Int?
+  price           Decimal?
+  active          Boolean     @default(true)
+  requiresDeposit Boolean     @default(false)
+  depositAmount   Decimal?
+  bookings        Booking[]
+}
+
+enum ServiceType {
+  APPOINTMENT
+  VENUE_RENTAL
+}
+
+// ─────────────────────────────────────────────
+// Customers & bookings
+// ─────────────────────────────────────────────
+
+model Customer {
+  id               String   @id @default(cuid())
+  businessId       String
+  business         Business @relation(fields: [businessId], references: [id])
+  name             String?
+  phone            String
+  email            String?
+  instagramUserId  String?
+  facebookUserId   String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  bookings         Booking[]
+
+  @@unique([businessId, phone])
+  @@unique([businessId, instagramUserId])
+  @@unique([businessId, facebookUserId])
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  businessId      String
+  business        Business      @relation(fields: [businessId], references: [id])
+  customerId      String
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  serviceId       String
+  service         Service       @relation(fields: [serviceId], references: [id])
+  staffId         String?
+  staff           Staff?        @relation(fields: [staffId], references: [id])
+  resourceId      String?
+  resource        Resource?     @relation(fields: [resourceId], references: [id])
+  startAt         DateTime
+  endAt           DateTime
+  status          BookingStatus @default(PENDING)
+  channel         ChannelType
+  notes           String?
+  depositPaid     Boolean       @default(false)
+  reminder24hSent Boolean       @default(false)
+  reminder1hSent  Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+model WorkingHours {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  weekday    Int
+  startTime  String
+  endTime    String
+}
+
+// ─────────────────────────────────────────────
+// Channels (WhatsApp / Instagram / Facebook / Google)
+// ─────────────────────────────────────────────
+
+model Channel {
+  id           String        @id @default(cuid())
+  businessId   String
+  business     Business      @relation(fields: [businessId], references: [id])
+  type         ChannelType
+  externalId   String
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  status       ChannelStatus @default(ACTIVE)
+  connectedAt  DateTime      @default(now())
+
+  @@unique([type, externalId])
+}
+
+enum ChannelType {
+  WHATSAPP
+  INSTAGRAM
+  FACEBOOK
+  GOOGLE_BUSINESS
+}
+
+enum ChannelStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  DISCONNECTED
+}
+
+model Conversation {
+  id             String   @id @default(cuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id])
+  channel        ChannelType
+  externalUserId String
+  state          Json
+  updatedAt      DateTime @updatedAt
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  source     String
+  authorName String
+  rating     Int
+  comment    String?
+  reply      String?
+  createdAt  DateTime
+}
+
+model MissedMessageAlert {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  channel    String
+  sentAt     DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// Billing
+// ─────────────────────────────────────────────
+
+model Plan {
+  id                  String   @id @default(cuid())
+  name                String
+  displayName         String
+  priceMonthly        Decimal
+  stripePriceId       String
+  maxChannels         Int
+  maxBookingsPerMonth Int?
+  maxStaff            Int?
+  features            String[]
+  active              Boolean  @default(true)
+
+  subscriptions       Subscription[]
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  businessId           String             @unique
+  business             Business           @relation(fields: [businessId], references: [id])
+  planId               String
+  plan                 Plan               @relation(fields: [planId], references: [id])
+  stripeCustomerId     String
+  stripeSubscriptionId String             @unique
+  status               SubscriptionStatus
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean            @default(false)
+  trialEndsAt          DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+}
