@@ -61,13 +61,6 @@ export default function LoginPage() {
             </Button>
           </form>
         </Card>
-
-        <p className="text-sm text-gray-500">
-          Nu ai cont încă?{' '}
-          <Link href="/signup" className="text-[var(--accent)] font-medium">
-            Creează unul
-          </Link>
-        </p>
       </div>
     </main>
   )
