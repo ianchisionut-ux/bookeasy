@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
+import Image from 'next/image'
 import NearbyBusinesses from '@/components/nearby-businesses'
 import { PublicHeader } from '@/components/ui/public-header'
 import { BackLink } from '@/components/ui/back-link'
@@ -9,7 +10,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
   const { slug } = await params
   const business = await prisma.business.findUnique({
     where: { slug },
-    include: { services: { where: { active: true } } },
+    include: { services: { where: { active: true } }, photos: { orderBy: { createdAt: 'desc' } } },
   })
 
   if (!business || !business.publicListed) notFound()
@@ -17,6 +18,13 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
   return (
     <>
       <PublicHeader />
+
+      {business.heroImageUrl && (
+        <div className="relative w-full h-56 lg:h-80">
+          <Image src={business.heroImageUrl} alt={business.name} fill className="object-cover" priority />
+        </div>
+      )}
+
       <main className="max-w-3xl mx-auto px-6 py-10">
         <div className="mb-6">
           <BackLink href="/harta" label="Înapoi la hartă" />
@@ -38,6 +46,19 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
             </CardInteractive>
           ))}
         </div>
+
+        {business.photos.length > 0 && (
+          <>
+            <h2 className="text-lg font-medium mb-3 mt-8">Galerie</h2>
+            <div className="grid grid-cols-3 gap-2">
+              {business.photos.map((p) => (
+                <div key={p.id} className="relative aspect-square rounded-lg overflow-hidden">
+                  <Image src={p.url} alt="" fill className="object-cover" />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         <NearbyBusinesses businessId={business.id} />
       </main>

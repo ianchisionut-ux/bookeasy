@@ -28,7 +28,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   let category: 'SALON' | 'EVENT_VENUE' | null = null
-  let slug: string | null = null
 
   if (businessId) {
     const business = await prisma.business.findUnique({ where: { id: businessId } })
@@ -39,7 +38,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
       redirect(`/onboarding/step-${business.onboardingStep}`)
     }
     category = business?.category ?? null
-    slug = business?.slug ?? null
   }
 
   const visibleNavItems = NAV_ITEMS.filter((item) => !item.salonOnly || category === 'SALON')
@@ -48,16 +46,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <ResponsiveShell logoHref="/dashboard" logoLabel="bookeasy.ro"
       content={
         <>
-          {slug && (
-            <a
-              href={`/${slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-gray-400 px-2 mb-4 block hover:text-[var(--accent)] transition truncate"
-            >
-              bookeasy.ro/{slug} ↗
-            </a>
-          )}
           {visibleNavItems.map((item) => (
             <Link
               key={item.href}

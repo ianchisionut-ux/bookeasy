@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import SettingsForm from './settings-form'
 import ChannelsSection from './channels-section'
+import { PublicPageLinkCard } from './public-page-link-card'
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6]
 
@@ -33,6 +34,8 @@ export default async function SetariPage() {
       <p className="text-sm text-gray-500 mb-6">Datele afacerii, programul de lucru, canalele și vizibilitatea publică.</p>
 
       <div className="flex flex-col gap-5">
+        <PublicPageLinkCard slug={business.slug} />
+
         <SettingsForm
           business={{
             name: business.name,

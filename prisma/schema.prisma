@@ -21,6 +21,7 @@ model Business {
   latitude           Float?
   longitude          Float?
   address            String?
+  heroImageUrl       String?
   publicListed       Boolean      @default(true)
   accountActive      Boolean      @default(true)
   paymentProcessor    PaymentProcessor? // NULL = plata online dezactivată pentru acest business
@@ -52,6 +53,7 @@ model Business {
   workingHours       WorkingHours[]
   conversations      Conversation[]
   reviews            Review[]
+  photos             BusinessPhoto[]
   subscription       Subscription?
   missedMessageAlerts MissedMessageAlert[]
 }
@@ -229,6 +231,14 @@ model Conversation {
   externalUserId String
   state          Json
   updatedAt      DateTime @updatedAt
+}
+
+model BusinessPhoto {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  url        String
+  createdAt  DateTime @default(now())
 }
 
 model Review {

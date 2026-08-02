@@ -95,7 +95,7 @@ export default function CalendarClient({
           culture="ro"
           view={view}
           onView={setView}
-          views={hasResources ? [Views.DAY, Views.WEEK, Views.AGENDA] : [Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
+          views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
           resources={hasResources && (view === Views.DAY || view === Views.WEEK) ? resources : undefined}
           resourceIdAccessor="resourceId"
           resourceTitleAccessor="resourceTitle"
