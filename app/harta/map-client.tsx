@@ -19,6 +19,7 @@ declare global {
   interface Window {
     google: any
     initBookeasyMap?: () => void
+    gm_authFailure?: () => void
   }
 }
 
@@ -46,9 +47,13 @@ export default function MapClient() {
     script.async = true
     script.onerror = () => setLoadError(true)
     window.initBookeasyMap = () => setLoaded(true)
+    // Google apelează asta când cheia e respinsă (referrer greșit, API dezactivat, facturare
+    // neactivată etc.) — de multe ori FĂRĂ niciun mesaj vizual pe hartă, doar spațiu gol
+    window.gm_authFailure = () => setLoadError(true)
     document.head.appendChild(script)
     return () => {
       delete window.initBookeasyMap
+      delete window.gm_authFailure
     }
   }, [])
 
@@ -58,7 +63,8 @@ export default function MapClient() {
     mapInstance.current = new window.google.maps.Map(mapRef.current, {
       center: { lat: 46.1667, lng: 21.3167 }, // centru aprox. Cluj-Napoca
       zoom: 7,
-      mapId: 'bookeasy-map',
+      // fără mapId — folosim randarea clasică raster, cea mai compatibilă,
+      // fără să depindă de un Map ID creat separat în Google Cloud Console
     })
   }, [loaded])
 
