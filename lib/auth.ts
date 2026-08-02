@@ -23,12 +23,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        token.id = (user as any).id
         token.businessId = (user as any).businessId
         token.role = (user as any).role
       }
       return token
     },
     async session({ session, token }) {
+      ;(session as any).userId = token.id
       ;(session as any).businessId = token.businessId
       ;(session as any).role = token.role
       ;(session as any).isSuperAdmin = token.role === 'SUPER_ADMIN'
