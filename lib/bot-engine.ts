@@ -43,6 +43,8 @@ export async function processIncomingMessage({
     currentState: conversation.state as unknown as ConversationState,
     incomingText: text,
     conversationUpdatedAt: conversation.updatedAt,
+    channel,
+    externalUserId,
   })
 
   await prisma.conversation.update({

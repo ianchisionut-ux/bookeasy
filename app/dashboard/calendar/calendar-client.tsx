@@ -20,12 +20,20 @@ type Event = {
   start: Date
   end: Date
   status: string
+  resourceId?: string
 }
 
-export default function CalendarClient({ events }: { events: Event[] }) {
+type Resource = { resourceId: string; resourceTitle: string }
+
+export default function CalendarClient({ events, resources }: { events: Event[]; resources?: Resource[] }) {
+  const hasResources = resources && resources.length > 0
+
   return (
     <div className="h-[calc(100vh-40px)] p-8 flex flex-col">
-      <h1 className="text-2xl font-semibold mb-4">Calendar rezervări</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Calendar rezervări</h1>
+        {hasResources && <p className="text-sm text-gray-500">Vedere pe angajați — {resources!.length} activi</p>}
+      </div>
       <div className="card p-4 flex-1 min-h-0">
         <Calendar
           localizer={localizer}
@@ -33,7 +41,12 @@ export default function CalendarClient({ events }: { events: Event[] }) {
           startAccessor="start"
           endAccessor="end"
           culture="ro"
-          eventPropGetter={(event) => ({
+          defaultView={hasResources ? 'day' : 'week'}
+          views={hasResources ? ['day', 'agenda'] : ['week', 'day', 'agenda']}
+          resources={hasResources ? resources : undefined}
+          resourceIdAccessor="resourceId"
+          resourceTitleAccessor="resourceTitle"
+          eventPropGetter={(event: Event) => ({
             style: {
               backgroundColor:
                 event.status === 'CONFIRMED' ? '#16a34a' : event.status === 'PENDING' ? '#eab308' : '#ef4444',

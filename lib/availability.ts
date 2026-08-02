@@ -11,6 +11,33 @@ export async function getAvailableSlots(businessId: string, serviceId: string, d
   return getResourceAvailability(businessId, service, date)
 }
 
+// apelată la momentul confirmării unei rezervări — găsește UN angajat liber pentru
+// slotul exact ales, ca rezervarea să poată fi asociată real cu cineva din echipă
+export async function findAvailableStaffForSlot(
+  businessId: string,
+  serviceId: string,
+  startAt: Date
+): Promise<string | null> {
+  const service = await prisma.service.findUnique({ where: { id: serviceId } })
+  if (!service) return null
+
+  const duration = service.durationMin ?? 30
+  const endAt = addMinutes(startAt, duration)
+
+  const staff = await prisma.staff.findMany({ where: { businessId, active: true } })
+  if (staff.length === 0) return null
+
+  const existingBookings = await prisma.booking.findMany({
+    where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] } },
+  })
+
+  const free = staff.find(
+    (s) => !existingBookings.some((b) => b.staffId === s.id && overlaps(startAt, endAt, b.startAt, b.endAt))
+  )
+
+  return free?.id ?? null
+}
+
 async function getStaffSlots(businessId: string, service: { id: string; durationMin: number | null }, date: Date) {
   const weekday = date.getDay()
   const workingHours = await prisma.workingHours.findMany({ where: { businessId, weekday } })

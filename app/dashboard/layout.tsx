@@ -8,8 +8,8 @@ const NAV_ITEMS = [
   { href: '/dashboard/calendar', label: 'Calendar' },
   { href: '/dashboard/clienti', label: 'Clienți' },
   { href: '/dashboard/servicii', label: 'Servicii' },
+  { href: '/dashboard/echipa', label: 'Echipă', salonOnly: true },
   { href: '/dashboard/statistici', label: 'Statistici' },
-  { href: '/dashboard/canale', label: 'Canale' },
   { href: '/dashboard/setari', label: 'Setări' },
 ]
 
@@ -20,13 +20,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const isSuperAdmin = (session as any)?.isSuperAdmin
   const businessId = (session as any)?.businessId
 
+  let category: 'SALON' | 'EVENT_VENUE' | null = null
+
   // super adminii pot să nu aibă businessId — nu-i forțăm prin onboarding
   if (businessId && !isSuperAdmin) {
     const business = await prisma.business.findUnique({ where: { id: businessId } })
     if (business && !business.onboardingDone) {
       redirect(`/onboarding/step-${business.onboardingStep}`)
     }
+    category = business?.category ?? null
   }
+
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.salonOnly || category === 'SALON')
 
   return (
     <div className="grid grid-cols-[220px_1fr] min-h-screen bg-[var(--surface-muted)]">
@@ -35,7 +40,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={28} height={28} />
           <span className="font-semibold text-lg">bookeasy.ro</span>
         </Link>
-        {NAV_ITEMS.map((item) => (
+        {visibleNavItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
