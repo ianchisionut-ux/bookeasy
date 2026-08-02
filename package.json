@@ -19,6 +19,8 @@
     "@prisma/client": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "date-fns": "^4.1.0",
+    "euplatesc": "^1.0.5",
+    "netopia-payment2": "^0.1.7",
     "next": "^15.0.0",
     "next-auth": "5.0.0-beta.25",
     "react": "^19.0.0",

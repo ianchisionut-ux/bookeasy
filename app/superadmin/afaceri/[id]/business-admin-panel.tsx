@@ -381,20 +381,45 @@ function CloneForm({ businessId, onClose }: { businessId: string; onClose: () =>
   )
 }
 function PaymentSection({ businessId }: { businessId: string }) {
-  const [stripeSecretKey, setStripeSecretKey] = useState('')
-  const [stripeWebhookSecret, setStripeWebhookSecret] = useState('')
+  const [processor, setProcessor] = useState<'STRIPE' | 'NETOPIA' | 'EUPLATESC' | ''>('')
+  const [fields, setFields] = useState({
+    stripeSecretKey: '',
+    stripeWebhookSecret: '',
+    netopiaApiKey: '',
+    netopiaPosSignature: '',
+    netopiaPublicKey: '',
+    netopiaIsLive: false,
+    euplatescMerchantId: '',
+    euplatescSecretKey: '',
+    euplatescIsLive: false,
+  })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   async function save() {
     setSaving(true)
+    const payload: Record<string, any> = { paymentProcessor: processor || null }
+    Object.entries(fields).forEach(([k, v]) => {
+      if (v !== '' && v !== false) payload[k] = v
+    })
+
     await fetch(`/api/superadmin/businesses/${businessId}/payment`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stripeSecretKey: stripeSecretKey || undefined, stripeWebhookSecret: stripeWebhookSecret || undefined }),
+      body: JSON.stringify(payload),
     })
-    setStripeSecretKey('')
-    setStripeWebhookSecret('')
+
+    setFields({
+      stripeSecretKey: '',
+      stripeWebhookSecret: '',
+      netopiaApiKey: '',
+      netopiaPosSignature: '',
+      netopiaPublicKey: '',
+      netopiaIsLive: fields.netopiaIsLive,
+      euplatescMerchantId: '',
+      euplatescSecretKey: '',
+      euplatescIsLive: fields.euplatescIsLive,
+    })
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
@@ -407,24 +432,88 @@ function PaymentSection({ businessId }: { businessId: string }) {
       </h2>
       <p className="text-xs text-gray-400 mb-3">
         Relevant pentru spații de evenimente care încasează avans direct. Fiecare afacere folosește
-        propriul cont Stripe — banii intră direct la ea, nu la bookeasy.ro.
+        propriul cont — banii intră direct la ea, nu la bookeasy.ro.
       </p>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm text-gray-500 block mb-1.5">Secret Key</label>
-          <Input value={stripeSecretKey} onChange={(e) => setStripeSecretKey(e.target.value)} placeholder="Lasă gol dacă nu schimbi (sk_...)" type="password" />
-        </div>
-        <div>
-          <label className="text-sm text-gray-500 block mb-1.5">Webhook Signing Secret</label>
-          <Input value={stripeWebhookSecret} onChange={(e) => setStripeWebhookSecret(e.target.value)} placeholder="Lasă gol dacă nu schimbi (whsec_...)" type="password" />
-        </div>
-      </div>
+      <label className="text-sm text-gray-500 block mb-1.5">Procesor de plăți</label>
+      <select value={processor} onChange={(e) => setProcessor(e.target.value as any)} className="input-field mb-4">
+        <option value="">— Dezactivat —</option>
+        <option value="STRIPE">Stripe</option>
+        <option value="NETOPIA">Netopia</option>
+        <option value="EUPLATESC">EuPlatesc.ro</option>
+      </select>
 
-      <p className="text-xs text-gray-400 mt-2">
-        Cheile se iau din Stripe Dashboard → Developers → API keys. Webhook-ul se configurează în
-        Stripe: /api/webhooks/stripe, eveniment checkout.session.completed.
-      </p>
+      {processor === 'STRIPE' && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">Secret Key</label>
+            <Input
+              value={fields.stripeSecretKey}
+              onChange={(e) => setFields({ ...fields, stripeSecretKey: e.target.value })}
+              placeholder="Lasă gol dacă nu schimbi (sk_...)"
+              type="password"
+            />
+          </div>
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">Webhook Signing Secret</label>
+            <Input
+              value={fields.stripeWebhookSecret}
+              onChange={(e) => setFields({ ...fields, stripeWebhookSecret: e.target.value })}
+              placeholder="Lasă gol dacă nu schimbi (whsec_...)"
+              type="password"
+            />
+          </div>
+          <p className="col-span-2 text-xs text-gray-400">
+            Cheile se iau din Stripe Dashboard → Developers → API keys.
+          </p>
+        </div>
+      )}
+
+      {processor === 'NETOPIA' && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">API Key</label>
+            <Input value={fields.netopiaApiKey} onChange={(e) => setFields({ ...fields, netopiaApiKey: e.target.value })} placeholder="Lasă gol dacă nu schimbi" type="password" />
+          </div>
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">POS Signature</label>
+            <Input value={fields.netopiaPosSignature} onChange={(e) => setFields({ ...fields, netopiaPosSignature: e.target.value })} placeholder="Lasă gol dacă nu schimbi" type="password" />
+          </div>
+          <div className="col-span-2">
+            <label className="text-sm text-gray-500 block mb-1.5">Public Key (pentru verificare IPN)</label>
+            <Input value={fields.netopiaPublicKey} onChange={(e) => setFields({ ...fields, netopiaPublicKey: e.target.value })} placeholder="Lasă gol dacă nu schimbi" type="password" />
+          </div>
+          <label className="col-span-2 flex items-center gap-2 text-sm text-gray-600">
+            <input type="checkbox" checked={fields.netopiaIsLive} onChange={(e) => setFields({ ...fields, netopiaIsLive: e.target.checked })} />
+            Cont live (nebifat = sandbox de test)
+          </label>
+          <p className="col-span-2 text-xs text-gray-400">
+            Cheile se iau din contul Netopia al afacerii. Notify URL de configurat acolo:
+            /api/webhooks/netopia/{'{slug}'}
+          </p>
+        </div>
+      )}
+
+      {processor === 'EUPLATESC' && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">Merchant ID</label>
+            <Input value={fields.euplatescMerchantId} onChange={(e) => setFields({ ...fields, euplatescMerchantId: e.target.value })} placeholder="Lasă gol dacă nu schimbi" type="password" />
+          </div>
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">Secret Key</label>
+            <Input value={fields.euplatescSecretKey} onChange={(e) => setFields({ ...fields, euplatescSecretKey: e.target.value })} placeholder="Lasă gol dacă nu schimbi" type="password" />
+          </div>
+          <label className="col-span-2 flex items-center gap-2 text-sm text-gray-600">
+            <input type="checkbox" checked={fields.euplatescIsLive} onChange={(e) => setFields({ ...fields, euplatescIsLive: e.target.checked })} />
+            Cont live (nebifat = sandbox de test)
+          </label>
+          <p className="col-span-2 text-xs text-gray-400">
+            Cheile se iau din contul EuPlatesc.ro al afacerii. Silent URL de configurat acolo:
+            /api/webhooks/euplatesc/{'{slug}'}
+          </p>
+        </div>
+      )}
 
       <div className="mt-3 flex items-center gap-3">
         <Button variant="secondary" onClick={save} disabled={saving}>

@@ -23,8 +23,16 @@ model Business {
   address            String?
   publicListed       Boolean      @default(true)
   accountActive      Boolean      @default(true)
-  stripeSecretKey    String?
+  paymentProcessor    PaymentProcessor? // NULL = plata online dezactivată pentru acest business
+  stripeSecretKey     String?
   stripeWebhookSecret String?
+  netopiaApiKey        String?
+  netopiaPosSignature  String?
+  netopiaPublicKey     String?
+  netopiaIsLive        Boolean  @default(false)
+  euplatescMerchantId  String?
+  euplatescSecretKey   String?
+  euplatescIsLive      Boolean  @default(false)
   timezone           String       @default("Europe/Bucharest")
   onboardingStep     Int          @default(1)
   onboardingDone     Boolean      @default(false)
@@ -46,6 +54,12 @@ model Business {
   reviews            Review[]
   subscription       Subscription?
   missedMessageAlerts MissedMessageAlert[]
+}
+
+enum PaymentProcessor {
+  STRIPE
+  NETOPIA
+  EUPLATESC
 }
 
 enum BusinessType {
