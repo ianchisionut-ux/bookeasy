@@ -17,8 +17,13 @@ const OAUTH_CONFIG = {
   },
 } as const
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: 'google' | 'meta' }> }) {
-  const { provider } = await params
+export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
+  const { provider: providerRaw } = await params
+  if (providerRaw !== 'google' && providerRaw !== 'meta') {
+    return NextResponse.json({ error: 'invalid provider' }, { status: 400 })
+  }
+  const provider = providerRaw as 'google' | 'meta'
+
   const session = await auth()
   if (!session) return NextResponse.redirect(new URL('/login', req.url))
 

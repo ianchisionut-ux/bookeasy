@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { encrypt } from '@/lib/crypto'
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: 'google' | 'meta' }> }) {
-  const { provider } = await params
+export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
+  const { provider: providerRaw } = await params
+  if (providerRaw !== 'google' && providerRaw !== 'meta') {
+    return NextResponse.json({ error: 'invalid provider' }, { status: 400 })
+  }
+  const provider = providerRaw as 'google' | 'meta'
   const code = req.nextUrl.searchParams.get('code')
   const stateRaw = req.nextUrl.searchParams.get('state')
   if (!code || !stateRaw) {
