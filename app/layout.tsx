@@ -1,4 +1,7 @@
 import './globals.css'
+import { Manrope } from 'next/font/google'
+
+const manrope = Manrope({ subsets: ['latin', 'latin-ext'], variable: '--font-manrope' })
 
 export const metadata = {
   title: 'bookeasy.ro',
@@ -17,7 +20,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ro">
+    <html lang="ro" className={manrope.variable}>
       <body>{children}</body>
     </html>
   )

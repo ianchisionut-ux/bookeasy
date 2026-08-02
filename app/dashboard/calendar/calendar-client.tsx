@@ -24,22 +24,26 @@ type Event = {
 
 export default function CalendarClient({ events }: { events: Event[] }) {
   return (
-    <div className="h-[calc(100vh-40px)] p-6">
+    <div className="h-[calc(100vh-40px)] p-8 flex flex-col">
       <h1 className="text-2xl font-semibold mb-4">Calendar rezervări</h1>
-      <Calendar
-        localizer={localizer}
-        events={events}
-        startAccessor="start"
-        endAccessor="end"
-        culture="ro"
-        eventPropGetter={(event) => ({
-          style: {
-            backgroundColor:
-              event.status === 'CONFIRMED' ? '#16a34a' : event.status === 'PENDING' ? '#eab308' : '#ef4444',
-          },
-        })}
-        style={{ height: '100%' }}
-      />
+      <div className="card p-4 flex-1 min-h-0">
+        <Calendar
+          localizer={localizer}
+          events={events}
+          startAccessor="start"
+          endAccessor="end"
+          culture="ro"
+          eventPropGetter={(event) => ({
+            style: {
+              backgroundColor:
+                event.status === 'CONFIRMED' ? '#16a34a' : event.status === 'PENDING' ? '#eab308' : '#ef4444',
+              borderRadius: '8px',
+              border: 'none',
+            },
+          })}
+          style={{ height: '100%' }}
+        />
+      </div>
     </div>
   )
 }

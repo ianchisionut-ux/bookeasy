@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { Textarea } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export default function CustomerNotes({
   customerId,
@@ -32,20 +34,16 @@ export default function CustomerNotes({
   return (
     <div>
       <label className="text-sm font-medium block mb-2">Notițe interne</label>
-      <textarea
+      <Textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="Ex: preferă programări dimineața, alergic la anumite produse..."
-        className="w-full border rounded-lg px-3 py-2 text-sm min-h-[80px]"
+        className="min-h-[80px]"
       />
-      <div className="flex items-center gap-3 mt-2">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="text-sm px-3 py-1.5 border rounded-md disabled:opacity-50"
-        >
+      <div className="flex items-center gap-3 mt-3">
+        <Button variant="secondary" onClick={handleSave} disabled={saving}>
           {saving ? 'Se salvează...' : 'Salvează notițe'}
-        </button>
+        </Button>
         {savedAt && <span className="text-xs text-gray-500">Salvat la {savedAt}</span>}
       </div>
     </div>

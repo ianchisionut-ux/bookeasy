@@ -42,6 +42,20 @@ async function main() {
   })
   console.log('✔ Cont owner: demo@bookeasy.ro / demo12345')
 
+  // ── Super admin (contul tău, acces la /superadmin) ────────
+  const superAdminPassword = await bcrypt.hash('schimba-parola-asta', 10)
+  await prisma.user.upsert({
+    where: { email: 'admin@bookeasy.ro' },
+    update: { role: 'SUPER_ADMIN' },
+    create: {
+      email: 'admin@bookeasy.ro',
+      password: superAdminPassword,
+      role: 'SUPER_ADMIN',
+      businessId: null,
+    },
+  })
+  console.log('✔ Cont super admin: admin@bookeasy.ro / schimba-parola-asta (schimbă parola după primul login!)')
+
   // ── Program de lucru (Luni-Vineri 09-18, Sâmbătă 09-14) ──
   await prisma.workingHours.deleteMany({ where: { businessId: business.id } })
   await prisma.workingHours.createMany({

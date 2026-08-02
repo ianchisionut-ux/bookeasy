@@ -1,1 +1,93 @@
 @import "tailwindcss";
+
+:root {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+
+  /* accent violet, ca în referință (data selectată din calendar) */
+  --accent: #6d5ffd;
+  --accent-hover: #5c4fe0;
+  --accent-soft: #eeecff;
+
+  --surface: #ffffff;
+  --surface-muted: #f7f7f9;
+  --border-soft: #eceef1;
+
+  --radius-card: 20px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 2px 8px rgba(20, 20, 43, 0.04), 0 12px 24px -8px rgba(20, 20, 43, 0.08);
+  --shadow-card-hover: 0 4px 12px rgba(20, 20, 43, 0.06), 0 16px 32px -8px rgba(20, 20, 43, 0.12);
+}
+
+body {
+  font-family: var(--font-sans);
+  color: #14142b;
+  background: var(--surface-muted);
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card);
+}
+
+.card-interactive {
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.card-interactive:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.pill {
+  border-radius: var(--radius-pill);
+}
+
+.btn-primary {
+  background: #14142b;
+  color: white;
+  border-radius: var(--radius-pill);
+  padding: 0.65rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: opacity 0.15s ease;
+}
+.btn-primary:hover {
+  opacity: 0.85;
+}
+.btn-primary:disabled {
+  background: #c7c7d1;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  padding: 0.65rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: background 0.15s ease;
+}
+.btn-secondary:hover {
+  background: var(--surface-muted);
+}
+
+.accent-pill {
+  background: var(--accent);
+  color: white;
+  border-radius: var(--radius-pill);
+}
+
+.input-field {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease;
+}
+.input-field:focus {
+  outline: none;
+  border-color: var(--accent);
+}

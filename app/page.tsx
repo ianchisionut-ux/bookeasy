@@ -15,10 +15,10 @@ export default function HomePage() {
       </div>
 
       <div className="flex gap-3">
-        <Link href="/harta" className="px-5 py-2.5 rounded-md bg-gray-900 text-white text-sm">
+        <Link href="/harta" className="btn-primary">
           Descoperă afaceri
         </Link>
-        <Link href="/dashboard" className="px-5 py-2.5 rounded-md border text-sm">
+        <Link href="/dashboard" className="btn-secondary">
           Intră în cont
         </Link>
       </div>

@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import Link from 'next/link'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 
 export default async function ClientiPage({
   searchParams,
@@ -28,17 +30,12 @@ export default async function ClientiPage({
   })
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">Clienți</h1>
+    <div className="p-8">
+      <h1 className="text-2xl font-semibold mb-1">Clienți</h1>
+      <p className="text-sm text-gray-500 mb-6">{customers.length} clienți în total</p>
 
-      <form method="get" className="mb-4">
-        <input
-          type="text"
-          name="q"
-          defaultValue={query}
-          placeholder="Caută după nume, telefon sau email..."
-          className="w-full max-w-sm border rounded-md px-3 py-2 text-sm"
-        />
+      <form method="get" className="mb-5 max-w-sm">
+        <Input type="text" name="q" defaultValue={query} placeholder="Caută după nume, telefon sau email..." />
       </form>
 
       {customers.length === 0 && (
@@ -47,30 +44,32 @@ export default async function ClientiPage({
         </p>
       )}
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left border-b">
-            <th className="py-2">Nume</th>
-            <th>Telefon</th>
-            <th>Email</th>
-            <th>Rezervări</th>
-          </tr>
-        </thead>
-        <tbody>
-          {customers.map((c) => (
-            <tr key={c.id} className="border-b hover:bg-gray-50">
-              <td className="py-2">
-                <Link href={`/dashboard/clienti/${c.id}`} className="text-blue-600">
-                  {c.name ?? 'Fără nume'}
-                </Link>
-              </td>
-              <td>{c.phone}</td>
-              <td>{c.email ?? '—'}</td>
-              <td>{c._count.bookings}</td>
+      <Card className="p-0 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left border-b border-[var(--border-soft)]">
+              <th className="py-3 px-5 font-medium text-gray-500">Nume</th>
+              <th className="font-medium text-gray-500">Telefon</th>
+              <th className="font-medium text-gray-500">Email</th>
+              <th className="font-medium text-gray-500">Rezervări</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {customers.map((c) => (
+              <tr key={c.id} className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--surface-muted)]">
+                <td className="py-3 px-5">
+                  <Link href={`/dashboard/clienti/${c.id}`} className="text-[var(--accent)] font-medium">
+                    {c.name ?? 'Fără nume'}
+                  </Link>
+                </td>
+                <td>{c.phone}</td>
+                <td>{c.email ?? '—'}</td>
+                <td>{c._count.bookings}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
     </div>
   )
 }
