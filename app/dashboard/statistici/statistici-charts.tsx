@@ -147,7 +147,7 @@ export default function StatisticiCharts({ daily, summary }: { daily: Daily[]; s
         {/* ── top angajați (gol la spații evenimente) ── */}
         {summary.topStaff.length > 0 && (
           <Card>
-            <h2 className="font-medium mb-3">Top angajați</h2>
+            <h2 className="font-medium mb-3">Top profesioniști</h2>
             <ul className="text-sm flex flex-col gap-2">
               {summary.topStaff.map((s) => (
                 <li key={s.name} className="flex justify-between">

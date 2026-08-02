@@ -115,7 +115,7 @@ export default function BookingEditModal({
 
           {staffOptions.length > 0 && (
             <div>
-              <label className="text-sm text-gray-500 block mb-1.5">Angajat</label>
+              <label className="text-sm text-gray-500 block mb-1.5">Profesionist</label>
               <select value={staffId} onChange={(e) => setStaffId(e.target.value)} className="input-field w-full">
                 <option value="">Nealocat</option>
                 {staffOptions.map((s) => (

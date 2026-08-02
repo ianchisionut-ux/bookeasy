@@ -129,7 +129,7 @@ export default function ProgramariManager({
               <th className="font-medium text-gray-500">Client</th>
               <th className="font-medium text-gray-500">Serviciu</th>
               <th className="font-medium text-gray-500">Data</th>
-              <th className="font-medium text-gray-500">Angajat/Sală</th>
+              <th className="font-medium text-gray-500">Profesionist/Sală</th>
               <th className="font-medium text-gray-500">Canal</th>
               <th className="font-medium text-gray-500">Status</th>
               <th className="font-medium text-gray-500"></th>
@@ -325,7 +325,7 @@ function NewBookingForm({
         </div>
         {staff.length > 0 && (
           <div>
-            <label className="text-sm text-gray-500 block mb-1.5">Angajat (opțional)</label>
+            <label className="text-sm text-gray-500 block mb-1.5">Profesionist (opțional)</label>
             <select value={staffId} onChange={(e) => setStaffId(e.target.value)} className="input-field w-full">
               <option value="">Nealocat</option>
               {staff.map((s) => (

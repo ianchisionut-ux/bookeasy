@@ -34,7 +34,7 @@ export default function Step4Form() {
       <OnboardingProgress step={4} />
       <p className="text-xs text-gray-500 mb-1">Pasul 4 din 5</p>
       <h1 className="text-xl font-semibold mb-1">Cine face parte din echipă?</h1>
-      <p className="text-sm text-gray-500 mb-6">Opțional — poți adăuga angajați și mai târziu din dashboard.</p>
+      <p className="text-sm text-gray-500 mb-6">Opțional — poți adăuga profesioniști și mai târziu din dashboard.</p>
 
       {names.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
@@ -48,7 +48,7 @@ export default function Step4Form() {
 
       <div className="flex gap-2">
         <Input
-          placeholder="Nume angajat"
+          placeholder="Nume profesionist"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addStaff())}

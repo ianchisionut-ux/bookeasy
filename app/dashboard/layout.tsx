@@ -10,7 +10,6 @@ const NAV_ITEMS = [
   { href: '/dashboard/programari', label: 'Programări' },
   { href: '/dashboard/clienti', label: 'Clienți' },
   { href: '/dashboard/servicii', label: 'Servicii' },
-  { href: '/dashboard/echipa', label: 'Echipă', salonOnly: true },
   { href: '/dashboard/statistici', label: 'Statistici' },
   { href: '/dashboard/setari', label: 'Setări' },
 ]
@@ -27,9 +26,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/superadmin')
   }
 
-  let category: 'SALON' | 'EVENT_VENUE' | null = null
-  let teamSize = 1
-
   if (businessId) {
     const business = await prisma.business.findUnique({ where: { id: businessId } })
     if (business && !business.accountActive) {
@@ -38,19 +34,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
     if (business && !business.onboardingDone) {
       redirect(`/onboarding/step-${business.onboardingStep}`)
     }
-    category = business?.category ?? null
-    teamSize = business?.teamSize ?? 1
   }
-
-  // "Echipă" are sens doar pentru saloane cu mai mult de 1 membru — o afacere
-  // individuală (teamSize 1) n-are ce gestiona acolo
-  const visibleNavItems = NAV_ITEMS.filter((item) => !item.salonOnly || (category === 'SALON' && teamSize > 1))
 
   return (
     <ResponsiveShell logoHref="/dashboard" logoLabel="bookeasy.ro"
       content={
         <>
-          {visibleNavItems.map((item) => (
+          {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
