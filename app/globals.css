@@ -125,4 +125,13 @@ body {
     padding: 4px 8px;
     font-size: 0.8rem;
   }
+
+  /* Safari (iPhone) dă zoom automat la focus pe inputuri sub 16px — foarte deranjant */
+  .input-field,
+  input[type='date'],
+  input[type='datetime-local'],
+  input[type='time'],
+  select {
+    font-size: 16px !important;
+  }
 }

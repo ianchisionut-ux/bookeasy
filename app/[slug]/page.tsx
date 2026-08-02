@@ -26,12 +26,12 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
         </div>
       )}
 
-      <main className="max-w-3xl mx-auto px-6 py-10">
-        <div className="mb-6">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <div className="mb-4 sm:mb-6">
           <BackLink href="/harta" label="Înapoi la hartă" />
         </div>
 
-        <h1 className="text-2xl font-semibold mb-1">{business.name}</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold mb-1">{business.name}</h1>
         <p className="text-sm text-gray-500 mb-4">
           {business.address ?? business.city}
           {business.rating ? ` · ★ ${business.rating.toString()} (${business.reviewCount ?? 0} recenzii)` : ''}
@@ -44,10 +44,12 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
         <h2 className="text-lg font-medium mb-3">Servicii</h2>
         <div className="flex flex-col gap-2">
           {business.services.map((s) => (
-            <CardInteractive key={s.id} className="flex justify-between items-center py-3">
+            <CardInteractive key={s.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 py-3">
               <span className="font-medium">{s.name}</span>
-              <span className="text-gray-500 text-sm">{s.durationMin ? `${s.durationMin} min` : '—'}</span>
-              <span className="font-medium">{s.price ? `${s.price} lei` : '—'}</span>
+              <div className="flex justify-between sm:contents text-sm text-gray-500">
+                <span>{s.durationMin ? `${s.durationMin} min` : '—'}</span>
+                <span className="font-medium text-gray-900">{s.price ? `${s.price} lei` : '—'}</span>
+              </div>
             </CardInteractive>
           ))}
         </div>

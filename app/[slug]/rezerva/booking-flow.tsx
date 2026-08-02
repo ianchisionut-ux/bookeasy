@@ -156,10 +156,10 @@ export default function BookingFlow({
               <button
                 key={s.id}
                 onClick={() => selectService(s)}
-                className="card card-interactive text-left p-3 flex items-center justify-between"
+                className="card card-interactive text-left p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1"
               >
                 <span className="font-medium">{s.name}</span>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-gray-500 whitespace-nowrap">
                   {isAppointment && s.durationMin ? `${s.durationMin} min · ` : ''}
                   {s.price ? `${s.price} lei` : ''}
                 </span>
@@ -244,7 +244,7 @@ export default function BookingFlow({
             </div>
             <div>
               <label className="text-sm text-gray-500 block mb-1.5">Telefon</label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" />
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" type="tel" inputMode="tel" />
             </div>
           </div>
           {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
@@ -263,7 +263,7 @@ export default function BookingFlow({
           <div className="flex flex-col gap-2">
             <button
               onClick={() => setPaymentMethod('CASH')}
-              className="card p-3 flex items-center justify-between text-left"
+              className="card p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-left"
               style={{ border: paymentMethod === 'CASH' ? '2px solid var(--accent)' : undefined }}
             >
               <span className="font-medium">Numerar la locație</span>
@@ -273,7 +273,7 @@ export default function BookingFlow({
             {canPayOnline && (
               <button
                 onClick={() => setPaymentMethod('ONLINE')}
-                className="card p-3 flex items-center justify-between text-left"
+                className="card p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-left"
                 style={{ border: paymentMethod === 'ONLINE' ? '2px solid var(--accent)' : undefined }}
               >
                 <span className="font-medium">Card online</span>
