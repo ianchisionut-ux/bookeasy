@@ -50,14 +50,14 @@ export default function OnboardingStep2() {
 
       <div className="flex flex-col gap-2">
         {hours.map((h) => (
-          <div key={h.weekday} className="flex items-center gap-3 text-sm">
-            <span className="w-24 text-gray-600">{WEEKDAY_LABELS[h.weekday]}</span>
-            <label className="flex items-center gap-1.5 text-gray-500 w-20">
+          <div key={h.weekday} className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm py-1">
+            <span className="w-20 sm:w-24 text-gray-600 shrink-0">{WEEKDAY_LABELS[h.weekday]}</span>
+            <label className="flex items-center gap-1.5 text-gray-500 shrink-0">
               <input type="checkbox" checked={!h.closed} onChange={(e) => updateHour(h.weekday, { closed: !e.target.checked })} />
               deschis
             </label>
             {!h.closed && (
-              <>
+              <div className="flex items-center gap-2 shrink-0">
                 <input
                   type="time"
                   value={h.startTime}
@@ -71,7 +71,7 @@ export default function OnboardingStep2() {
                   onChange={(e) => updateHour(h.weekday, { endTime: e.target.value })}
                   className="input-field"
                 />
-              </>
+              </div>
             )}
           </div>
         ))}

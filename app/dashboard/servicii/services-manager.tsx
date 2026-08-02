@@ -131,7 +131,7 @@ export default function ServicesManager({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium">{item.name}</span>
                 <div className="flex items-center gap-4">
                   <div className="text-right text-sm text-gray-500">

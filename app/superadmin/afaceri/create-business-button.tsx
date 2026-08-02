@@ -38,8 +38,8 @@ export default function CreateBusinessButton() {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 px-6">
-      <Card className="w-full max-w-md">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 px-4">
+      <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h2 className="font-medium mb-1">Creează afacere nouă</h2>
         <p className="text-sm text-gray-500 mb-4">
           Creezi contul direct, fără ca proprietarul să treacă prin /signup.
