@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { isIntervalBlocked } from '@/lib/availability'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -28,6 +29,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+
+  if (parsed.data.startAt) {
+    const newStart = new Date(parsed.data.startAt)
+    const newEnd = parsed.data.endAt ? new Date(parsed.data.endAt) : new Date(newStart.getTime() + (owned.endAt.getTime() - owned.startAt.getTime()))
+    if (await isIntervalBlocked(businessId, newStart, newEnd)) {
+      return NextResponse.json({ error: 'Intervalul selectat este blocat pentru rezervări.' }, { status: 409 })
+    }
+  }
 
   const data: Record<string, any> = { ...parsed.data }
   if (data.startAt) data.startAt = new Date(data.startAt)

@@ -17,6 +17,8 @@ export default async function CalendarPage() {
     orderBy: { startAt: 'asc' },
   })
 
+  const blockedSlots = await prisma.blockedSlot.findMany({ where: { businessId } })
+
   const events = bookings.map((b) => ({
     id: b.id,
     title: `${b.customer.name ?? b.customer.phone} — ${b.service.name}`,
@@ -36,5 +38,17 @@ export default async function CalendarPage() {
 
   const staffOptions = business?.staff.map((s) => ({ id: s.id, name: s.name })) ?? []
 
-  return <CalendarClient events={events} resources={resources} staffOptions={staffOptions} />
+  return (
+    <CalendarClient
+      events={events}
+      resources={resources}
+      staffOptions={staffOptions}
+      blockedSlots={blockedSlots.map((b) => ({
+        id: b.id,
+        startAt: b.startAt.toISOString(),
+        endAt: b.endAt.toISOString(),
+        reason: b.reason,
+      }))}
+    />
+  )
 }

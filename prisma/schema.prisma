@@ -54,6 +54,7 @@ model Business {
   conversations      Conversation[]
   reviews            Review[]
   photos             BusinessPhoto[]
+  blockedSlots       BlockedSlot[]
   subscription       Subscription?
   missedMessageAlerts MissedMessageAlert[]
 }
@@ -251,6 +252,16 @@ model Review {
   comment    String?
   reply      String?
   createdAt  DateTime
+}
+
+model BlockedSlot {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  startAt    DateTime
+  endAt      DateTime
+  reason     String?
+  createdAt  DateTime @default(now())
 }
 
 model MissedMessageAlert {

@@ -42,12 +42,14 @@ export default function ProgramariManager({
   customers,
   services,
   staff,
+  blockedSlots,
   filters,
 }: {
   bookings: Booking[]
   customers: { id: string; name: string }[]
   services: { id: string; name: string; durationMin: number | null }[]
   staff: { id: string; name: string }[]
+  blockedSlots: { startAt: string; endAt: string }[]
   filters: { status: string; q: string }
 }) {
   const router = useRouter()
@@ -96,6 +98,7 @@ export default function ProgramariManager({
           customers={customers}
           services={services}
           staff={staff}
+          blockedSlots={blockedSlots}
           onDone={() => {
             setAdding(false)
             router.refresh()
@@ -167,11 +170,13 @@ function NewBookingForm({
   customers,
   services,
   staff,
+  blockedSlots,
   onDone,
 }: {
   customers: { id: string; name: string }[]
   services: { id: string; name: string; durationMin: number | null }[]
   staff: { id: string; name: string }[]
+  blockedSlots: { startAt: string; endAt: string }[]
   onDone: () => void
 }) {
   const [customerId, setCustomerId] = useState('')
@@ -186,12 +191,19 @@ function NewBookingForm({
       setError('Completează client, serviciu și dată.')
       return
     }
-    setSaving(true)
-    setError('')
 
     const service = services.find((s) => s.id === serviceId)
     const start = new Date(date)
     const end = new Date(start.getTime() + (service?.durationMin ?? 30) * 60000)
+
+    const overlapsBlocked = blockedSlots.some((b) => start < new Date(b.endAt) && new Date(b.startAt) < end)
+    if (overlapsBlocked) {
+      setError('Intervalul ales e blocat pentru rezervări — modifică-l direct din calendar dacă e nevoie.')
+      return
+    }
+
+    setSaving(true)
+    setError('')
 
     const res = await fetch('/api/business/bookings', {
       method: 'POST',
@@ -206,7 +218,8 @@ function NewBookingForm({
     })
 
     if (!res.ok) {
-      setError('A apărut o eroare. Verifică datele.')
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? 'A apărut o eroare. Verifică datele.')
       setSaving(false)
       return
     }

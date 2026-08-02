@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { isIntervalBlocked } from '@/lib/availability'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -21,6 +22,12 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+
+  const startDate = new Date(parsed.data.startAt)
+  const endDate = new Date(parsed.data.endAt)
+  if (await isIntervalBlocked(businessId, startDate, endDate)) {
+    return NextResponse.json({ error: 'Intervalul selectat este blocat pentru rezervări.' }, { status: 409 })
+  }
 
   const booking = await prisma.booking.create({
     data: {

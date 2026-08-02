@@ -46,6 +46,7 @@ export default function BookingEditModal({
   const [status, setStatus] = useState(booking.status)
   const [staffId, setStaffId] = useState(booking.staffId ?? '')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   function formatDateInput(iso: string) {
     const d = new Date(iso)
@@ -61,7 +62,7 @@ export default function BookingEditModal({
     const newStart = new Date(startAt)
     const newEnd = new Date(newStart.getTime() + durationMs)
 
-    await fetch(`/api/business/bookings/${booking.id}`, {
+    const res = await fetch(`/api/business/bookings/${booking.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -72,6 +73,13 @@ export default function BookingEditModal({
       }),
     })
     setSaving(false)
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? 'Nu am putut salva modificările.')
+      return
+    }
+
     router.refresh()
     onClose()
   }
@@ -130,6 +138,8 @@ export default function BookingEditModal({
             </select>
           </div>
         </div>
+
+        {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
 
         <div className="flex justify-between mt-5">
           <button onClick={cancelBooking} disabled={saving} className="text-sm text-red-600 font-medium">

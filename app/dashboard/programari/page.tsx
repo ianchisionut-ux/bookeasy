@@ -14,7 +14,7 @@ export default async function ProgramariPage({
 
   const { status, q } = await searchParams
 
-  const [bookings, customers, services, resources, staff] = await Promise.all([
+  const [bookings, customers, services, resources, staff, blockedSlots] = await Promise.all([
     prisma.booking.findMany({
       where: {
         businessId,
@@ -31,6 +31,7 @@ export default async function ProgramariPage({
     prisma.service.findMany({ where: { businessId, active: true }, orderBy: { name: 'asc' } }),
     prisma.resource.findMany({ where: { businessId }, orderBy: { name: 'asc' } }),
     prisma.staff.findMany({ where: { businessId, active: true }, orderBy: { name: 'asc' } }),
+    prisma.blockedSlot.findMany({ where: { businessId } }),
   ])
 
   return (
@@ -51,6 +52,7 @@ export default async function ProgramariPage({
       customers={customers.map((c) => ({ id: c.id, name: c.name ?? c.phone }))}
       services={services.map((s) => ({ id: s.id, name: s.name, durationMin: s.durationMin }))}
       staff={staff.map((s) => ({ id: s.id, name: s.name }))}
+      blockedSlots={blockedSlots.map((b) => ({ startAt: b.startAt.toISOString(), endAt: b.endAt.toISOString() }))}
       filters={{ status: status ?? '', q: q ?? '' }}
     />
   )
