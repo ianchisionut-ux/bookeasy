@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import AddCustomerForm from './add-customer-form'
+import { PrintButton } from '@/components/print-button'
 
 export default async function ClientiPage({
   searchParams,
@@ -32,7 +33,10 @@ export default async function ClientiPage({
 
   return (
     <div className="p-4 lg:p-8">
-      <h1 className="text-2xl font-semibold mb-1">Clienți</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
+        <h1 className="text-2xl font-semibold">Clienți</h1>
+        <PrintButton />
+      </div>
       <p className="text-sm text-gray-500 mb-6">{customers.length} clienți în total</p>
 
       <form method="get" className="mb-4 max-w-sm">
@@ -47,7 +51,7 @@ export default async function ClientiPage({
         </p>
       )}
 
-      <Card className="p-0 overflow-hidden">
+      <Card className="p-0 overflow-hidden printable">
         <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[640px]">
           <thead>

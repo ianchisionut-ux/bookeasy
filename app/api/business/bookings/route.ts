@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { isIntervalBlocked } from '@/lib/availability'
+import { getNextSequenceNumber } from '@/lib/booking-number'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -29,6 +30,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Intervalul selectat este blocat pentru rezervări.' }, { status: 409 })
   }
 
+  const sequenceNumber = await getNextSequenceNumber(businessId, new Date())
+
   const booking = await prisma.booking.create({
     data: {
       businessId,
@@ -40,6 +43,7 @@ export async function POST(req: NextRequest) {
       endAt: new Date(parsed.data.endAt),
       status: parsed.data.status ?? 'CONFIRMED',
       channel: 'WHATSAPP', // rezervare adăugată manual din dashboard — canalul nu se aplică real, dar câmpul e obligatoriu
+      sequenceNumber,
     },
   })
 

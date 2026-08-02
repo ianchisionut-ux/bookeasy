@@ -38,6 +38,7 @@ export default async function ProgramariPage({
     <ProgramariManager
       bookings={bookings.map((b) => ({
         id: b.id,
+        sequenceNumber: b.sequenceNumber,
         customerName: b.customer.name ?? b.customer.phone,
         customerId: b.customerId,
         serviceName: b.service.name,

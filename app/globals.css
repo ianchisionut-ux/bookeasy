@@ -92,7 +92,21 @@ body {
   border-color: var(--accent);
 }
 
-/* react-big-calendar — toolbar responsive pe mobil */
+/* Printare — ascunde navigarea și acțiunile, păstrează doar conținutul */
+@media print {
+  aside,
+  .no-print,
+  button {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .printable {
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
 @media (max-width: 640px) {
   .rbc-toolbar {
     flex-direction: column;

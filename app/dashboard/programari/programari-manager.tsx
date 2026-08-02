@@ -6,9 +6,11 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
+import { PrintButton } from '@/components/print-button'
 
 type Booking = {
   id: string
+  sequenceNumber: number | null
   customerName: string
   customerId: string
   serviceName: string
@@ -74,7 +76,10 @@ export default function ProgramariManager({
     <div className="p-4 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
         <h1 className="text-2xl font-semibold">Programări</h1>
-        <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : '+ Adaugă programare'}</Button>
+        <div className="flex gap-2">
+          <PrintButton />
+          <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : '+ Adaugă programare'}</Button>
+        </div>
       </div>
       <p className="text-sm text-gray-500 mb-6">{bookings.length} programări</p>
 
@@ -106,12 +111,13 @@ export default function ProgramariManager({
         />
       )}
 
-      <Card className="p-0 overflow-hidden">
+      <Card className="p-0 overflow-hidden printable">
         <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="text-left border-b border-[var(--border-soft)]">
-              <th className="py-3 px-5 font-medium text-gray-500">Client</th>
+              <th className="py-3 px-5 font-medium text-gray-500">#</th>
+              <th className="font-medium text-gray-500">Client</th>
               <th className="font-medium text-gray-500">Serviciu</th>
               <th className="font-medium text-gray-500">Data</th>
               <th className="font-medium text-gray-500">Angajat/Sală</th>
@@ -124,13 +130,16 @@ export default function ProgramariManager({
             {groupByWeek(bookings).map((group) => (
               <Fragment key={`week-${group.year}-${group.week}`}>
                 <tr key={`week-${group.week}-${group.year}`} className="bg-[var(--surface-muted)]">
-                  <td colSpan={7} className="px-5 py-2 text-xs font-semibold text-gray-500">
+                  <td colSpan={8} className="px-5 py-2 text-xs font-semibold text-gray-500">
                     Săptămâna {group.week} · {group.rangeLabel} ({group.bookings.length} programări)
                   </td>
                 </tr>
                 {group.bookings.map((b) => (
                   <tr key={b.id} className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--surface-muted)]">
-                    <td className="py-3 px-5 font-medium">{b.customerName}</td>
+                    <td className="py-3 px-5 text-gray-400 font-mono text-xs">
+                      {b.sequenceNumber ? `#${String(b.sequenceNumber).padStart(3, '0')}` : '—'}
+                    </td>
+                    <td className="font-medium">{b.customerName}</td>
                     <td>{b.serviceName}</td>
                     <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })}</td>
                     <td className="text-gray-500">{b.staffName ?? b.resourceName ?? '—'}</td>
@@ -162,7 +171,7 @@ export default function ProgramariManager({
             ))}
             {bookings.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center text-gray-500 py-8">
+                <td colSpan={8} className="text-center text-gray-500 py-8">
                   Nicio programare găsită.
                 </td>
               </tr>

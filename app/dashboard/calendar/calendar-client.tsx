@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import BookingEditModal, { BookingDetail } from '@/components/booking-edit-modal'
+import { PrintButton } from '@/components/print-button'
 
 const locales = { ro }
 const localizer = dateFnsLocalizer({
@@ -203,9 +204,10 @@ export default function CalendarClient({
           >
             {blockMode ? '✓ Blocare activă — apasă ca să ieși' : '🔒 Blocare/Rezervare poziții'}
           </button>
+          <PrintButton />
         </div>
       </div>
-      <div className="card p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
+      <div className="card printable p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
         <DnDCalendar
           localizer={localizer}
           events={allEvents}

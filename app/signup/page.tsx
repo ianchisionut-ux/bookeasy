@@ -80,13 +80,6 @@ export default function SignupPage() {
             </Button>
           </form>
         </Card>
-
-        <p className="text-sm text-gray-500">
-          Ai deja cont?{' '}
-          <Link href="/login" className="text-[var(--accent)] font-medium">
-            Intră aici
-          </Link>
-        </p>
       </div>
     </main>
   )

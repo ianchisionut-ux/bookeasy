@@ -165,6 +165,7 @@ model Booking {
   startAt         DateTime
   endAt           DateTime
   status          BookingStatus @default(PENDING)
+  sequenceNumber  Int?          // numărul rezervării în luna curentă (ex: #007) — resetat lunar per business
   channel         ChannelType
   notes           String?
   depositPaid     Boolean       @default(false)

@@ -28,6 +28,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   let category: 'SALON' | 'EVENT_VENUE' | null = null
+  let teamSize = 1
 
   if (businessId) {
     const business = await prisma.business.findUnique({ where: { id: businessId } })
@@ -38,9 +39,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
       redirect(`/onboarding/step-${business.onboardingStep}`)
     }
     category = business?.category ?? null
+    teamSize = business?.teamSize ?? 1
   }
 
-  const visibleNavItems = NAV_ITEMS.filter((item) => !item.salonOnly || category === 'SALON')
+  // "Echipă" are sens doar pentru saloane cu mai mult de 1 membru — o afacere
+  // individuală (teamSize 1) n-are ce gestiona acolo
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.salonOnly || (category === 'SALON' && teamSize > 1))
 
   return (
     <ResponsiveShell logoHref="/dashboard" logoLabel="bookeasy.ro"

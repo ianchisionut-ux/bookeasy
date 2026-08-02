@@ -14,7 +14,7 @@ export default async function EchipaPage() {
   })
   if (!business) redirect('/login')
 
-  if (business.category !== 'SALON') redirect('/dashboard/servicii')
+  if (business.category !== 'SALON' || business.teamSize <= 1) redirect('/dashboard/servicii')
 
   return (
     <StaffManager

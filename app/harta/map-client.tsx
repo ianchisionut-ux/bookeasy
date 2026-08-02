@@ -43,7 +43,7 @@ export default function MapClient() {
       return
     }
     const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&callback=initBookeasyMap`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&loading=async&callback=initBookeasyMap`
     script.async = true
     script.onerror = () => setLoadError(true)
     window.initBookeasyMap = () => setLoaded(true)

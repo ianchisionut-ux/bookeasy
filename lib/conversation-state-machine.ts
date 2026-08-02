@@ -1,6 +1,7 @@
 import { prisma } from './prisma'
 import { extractBookingIntent } from './nlu'
 import { getAvailableSlots, findAvailableStaffForSlot } from './availability'
+import { getNextSequenceNumber } from './booking-number'
 
 export type ConversationState = {
   step: 'IDLE' | 'SELECTING_SERVICE' | 'SELECTING_SLOT' | 'COLLECTING_NAME' | 'CONFIRMING'
@@ -182,6 +183,8 @@ async function createBooking({
     update: { name: customerName },
   })
 
+  const sequenceNumber = await getNextSequenceNumber(businessId, startDate)
+
   await prisma.booking.create({
     data: {
       businessId,
@@ -192,6 +195,7 @@ async function createBooking({
       endAt: endDate,
       status: 'CONFIRMED',
       channel,
+      sequenceNumber,
     },
   })
 
