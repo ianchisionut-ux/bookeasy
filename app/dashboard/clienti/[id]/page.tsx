@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
-import CustomerNotes from './customer-notes'
+import CustomerEditForm from './customer-edit-form'
 import { Card } from '@/components/ui/card'
 import { Pill } from '@/components/ui/input'
 import { BackLink } from '@/components/ui/back-link'
@@ -20,16 +20,22 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         <BackLink href="/dashboard/clienti" label="Înapoi la clienți" />
       </div>
 
-      <h1 className="text-2xl font-semibold mb-1">{customer.name ?? 'Fără nume'}</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        {customer.phone} {customer.email ? `· ${customer.email}` : ''}
-      </p>
+      <h1 className="text-2xl font-semibold mb-6">{customer.name ?? 'Fără nume'}</h1>
 
-      <Card>
-        <CustomerNotes customerId={customer.id} initialNotes={customer.notes ?? ''} />
+      <Card className="mb-8">
+        <h2 className="font-medium mb-4">Date client</h2>
+        <CustomerEditForm
+          customerId={customer.id}
+          initial={{
+            name: customer.name ?? '',
+            phone: customer.phone,
+            email: customer.email ?? '',
+            notes: customer.notes ?? '',
+          }}
+        />
       </Card>
 
-      <h2 className="text-lg font-medium mb-3 mt-8">Istoric rezervări</h2>
+      <h2 className="text-lg font-medium mb-3">Istoric rezervări</h2>
       <div className="flex flex-col gap-2">
         {customer.bookings.map((b) => (
           <Card key={b.id} className="flex items-center justify-between py-3">

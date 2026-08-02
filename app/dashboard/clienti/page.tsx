@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import AddCustomerForm from './add-customer-form'
 
 export default async function ClientiPage({
   searchParams,
@@ -34,9 +35,11 @@ export default async function ClientiPage({
       <h1 className="text-2xl font-semibold mb-1">Clienți</h1>
       <p className="text-sm text-gray-500 mb-6">{customers.length} clienți în total</p>
 
-      <form method="get" className="mb-5 max-w-sm">
+      <form method="get" className="mb-4 max-w-sm">
         <Input type="text" name="q" defaultValue={query} placeholder="Caută după nume, telefon sau email..." />
       </form>
+
+      <AddCustomerForm />
 
       {customers.length === 0 && (
         <p className="text-sm text-gray-500">

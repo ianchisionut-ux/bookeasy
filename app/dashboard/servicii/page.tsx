@@ -1,29 +1,35 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import { CardInteractive } from '@/components/ui/card'
+import { redirect } from 'next/navigation'
+import ServicesManager from './services-manager'
 
 export default async function ServiciiPage() {
   const session = await auth()
-  const businessId = (session as any)?.businessId ?? ''
+  const businessId = (session as any)?.businessId
+  if (!businessId) redirect('/login')
 
-  const services = await prisma.service.findMany({ where: { businessId }, orderBy: { name: 'asc' } })
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: { services: { orderBy: { name: 'asc' } }, resources: { orderBy: { name: 'asc' } } },
+  })
+  if (!business) redirect('/login')
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold mb-1">Servicii</h1>
-      <p className="text-sm text-gray-500 mb-6">{services.length} servicii active</p>
-
-      <div className="grid grid-cols-2 gap-3 max-w-3xl">
-        {services.map((s) => (
-          <CardInteractive key={s.id} className="flex items-center justify-between">
-            <span className="font-medium">{s.name}</span>
-            <div className="text-right text-sm text-gray-500">
-              <p>{s.durationMin ? `${s.durationMin} min` : '—'}</p>
-              <p className="font-medium text-gray-900">{s.price ? `${s.price} lei` : '—'}</p>
-            </div>
-          </CardInteractive>
-        ))}
-      </div>
-    </div>
+    <ServicesManager
+      category={business.category}
+      services={business.services.map((s) => ({
+        id: s.id,
+        name: s.name,
+        durationMin: s.durationMin,
+        price: s.price ? Number(s.price) : null,
+        active: s.active,
+      }))}
+      resources={business.resources.map((r) => ({
+        id: r.id,
+        name: r.name,
+        capacity: r.capacity,
+        basePrice: r.basePrice ? Number(r.basePrice) : null,
+      }))}
+    />
   )
 }

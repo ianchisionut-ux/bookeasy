@@ -174,16 +174,17 @@ model WorkingHours {
 // ─────────────────────────────────────────────
 
 model Channel {
-  id           String        @id @default(cuid())
-  businessId   String
-  business     Business      @relation(fields: [businessId], references: [id])
-  type         ChannelType
-  externalId   String
-  accessToken  String
-  refreshToken String?
-  expiresAt    DateTime?
-  status       ChannelStatus @default(ACTIVE)
-  connectedAt  DateTime      @default(now())
+  id             String        @id @default(cuid())
+  businessId     String
+  business       Business      @relation(fields: [businessId], references: [id])
+  type           ChannelType
+  externalId     String
+  accessToken    String
+  refreshToken   String?
+  expiresAt      DateTime?
+  status         ChannelStatus @default(ACTIVE)
+  enabledByOwner Boolean       @default(true)
+  connectedAt    DateTime      @default(now())
 
   @@unique([type, externalId])
 }

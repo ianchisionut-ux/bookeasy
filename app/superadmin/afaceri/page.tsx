@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { Card } from '@/components/ui/card'
 import { Pill } from '@/components/ui/input'
+import Link from 'next/link'
 import BusinessRowActions from './business-row-actions'
 
 export default async function SuperAdminBusinesses() {
@@ -30,7 +31,9 @@ export default async function SuperAdminBusinesses() {
             {businesses.map((b) => (
               <tr key={b.id} className="border-b border-[var(--border-soft)] last:border-0">
                 <td className="py-3 px-5">
-                  <p className="font-medium">{b.name}</p>
+                  <Link href={`/superadmin/afaceri/${b.id}`} className="font-medium text-[var(--accent)]">
+                    {b.name}
+                  </Link>
                   <p className="text-xs text-gray-500">{b.city}</p>
                 </td>
                 <td>{b.category === 'SALON' ? 'Salon' : 'Spații evenimente'}</td>

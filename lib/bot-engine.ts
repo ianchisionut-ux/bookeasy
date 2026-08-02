@@ -20,7 +20,7 @@ export async function processIncomingMessage({
 }) {
   const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
 
-  if (!channelRecord || channelRecord.status !== 'ACTIVE') {
+  if (!channelRecord || channelRecord.status !== 'ACTIVE' || !channelRecord.enabledByOwner) {
     await notifyOwnerOfMissedMessage(businessId, channel)
     return
   }

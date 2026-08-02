@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { CardInteractive } from '@/components/ui/card'
 import { Pill } from '@/components/ui/input'
+import ChannelToggle from './channel-toggle'
 
 const LABELS: Record<string, string> = {
   WHATSAPP: 'WhatsApp Business',
@@ -29,13 +30,15 @@ export default async function CanalePage() {
   const businessId = (session as any)?.businessId ?? ''
 
   const channels = await prisma.channel.findMany({ where: { businessId } })
-  const connectedTypes = new Set(channels.map((c) => c.type))
   const allTypes = ['WHATSAPP', 'INSTAGRAM', 'FACEBOOK', 'GOOGLE_BUSINESS'] as const
 
   return (
     <div className="p-8 max-w-2xl">
-      <h1 className="text-2xl font-semibold mb-1">Canale conectate</h1>
-      <p className="text-sm text-gray-500 mb-6">Botul răspunde automat doar pe canalele active.</p>
+      <h1 className="text-2xl font-semibold mb-1">Canale</h1>
+      <p className="text-sm text-gray-500 mb-6">
+        Poți opri temporar un canal fără să pierzi conexiunea. Conectarea și cheile de acces sunt
+        administrate de echipa bookeasy.ro — scrie-ne dacă vrei un canal nou conectat.
+      </p>
 
       <div className="flex flex-col gap-3">
         {allTypes.map((type) => {
@@ -46,16 +49,15 @@ export default async function CanalePage() {
                 <p className="font-medium">{LABELS[type]}</p>
                 <div className="mt-1.5">
                   <Pill tone={channel ? STATUS_TONE[channel.status] : 'neutral'}>
-                    {channel ? STATUS_LABEL[channel.status] : 'Neconectat'}
+                    {channel ? STATUS_LABEL[channel.status] : 'Neconectat de admin'}
                   </Pill>
                 </div>
               </div>
-              <a
-                href={type === 'GOOGLE_BUSINESS' ? '/api/oauth/google/start' : '/api/oauth/meta/start'}
-                className="btn-secondary"
-              >
-                {connectedTypes.has(type) ? 'Gestionează' : 'Conectează'}
-              </a>
+              {channel ? (
+                <ChannelToggle channelId={channel.id} enabled={channel.enabledByOwner} />
+              ) : (
+                <span className="text-xs text-gray-400">—</span>
+              )}
             </CardInteractive>
           )
         })}

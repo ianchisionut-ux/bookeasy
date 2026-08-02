@@ -58,7 +58,9 @@ async function send1hReminders(now: Date, results: { sent1h: number; failed: num
 }
 
 async function sendReminder(booking: any, type: '24h' | '1h') {
-  const channel = booking.business.channels.find((c: any) => c.type === booking.channel && c.status === 'ACTIVE')
+  const channel = booking.business.channels.find(
+    (c: any) => c.type === booking.channel && c.status === 'ACTIVE' && c.enabledByOwner
+  )
   if (!channel) return false
 
   const text =

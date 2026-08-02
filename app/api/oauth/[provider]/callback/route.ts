@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     return NextResponse.redirect(`${process.env.APP_URL}/dashboard/canale?error=missing_code`)
   }
 
-  const { businessId } = JSON.parse(Buffer.from(stateRaw, 'base64url').toString())
+  const { businessId, redirectTo } = JSON.parse(Buffer.from(stateRaw, 'base64url').toString())
   const redirectUri = `${process.env.APP_URL}/api/oauth/${provider}/callback`
 
   const tokenRes = await fetch(
@@ -84,5 +84,5 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     })
   }
 
-  return NextResponse.redirect(`${process.env.APP_URL}/dashboard/canale?connected=${provider}`)
+  return NextResponse.redirect(`${process.env.APP_URL}${redirectTo ?? '/dashboard/canale'}?connected=${provider}`)
 }
