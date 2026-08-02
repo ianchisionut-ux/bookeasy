@@ -141,7 +141,7 @@ export default function ProgramariManager({
                     </td>
                     <td className="font-medium">{b.customerName}</td>
                     <td>{b.serviceName}</td>
-                    <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                    <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })}</td>
                     <td className="text-gray-500">{b.staffName ?? b.resourceName ?? '—'}</td>
                     <td className="text-gray-500">{b.channel}</td>
                     <td>
@@ -216,7 +216,7 @@ function groupByWeek(bookings: Booking[]) {
     .sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime())
     .map((g) => ({
       ...g,
-      rangeLabel: `${g.weekStart.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })} – ${g.weekEnd.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}`,
+      rangeLabel: `${g.weekStart.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', timeZone: 'Europe/Bucharest' })} – ${g.weekEnd.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', timeZone: 'Europe/Bucharest' })}`,
     }))
 }
 

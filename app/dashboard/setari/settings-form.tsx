@@ -37,7 +37,7 @@ export default function SettingsForm({
       })
       if (res.ok) {
         const data = await res.json()
-        setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }))
+        setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' }))
         setGeocoded(!!data.geocoded)
       }
     } finally {

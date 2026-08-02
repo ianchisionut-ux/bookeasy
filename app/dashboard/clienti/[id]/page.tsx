@@ -40,7 +40,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         {customer.bookings.map((b) => (
           <Card key={b.id} className="flex items-center justify-between py-3">
             <span className="font-medium">{b.service.name}</span>
-            <span className="text-gray-500 text-sm">{b.startAt.toLocaleString('ro-RO')}</span>
+            <span className="text-gray-500 text-sm">{b.startAt.toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' })}</span>
             <Pill tone={b.status === 'CONFIRMED' ? 'success' : b.status === 'CANCELLED' ? 'danger' : 'neutral'}>
               {b.status}
             </Pill>

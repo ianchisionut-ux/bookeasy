@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
+import Link from 'next/link'
 import NearbyBusinesses from '@/components/nearby-businesses'
 import { PublicHeader } from '@/components/ui/public-header'
 import { BackLink } from '@/components/ui/back-link'
@@ -31,10 +32,14 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
         </div>
 
         <h1 className="text-2xl font-semibold mb-1">{business.name}</h1>
-        <p className="text-sm text-gray-500 mb-6">
+        <p className="text-sm text-gray-500 mb-4">
           {business.address ?? business.city}
           {business.rating ? ` · ★ ${business.rating.toString()} (${business.reviewCount ?? 0} recenzii)` : ''}
         </p>
+
+        <Link href={`/${business.slug}/rezerva`} className="btn-primary inline-block mb-6">
+          Rezervă acum
+        </Link>
 
         <h2 className="text-lg font-medium mb-3">Servicii</h2>
         <div className="flex flex-col gap-2">

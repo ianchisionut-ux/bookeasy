@@ -32,7 +32,7 @@ export default function CustomerEditForm({
         setError(data.error ?? 'A apărut o eroare.')
         return
       }
-      setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }))
+      setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' }))
       router.refresh()
     } finally {
       setSaving(false)

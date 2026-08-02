@@ -159,8 +159,8 @@ export default function CalendarClient({
     async ({ event, start, end, resourceId }: any) => {
       if (event.isBlocked) return // blocurile nu se mută prin drag — se șterg prin click
 
-      const oldTime = new Date(event.start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })
-      const newTime = new Date(start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' })
+      const oldTime = new Date(event.start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })
+      const newTime = new Date(start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })
       const confirmed = confirm(
         `Muți programarea "${event.customerName} — ${event.serviceName}" din ${oldTime} în ${newTime}?`
       )

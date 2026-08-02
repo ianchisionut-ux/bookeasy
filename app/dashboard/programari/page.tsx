@@ -14,6 +14,8 @@ export default async function ProgramariPage({
 
   const { status, q } = await searchParams
 
+  const business = await prisma.business.findUnique({ where: { id: businessId } })
+
   const [bookings, customers, services, resources, staff, blockedSlots] = await Promise.all([
     prisma.booking.findMany({
       where: {
@@ -30,7 +32,11 @@ export default async function ProgramariPage({
     prisma.customer.findMany({ where: { businessId }, orderBy: { name: 'asc' } }),
     prisma.service.findMany({ where: { businessId, active: true }, orderBy: { name: 'asc' } }),
     prisma.resource.findMany({ where: { businessId }, orderBy: { name: 'asc' } }),
-    prisma.staff.findMany({ where: { businessId, active: true }, orderBy: { name: 'asc' } }),
+    // afacere individuală (teamSize <= 1) — nu are sens să oferim selecție de angajat,
+    // botul/formularul alocă automat singurul membru, fără să-l ceară explicit
+    (business?.teamSize ?? 1) > 1
+      ? prisma.staff.findMany({ where: { businessId, active: true }, orderBy: { name: 'asc' } })
+      : Promise.resolve([]),
     prisma.blockedSlot.findMany({ where: { businessId } }),
   ])
 

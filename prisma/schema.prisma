@@ -217,6 +217,7 @@ enum ChannelType {
   INSTAGRAM
   FACEBOOK
   GOOGLE_BUSINESS
+  WEB
 }
 
 enum ChannelStatus {

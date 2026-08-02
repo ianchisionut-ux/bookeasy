@@ -203,5 +203,5 @@ async function createBooking({
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('ro-RO', { weekday: 'short', hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleString('ro-RO', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
 }

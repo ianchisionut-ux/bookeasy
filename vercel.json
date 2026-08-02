@@ -1,5 +1,8 @@
 {
+  "env": {
+    "TZ": "Europe/Bucharest"
+  },
   "crons": [
-    { "path": "/api/cron/check-tokens", "schedule": "0 8 * * *" }
+    { "path": "/api/cron/check-tokens", "schedule": "0 6 * * *" }
   ]
 }

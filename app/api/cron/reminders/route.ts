@@ -77,5 +77,5 @@ async function sendReminder(booking: any, type: '24h' | '1h') {
 }
 
 function formatTime(date: Date) {
-  return new Date(date).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })
+  return new Date(date).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
 }
