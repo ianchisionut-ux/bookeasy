@@ -20,6 +20,7 @@ export default function SettingsForm({
   const [hours, setHours] = useState(workingHours)
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<string | null>(null)
+  const [geocoded, setGeocoded] = useState(false)
 
   function updateHour(weekday: number, patch: Partial<WorkingHour>) {
     setHours((prev) => prev.map((h) => (h.weekday === weekday ? { ...h, ...patch } : h)))
@@ -27,6 +28,7 @@ export default function SettingsForm({
 
   async function handleSave() {
     setSaving(true)
+    setGeocoded(false)
     try {
       const res = await fetch('/api/business/settings', {
         method: 'PATCH',
@@ -34,7 +36,9 @@ export default function SettingsForm({
         body: JSON.stringify({ ...form, workingHours: hours }),
       })
       if (res.ok) {
+        const data = await res.json()
         setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }))
+        setGeocoded(!!data.geocoded)
       }
     } finally {
       setSaving(false)
@@ -157,6 +161,7 @@ export default function SettingsForm({
           {saving ? 'Se salvează...' : 'Salvează setările'}
         </Button>
         {savedAt && <span className="text-xs text-gray-500">Salvat la {savedAt}</span>}
+        {geocoded && <span className="text-xs text-green-700">· locația a fost actualizată pe hartă</span>}
       </div>
     </div>
   )

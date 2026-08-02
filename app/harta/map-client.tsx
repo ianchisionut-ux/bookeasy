@@ -100,6 +100,7 @@ export default function MapClient() {
         infoWindow.setContent(`
           <div style="font-family:sans-serif; padding:4px;">
             <p style="font-weight:600; margin:0 0 2px;">${b.name}</p>
+            <p style="font-size:11px; color:${b.category === 'SALON' ? '#639922' : '#0c2c53'}; font-weight:600; margin:0 0 4px;">${b.category === 'SALON' ? 'Salon' : 'Spații evenimente'}</p>
             <p style="font-size:12px; color:#666; margin:0 0 4px;">${b.address ?? b.city ?? ''}</p>
             ${b.rating ? `<p style="font-size:12px; margin:0 0 6px;">★ ${b.rating} (${b.reviewCount ?? 0} recenzii)</p>` : ''}
             <a href="/${b.slug}" style="font-size:13px; color:#0c2c53;">Vezi profil →</a>
@@ -136,27 +137,42 @@ export default function MapClient() {
         <span className="text-sm text-gray-500 ml-auto self-center">{businesses.length} afaceri</span>
       </div>
 
-      {!loaded && !loadError && (
-        <div className="flex-1 flex items-center justify-center text-sm text-gray-500">Se încarcă harta...</div>
-      )}
-      {loadError && (
-        <div className="flex-1 flex flex-col items-center gap-4 text-sm text-gray-500 px-6 py-8 text-center overflow-y-auto">
-          <p>Harta nu poate fi afișată momentan (cheie Google Maps lipsă sau invalidă).</p>
-          {businesses.length > 0 && (
-            <div className="w-full max-w-md flex flex-col gap-2 text-left">
-              {businesses.map((b) => (
-                <div key={b.id} className="border rounded-lg px-4 py-3">
-                  <p className="font-medium text-gray-900">{b.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {b.address ?? b.city} {b.rating ? `· ★ ${b.rating}` : ''}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      <div ref={mapRef} className="flex-1" style={{ display: loaded ? 'block' : 'none' }} />
+      <div className="relative flex-1">
+        {!loaded && !loadError && (
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">Se încarcă harta...</div>
+        )}
+        {loadError && (
+          <div className="absolute inset-0 flex flex-col items-center gap-4 text-sm text-gray-500 px-6 py-8 text-center overflow-y-auto">
+            <p>Harta nu poate fi afișată momentan (cheie Google Maps lipsă sau invalidă).</p>
+            {businesses.length > 0 && (
+              <div className="w-full max-w-md flex flex-col gap-2 text-left">
+                {businesses.map((b) => (
+                  <div key={b.id} className="border rounded-lg px-4 py-3">
+                    <p className="font-medium text-gray-900">{b.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {b.address ?? b.city} {b.rating ? `· ★ ${b.rating}` : ''}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <div ref={mapRef} className="w-full h-full" style={{ display: loaded ? 'block' : 'none' }} />
+
+        {loaded && (
+          <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-md px-3 py-2 flex gap-3 text-xs z-10">
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: '#639922' }} />
+              Salon
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: '#0c2c53' }} />
+              Spații evenimente
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
