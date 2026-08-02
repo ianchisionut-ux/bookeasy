@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 const NAV_ITEMS = [
   { href: '/dashboard/calendar', label: 'Calendar' },
@@ -12,7 +13,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="grid grid-cols-[220px_1fr] min-h-screen">
       <aside className="border-r border-gray-200 p-4 flex flex-col gap-1">
-        <p className="font-medium text-lg mb-4">bookeasy.ro</p>
+        <Link href="/dashboard" className="flex items-center gap-2 mb-4">
+          <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={28} height={28} />
+          <span className="font-medium text-lg">bookeasy.ro</span>
+        </Link>
         {NAV_ITEMS.map((item) => (
           <Link
             key={item.href}
