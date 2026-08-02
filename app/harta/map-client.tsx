@@ -29,6 +29,7 @@ export default function MapClient() {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [category, setCategory] = useState<'ALL' | 'SALON' | 'EVENT_VENUE'>('ALL')
   const [loaded, setLoaded] = useState(false)
+  const [loadError, setLoadError] = useState(false)
 
   // încarcă scriptul Google Maps o singură dată
   useEffect(() => {
@@ -36,9 +37,14 @@ export default function MapClient() {
       setLoaded(true)
       return
     }
+    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+      setLoadError(true)
+      return
+    }
     const script = document.createElement('script')
     script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&callback=initBookeasyMap`
     script.async = true
+    script.onerror = () => setLoadError(true)
     window.initBookeasyMap = () => setLoaded(true)
     document.head.appendChild(script)
     return () => {
@@ -130,8 +136,25 @@ export default function MapClient() {
         <span className="text-sm text-gray-500 ml-auto self-center">{businesses.length} afaceri</span>
       </div>
 
-      {!loaded && (
+      {!loaded && !loadError && (
         <div className="flex-1 flex items-center justify-center text-sm text-gray-500">Se încarcă harta...</div>
+      )}
+      {loadError && (
+        <div className="flex-1 flex flex-col items-center gap-4 text-sm text-gray-500 px-6 py-8 text-center overflow-y-auto">
+          <p>Harta nu poate fi afișată momentan (cheie Google Maps lipsă sau invalidă).</p>
+          {businesses.length > 0 && (
+            <div className="w-full max-w-md flex flex-col gap-2 text-left">
+              {businesses.map((b) => (
+                <div key={b.id} className="border rounded-lg px-4 py-3">
+                  <p className="font-medium text-gray-900">{b.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {b.address ?? b.city} {b.rating ? `· ★ ${b.rating}` : ''}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
       <div ref={mapRef} className="flex-1" style={{ display: loaded ? 'block' : 'none' }} />
     </div>
