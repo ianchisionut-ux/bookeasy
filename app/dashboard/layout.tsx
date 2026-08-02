@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
+import { SignOutButton } from '@/components/sign-out-button'
 
 const NAV_ITEMS = [
   { href: '/dashboard/calendar', label: 'Calendar' },
@@ -70,6 +71,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </Link>
           </>
         )}
+
+        <div className="mt-auto pt-2">
+          <div className="h-px bg-[var(--border-soft)] mb-2" />
+          <SignOutButton className="w-full" />
+        </div>
       </aside>
       <main>{children}</main>
     </div>

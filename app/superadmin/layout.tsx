@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { SignOutButton } from '@/components/sign-out-button'
 
 const NAV_ITEMS = [
   { href: '/superadmin', label: 'Prezentare generală' },
@@ -30,10 +31,11 @@ export default async function SuperAdminLayout({ children }: { children: React.R
             {item.label}
           </Link>
         ))}
-        <div className="h-px bg-[var(--border-soft)] my-2" />
-        <Link href="/dashboard" className="px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-white transition">
-          ← Înapoi la dashboard
-        </Link>
+
+        <div className="mt-auto pt-2">
+          <div className="h-px bg-[var(--border-soft)] mb-2" />
+          <SignOutButton className="w-full" />
+        </div>
       </aside>
       <main>{children}</main>
     </div>
