@@ -42,7 +42,7 @@ export default function CreateBusinessButton() {
       <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h2 className="font-medium mb-1">Creează afacere nouă</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Creezi contul direct, fără ca proprietarul să treacă prin /signup.
+          Creezi contul direct pentru client — aceasta e singura metodă de a adăuga o afacere nouă.
         </p>
 
         <div className="flex flex-col gap-2">

@@ -50,7 +50,7 @@ export async function getSummaryStats(businessId: string, from?: string, to?: st
 
   const bookings = await prisma.booking.findMany({
     where: { businessId, startAt: { gte: fromDate, lte: toDate } },
-    include: { service: true, staff: true },
+    include: { service: true },
   })
 
   const active = bookings.filter((b) => b.status !== 'CANCELLED')
@@ -96,16 +96,6 @@ export async function getSummaryStats(businessId: string, from?: string, to?: st
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
 
-  // top angajați (relevant doar pentru saloane, gol pentru spații evenimente)
-  const byStaffMap = new Map<string, { name: string; count: number }>()
-  active.forEach((b) => {
-    if (!b.staffId || !b.staff) return
-    const cur = byStaffMap.get(b.staffId) ?? { name: b.staff.name, count: 0 }
-    cur.count += 1
-    byStaffMap.set(b.staffId, cur)
-  })
-  const topStaff = Array.from(byStaffMap.values()).sort((a, b) => b.count - a.count)
-
   return {
     from: fromDate.toISOString().slice(0, 10),
     to: toDate.toISOString().slice(0, 10),
@@ -121,6 +111,5 @@ export async function getSummaryStats(businessId: string, from?: string, to?: st
     byDayOfWeek,
     peakDayOfWeek,
     topServices,
-    topStaff,
   }
 }

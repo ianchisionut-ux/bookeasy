@@ -36,9 +36,8 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-[var(--surface-muted)] px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={32} height={32} />
-          <span className="font-semibold text-lg">bookeasy.ro</span>
+        <Link href="/">
+          <Image src="/logo.png" alt="bookeasy.ro" width={200} height={133} priority className="w-[160px] h-auto" />
         </Link>
 
         <Card className="w-full">

@@ -17,7 +17,6 @@ type Summary = {
   byDayOfWeek: { dow: number; label: string; count: number }[]
   peakDayOfWeek: { dow: number; label: string; count: number }
   topServices: { name: string; count: number; revenue: number }[]
-  topStaff: { name: string; count: number }[]
 }
 
 const CHANNEL_LABEL: Record<string, string> = {
@@ -143,21 +142,6 @@ export default function StatisticiCharts({ daily, summary }: { daily: Daily[]; s
             {summary.topServices.length === 0 && <p className="text-gray-400">Fără date încă.</p>}
           </ul>
         </Card>
-
-        {/* ── top angajați (gol la spații evenimente) ── */}
-        {summary.topStaff.length > 0 && (
-          <Card>
-            <h2 className="font-medium mb-3">Top profesioniști</h2>
-            <ul className="text-sm flex flex-col gap-2">
-              {summary.topStaff.map((s) => (
-                <li key={s.name} className="flex justify-between">
-                  <span className="text-gray-500">{s.name}</span>
-                  <span className="font-medium">{s.count} rezervări</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
       </div>
     </div>
   )
