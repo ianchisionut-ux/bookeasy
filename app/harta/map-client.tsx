@@ -136,8 +136,8 @@ export default function MapClient() {
   }, [businesses, loaded])
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <div className="px-4 lg:px-6 py-3 border-b flex flex-wrap gap-2">
+    <div className="flex flex-col p-4 lg:p-6">
+      <div className="px-4 py-3 border rounded-t-xl bg-white flex flex-wrap gap-2">
         <button
           onClick={() => setCategory('ALL')}
           className={`text-sm px-3 py-1.5 rounded-full border ${category === 'ALL' ? 'bg-gray-900 text-white' : ''}`}
@@ -159,7 +159,7 @@ export default function MapClient() {
         <span className="text-sm text-gray-500 ml-auto self-center">{businesses.length} afaceri</span>
       </div>
 
-      <div className="relative flex-1 min-h-0">
+      <div className="relative h-[350px] sm:h-[450px] lg:h-[500px] rounded-b-xl overflow-hidden border border-t-0">
         {!loaded && !loadError && (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500 bg-white z-10">Se încarcă harta...</div>
         )}
