@@ -58,7 +58,7 @@ export default async function SuperAdminBusinesses() {
                   <Pill tone={b.publicListed ? 'success' : 'neutral'}>{b.publicListed ? 'Da' : 'Nu'}</Pill>
                 </td>
                 <td className="pr-5">
-                  <BusinessRowActions businessId={b.id} publicListed={b.publicListed} />
+                  <BusinessRowActions businessId={b.id} businessName={b.name} publicListed={b.publicListed} />
                 </td>
               </tr>
             ))}

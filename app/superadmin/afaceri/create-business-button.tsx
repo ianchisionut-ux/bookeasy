@@ -1,5 +1,6 @@
 'use client'
 
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
@@ -16,21 +17,25 @@ export default function CreateBusinessButton() {
   async function submit() {
     setSaving(true)
     setError('')
-    const res = await fetch('/api/superadmin/businesses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(typeof data.error === 'string' ? data.error : 'Verifică datele completate.')
+    try {
+      const res = await fetchWithTimeout('/api/superadmin/businesses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(typeof data.error === 'string' ? data.error : 'Verifică datele completate.')
+        return
+      }
+      setOpen(false)
+      setForm({ slug: '', name: '', email: '', category: 'SALON' })
+      router.push(`/superadmin/afaceri/${data.business.id}`)
+    } catch (err) {
+      setError('Conexiune eșuată. Verifică internetul și încearcă din nou.')
+    } finally {
       setSaving(false)
-      return
     }
-    setOpen(false)
-    setForm({ slug: '', name: '', email: '', category: 'SALON' })
-    setSaving(false)
-    router.push(`/superadmin/afaceri/${data.business.id}`)
   }
 
   if (!open) {

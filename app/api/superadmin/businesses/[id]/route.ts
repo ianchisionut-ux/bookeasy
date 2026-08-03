@@ -38,21 +38,37 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const { id: businessId } = await params
 
-  await prisma.$transaction([
-    prisma.missedMessageAlert.deleteMany({ where: { businessId } }),
-    prisma.review.deleteMany({ where: { businessId } }),
-    prisma.conversation.deleteMany({ where: { businessId } }),
-    prisma.booking.deleteMany({ where: { businessId } }),
-    prisma.customer.deleteMany({ where: { businessId } }),
-    prisma.service.deleteMany({ where: { businessId } }),
-    prisma.resource.deleteMany({ where: { businessId } }),
-    prisma.staff.deleteMany({ where: { businessId } }),
-    prisma.workingHours.deleteMany({ where: { businessId } }),
-    prisma.channel.deleteMany({ where: { businessId } }),
-    prisma.subscription.deleteMany({ where: { businessId } }),
-    prisma.user.deleteMany({ where: { businessId } }),
-    prisma.business.delete({ where: { id: businessId } }),
-  ])
+  const business = await prisma.business.findUnique({ where: { id: businessId } })
+  if (!business) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
+
+  const users = await prisma.user.findMany({ where: { businessId } })
+  const userIds = users.map((u) => u.id)
+
+  try {
+    await prisma.$transaction([
+      // token-urile de parolă trebuie șterse ÎNAINTE de useri, altfel constrângerea
+      // de cheie străină blochează întreaga ștergere
+      prisma.passwordResetToken.deleteMany({ where: { userId: { in: userIds } } }),
+      prisma.missedMessageAlert.deleteMany({ where: { businessId } }),
+      prisma.review.deleteMany({ where: { businessId } }),
+      prisma.blockedSlot.deleteMany({ where: { businessId } }),
+      prisma.businessPhoto.deleteMany({ where: { businessId } }),
+      prisma.conversation.deleteMany({ where: { businessId } }),
+      prisma.booking.deleteMany({ where: { businessId } }),
+      prisma.customer.deleteMany({ where: { businessId } }),
+      prisma.service.deleteMany({ where: { businessId } }),
+      prisma.resource.deleteMany({ where: { businessId } }),
+      prisma.staff.deleteMany({ where: { businessId } }),
+      prisma.workingHours.deleteMany({ where: { businessId } }),
+      prisma.channel.deleteMany({ where: { businessId } }),
+      prisma.subscription.deleteMany({ where: { businessId } }),
+      prisma.user.deleteMany({ where: { businessId } }),
+      prisma.business.delete({ where: { id: businessId } }),
+    ])
+  } catch (err: any) {
+    console.error('Eroare la ștergerea business-ului:', err)
+    return NextResponse.json({ error: 'Ștergerea a eșuat — verifică log-urile serverului.' }, { status: 500 })
+  }
 
   return NextResponse.json({ success: true })
 }

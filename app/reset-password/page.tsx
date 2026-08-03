@@ -1,5 +1,6 @@
 'use client'
 
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -33,21 +34,24 @@ function ResetPasswordForm() {
     }
 
     setLoading(true)
-    const res = await fetch('/api/auth/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, newPassword }),
-    })
-    const data = await res.json()
-    setLoading(false)
-
-    if (!res.ok) {
-      setError(data.error ?? 'A apărut o eroare.')
-      return
+    try {
+      const res = await fetchWithTimeout('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'A apărut o eroare.')
+        return
+      }
+      setDone(true)
+      setTimeout(() => router.push('/login'), 2500)
+    } catch {
+      setError('Conexiune eșuată. Verifică internetul și încearcă din nou.')
+    } finally {
+      setLoading(false)
     }
-
-    setDone(true)
-    setTimeout(() => router.push('/login'), 2500)
   }
 
   return (

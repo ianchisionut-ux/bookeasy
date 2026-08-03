@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createPasswordToken, sendPasswordResetEmail } from '@/lib/password-tokens'
+import { createPasswordToken, sendPasswordResetEmail, withEmailTimeout } from '@/lib/password-tokens'
 import { z } from 'zod'
 
 const schema = z.object({ email: z.string().email() })
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   // existența unui cont, ca să nu putem fi folosiți pentru a "ghici" clienți înregistrați
   if (user) {
     const token = await createPasswordToken(user.id)
-    await sendPasswordResetEmail(user.email, token).catch((err) => console.error('Eroare trimitere email resetare:', err))
+    await withEmailTimeout(sendPasswordResetEmail(user.email, token))
   }
 
   return NextResponse.json({ success: true })

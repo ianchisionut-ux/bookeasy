@@ -1,5 +1,6 @@
 'use client'
 
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
@@ -24,7 +25,6 @@ type Business = {
 export default function BusinessAdminPanel({ business, channels }: { business: Business; channels: Channel[] }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
-  const [showClone, setShowClone] = useState(false)
   const [name, setName] = useState(business.name)
   const [resetSentTo, setResetSentTo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -55,19 +55,35 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
   async function resetPassword() {
     if (!confirm(`Trimiți un link de resetare a parolei către ${business.ownerEmail}?`)) return
     setLoading(true)
-    const res = await fetch(`/api/superadmin/businesses/${business.id}/reset-password`, { method: 'POST' })
-    const data = await res.json()
-    if (res.ok) setResetSentTo(data.email)
-    else alert(data.error ?? 'A apărut o eroare.')
-    setLoading(false)
+    try {
+      const res = await fetchWithTimeout(`/api/superadmin/businesses/${business.id}/reset-password`, { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) setResetSentTo(data.email)
+      else alert(data.error ?? 'A apărut o eroare.')
+    } catch {
+      alert('Conexiune eșuată. Verifică internetul și încearcă din nou.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function deleteForever() {
     const confirmation = prompt(`Această acțiune e ireversibilă. Scrie "${business.name}" pentru confirmare:`)
     if (confirmation !== business.name) return
     setLoading(true)
-    await fetch(`/api/superadmin/businesses/${business.id}`, { method: 'DELETE' })
-    router.push('/superadmin/afaceri')
+    try {
+      const res = await fetchWithTimeout(`/api/superadmin/businesses/${business.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error ?? 'Ștergerea a eșuat.')
+        return
+      }
+      router.push('/superadmin/afaceri')
+    } catch {
+      alert('Conexiune eșuată. Verifică internetul și încearcă din nou.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -131,12 +147,7 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
           <button onClick={deleteForever} disabled={loading} className="btn-secondary text-red-600">
             🗑 Șterge definitiv
           </button>
-          <button onClick={() => setShowClone(true)} disabled={loading} className="btn-secondary">
-            ⧉ Clonează
-          </button>
         </div>
-
-        {showClone && <CloneForm businessId={business.id} onClose={() => setShowClone(false)} />}
 
         {resetSentTo && (
           <div className="mt-4 rounded-xl bg-[var(--accent-soft)] p-3 text-sm text-[var(--accent)]">
@@ -321,70 +332,6 @@ function WhatsAppSection({ businessId, channel }: { businessId: string; channel:
   )
 }
 
-function CloneForm({ businessId, onClose }: { businessId: string; onClose: () => void }) {
-  const router = useRouter()
-  const [form, setForm] = useState({ newSlug: '', newName: '', newEmail: '' })
-  const [error, setError] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [result, setResult] = useState<any>(null)
-
-  async function submit() {
-    setSaving(true)
-    setError('')
-    const res = await fetch(`/api/superadmin/businesses/${businessId}/clone`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(typeof data.error === 'string' ? data.error : 'Verifică datele completate.')
-      setSaving(false)
-      return
-    }
-    setResult(data)
-    setSaving(false)
-    router.refresh()
-  }
-
-  if (result) {
-    return (
-      <div className="mt-4 rounded-xl bg-[var(--accent-soft)] p-4 text-sm text-[var(--accent)]">
-        <p className="font-medium mb-1">Business clonat cu succes!</p>
-        <p>
-          {result.clonedServices} servicii · {result.clonedResources} săli · {result.clonedStaff} angajați ·{' '}
-          {result.clonedWorkingHours} intervale de program copiate. Email de configurare a parolei trimis owner-ului nou.
-        </p>
-        <a href={`/superadmin/afaceri/${result.business.id}`} className="underline font-medium">
-          Deschide noul business →
-        </a>
-      </div>
-    )
-  }
-
-  return (
-    <div className="mt-4 border-t border-[var(--border-soft)] pt-4">
-      <p className="text-sm font-medium mb-3">
-        Clonează servicii, săli, echipă și program în alt business nou — util pentru demo-uri sau
-        pentru un client cu profil similar.
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-        <Input placeholder="Slug nou (ex: salon-demo-2)" value={form.newSlug} onChange={(e) => setForm({ ...form, newSlug: e.target.value })} />
-        <Input placeholder="Nume nou afacere" value={form.newName} onChange={(e) => setForm({ ...form, newName: e.target.value })} />
-      </div>
-      <Input placeholder="Email owner nou" type="email" value={form.newEmail} onChange={(e) => setForm({ ...form, newEmail: e.target.value })} className="mb-2" />
-      {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={submit} disabled={saving}>
-          {saving ? 'Se clonează...' : 'Clonează și trimite email'}
-        </Button>
-        <Button variant="secondary" onClick={onClose}>
-          Anulează
-        </Button>
-      </div>
-    </div>
-  )
-}
 function PaymentSection({ businessId }: { businessId: string }) {
   const [processor, setProcessor] = useState<'STRIPE' | 'NETOPIA' | 'EUPLATESC' | ''>('')
   const [fields, setFields] = useState({

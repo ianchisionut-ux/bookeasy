@@ -1,5 +1,6 @@
 'use client'
 
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -15,13 +16,18 @@ export default function ForgotPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    await fetch('/api/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    })
-    setLoading(false)
-    setSent(true)
+    try {
+      await fetchWithTimeout('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      setSent(true)
+    } catch {
+      setSent(true) // afișăm oricum mesajul generic — nu confirmăm/infirmăm erori specifice aici
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

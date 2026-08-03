@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import { createPasswordToken, sendPasswordSetupEmail } from '@/lib/password-tokens'
+import { createPasswordToken, sendPasswordSetupEmail, withEmailTimeout } from '@/lib/password-tokens'
 import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
@@ -44,13 +44,10 @@ export async function POST(req: NextRequest) {
   })
 
   const token = await createPasswordToken(user.id)
-  try {
-    await sendPasswordSetupEmail(email, name, token)
-  } catch (err) {
-    console.error('Eroare trimitere email configurare cont:', err)
-    // businessul rămâne creat chiar dacă emailul eșuează — poți retrimite link-ul manual
-    // din panoul businessului ("Resetează parola")
-  }
+
+  // trimitem cu timeout strict — businessul e deja creat, chiar dacă emailul întârzie
+  // sau eșuează, poți retrimite linkul manual din panoul businessului
+  await withEmailTimeout(sendPasswordSetupEmail(email, name, token))
 
   return NextResponse.json({ business })
 }

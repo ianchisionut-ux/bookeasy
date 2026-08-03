@@ -13,6 +13,22 @@ function getResend() {
 
 const TOKEN_EXPIRY_HOURS = 24
 
+// pe medii serverless (Vercel), funcția se poate opri imediat după ce răspunde —
+// "fire and forget" adevărat riscă să nu trimită deloc emailul. Așteptăm trimiterea,
+// dar cu un timeout strict, ca să nu blocăm niciodată cererea la nesfârșit dacă
+// serviciul de email e lent sau indisponibil.
+export async function withEmailTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T | null> {
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+    ])
+  } catch (err) {
+    console.error('Eroare la trimiterea emailului:', err)
+    return null
+  }
+}
+
 export async function createPasswordToken(userId: string): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex')
   await prisma.passwordResetToken.create({
