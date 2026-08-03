@@ -72,12 +72,13 @@ enum BusinessType {
 }
 
 model User {
-  id         String    @id @default(cuid())
-  email      String    @unique
-  password   String
-  role       Role      @default(OWNER)
-  businessId String?
-  business   Business? @relation(fields: [businessId], references: [id])
+  id                  String                @id @default(cuid())
+  email               String                @unique
+  password            String
+  role                Role                  @default(OWNER)
+  businessId          String?
+  business            Business?             @relation(fields: [businessId], references: [id])
+  passwordResetTokens PasswordResetToken[]
 }
 
 enum Role {
@@ -266,6 +267,16 @@ model BlockedSlot {
   endAt      DateTime
   reason     String?
   createdAt  DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 }
 
 model MissedMessageAlert {

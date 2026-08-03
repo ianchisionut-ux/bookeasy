@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { createPasswordToken, sendPasswordSetupEmail } from '@/lib/password-tokens'
+import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
@@ -8,7 +10,6 @@ const schema = z.object({
   newSlug: z.string().regex(/^[a-z0-9-]+$/, 'Slug-ul poate conține doar litere mici, cifre și cratime.'),
   newName: z.string().min(2),
   newEmail: z.string().email(),
-  newPassword: z.string().min(6, 'Parola trebuie să aibă minim 6 caractere.'),
 })
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const { newSlug, newName, newEmail, newPassword } = parsed.data
+  const { newSlug, newName, newEmail } = parsed.data
 
   const source = await prisma.business.findUnique({
     where: { id: sourceBusinessId },
@@ -52,10 +53,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     },
   })
 
-  const hashedPassword = await bcrypt.hash(newPassword, 10)
-  await prisma.user.create({
-    data: { email: newEmail, password: hashedPassword, role: 'OWNER', businessId: newBusiness.id },
+  // parolă temporară, aleatorie, imposibil de folosit — clientul o setează singur prin
+  // link-ul trimis pe email
+  const unusablePassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10)
+  const newUser = await prisma.user.create({
+    data: { email: newEmail, password: unusablePassword, role: 'OWNER', businessId: newBusiness.id },
   })
+
+  const token = await createPasswordToken(newUser.id)
+  await sendPasswordSetupEmail(newEmail, newName, token).catch((err) =>
+    console.error('Eroare trimitere email configurare cont (clonare):', err)
+  )
 
   await prisma.$transaction([
     prisma.workingHours.createMany({

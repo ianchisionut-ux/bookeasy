@@ -26,7 +26,7 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
   const [editing, setEditing] = useState(false)
   const [showClone, setShowClone] = useState(false)
   const [name, setName] = useState(business.name)
-  const [resetResult, setResetResult] = useState<{ email: string; newPassword: string } | null>(null)
+  const [resetSentTo, setResetSentTo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function saveName() {
@@ -53,11 +53,12 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
   }
 
   async function resetPassword() {
-    if (!confirm(`Resetezi parola pentru ${business.ownerEmail}?`)) return
+    if (!confirm(`Trimiți un link de resetare a parolei către ${business.ownerEmail}?`)) return
     setLoading(true)
     const res = await fetch(`/api/superadmin/businesses/${business.id}/reset-password`, { method: 'POST' })
     const data = await res.json()
-    if (res.ok) setResetResult(data)
+    if (res.ok) setResetSentTo(data.email)
+    else alert(data.error ?? 'A apărut o eroare.')
     setLoading(false)
   }
 
@@ -118,7 +119,7 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
             </Button>
           )}
           <Button variant="secondary" onClick={resetPassword} disabled={loading || !business.ownerEmail}>
-            🔑 Resetează parola
+            🔑 Trimite link resetare parolă
           </Button>
           <button
             onClick={toggleActive}
@@ -137,11 +138,9 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
 
         {showClone && <CloneForm businessId={business.id} onClose={() => setShowClone(false)} />}
 
-        {resetResult && (
+        {resetSentTo && (
           <div className="mt-4 rounded-xl bg-[var(--accent-soft)] p-3 text-sm text-[var(--accent)]">
-            Parolă nouă pentru <strong>{resetResult.email}</strong>: <code>{resetResult.newPassword}</code>
-            <br />
-            Transmite-o owner-ului acum — nu mai e afișată după ce părăsești pagina.
+            Link de configurare a parolei trimis către <strong>{resetSentTo}</strong>. Linkul expiră în 24 de ore.
           </div>
         )}
       </Card>
@@ -324,7 +323,7 @@ function WhatsAppSection({ businessId, channel }: { businessId: string; channel:
 
 function CloneForm({ businessId, onClose }: { businessId: string; onClose: () => void }) {
   const router = useRouter()
-  const [form, setForm] = useState({ newSlug: '', newName: '', newEmail: '', newPassword: '' })
+  const [form, setForm] = useState({ newSlug: '', newName: '', newEmail: '' })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [result, setResult] = useState<any>(null)
@@ -354,7 +353,7 @@ function CloneForm({ businessId, onClose }: { businessId: string; onClose: () =>
         <p className="font-medium mb-1">Business clonat cu succes!</p>
         <p>
           {result.clonedServices} servicii · {result.clonedResources} săli · {result.clonedStaff} angajați ·{' '}
-          {result.clonedWorkingHours} intervale de program copiate.
+          {result.clonedWorkingHours} intervale de program copiate. Email de configurare a parolei trimis owner-ului nou.
         </p>
         <a href={`/superadmin/afaceri/${result.business.id}`} className="underline font-medium">
           Deschide noul business →
@@ -373,14 +372,11 @@ function CloneForm({ businessId, onClose }: { businessId: string; onClose: () =>
         <Input placeholder="Slug nou (ex: salon-demo-2)" value={form.newSlug} onChange={(e) => setForm({ ...form, newSlug: e.target.value })} />
         <Input placeholder="Nume nou afacere" value={form.newName} onChange={(e) => setForm({ ...form, newName: e.target.value })} />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-        <Input placeholder="Email owner nou" value={form.newEmail} onChange={(e) => setForm({ ...form, newEmail: e.target.value })} />
-        <Input placeholder="Parolă owner nou" type="password" value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} />
-      </div>
+      <Input placeholder="Email owner nou" type="email" value={form.newEmail} onChange={(e) => setForm({ ...form, newEmail: e.target.value })} className="mb-2" />
       {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
       <div className="flex gap-2">
         <Button variant="secondary" onClick={submit} disabled={saving}>
-          {saving ? 'Se clonează...' : 'Clonează'}
+          {saving ? 'Se clonează...' : 'Clonează și trimite email'}
         </Button>
         <Button variant="secondary" onClick={onClose}>
           Anulează

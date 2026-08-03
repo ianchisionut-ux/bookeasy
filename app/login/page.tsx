@@ -59,6 +59,10 @@ export default function LoginPage() {
               {loading ? 'Se conectează...' : 'Intră în cont'}
             </Button>
           </form>
+
+          <Link href="/forgot-password" className="text-sm text-gray-500 block text-center mt-4">
+            Am uitat parola
+          </Link>
         </Card>
       </div>
     </main>

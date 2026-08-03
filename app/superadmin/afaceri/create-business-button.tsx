@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 export default function CreateBusinessButton() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ slug: '', name: '', email: '', password: '', category: 'SALON' as 'SALON' | 'EVENT_VENUE' })
+  const [form, setForm] = useState({ slug: '', name: '', email: '', category: 'SALON' as 'SALON' | 'EVENT_VENUE' })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -28,7 +28,7 @@ export default function CreateBusinessButton() {
       return
     }
     setOpen(false)
-    setForm({ slug: '', name: '', email: '', password: '', category: 'SALON' })
+    setForm({ slug: '', name: '', email: '', category: 'SALON' })
     setSaving(false)
     router.push(`/superadmin/afaceri/${data.business.id}`)
   }
@@ -42,7 +42,7 @@ export default function CreateBusinessButton() {
       <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h2 className="font-medium mb-1">Creează afacere nouă</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Creezi contul direct pentru client — aceasta e singura metodă de a adăuga o afacere nouă.
+          Clientul primește un email cu link de configurare a parolei — nu introduci tu parola.
         </p>
 
         <div className="flex flex-col gap-2">
@@ -56,15 +56,14 @@ export default function CreateBusinessButton() {
             <option value="SALON">Salon</option>
             <option value="EVENT_VENUE">Spații evenimente</option>
           </select>
-          <Input placeholder="Email owner" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <Input placeholder="Parolă owner" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <Input placeholder="Email owner" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         </div>
 
         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
 
         <div className="flex gap-2 mt-4">
           <Button variant="secondary" onClick={submit} disabled={saving}>
-            {saving ? 'Se creează...' : 'Creează'}
+            {saving ? 'Se creează...' : 'Creează și trimite email'}
           </Button>
           <Button variant="secondary" onClick={() => setOpen(false)}>
             Anulează

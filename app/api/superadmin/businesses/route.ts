@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { createPasswordToken, sendPasswordSetupEmail } from '@/lib/password-tokens'
+import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
@@ -8,7 +10,6 @@ const schema = z.object({
   slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug-ul poate conține doar litere mici, cifre și cratime.'),
   name: z.string().min(2),
   email: z.string().email(),
-  password: z.string().min(6, 'Parola trebuie să aibă minim 6 caractere.'),
   category: z.enum(['SALON', 'EVENT_VENUE']),
 })
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const { slug, name, email, password, category } = parsed.data
+  const { slug, name, email, category } = parsed.data
 
   const [slugTaken, emailTaken] = await Promise.all([
     prisma.business.findUnique({ where: { slug } }),
@@ -35,10 +36,21 @@ export async function POST(req: NextRequest) {
     data: { slug, name, category, publicListed: false, onboardingStep: 1, onboardingDone: false },
   })
 
-  const hashedPassword = await bcrypt.hash(password, 10)
-  await prisma.user.create({
-    data: { email, password: hashedPassword, role: 'OWNER', businessId: business.id },
+  // parolă temporară, aleatorie, imposibil de folosit — clientul o setează singur prin
+  // link-ul trimis pe email, ca prim pas de "verificare" a adresei lui reale
+  const unusablePassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10)
+  const user = await prisma.user.create({
+    data: { email, password: unusablePassword, role: 'OWNER', businessId: business.id },
   })
+
+  const token = await createPasswordToken(user.id)
+  try {
+    await sendPasswordSetupEmail(email, name, token)
+  } catch (err) {
+    console.error('Eroare trimitere email configurare cont:', err)
+    // businessul rămâne creat chiar dacă emailul eșuează — poți retrimite link-ul manual
+    // din panoul businessului ("Resetează parola")
+  }
 
   return NextResponse.json({ business })
 }

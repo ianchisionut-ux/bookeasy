@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import bcrypt from 'bcryptjs'
-import crypto from 'crypto'
+import { createPasswordToken, sendPasswordSetupEmail } from '@/lib/password-tokens'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -11,14 +10,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const { id: businessId } = await params
+  const business = await prisma.business.findUnique({ where: { id: businessId } })
   const owner = await prisma.user.findFirst({ where: { businessId, role: 'OWNER' } })
-  if (!owner) return NextResponse.json({ error: 'Nu există un cont owner pentru acest business.' }, { status: 404 })
+  if (!owner || !business) return NextResponse.json({ error: 'Nu există un cont owner pentru acest business.' }, { status: 404 })
 
-  // parolă temporară — afișată o singură dată în UI, admin trebuie s-o transmită owner-ului
-  const newPassword = crypto.randomBytes(6).toString('base64url')
-  const hashed = await bcrypt.hash(newPassword, 10)
+  const token = await createPasswordToken(owner.id)
+  try {
+    await sendPasswordSetupEmail(owner.email, business.name, token)
+  } catch (err) {
+    console.error('Eroare trimitere email resetare (superadmin):', err)
+    return NextResponse.json({ error: 'Emailul n-a putut fi trimis. Verifică RESEND_API_KEY.' }, { status: 500 })
+  }
 
-  await prisma.user.update({ where: { id: owner.id }, data: { password: hashed } })
-
-  return NextResponse.json({ email: owner.email, newPassword })
+  return NextResponse.json({ email: owner.email })
 }
