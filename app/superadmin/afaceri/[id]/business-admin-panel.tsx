@@ -72,7 +72,7 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
     if (confirmation !== business.name) return
     setLoading(true)
     try {
-      const res = await fetchWithTimeout(`/api/superadmin/businesses/${business.id}`, { method: 'DELETE' })
+      const res = await fetchWithTimeout(`/api/superadmin/businesses/${business.id}`, { method: 'DELETE' }, 30000)
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         alert(data.error ?? 'Ștergerea a eșuat.')
