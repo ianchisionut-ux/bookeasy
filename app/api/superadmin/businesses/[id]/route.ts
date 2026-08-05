@@ -46,26 +46,26 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   try {
     await prisma.$transaction(
-      [
+      async (tx) => {
         // token-urile de parolă trebuie șterse ÎNAINTE de useri, altfel constrângerea
         // de cheie străină blochează întreaga ștergere
-        prisma.passwordResetToken.deleteMany({ where: { userId: { in: userIds } } }),
-        prisma.missedMessageAlert.deleteMany({ where: { businessId } }),
-        prisma.review.deleteMany({ where: { businessId } }),
-        prisma.blockedSlot.deleteMany({ where: { businessId } }),
-        prisma.businessPhoto.deleteMany({ where: { businessId } }),
-        prisma.conversation.deleteMany({ where: { businessId } }),
-        prisma.booking.deleteMany({ where: { businessId } }),
-        prisma.customer.deleteMany({ where: { businessId } }),
-        prisma.service.deleteMany({ where: { businessId } }),
-        prisma.resource.deleteMany({ where: { businessId } }),
-        prisma.staff.deleteMany({ where: { businessId } }),
-        prisma.workingHours.deleteMany({ where: { businessId } }),
-        prisma.channel.deleteMany({ where: { businessId } }),
-        prisma.subscription.deleteMany({ where: { businessId } }),
-        prisma.user.deleteMany({ where: { businessId } }),
-        prisma.business.delete({ where: { id: businessId } }),
-      ],
+        await tx.passwordResetToken.deleteMany({ where: { userId: { in: userIds } } })
+        await tx.missedMessageAlert.deleteMany({ where: { businessId } })
+        await tx.review.deleteMany({ where: { businessId } })
+        await tx.blockedSlot.deleteMany({ where: { businessId } })
+        await tx.businessPhoto.deleteMany({ where: { businessId } })
+        await tx.conversation.deleteMany({ where: { businessId } })
+        await tx.booking.deleteMany({ where: { businessId } })
+        await tx.customer.deleteMany({ where: { businessId } })
+        await tx.service.deleteMany({ where: { businessId } })
+        await tx.resource.deleteMany({ where: { businessId } })
+        await tx.staff.deleteMany({ where: { businessId } })
+        await tx.workingHours.deleteMany({ where: { businessId } })
+        await tx.channel.deleteMany({ where: { businessId } })
+        await tx.subscription.deleteMany({ where: { businessId } })
+        await tx.user.deleteMany({ where: { businessId } })
+        await tx.business.delete({ where: { id: businessId } })
+      },
       { timeout: 20000 } // implicit Prisma e 5s — insuficient pentru businessuri cu multe rezervări/recenzii
     )
   } catch (err: any) {
