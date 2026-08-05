@@ -11,7 +11,11 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
   const { slug } = await params
   const business = await prisma.business.findUnique({
     where: { slug },
-    include: { services: { where: { active: true } }, photos: { orderBy: { createdAt: 'desc' } } },
+    include: {
+      services: { where: { active: true } },
+      photos: { orderBy: { createdAt: 'desc' } },
+      reviews: { orderBy: { createdAt: 'desc' }, take: 20 },
+    },
   })
 
   if (!business || !business.publicListed) notFound()
@@ -73,6 +77,42 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
               ))}
             </div>
           </>
+        )}
+
+        <div className="flex items-center justify-between mt-8 mb-3">
+          <h2 className="text-lg font-medium">
+            Recenzii {business.reviewCount ? `(${business.reviewCount})` : ''}
+          </h2>
+          <Link href={`/${slug}/recenzie`} className="text-sm text-[var(--accent)] font-medium">
+            Lasă o recenzie →
+          </Link>
+        </div>
+        {business.reviews.length === 0 ? (
+          <p className="text-sm text-gray-500">Nicio recenzie încă — fii primul!</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {business.reviews.map((r) => (
+              <div key={r.id} className="card p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="font-medium">{r.authorName}</p>
+                  <p className="text-sm" style={{ color: '#eab308' }}>
+                    {'★'.repeat(r.rating)}
+                    <span className="text-gray-300">{'★'.repeat(5 - r.rating)}</span>
+                  </p>
+                </div>
+                {r.comment && <p className="text-sm text-gray-600 mb-2">{r.comment}</p>}
+                <p className="text-xs text-gray-400">
+                  {r.createdAt.toLocaleDateString('ro-RO', { dateStyle: 'medium', timeZone: 'Europe/Bucharest' })}
+                </p>
+                {r.reply && (
+                  <div className="mt-2 pl-3 border-l-2 border-[var(--border-soft)]">
+                    <p className="text-xs font-medium text-gray-500 mb-0.5">Răspunsul afacerii</p>
+                    <p className="text-sm text-gray-600">{r.reply}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         )}
 
         <NearbyBusinesses businessId={business.id} />

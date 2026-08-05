@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/programari', label: 'Programări' },
   { href: '/dashboard/clienti', label: 'Clienți' },
   { href: '/dashboard/servicii', label: 'Servicii' },
+  { href: '/dashboard/recenzii', label: 'Recenzii' },
   { href: '/dashboard/statistici', label: 'Statistici' },
   { href: '/dashboard/setari', label: 'Setări' },
 ]
