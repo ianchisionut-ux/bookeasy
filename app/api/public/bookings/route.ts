@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { isSlotStillAvailable, isIntervalBlocked, isWithinLeadTime } from '@/lib/availability'
 import { getNextSequenceNumber } from '@/lib/booking-number'
 import { createDepositCheckoutLink } from '@/lib/payments/create-checkout'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -15,6 +16,12 @@ const schema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req)
+  const { allowed } = rateLimit(`public-booking:${ip}`, 5, 10 * 60 * 1000) // 5 rezervări / 10 min / IP
+  if (!allowed) {
+    return NextResponse.json({ error: 'Prea multe încercări. Așteaptă câteva minute și încearcă din nou.' }, { status: 429 })
+  }
+
   const body = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Date invalide, verifică formularul.' }, { status: 400 })

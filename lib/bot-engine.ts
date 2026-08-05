@@ -2,6 +2,7 @@ import { prisma } from './prisma'
 import { runBotStep, ConversationState } from './conversation-state-machine'
 import { sendMessage } from './channel-senders'
 import { sendAlertEmail } from './email'
+import { rateLimit } from './rate-limit'
 
 const CANCEL_BOOKING_PATTERN = /^anulez\b/i
 
@@ -18,6 +19,11 @@ export async function processIncomingMessage({
   text: string
   channelId: string
 }) {
+  // limitare per utilizator — protejează costurile Meta (taxate per mesaj/conversație)
+  // dacă cineva bombardează botul intenționat sau dintr-o eroare de integrare
+  const { allowed } = rateLimit(`bot-msg:${businessId}:${externalUserId}`, 20, 10 * 60 * 1000) // 20 mesaje/10min
+  if (!allowed) return
+
   const business = await prisma.business.findUnique({ where: { id: businessId } })
   if (!business?.accountActive) return // cont suspendat de admin — botul nu răspunde deloc
 

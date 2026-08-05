@@ -2,6 +2,7 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { prisma } from './prisma'
 import bcrypt from 'bcryptjs'
+import { rateLimit } from './rate-limit'
 
 // Nu folosim PrismaAdapter — cu Credentials + strategie JWT nu e nevoie de el,
 // iar adapter-ul ar căuta tabele (Account, Session, VerificationToken) care
@@ -11,8 +12,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: { email: {}, password: {} },
-      async authorize(credentials) {
-        const user = await prisma.user.findUnique({ where: { email: credentials?.email as string } })
+      async authorize(credentials, request) {
+        const email = (credentials?.email as string)?.toLowerCase()?.trim()
+        if (!email) return null
+
+        // protecție brute-force: max 8 încercări / 15 min per email, și separat per IP —
+        // ca cineva să nu poată încerca mii de parole pe un cont, oricât ar avea răbdare
+        const ip = request?.headers?.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+        const emailCheck = rateLimit(`login-email:${email}`, 8, 15 * 60 * 1000)
+        const ipCheck = rateLimit(`login-ip:${ip}`, 20, 15 * 60 * 1000)
+        if (!emailCheck.allowed || !ipCheck.allowed) {
+          throw new Error('Prea multe încercări. Așteaptă 15 minute și încearcă din nou.')
+        }
+
+        const user = await prisma.user.findUnique({ where: { email } })
         if (!user) return null
         const valid = await bcrypt.compare(credentials?.password as string, user.password)
         if (!valid) return null
