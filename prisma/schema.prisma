@@ -296,6 +296,25 @@ model PasswordResetToken {
   createdAt DateTime  @default(now())
 }
 
+model AccessRequest {
+  id           String              @id @default(cuid())
+  name         String
+  businessName String
+  email        String
+  phone        String
+  category     BusinessType?
+  message      String?
+  status       AccessRequestStatus @default(NEW)
+  createdAt    DateTime            @default(now())
+}
+
+enum AccessRequestStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  DISMISSED
+}
+
 model MissedMessageAlert {
   id         String   @id @default(cuid())
   businessId String
