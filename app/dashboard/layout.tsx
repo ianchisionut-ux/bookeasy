@@ -27,7 +27,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   if (businessId) {
-    const business = await prisma.business.findUnique({ where: { id: businessId } })
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { accountActive: true, onboardingDone: true, onboardingStep: true },
+    })
     if (business && !business.accountActive) {
       redirect('/cont-suspendat')
     }
