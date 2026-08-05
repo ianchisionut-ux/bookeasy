@@ -13,7 +13,7 @@ type Business = {
   id: string
   slug: string
   name: string
-  category: 'SALON' | 'EVENT_VENUE'
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE'
   accountActive: boolean
   publicListed: boolean
   ownerEmail: string | null

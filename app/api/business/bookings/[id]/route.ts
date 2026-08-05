@@ -33,6 +33,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (parsed.data.startAt) {
     const newStart = new Date(parsed.data.startAt)
     const newEnd = parsed.data.endAt ? new Date(parsed.data.endAt) : new Date(newStart.getTime() + (owned.endAt.getTime() - owned.startAt.getTime()))
+
+    // blocăm doar dacă chiar se schimbă ORA (mutare) către trecut — nu blocăm actualizări
+    // de status pe rezervări deja trecute (ex: marcarea ca "finalizată"/"neprezentare" după ce a avut loc)
+    if (newStart < new Date()) {
+      return NextResponse.json({ error: 'Nu poți muta o rezervare într-un interval din trecut.' }, { status: 400 })
+    }
+
     if (await isIntervalBlocked(businessId, newStart, newEnd)) {
       return NextResponse.json({ error: 'Intervalul selectat este blocat pentru rezervări.' }, { status: 409 })
     }

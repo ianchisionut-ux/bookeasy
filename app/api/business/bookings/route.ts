@@ -26,6 +26,11 @@ export async function POST(req: NextRequest) {
 
   const startDate = new Date(parsed.data.startAt)
   const endDate = new Date(parsed.data.endAt)
+
+  if (startDate < new Date()) {
+    return NextResponse.json({ error: 'Nu poți crea o rezervare într-un interval din trecut.' }, { status: 400 })
+  }
+
   if (await isIntervalBlocked(businessId, startDate, endDate)) {
     return NextResponse.json({ error: 'Intervalul selectat este blocat pentru rezervări.' }, { status: 409 })
   }

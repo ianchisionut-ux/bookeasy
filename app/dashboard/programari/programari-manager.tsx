@@ -252,6 +252,11 @@ function NewBookingForm({
     const start = new Date(date)
     const end = new Date(start.getTime() + (service?.durationMin ?? 30) * 60000)
 
+    if (start < new Date()) {
+      setError('Nu poți crea o rezervare într-un interval din trecut.')
+      return
+    }
+
     const overlapsBlocked = blockedSlots.some((b) => start < new Date(b.endAt) && new Date(b.startAt) < end)
     if (overlapsBlocked) {
       setError('Intervalul ales e blocat pentru rezervări — modifică-l direct din calendar dacă e nevoie.')
@@ -313,7 +318,13 @@ function NewBookingForm({
       <div className="mb-3 max-w-xs">
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">Data și ora</label>
-          <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className="input-field w-full" />
+          <input
+            type="datetime-local"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+            className="input-field w-full"
+          />
         </div>
       </div>
 

@@ -14,7 +14,7 @@ export default function ServicesManager({
   services,
   resources,
 }: {
-  category: 'SALON' | 'EVENT_VENUE'
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE'
   services: Service[]
   resources: Resource[]
 }) {

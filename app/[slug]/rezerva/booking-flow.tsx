@@ -27,7 +27,7 @@ export default function BookingFlow({
 }: {
   businessId: string
   businessSlug: string
-  category: 'SALON' | 'EVENT_VENUE'
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE'
   services: Service[]
   canPayOnline: boolean
 }) {
