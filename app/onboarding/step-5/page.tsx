@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { OnboardingProgress } from '@/components/onboarding-progress'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,16 +10,23 @@ import { Button } from '@/components/ui/button'
 export default function OnboardingStep5() {
   const router = useRouter()
   const [finishing, setFinishing] = useState(false)
+  const [error, setError] = useState('')
 
   async function finish() {
     setFinishing(true)
-    await fetch('/api/onboarding', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ step: 5, data: {} }),
-    })
-    router.push('/dashboard?onboarded=true')
-    router.refresh()
+    setError('')
+    try {
+      await fetchWithTimeout('/api/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step: 5, data: {} }),
+      })
+      router.push('/dashboard?onboarded=true')
+      router.refresh()
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+      setFinishing(false)
+    }
   }
 
   return (
@@ -44,6 +52,7 @@ export default function OnboardingStep5() {
           {finishing ? 'Se finalizează...' : 'Intră în dashboard →'}
         </Button>
       </div>
+      {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
     </Card>
   )
 }

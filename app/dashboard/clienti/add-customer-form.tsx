@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -16,21 +17,25 @@ export default function AddCustomerForm() {
   async function handleSave() {
     setSaving(true)
     setError('')
-    const res = await fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? 'A apărut o eroare.')
+    try {
+      const res = await fetchWithTimeout('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'A apărut o eroare.')
+        return
+      }
+      setForm({ name: '', phone: '', email: '' })
+      setOpen(false)
+      router.refresh()
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+    } finally {
       setSaving(false)
-      return
     }
-    setForm({ name: '', phone: '', email: '' })
-    setOpen(false)
-    setSaving(false)
-    router.refresh()
   }
 
   if (!open) {

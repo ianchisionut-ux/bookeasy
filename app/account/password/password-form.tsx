@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -24,23 +25,28 @@ export default function PasswordForm() {
     }
 
     setSaving(true)
-    const res = await fetch('/api/account/password', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword, newPassword }),
-    })
-    const data = await res.json()
-    setSaving(false)
+    try {
+      const res = await fetchWithTimeout('/api/account/password', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      })
+      const data = await res.json()
 
-    if (!res.ok) {
-      setError(data.error ?? 'A apărut o eroare.')
-      return
+      if (!res.ok) {
+        setError(data.error ?? 'A apărut o eroare.')
+        return
+      }
+
+      setSuccess(true)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      setSaving(false)
     }
-
-    setSuccess(true)
-    setCurrentPassword('')
-    setNewPassword('')
-    setConfirmPassword('')
   }
 
   return (

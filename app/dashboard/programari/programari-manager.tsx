@@ -2,6 +2,7 @@
 
 import { useState, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -76,18 +77,31 @@ export default function ProgramariManager({
   const [adding, setAdding] = useState(false)
 
   async function changeStatus(id: string, status: string) {
-    await fetch(`/api/business/bookings/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-    router.refresh()
+    try {
+      const res = await fetchWithTimeout(`/api/business/bookings/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error ?? 'Nu am putut actualiza statusul.')
+        return
+      }
+      router.refresh()
+    } catch {
+      alert('Conexiune eșuată. Încearcă din nou.')
+    }
   }
 
   async function cancelBooking(id: string) {
     if (!confirm('Anulezi această rezervare?')) return
-    await fetch(`/api/business/bookings/${id}`, { method: 'DELETE' })
-    router.refresh()
+    try {
+      await fetchWithTimeout(`/api/business/bookings/${id}`, { method: 'DELETE' })
+      router.refresh()
+    } catch {
+      alert('Conexiune eșuată. Încearcă din nou.')
+    }
   }
 
   return (
@@ -292,26 +306,30 @@ function NewBookingForm({
     setSaving(true)
     setError('')
 
-    const res = await fetch('/api/business/bookings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        customerId,
-        serviceId,
-        startAt: start.toISOString(),
-        endAt: end.toISOString(),
-      }),
-    })
+    try {
+      const res = await fetchWithTimeout('/api/business/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId,
+          serviceId,
+          startAt: start.toISOString(),
+          endAt: end.toISOString(),
+        }),
+      })
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      setError(data.error ?? 'A apărut o eroare. Verifică datele.')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error ?? 'A apărut o eroare. Verifică datele.')
+        return
+      }
+
+      onDone()
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+    } finally {
       setSaving(false)
-      return
     }
-
-    setSaving(false)
-    onDone()
   }
 
   return (

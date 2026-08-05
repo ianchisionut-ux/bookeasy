@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { OnboardingProgress } from '@/components/onboarding-progress'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,7 @@ export default function OnboardingStep2() {
   const router = useRouter()
   const [hours, setHours] = useState(DEFAULT_HOURS)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   function updateHour(weekday: number, patch: Partial<WorkingHour>) {
     setHours((prev) => prev.map((h) => (h.weekday === weekday ? { ...h, ...patch } : h)))
@@ -28,17 +30,22 @@ export default function OnboardingStep2() {
 
   async function handleSubmit() {
     setLoading(true)
+    setError('')
     const workingHours = hours
       .filter((h) => !h.closed)
       .map((h) => ({ weekday: h.weekday, startTime: h.startTime, endTime: h.endTime }))
 
-    await fetch('/api/onboarding', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ step: 2, data: { workingHours } }),
-    })
-
-    router.push('/onboarding/step-3')
+    try {
+      await fetchWithTimeout('/api/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step: 2, data: { workingHours } }),
+      })
+      router.push('/onboarding/step-3')
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -85,6 +92,7 @@ export default function OnboardingStep2() {
           {loading ? 'Se salvează...' : 'Continuă →'}
         </Button>
       </div>
+      {error && <p className="text-sm text-red-600 mt-3 text-right">{error}</p>}
     </Card>
   )
 }

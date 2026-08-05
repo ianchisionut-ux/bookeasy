@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
@@ -53,38 +54,49 @@ export default function BookingEditModal({
 
   async function save() {
     setSaving(true)
+    setError('')
     const durationMs = new Date(booking.endAt).getTime() - new Date(booking.startAt).getTime()
     const newStart = new Date(startAt)
     const newEnd = new Date(newStart.getTime() + durationMs)
 
-    const res = await fetch(`/api/business/bookings/${booking.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        status,
-        startAt: newStart.toISOString(),
-        endAt: newEnd.toISOString(),
-      }),
-    })
-    setSaving(false)
+    try {
+      const res = await fetchWithTimeout(`/api/business/bookings/${booking.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status,
+          startAt: newStart.toISOString(),
+          endAt: newEnd.toISOString(),
+        }),
+      })
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      setError(data.error ?? 'Nu am putut salva modificările.')
-      return
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error ?? 'Nu am putut salva modificările.')
+        return
+      }
+
+      router.refresh()
+      onClose()
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      setSaving(false)
     }
-
-    router.refresh()
-    onClose()
   }
 
   async function cancelBooking() {
     if (!confirm('Anulezi această rezervare?')) return
     setSaving(true)
-    await fetch(`/api/business/bookings/${booking.id}`, { method: 'DELETE' })
-    setSaving(false)
-    router.refresh()
-    onClose()
+    try {
+      await fetchWithTimeout(`/api/business/bookings/${booking.id}`, { method: 'DELETE' })
+      router.refresh()
+      onClose()
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (

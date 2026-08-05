@@ -6,6 +6,7 @@ import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
 import { ro } from 'date-fns/locale'
 import { useRouter } from 'next/navigation'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import BookingEditModal, { BookingDetail } from '@/components/booking-edit-modal'
@@ -99,18 +100,23 @@ export default function CalendarClient({
       if (reason === null) return
 
       setBusy(true)
-      const res = await fetch('/api/business/blocked-slots', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ startAt: start.toISOString(), endAt: end.toISOString(), reason: reason || undefined }),
-      })
-      setBusy(false)
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        alert(data.error ?? 'Nu am putut bloca intervalul.')
-        return
+      try {
+        const res = await fetchWithTimeout('/api/business/blocked-slots', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ startAt: start.toISOString(), endAt: end.toISOString(), reason: reason || undefined }),
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          alert(data.error ?? 'Nu am putut bloca intervalul.')
+          return
+        }
+        router.refresh()
+      } catch {
+        alert('Conexiune eșuată. Încearcă din nou.')
+      } finally {
+        setBusy(false)
       }
-      router.refresh()
     },
     [router]
   )
@@ -120,9 +126,14 @@ export default function CalendarClient({
       const confirmed = confirm('Deblochezi acest interval?')
       if (!confirmed) return
       setBusy(true)
-      await fetch(`/api/business/blocked-slots/${id}`, { method: 'DELETE' })
-      setBusy(false)
-      router.refresh()
+      try {
+        await fetchWithTimeout(`/api/business/blocked-slots/${id}`, { method: 'DELETE' })
+        router.refresh()
+      } catch {
+        alert('Conexiune eșuată. Încearcă din nou.')
+      } finally {
+        setBusy(false)
+      }
     },
     [router]
   )
@@ -157,21 +168,25 @@ export default function CalendarClient({
       )
       if (!confirmed) return
 
-      const res = await fetch(`/api/business/bookings/${event.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          startAt: new Date(start).toISOString(),
-          endAt: new Date(end).toISOString(),
-        }),
-      })
+      try {
+        const res = await fetchWithTimeout(`/api/business/bookings/${event.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            startAt: new Date(start).toISOString(),
+            endAt: new Date(end).toISOString(),
+          }),
+        })
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        alert(data.error ?? 'Nu am putut muta rezervarea.')
-        return
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          alert(data.error ?? 'Nu am putut muta rezervarea.')
+          return
+        }
+        router.refresh()
+      } catch {
+        alert('Conexiune eșuată. Încearcă din nou.')
       }
-      router.refresh()
     },
     [router]
   )

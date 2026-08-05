@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { OnboardingProgress } from '@/components/onboarding-progress'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,7 @@ export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VEN
   const [items, setItems] = useState<Item[]>([])
   const [draft, setDraft] = useState<Item>({ name: '', durationMin: '', price: '', capacity: '' })
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   function addItem() {
     if (!draft.name.trim()) return
@@ -28,6 +30,7 @@ export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VEN
 
   async function handleSubmit() {
     setLoading(true)
+    setError('')
     const services = items.map((i) => ({
       name: i.name,
       durationMin: isSalon && i.durationMin ? Number(i.durationMin) : null,
@@ -35,13 +38,17 @@ export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VEN
       capacity: !isSalon && i.capacity ? Number(i.capacity) : null,
     }))
 
-    await fetch('/api/onboarding', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ step: 3, data: { services } }),
-    })
-
-    router.push('/onboarding/step-5')
+    try {
+      await fetchWithTimeout('/api/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step: 3, data: { services } }),
+      })
+      router.push('/onboarding/step-5')
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -120,6 +127,7 @@ export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VEN
           {loading ? 'Se salvează...' : 'Continuă →'}
         </Button>
       </div>
+      {error && <p className="text-sm text-red-600 mt-3 text-right">{error}</p>}
     </Card>
   )
 }

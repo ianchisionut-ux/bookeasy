@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { OnboardingProgress } from '@/components/onboarding-progress'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -24,19 +25,24 @@ export default function OnboardingStep1() {
     setLoading(true)
     setError('')
 
-    const res = await fetch('/api/onboarding', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ step: 1, data: form }),
-    })
+    try {
+      const res = await fetchWithTimeout('/api/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step: 1, data: form }),
+      })
 
-    if (!res.ok) {
-      setError('Verifică datele completate.')
+      if (!res.ok) {
+        setError('Verifică datele completate.')
+        return
+      }
+
+      router.push('/onboarding/step-2')
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    router.push('/onboarding/step-2')
   }
 
   return (

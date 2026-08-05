@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { CardInteractive, Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -46,20 +47,29 @@ export default function ServicesManager({
       ? { name: draft.name, durationMin: draft.durationMin ? Number(draft.durationMin) : null, price: draft.price ? Number(draft.price) : null }
       : { name: draft.name, capacity: draft.capacity ? Number(draft.capacity) : null, basePrice: draft.price ? Number(draft.price) : null }
 
-    await fetch(`${endpoint}/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    setEditingId(null)
-    setSaving(false)
-    router.refresh()
+    try {
+      await fetchWithTimeout(`${endpoint}/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      setEditingId(null)
+      router.refresh()
+    } catch {
+      alert('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function deleteItem(id: string) {
     if (!confirm('Ștergi definitiv acest element?')) return
-    await fetch(`${endpoint}/${id}`, { method: 'DELETE' })
-    router.refresh()
+    try {
+      await fetchWithTimeout(`${endpoint}/${id}`, { method: 'DELETE' })
+      router.refresh()
+    } catch {
+      alert('Conexiune eșuată. Încearcă din nou.')
+    }
   }
 
   async function createItem() {
@@ -69,15 +79,20 @@ export default function ServicesManager({
       ? { name: newItem.name, durationMin: newItem.durationMin ? Number(newItem.durationMin) : null, price: newItem.price ? Number(newItem.price) : null }
       : { name: newItem.name, capacity: newItem.capacity ? Number(newItem.capacity) : null, basePrice: newItem.price ? Number(newItem.price) : null }
 
-    await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    setNewItem({ name: '', durationMin: '', price: '', capacity: '' })
-    setAdding(false)
-    setSaving(false)
-    router.refresh()
+    try {
+      await fetchWithTimeout(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      setNewItem({ name: '', durationMin: '', price: '', capacity: '' })
+      setAdding(false)
+      router.refresh()
+    } catch {
+      alert('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
