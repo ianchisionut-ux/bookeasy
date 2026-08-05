@@ -13,7 +13,7 @@ export default function SettingsForm({
   business,
   workingHours,
 }: {
-  business: { name: string; contactPhone: string; city: string; address: string; publicListed: boolean }
+  business: { name: string; contactPhone: string; city: string; address: string; publicListed: boolean; slotIntervalMinutes: number | null }
   workingHours: WorkingHour[]
 }) {
   const [form, setForm] = useState(business)
@@ -90,6 +90,27 @@ export default function SettingsForm({
             />
           </button>
         </div>
+      </Card>
+
+      <Card>
+        <h2 className="font-medium mb-1">Interval între ore disponibile</h2>
+        <p className="text-sm text-gray-500 mb-3">
+          Cum se împart orele oferite clienților la rezervare.
+        </p>
+        <select
+          value={form.slotIntervalMinutes ?? 'auto'}
+          onChange={(e) => setForm({ ...form, slotIntervalMinutes: e.target.value === 'auto' ? null : Number(e.target.value) })}
+          className="input-field w-full"
+        >
+          <option value="auto">Automat — după durata fiecărui serviciu (recomandat)</option>
+          <option value="10">Fix, din 10 în 10 minute</option>
+          <option value="15">Fix, din 15 în 15 minute</option>
+          <option value="30">Fix, din 30 în 30 minute</option>
+        </select>
+        <p className="text-xs text-gray-400 mt-2">
+          Indiferent de setare, două rezervări nu se pot suprapune niciodată — verificarea se face
+          mereu pe durata reală a fiecărui serviciu.
+        </p>
       </Card>
 
       <Card>

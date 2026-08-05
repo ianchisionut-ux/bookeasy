@@ -3,7 +3,7 @@ import { put } from '@vercel/blob'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 
-const MAX_SIZE = 5 * 1024 * 1024 // 5MB
+const MAX_SIZE = 15 * 1024 * 1024 // 15MB — suficient pentru poze de calitate, fără compresie agresivă
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 export async function POST(req: NextRequest) {

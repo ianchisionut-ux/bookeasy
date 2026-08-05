@@ -11,6 +11,7 @@ const schema = z.object({
   address: z.string().optional(),
   publicListed: z.boolean(),
   teamSize: z.number().min(1).max(200).optional(),
+  slotIntervalMinutes: z.number().min(5).max(120).nullable().optional(),
   workingHours: z.array(
     z.object({ weekday: z.number(), startTime: z.string(), endTime: z.string(), closed: z.boolean() })
   ),

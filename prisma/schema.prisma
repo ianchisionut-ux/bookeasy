@@ -36,6 +36,7 @@ model Business {
   euplatescSecretKey   String?
   euplatescIsLive      Boolean  @default(false)
   timezone           String       @default("Europe/Bucharest")
+  slotIntervalMinutes Int?        // null = automat, după durata fiecărui serviciu; altfel interval fix (10/15/30...)
   onboardingStep     Int          @default(1)
   onboardingDone     Boolean      @default(false)
   stripeCustomerId   String?

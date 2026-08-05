@@ -23,7 +23,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
 
       {business.heroImageUrl && (
         <div className="relative w-full h-56 lg:h-80">
-          <Image src={business.heroImageUrl} alt={business.name} fill className="object-cover" priority />
+          <Image src={business.heroImageUrl} alt={business.name} fill className="object-cover" priority quality={95} />
         </div>
       )}
 
@@ -33,10 +33,17 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
         </div>
 
         <h1 className="text-xl sm:text-2xl font-semibold mb-1">{business.name}</h1>
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-gray-500 mb-1">
           {business.address ?? business.city}
           {business.rating ? ` · ★ ${business.rating.toString()} (${business.reviewCount ?? 0} recenzii)` : ''}
         </p>
+        {business.contactPhone && (
+          <p className="text-sm text-gray-500 mb-4">
+            <a href={`tel:${business.contactPhone}`} className="hover:text-[var(--accent)] transition">
+              📞 {business.contactPhone}
+            </a>
+          </p>
+        )}
 
         <Link href={`/${business.slug}/rezerva`} className="btn-primary inline-block mb-6">
           Rezervă acum
@@ -61,7 +68,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
             <div className="grid grid-cols-3 gap-2">
               {business.photos.map((p) => (
                 <div key={p.id} className="relative aspect-square rounded-lg overflow-hidden">
-                  <Image src={p.url} alt="" fill className="object-cover" />
+                  <Image src={p.url} alt="" fill className="object-cover" quality={90} />
                 </div>
               ))}
             </div>

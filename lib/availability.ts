@@ -58,13 +58,18 @@ export async function isIntervalBlocked(businessId: string, start: Date, end: Da
 
 async function getSingleSlotAvailability(businessId: string, service: { id: string; durationMin: number | null }, date: Date) {
   const weekday = date.getDay()
-  const workingHours = await prisma.workingHours.findMany({ where: { businessId, weekday } })
-  const existingBookings = await prisma.booking.findMany({
-    where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } },
-  })
-  const blockedSlots = await getBlockedSlotsForDay(businessId, date)
+  const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
+    prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true } }),
+    prisma.workingHours.findMany({ where: { businessId, weekday } }),
+    prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
+    getBlockedSlotsForDay(businessId, date),
+  ])
 
   const duration = service.durationMin ?? 30
+  // implicit, pasul dintre sloturi = durata serviciului ales — se "autogestionează",
+  // sloturile consecutive nu se pot suprapune niciodată din construcție. Dacă businessul
+  // a ales explicit un interval fix (ex: 10 min), îl folosim pe acela în loc
+  const step = business?.slotIntervalMinutes ?? duration
   const slots: string[] = []
 
   for (const wh of workingHours) {
@@ -78,7 +83,7 @@ async function getSingleSlotAvailability(businessId: string, service: { id: stri
       const bookedHere = existingBookings.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
 
       if (!blockedHere && !bookedHere) slots.push(cursor.toISOString())
-      cursor = addMinutes(cursor, 15) // granularitate sloturi
+      cursor = addMinutes(cursor, step)
     }
   }
 

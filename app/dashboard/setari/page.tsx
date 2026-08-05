@@ -44,6 +44,7 @@ export default async function SetariPage() {
             city: business.city ?? '',
             address: business.address ?? '',
             publicListed: business.publicListed,
+            slotIntervalMinutes: business.slotIntervalMinutes,
           }}
           workingHours={workingHours}
         />
