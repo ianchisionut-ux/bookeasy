@@ -29,7 +29,11 @@ export async function POST(req: NextRequest) {
   const filename = `${businessId}/${kind}-${Date.now()}.${ext}`
 
   try {
-    const blob = await put(filename, file, { access: 'public' })
+    const blob = await put(filename, file, {
+      access: 'public',
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+      storeId: process.env.BOOKBLOB_STORE_ID,
+    })
 
     if (kind === 'hero') {
       await prisma.business.update({ where: { id: businessId }, data: { heroImageUrl: blob.url } })

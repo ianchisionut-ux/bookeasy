@@ -3,6 +3,8 @@ import { del } from '@vercel/blob'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 
+const blobOptions = { token: process.env.BLOB_READ_WRITE_TOKEN, storeId: process.env.BOOKBLOB_STORE_ID }
+
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
@@ -13,7 +15,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (id === 'hero') {
     const business = await prisma.business.findUnique({ where: { id: businessId } })
     if (business?.heroImageUrl) {
-      await del(business.heroImageUrl).catch(() => {}) // dacă fișierul nu mai există fizic, ignorăm
+      await del(business.heroImageUrl, blobOptions).catch(() => {}) // dacă fișierul nu mai există fizic, ignorăm
       await prisma.business.update({ where: { id: businessId }, data: { heroImageUrl: null } })
     }
     return NextResponse.json({ success: true })
@@ -24,7 +26,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
-  await del(photo.url).catch(() => {})
+  await del(photo.url, blobOptions).catch(() => {})
   await prisma.businessPhoto.delete({ where: { id } })
 
   return NextResponse.json({ success: true })
