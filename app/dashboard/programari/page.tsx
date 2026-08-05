@@ -14,6 +14,8 @@ export default async function ProgramariPage({
 
   const { status, q } = await searchParams
 
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { category: true } })
+
   const [bookings, customers, services, resources, blockedSlots] = await Promise.all([
     prisma.booking.findMany({
       where: {
@@ -35,10 +37,12 @@ export default async function ProgramariPage({
 
   return (
     <ProgramariManager
+      category={business?.category ?? 'SALON'}
       bookings={bookings.map((b) => ({
         id: b.id,
         sequenceNumber: b.sequenceNumber,
         customerName: b.customer.name ?? b.customer.phone,
+        customerPhone: b.customer.phone,
         customerId: b.customerId,
         serviceName: b.service.name,
         serviceId: b.serviceId,

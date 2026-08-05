@@ -12,6 +12,7 @@ type Booking = {
   id: string
   sequenceNumber: number | null
   customerName: string
+  customerPhone: string
   customerId: string
   serviceName: string
   serviceId: string
@@ -47,13 +48,24 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> 
   NO_SHOW: 'danger',
 }
 
+// aceleași culori ca în calendar, ca statusul să se recunoască vizual instant în ambele locuri
+const STATUS_COLOR: Record<string, string> = {
+  CONFIRMED: '#16a34a',
+  PENDING: '#eab308',
+  CANCELLED: '#ef4444',
+  COMPLETED: '#6b7280',
+  NO_SHOW: '#ef4444',
+}
+
 export default function ProgramariManager({
+  category,
   bookings,
   customers,
   services,
   blockedSlots,
   filters,
 }: {
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE'
   bookings: Booking[]
   customers: { id: string; name: string }[]
   services: { id: string; name: string; durationMin: number | null }[]
@@ -118,14 +130,21 @@ export default function ProgramariManager({
 
       <Card className="p-0 overflow-hidden printable">
         <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[640px]">
+        <table className="w-full text-sm min-w-[760px]">
           <thead>
             <tr className="text-left border-b border-[var(--border-soft)]">
               <th className="py-3 px-5 font-medium text-gray-500">#</th>
               <th className="font-medium text-gray-500">Client</th>
               <th className="font-medium text-gray-500">Serviciu</th>
               <th className="font-medium text-gray-500">Data</th>
-              <th className="font-medium text-gray-500">Sală</th>
+              {category === 'SALON' ? (
+                <th className="font-medium text-gray-500">Telefon</th>
+              ) : (
+                <>
+                  <th className="font-medium text-gray-500">Sală</th>
+                  <th className="font-medium text-gray-500">Telefon</th>
+                </>
+              )}
               <th className="font-medium text-gray-500">Canal</th>
               <th className="font-medium text-gray-500">Status</th>
               <th className="font-medium text-gray-500"></th>
@@ -135,7 +154,7 @@ export default function ProgramariManager({
             {groupByWeek(bookings).map((group) => (
               <Fragment key={`week-${group.year}-${group.week}`}>
                 <tr key={`week-${group.week}-${group.year}`} className="bg-[var(--surface-muted)]">
-                  <td colSpan={8} className="px-5 py-2 text-xs font-semibold text-gray-500">
+                  <td colSpan={category === "SALON" ? 8 : 9} className="px-5 py-2 text-xs font-semibold text-gray-500">
                     Săptămâna {group.week} · {group.rangeLabel} ({group.bookings.length} programări)
                   </td>
                 </tr>
@@ -147,14 +166,21 @@ export default function ProgramariManager({
                     <td className="font-medium">{b.customerName}</td>
                     <td>{b.serviceName}</td>
                     <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })}</td>
-                    <td className="text-gray-500">{b.resourceName ?? '—'}</td>
+                    {category === 'SALON' ? (
+                      <td className="text-gray-500">{b.customerPhone}</td>
+                    ) : (
+                      <>
+                        <td className="text-gray-500">{b.resourceName ?? '—'}</td>
+                        <td className="text-gray-500">{b.customerPhone}</td>
+                      </>
+                    )}
                     <td className="text-gray-500">{CHANNEL_LABEL[b.channel] ?? b.channel}</td>
                     <td>
                       <select
                         value={b.status}
                         onChange={(e) => changeStatus(b.id, e.target.value)}
-                        className="input-field text-xs py-1"
-                        style={{ borderColor: 'transparent', background: 'transparent' }}
+                        className="text-xs py-1 px-2 rounded-full font-medium border-0"
+                        style={{ backgroundColor: `${STATUS_COLOR[b.status]}20`, color: STATUS_COLOR[b.status] }}
                       >
                         {Object.entries(STATUS_LABEL).map(([value, label]) => (
                           <option key={value} value={value}>
@@ -176,7 +202,7 @@ export default function ProgramariManager({
             ))}
             {bookings.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center text-gray-500 py-8">
+                <td colSpan={category === "SALON" ? 8 : 9} className="text-center text-gray-500 py-8">
                   Nicio programare găsită.
                 </td>
               </tr>
