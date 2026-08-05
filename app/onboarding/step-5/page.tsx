@@ -28,8 +28,7 @@ export default function OnboardingStep5() {
       <h1 className="text-xl font-semibold mb-1">Aproape gata!</h1>
       <p className="text-sm text-gray-500 mb-6">
         Echipa bookeasy.ro conectează canalele (WhatsApp, Instagram, Facebook) pentru tine, ca
-        botul să înceapă să răspundă clienților. Din Setări → Canale poți opri/porni oricând un
-        canal deja conectat.
+        botul să înceapă să răspundă clienților.
       </p>
 
       <div className="rounded-2xl bg-[var(--accent-soft)] p-4 text-sm text-[var(--accent)]">
