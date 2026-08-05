@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card } from '@/components/ui/card'
 import Image from 'next/image'
 
@@ -26,13 +27,19 @@ export default function BusinessPhotosUploader({
     formData.append('file', file)
     formData.append('kind', kind)
 
-    const res = await fetch('/api/business/photos', { method: 'POST', body: formData })
-    if (!res.ok) {
-      const data = await res.json()
-      setError(data.error ?? 'Eroare la încărcare.')
+    try {
+      const res = await fetchWithTimeout('/api/business/photos', { method: 'POST', body: formData }, 60000)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error ?? 'Eroare la încărcare.')
+        return
+      }
+      router.refresh()
+    } catch {
+      setError('Conexiune eșuată sau upload prea lent. Verifică internetul și încearcă din nou.')
+    } finally {
+      setUploading(false)
     }
-    setUploading(false)
-    router.refresh()
   }
 
   function handleDrop(e: React.DragEvent, kind: 'hero' | 'gallery') {
@@ -44,14 +51,22 @@ export default function BusinessPhotosUploader({
 
   async function removeHero() {
     if (!confirm('Ștergi poza de copertă?')) return
-    await fetch('/api/business/photos/hero', { method: 'DELETE' })
-    router.refresh()
+    try {
+      await fetchWithTimeout('/api/business/photos/hero', { method: 'DELETE' })
+      router.refresh()
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+    }
   }
 
   async function removeGalleryPhoto(id: string) {
     if (!confirm('Ștergi această poză?')) return
-    await fetch(`/api/business/photos/${id}`, { method: 'DELETE' })
-    router.refresh()
+    try {
+      await fetchWithTimeout(`/api/business/photos/${id}`, { method: 'DELETE' })
+      router.refresh()
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+    }
   }
 
   return (

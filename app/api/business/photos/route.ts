@@ -28,13 +28,21 @@ export async function POST(req: NextRequest) {
   const ext = file.name.split('.').pop() ?? 'jpg'
   const filename = `${businessId}/${kind}-${Date.now()}.${ext}`
 
-  const blob = await put(filename, file, { access: 'public' })
+  try {
+    const blob = await put(filename, file, { access: 'public' })
 
-  if (kind === 'hero') {
-    await prisma.business.update({ where: { id: businessId }, data: { heroImageUrl: blob.url } })
-  } else {
-    await prisma.businessPhoto.create({ data: { businessId, url: blob.url } })
+    if (kind === 'hero') {
+      await prisma.business.update({ where: { id: businessId }, data: { heroImageUrl: blob.url } })
+    } else {
+      await prisma.businessPhoto.create({ data: { businessId, url: blob.url } })
+    }
+
+    return NextResponse.json({ url: blob.url })
+  } catch (err: any) {
+    console.error('Eroare la upload poză:', err)
+    const detail = err?.message?.includes('BLOB_READ_WRITE_TOKEN') || err?.message?.includes('token')
+      ? 'Vercel Blob Storage nu e configurat — mergi în Vercel → Storage → Create Database → Blob.'
+      : `Upload eșuat: ${err?.message ?? 'eroare necunoscută'}`
+    return NextResponse.json({ error: detail }, { status: 500 })
   }
-
-  return NextResponse.json({ url: blob.url })
 }
