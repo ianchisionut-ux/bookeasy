@@ -65,6 +65,16 @@ export default function BookingFlow({
   }
 
   async function selectDate(d: string) {
+    // atributul HTML `min` nu e mereu respectat de picker-ele native pe mobil —
+    // verificăm explicit și aici, ca să nu se poată rezerva niciodată o dată trecută
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const picked = new Date(`${d}T00:00:00`)
+    if (picked < todayStart) {
+      setError('Nu poți alege o dată din trecut. Alege azi sau o dată viitoare.')
+      return
+    }
+
     setDate(d)
     setLoadingSlots(true)
     setError('')
@@ -186,6 +196,7 @@ export default function BookingFlow({
             onChange={(e) => selectDate(e.target.value)}
             className="input-field w-full"
           />
+          {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
           <div className="flex justify-start mt-4">
             <Button variant="secondary" onClick={() => setStep('SERVICE')}>
               ← Înapoi

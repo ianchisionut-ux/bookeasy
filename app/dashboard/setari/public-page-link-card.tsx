@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 
-export function PublicPageLinkCard({ slug }: { slug: string }) {
+function CopyableLink({ path, label }: { path: string; label: string }) {
   const [copied, setCopied] = useState(false)
-  const url = typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : `/${slug}`
+  const url = typeof window !== 'undefined' ? `${window.location.origin}${path}` : path
 
   function copy() {
     navigator.clipboard.writeText(url)
@@ -14,16 +14,28 @@ export function PublicPageLinkCard({ slug }: { slug: string }) {
   }
 
   return (
-    <Card>
-      <h2 className="font-medium mb-1">Pagina ta publică</h2>
-      <p className="text-sm text-gray-500 mb-3">Link-ul pe care îl trimiți clienților sau îl pui pe rețele sociale.</p>
+    <div>
+      <p className="text-xs text-gray-500 mb-1">{label}</p>
       <div className="flex items-center gap-2">
-        <a href={`/${slug}`} target="_blank" rel="noopener noreferrer" className="input-field flex-1 truncate text-[var(--accent)]">
-          bookeasy.ro/{slug}
+        <a href={path} target="_blank" rel="noopener noreferrer" className="input-field flex-1 truncate text-[var(--accent)]">
+          bookeasy.ro{path}
         </a>
         <button onClick={copy} className="btn-secondary text-sm whitespace-nowrap">
           {copied ? 'Copiat!' : 'Copiază'}
         </button>
+      </div>
+    </div>
+  )
+}
+
+export function PublicPageLinkCard({ slug }: { slug: string }) {
+  return (
+    <Card>
+      <h2 className="font-medium mb-1">Pagina ta publică</h2>
+      <p className="text-sm text-gray-500 mb-3">Link-urile pe care le trimiți clienților sau le pui pe rețele sociale.</p>
+      <div className="flex flex-col gap-3">
+        <CopyableLink path={`/${slug}`} label="Profil afacere" />
+        <CopyableLink path={`/${slug}/rezerva`} label="Rezervare directă" />
       </div>
     </Card>
   )

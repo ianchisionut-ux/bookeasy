@@ -69,6 +69,8 @@ enum PaymentProcessor {
 enum BusinessType {
   SALON
   EVENT_VENUE
+  HOTEL
+  PENSIUNE
 }
 
 model User {

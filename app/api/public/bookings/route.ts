@@ -32,6 +32,9 @@ export async function POST(req: NextRequest) {
   }
 
   const startAt = new Date(parsed.data.startAt)
+  if (startAt < new Date()) {
+    return NextResponse.json({ error: 'Nu poți rezerva un interval din trecut.' }, { status: 400 })
+  }
   const endAt = new Date(startAt.getTime() + (service.durationMin ?? 30) * 60000)
 
   // verificare finală "ultima clipă" — cineva ar fi putut ocupa slotul chiar acum

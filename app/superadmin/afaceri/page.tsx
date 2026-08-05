@@ -43,7 +43,15 @@ export default async function SuperAdminBusinesses() {
                     {b.city} · /{b.slug}
                   </p>
                 </td>
-                <td>{b.category === 'SALON' ? 'Salon' : 'Spații evenimente'}</td>
+                <td>
+                  {b.category === 'SALON'
+                    ? 'Salon'
+                    : b.category === 'EVENT_VENUE'
+                      ? 'Spații evenimente'
+                      : b.category === 'HOTEL'
+                        ? 'Hotel'
+                        : 'Pensiune'}
+                </td>
                 <td>
                   {b.subscription ? (
                     <Pill tone={b.subscription.status === 'ACTIVE' ? 'success' : b.subscription.status === 'TRIALING' ? 'accent' : 'warning'}>

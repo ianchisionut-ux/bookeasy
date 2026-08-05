@@ -17,6 +17,12 @@ export async function GET(req: NextRequest) {
   }
 
   const date = new Date(`${dateParam}T00:00:00`)
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  if (date < todayStart) {
+    return NextResponse.json({ slots: [] })
+  }
+
   const slots = await getAvailableSlots(businessId, serviceId, date)
 
   return NextResponse.json({ slots })

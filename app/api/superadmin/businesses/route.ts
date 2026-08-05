@@ -10,7 +10,7 @@ const schema = z.object({
   slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug-ul poate conține doar litere mici, cifre și cratime.'),
   name: z.string().min(2),
   email: z.string().email(),
-  category: z.enum(['SALON', 'EVENT_VENUE']),
+  category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE']),
 })
 
 export async function POST(req: NextRequest) {

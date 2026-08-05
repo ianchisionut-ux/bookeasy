@@ -15,6 +15,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
   })
 
   if (!business || !business.publicListed) notFound()
+  if (business.category === 'HOTEL' || business.category === 'PENSIUNE') notFound() // în dezvoltare
 
   return (
     <>

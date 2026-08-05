@@ -98,7 +98,15 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
               ) : (
                 <h1 className="text-xl font-semibold">{business.name}</h1>
               )}
-              <Pill tone="accent">{business.category === 'SALON' ? 'Salon' : 'Spații evenimente'}</Pill>
+              <Pill tone="accent">
+                {business.category === 'SALON'
+                  ? 'Salon'
+                  : business.category === 'EVENT_VENUE'
+                    ? 'Spații evenimente'
+                    : business.category === 'HOTEL'
+                      ? 'Hotel'
+                      : 'Pensiune'}
+              </Pill>
               <Pill tone={business.accountActive ? 'success' : 'danger'}>{business.accountActive ? 'Activ' : 'Dezactivat'}</Pill>
             </div>
             <p className="text-sm text-gray-500">

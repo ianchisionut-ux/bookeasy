@@ -11,7 +11,9 @@ export async function GET(req: NextRequest) {
       publicListed: true,
       latitude: { not: null },
       longitude: { not: null },
-      ...(category ? { category: category as any } : {}),
+      // Hotel/Pensiune există în sistem (pot fi create din superadmin), dar nu apar
+      // încă public — partea aia de produs nu e gata
+      category: { in: category ? [category as any] : ['SALON', 'EVENT_VENUE'] },
       ...(city ? { city: { equals: city, mode: 'insensitive' } } : {}),
     },
     select: {

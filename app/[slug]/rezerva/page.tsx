@@ -12,6 +12,7 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
   })
 
   if (!business || !business.publicListed || !business.accountActive) notFound()
+  if (business.category === 'HOTEL' || business.category === 'PENSIUNE') notFound() // în dezvoltare
 
   return (
     <>
