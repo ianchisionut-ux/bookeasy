@@ -13,7 +13,7 @@ export default function SettingsForm({
   business,
   workingHours,
 }: {
-  business: { name: string; contactPhone: string; city: string; address: string; publicListed: boolean; slotIntervalMinutes: number | null }
+  business: { name: string; contactPhone: string; city: string; address: string; publicListed: boolean; slotIntervalMinutes: number | null; minLeadTimeMinutes: number }
   workingHours: WorkingHour[]
 }) {
   const [form, setForm] = useState(business)
@@ -111,6 +111,26 @@ export default function SettingsForm({
           Indiferent de setare, două rezervări nu se pot suprapune niciodată — verificarea se face
           mereu pe durata reală a fiecărui serviciu.
         </p>
+      </Card>
+
+      <Card>
+        <h2 className="font-medium mb-1">Interval minim pentru rezervări din exterior</h2>
+        <p className="text-sm text-gray-500 mb-3">
+          Rezervările venite prin bot (WhatsApp/Instagram/Facebook) sau de pe site nu se pot face
+          mai aproape de acest interval — ca să ai timp să vezi programările. La fel și anulările
+          făcute de clienți. Rezervările create manual de tine din dashboard nu sunt afectate — le
+          poți face oricând, chiar cu 30 de minute înainte.
+        </p>
+        <select
+          value={form.minLeadTimeMinutes}
+          onChange={(e) => setForm({ ...form, minLeadTimeMinutes: Number(e.target.value) })}
+          className="input-field w-full"
+        >
+          <option value="60">Minim 1 oră înainte</option>
+          <option value="90">Minim 1 oră 30 min înainte</option>
+          <option value="120">Minim 2 ore înainte (recomandat)</option>
+          <option value="180">Minim 3 ore înainte</option>
+        </select>
       </Card>
 
       <Card>

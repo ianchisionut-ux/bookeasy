@@ -39,6 +39,8 @@ export async function isSlotStillAvailable(businessId: string, serviceId: string
   const service = await prisma.service.findUnique({ where: { id: serviceId } })
   if (!service) return false
 
+  if (await isWithinLeadTime(businessId, startAt)) return false
+
   const duration = service.durationMin ?? 30
   const endAt = addMinutes(startAt, duration)
 
@@ -56,10 +58,20 @@ export async function isIntervalBlocked(businessId: string, start: Date, end: Da
   return isRangeBlocked(businessId, start, end)
 }
 
+// verifică dacă un moment e prea aproape de acum, față de limita minimă a business-ului —
+// folosită la crearea și la anularea rezervărilor venite din exterior (bot, site public).
+// Rezervările făcute manual de admin din dashboard NU folosesc această funcție — el știe
+// cum gestionează programul și poate adăuga chiar și cu 30 min înainte.
+export async function isWithinLeadTime(businessId: string, momentToCheck: Date): Promise<boolean> {
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { minLeadTimeMinutes: true } })
+  const minLeadMs = (business?.minLeadTimeMinutes ?? 120) * 60 * 1000
+  return momentToCheck.getTime() - Date.now() < minLeadMs
+}
+
 async function getSingleSlotAvailability(businessId: string, service: { id: string; durationMin: number | null }, date: Date) {
   const weekday = date.getDay()
   const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
-    prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true } }),
+    prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
     prisma.workingHours.findMany({ where: { businessId, weekday } }),
     prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
     getBlockedSlotsForDay(businessId, date),
@@ -70,6 +82,11 @@ async function getSingleSlotAvailability(businessId: string, service: { id: stri
   // sloturile consecutive nu se pot suprapune niciodată din construcție. Dacă businessul
   // a ales explicit un interval fix (ex: 10 min), îl folosim pe acela în loc
   const step = business?.slotIntervalMinutes ?? duration
+  // sloturile prea apropiate de acum nu sunt oferite deloc clienților din exterior —
+  // funcția asta e folosită DOAR de bot și de pagina publică de rezervare, niciodată
+  // de dashboard-ul admin, deci e sigur să aplicăm limita mereu, aici
+  const minLeadMs = (business?.minLeadTimeMinutes ?? 120) * 60 * 1000
+  const earliestAllowed = new Date(Date.now() + minLeadMs)
   const slots: string[] = []
 
   for (const wh of workingHours) {
@@ -79,10 +96,11 @@ async function getSingleSlotAvailability(businessId: string, service: { id: stri
     while (addMinutes(cursor, duration) <= end) {
       const slotEnd = addMinutes(cursor, duration)
 
+      const tooSoon = cursor < earliestAllowed
       const blockedHere = blockedSlots.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
       const bookedHere = existingBookings.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
 
-      if (!blockedHere && !bookedHere) slots.push(cursor.toISOString())
+      if (!tooSoon && !blockedHere && !bookedHere) slots.push(cursor.toISOString())
       cursor = addMinutes(cursor, step)
     }
   }

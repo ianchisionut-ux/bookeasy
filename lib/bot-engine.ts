@@ -59,24 +59,29 @@ export async function processIncomingMessage({
 }
 
 async function handleBookingCancellation(businessId: string, channel: string, externalUserId: string) {
-  const upcomingBooking = await prisma.booking.findFirst({
-    where: {
-      businessId,
-      status: 'CONFIRMED',
-      startAt: { gte: new Date() },
-      customer: { phone: externalUserId },
-    },
-    include: { service: true },
-    orderBy: { startAt: 'asc' },
-  })
+  const [upcomingBooking, business] = await Promise.all([
+    prisma.booking.findFirst({
+      where: {
+        businessId,
+        status: 'CONFIRMED',
+        startAt: { gte: new Date() },
+        customer: { phone: externalUserId },
+      },
+      include: { service: true },
+      orderBy: { startAt: 'asc' },
+    }),
+    prisma.business.findUnique({ where: { id: businessId }, select: { minLeadTimeMinutes: true } }),
+  ])
 
   if (!upcomingBooking) {
     return 'Nu am găsit nicio programare activă pe numărul tău. Dacă ai nevoie de ajutor, scrie-ne aici.'
   }
 
-  const hoursUntilBooking = (upcomingBooking.startAt.getTime() - Date.now()) / (1000 * 60 * 60)
-  if (hoursUntilBooking < 2) {
-    return 'Programarea ta e în mai puțin de 2 ore, te rugăm să suni direct pentru anulare.'
+  const minLeadMinutes = business?.minLeadTimeMinutes ?? 120
+  const minutesUntilBooking = (upcomingBooking.startAt.getTime() - Date.now()) / (1000 * 60)
+  if (minutesUntilBooking < minLeadMinutes) {
+    const hours = Math.round(minLeadMinutes / 60)
+    return `Programarea ta e prea aproape (sub ${hours} ${hours === 1 ? 'oră' : 'ore'}) pentru anulare automată — te rugăm să suni direct.`
   }
 
   await prisma.booking.update({ where: { id: upcomingBooking.id }, data: { status: 'CANCELLED' } })

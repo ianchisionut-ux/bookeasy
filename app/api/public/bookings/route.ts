@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { isSlotStillAvailable, isIntervalBlocked } from '@/lib/availability'
+import { isSlotStillAvailable, isIntervalBlocked, isWithinLeadTime } from '@/lib/availability'
 import { getNextSequenceNumber } from '@/lib/booking-number'
 import { createDepositCheckoutLink } from '@/lib/payments/create-checkout'
 import { z } from 'zod'
@@ -45,6 +45,14 @@ export async function POST(req: NextRequest) {
   let resourceId: string | null = null
 
   if (service.type === 'APPOINTMENT') {
+    if (await isWithinLeadTime(businessId, startAt)) {
+      const business = await prisma.business.findUnique({ where: { id: businessId }, select: { minLeadTimeMinutes: true } })
+      const hours = Math.round((business?.minLeadTimeMinutes ?? 120) / 60)
+      return NextResponse.json(
+        { error: `Rezervările online se fac cu minim ${hours} ${hours === 1 ? 'oră' : 'ore'} înainte. Sună direct pentru intervale mai apropiate.` },
+        { status: 400 }
+      )
+    }
     const stillFree = await isSlotStillAvailable(businessId, serviceId, startAt)
     if (!stillFree) {
       return NextResponse.json({ error: 'Ne pare rău, intervalul tocmai a fost ocupat. Alege altă oră.' }, { status: 409 })
