@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
@@ -40,35 +39,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }
   }
 
+  const navItems = [
+    ...NAV_ITEMS,
+    ...(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin' }] : []),
+  ]
+
   return (
-    <ResponsiveShell logoHref="/dashboard" logoLabel="bookeasy.ro"
-      content={
-        <>
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-white hover:shadow-sm transition block"
-            >
-              {item.label}
-            </Link>
-          ))}
-
-          {isSuperAdmin && (
-            <>
-              <div className="h-px bg-[var(--border-soft)] my-2" />
-              <Link
-                href="/superadmin"
-                className="px-3 py-2.5 rounded-xl text-sm font-medium text-[var(--accent)] hover:bg-white hover:shadow-sm transition block"
-              >
-                Super Admin
-              </Link>
-            </>
-          )}
-
-          <SidebarUserBlock label={userEmail || 'Cont'} />
-        </>
-      }
+    <ResponsiveShell
+      logoHref="/dashboard"
+      logoLabel="bookeasy.ro"
+      navItems={navItems}
+      accountContent={<SidebarUserBlock label={userEmail || 'Cont'} />}
     >
       {children}
     </ResponsiveShell>

@@ -93,6 +93,14 @@ body {
 }
 
 /* Printare — ascunde navigarea și acțiunile, păstrează doar conținutul */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @media print {
   aside,
   .no-print,
