@@ -211,6 +211,20 @@ export default function CalendarClient({
           views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
           min={calendarMin}
           max={calendarMax}
+          messages={{
+            today: 'Azi',
+            previous: '<',
+            next: '>',
+            month: 'Lună',
+            week: 'Săptămână',
+            day: 'Zi',
+            agenda: 'Agendă',
+            date: 'Dată',
+            time: 'Oră',
+            event: 'Eveniment',
+            noEventsInRange: 'Nicio rezervare în acest interval.',
+            showMore: (count: number) => `+${count} mai multe`,
+          }}
           formats={{
             dayRangeHeaderFormat: ({ start, end }: any) =>
               `Săpt. ${getISOWeekNumber(start)} · ${format(start, 'd MMM', { locale: ro })} – ${format(end, 'd MMM', { locale: ro })}`,
