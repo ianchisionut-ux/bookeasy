@@ -37,6 +37,9 @@ model Business {
   euplatescIsLive      Boolean  @default(false)
   timezone           String       @default("Europe/Bucharest")
   slotIntervalMinutes Int?        // null = automat, după durata fiecărui serviciu; altfel interval fix (10/15/30...)
+  planName           String?      // numele planului, gestionat manual de admin până se configurează plata online
+  billingStatus      BillingStatus @default(NEPLATIT)
+  billingNote        String?      // notă liberă pentru superadmin (ex: "plătit cash august")
   onboardingStep     Int          @default(1)
   onboardingDone     Boolean      @default(false)
   stripeCustomerId   String?
@@ -59,6 +62,13 @@ model Business {
   blockedSlots       BlockedSlot[]
   subscription       Subscription?
   missedMessageAlerts MissedMessageAlert[]
+}
+
+enum BillingStatus {
+  GRATUIT   // cont demo/de test, nu se taxează
+  NEPLATIT  // implicit — cont nou, încă nu s-a stabilit plata
+  PLATIT
+  RESTANT
 }
 
 enum PaymentProcessor {

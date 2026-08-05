@@ -178,15 +178,17 @@ export default function CalendarClient({
 
   return (
     <div className="h-[calc(100vh-56px)] lg:h-[calc(100vh-40px)] p-4 lg:p-8 flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-        <h1 className="text-xl lg:text-2xl font-semibold">Calendar rezervări</h1>
-        <div className="flex items-center gap-3">
-          <p className="text-xs text-gray-500">
-            {blockMode
-              ? 'Selectează cu mouse-ul un interval ca să-l blochezi — click pe o zonă blocată pentru a o debloca'
-              : 'Click pe o rezervare pentru detalii/editare'}
-            {busy && <span className="text-gray-400"> · se actualizează...</span>}
-          </p>
+      <div className="mb-4">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <h1 className="text-xl lg:text-2xl font-semibold">Calendar rezervări</h1>
+        </div>
+        <p className="text-xs text-gray-500 mb-3">
+          {blockMode
+            ? 'Selectează cu mouse-ul un interval ca să-l blochezi — click pe o zonă blocată pentru a o debloca'
+            : 'Click pe o rezervare pentru detalii/editare'}
+          {busy && <span className="text-gray-400"> · se actualizează...</span>}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setBlockMode((v) => !v)}
             className="btn-secondary text-sm whitespace-nowrap"

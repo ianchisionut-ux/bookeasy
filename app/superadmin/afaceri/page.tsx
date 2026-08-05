@@ -5,9 +5,31 @@ import Link from 'next/link'
 import BusinessRowActions from './business-row-actions'
 import CreateBusinessButton from './create-business-button'
 
-export default async function SuperAdminBusinesses() {
+const STATUS_LABEL: Record<string, string> = {
+  GRATUIT: 'Gratuit',
+  NEPLATIT: 'Neplătit',
+  PLATIT: 'Plătit',
+  RESTANT: 'Restant',
+}
+
+const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
+  GRATUIT: 'neutral',
+  NEPLATIT: 'warning',
+  PLATIT: 'success',
+  RESTANT: 'danger',
+}
+
+export default async function SuperAdminBusinesses({
+  searchParams,
+}: {
+  searchParams: Promise<{ neplatite?: string }>
+}) {
+  const { neplatite } = await searchParams
+  const onlyUnpaid = neplatite === '1'
+
   const businesses = await prisma.business.findMany({
-    include: { subscription: { include: { plan: true } }, _count: { select: { bookings: true, users: true } } },
+    where: onlyUnpaid ? { billingStatus: { in: ['NEPLATIT', 'RESTANT'] } } : {},
+    include: { _count: { select: { bookings: true, users: true } } },
     orderBy: { createdAt: 'desc' },
   })
 
@@ -17,16 +39,25 @@ export default async function SuperAdminBusinesses() {
         <h1 className="text-2xl font-semibold">Afaceri</h1>
         <CreateBusinessButton />
       </div>
-      <p className="text-sm text-gray-500 mb-6">{businesses.length} afaceri înregistrate</p>
+      <p className="text-sm text-gray-500 mb-4">{businesses.length} afaceri {onlyUnpaid ? 'neplătite' : 'înregistrate'}</p>
 
-      <Card className="p-0 overflow-hidden">
+      <div className="flex gap-2 mb-4">
+        <Link href="/superadmin/afaceri" className={`text-sm px-3 py-1.5 rounded-full border ${!onlyUnpaid ? 'bg-gray-900 text-white' : ''}`}>
+          Toate
+        </Link>
+        <Link href="/superadmin/afaceri?neplatite=1" className={`text-sm px-3 py-1.5 rounded-full border ${onlyUnpaid ? 'bg-red-600 text-white border-red-600' : ''}`}>
+          Doar neplătite
+        </Link>
+      </div>
+
+      <Card className="p-0 overflow-hidden printable">
         <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="text-left border-b border-[var(--border-soft)]">
               <th className="py-3 px-5 font-medium text-gray-500">Nume</th>
               <th className="font-medium text-gray-500">Categorie</th>
-              <th className="font-medium text-gray-500">Abonament</th>
+              <th className="font-medium text-gray-500">Plată</th>
               <th className="font-medium text-gray-500">Rezervări</th>
               <th className="font-medium text-gray-500">Public</th>
               <th className="font-medium text-gray-500"></th>
@@ -53,13 +84,10 @@ export default async function SuperAdminBusinesses() {
                         : 'Pensiune'}
                 </td>
                 <td>
-                  {b.subscription ? (
-                    <Pill tone={b.subscription.status === 'ACTIVE' ? 'success' : b.subscription.status === 'TRIALING' ? 'accent' : 'warning'}>
-                      {b.subscription.plan.displayName} · {b.subscription.status}
-                    </Pill>
-                  ) : (
-                    <Pill tone="neutral">Fără abonament</Pill>
-                  )}
+                  <Pill tone={STATUS_TONE[b.billingStatus]}>
+                    {b.planName ? `${b.planName} · ` : ''}
+                    {STATUS_LABEL[b.billingStatus]}
+                  </Pill>
                 </td>
                 <td>{b._count.bookings}</td>
                 <td>
@@ -70,6 +98,13 @@ export default async function SuperAdminBusinesses() {
                 </td>
               </tr>
             ))}
+            {businesses.length === 0 && (
+              <tr>
+                <td colSpan={6} className="text-center text-gray-500 py-8">
+                  Nicio afacere în această categorie.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
         </div>

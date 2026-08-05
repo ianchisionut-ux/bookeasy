@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import { BackLink } from '@/components/ui/back-link'
 import BusinessAdminPanel from './business-admin-panel'
+import BillingSection from './billing-section'
 
 export default async function SuperAdminBusinessDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -11,7 +12,6 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
       channels: true,
       users: { where: { role: 'OWNER' } },
       _count: { select: { bookings: true } },
-      subscription: { include: { plan: true } },
     },
   })
 
@@ -30,27 +30,36 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
         <BackLink href="/superadmin/afaceri" label="Înapoi la afaceri" />
       </div>
 
-      <BusinessAdminPanel
-        business={{
-          id: business.id,
-          slug: business.slug,
-          name: business.name,
-          category: business.category,
-          accountActive: business.accountActive,
-          publicListed: business.publicListed,
-          ownerEmail: business.users[0]?.email ?? null,
-          bookingsCount: business._count.bookings,
-          revenue: totalRevenue,
-          planName: business.subscription?.plan.displayName ?? null,
-        }}
-        channels={business.channels.map((c) => ({
-          id: c.id,
-          type: c.type,
-          externalId: c.externalId,
-          wabaId: c.wabaId,
-          status: c.status,
-        }))}
-      />
+      <div className="flex flex-col gap-5">
+        <BusinessAdminPanel
+          business={{
+            id: business.id,
+            slug: business.slug,
+            name: business.name,
+            category: business.category,
+            accountActive: business.accountActive,
+            publicListed: business.publicListed,
+            ownerEmail: business.users[0]?.email ?? null,
+            bookingsCount: business._count.bookings,
+            revenue: totalRevenue,
+            planName: business.planName,
+          }}
+          channels={business.channels.map((c) => ({
+            id: c.id,
+            type: c.type,
+            externalId: c.externalId,
+            wabaId: c.wabaId,
+            status: c.status,
+          }))}
+        />
+
+        <BillingSection
+          businessId={business.id}
+          initialPlanName={business.planName}
+          initialStatus={business.billingStatus}
+          initialNote={business.billingNote}
+        />
+      </div>
     </div>
   )
 }

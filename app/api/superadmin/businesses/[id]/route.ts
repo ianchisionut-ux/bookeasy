@@ -6,6 +6,9 @@ import { z } from 'zod'
 const patchSchema = z.object({
   name: z.string().min(2).optional(),
   category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE']).optional(),
+  planName: z.string().nullable().optional(),
+  billingStatus: z.enum(['GRATUIT', 'NEPLATIT', 'PLATIT', 'RESTANT']).optional(),
+  billingNote: z.string().nullable().optional(),
   publicListed: z.boolean().optional(),
   accountActive: z.boolean().optional(),
 })

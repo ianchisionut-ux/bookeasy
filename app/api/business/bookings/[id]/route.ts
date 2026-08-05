@@ -34,9 +34,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const newStart = new Date(parsed.data.startAt)
     const newEnd = parsed.data.endAt ? new Date(parsed.data.endAt) : new Date(newStart.getTime() + (owned.endAt.getTime() - owned.startAt.getTime()))
 
-    // blocăm doar dacă chiar se schimbă ORA (mutare) către trecut — nu blocăm actualizări
-    // de status pe rezervări deja trecute (ex: marcarea ca "finalizată"/"neprezentare" după ce a avut loc)
-    if (newStart < new Date()) {
+    // verificăm "mutare în trecut" doar dacă ora CHIAR se schimbă — editarea statusului
+    // (ex: marcare "Finalizată") pe o rezervare deja trecută retrimite același startAt
+    // neschimbat și nu trebuie blocată niciodată
+    const startAtActuallyChanged = newStart.getTime() !== owned.startAt.getTime()
+
+    if (startAtActuallyChanged && newStart < new Date()) {
       return NextResponse.json({ error: 'Nu poți muta o rezervare într-un interval din trecut.' }, { status: 400 })
     }
 
