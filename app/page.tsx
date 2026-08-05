@@ -2,32 +2,33 @@ import Image from 'next/image'
 import Link from 'next/link'
 import MapClient from './harta/map-client'
 import AccessRequestForm from '@/components/access-request-form'
+import { MessageCircle, Bot, CalendarDays, Bell, Clock, CreditCard, Star, BarChart3, Globe } from 'lucide-react'
 
 const STEPS = [
   {
-    icon: '💬',
+    icon: MessageCircle,
     title: 'Clientul scrie pe WhatsApp, Instagram sau Facebook',
     desc: 'Fără app de instalat, fără cont creat — clientul scrie exact cum ar scrie oricui altcuiva.',
   },
   {
-    icon: '🤖',
+    icon: Bot,
     title: 'Botul preia conversația',
     desc: 'Întreabă ce serviciu vrea, oferă ore libere, confirmă rezervarea — totul automat, în română.',
   },
   {
-    icon: '📅',
+    icon: CalendarDays,
     title: 'Tu vezi totul într-un calendar',
     desc: 'Rezervări din toate canalele, într-un singur loc. Nimic de introdus manual.',
   },
 ]
 
 const FEATURES = [
-  { icon: '🔔', title: 'Reamintiri automate', desc: 'Clientul primește mesaj înainte de programare — mai puține neprezentări.' },
-  { icon: '🗓️', title: 'Program flexibil', desc: 'Ore libere calculate automat, după programul tău și durata fiecărui serviciu.' },
-  { icon: '💳', title: 'Plată online, opțional', desc: 'Avans la rezervare, dacă vrei — cardul se leagă simplu de contul tău.' },
-  { icon: '⭐', title: 'Recenzii verificate', desc: 'Doar clienți care chiar au avut o programare pot lăsa recenzie.' },
-  { icon: '📊', title: 'Statistici clare', desc: 'Vezi de unde vin clienții, care sunt orele aglomerate, ce servicii se cer.' },
-  { icon: '🌐', title: 'Pagină publică proprie', desc: 'Un link de trimis clienților sau de pus pe rețele sociale, gata de rezervat.' },
+  { icon: Bell, title: 'Reamintiri automate', desc: 'Clientul primește mesaj înainte de programare — mai puține neprezentări.' },
+  { icon: Clock, title: 'Program flexibil', desc: 'Ore libere calculate automat, după programul tău și durata fiecărui serviciu.' },
+  { icon: CreditCard, title: 'Plată online, opțional', desc: 'Avans la rezervare, dacă vrei — cardul se leagă simplu de contul tău.' },
+  { icon: Star, title: 'Recenzii verificate', desc: 'Doar clienți care chiar au avut o programare pot lăsa recenzie.' },
+  { icon: BarChart3, title: 'Statistici clare', desc: 'Vezi de unde vin clienții, care sunt orele aglomerate, ce servicii se cer.' },
+  { icon: Globe, title: 'Pagină publică proprie', desc: 'Un link de trimis clienților sau de pus pe rețele sociale, gata de rezervat.' },
 ]
 
 export default function HomePage() {
@@ -64,7 +65,9 @@ export default function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {STEPS.map((s, i) => (
               <div key={i} className="text-center">
-                <div className="text-3xl mb-3">{s.icon}</div>
+                <div className="w-12 h-12 rounded-full bg-[var(--surface-muted)] flex items-center justify-center mx-auto mb-3">
+                  <s.icon size={22} strokeWidth={1.75} className="text-gray-500" />
+                </div>
                 <h3 className="font-medium mb-1">{s.title}</h3>
                 <p className="text-sm text-gray-500">{s.desc}</p>
               </div>
@@ -80,7 +83,9 @@ export default function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {FEATURES.map((f, i) => (
               <div key={i} className="card p-5">
-                <div className="text-2xl mb-2">{f.icon}</div>
+                <div className="w-9 h-9 rounded-lg bg-[var(--surface-muted)] flex items-center justify-center mb-3">
+                  <f.icon size={18} strokeWidth={1.75} className="text-gray-500" />
+                </div>
                 <h3 className="font-medium mb-1">{f.title}</h3>
                 <p className="text-sm text-gray-500">{f.desc}</p>
               </div>
