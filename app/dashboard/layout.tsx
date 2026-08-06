@@ -4,6 +4,11 @@ import { redirect } from 'next/navigation'
 import { SidebarUserBlock } from '@/components/sidebar-user-block'
 import { ResponsiveShell } from '@/components/responsive-shell'
 
+// layout-ul se randează mereu din nou, la fiecare cerere — fără nicio cache, ca
+// setări cum e culoarea businessului să apară imediat, nu doar la un moment ulterior
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 const NAV_ITEMS = [
   { href: '/dashboard/calendar', label: 'Calendar' },
   { href: '/dashboard/programari', label: 'Programări' },
@@ -26,10 +31,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/superadmin')
   }
 
+  let brandColor: string | null = null
   if (businessId) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
-      select: { accountActive: true, onboardingDone: true, onboardingStep: true },
+      select: { accountActive: true, onboardingDone: true, onboardingStep: true, brandColor: true },
     })
     if (business && !business.accountActive) {
       redirect('/cont-suspendat')
@@ -37,6 +43,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     if (business && !business.onboardingDone) {
       redirect(`/onboarding/step-${business.onboardingStep}`)
     }
+    brandColor = business?.brandColor ?? null
   }
 
   const navItems = [
@@ -49,6 +56,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       logoHref="/dashboard"
       logoLabel="bookeasy.ro"
       navItems={navItems}
+      accentColor={brandColor ?? undefined}
       accountContent={<SidebarUserBlock label={userEmail || 'Cont'} />}
     >
       {children}
