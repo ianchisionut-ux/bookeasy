@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
@@ -16,6 +17,7 @@ const PRESET_COLORS = [
 ]
 
 export default function BrandColorCard({ initialColor }: { initialColor: string | null }) {
+  const router = useRouter()
   const [color, setColor] = useState<string | null>(initialColor)
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<number | null>(null)
@@ -36,6 +38,7 @@ export default function BrandColorCard({ initialColor }: { initialColor: string 
         return
       }
       setSavedAt(Date.now())
+      router.refresh()
     } catch {
       setColor(previous)
       alert('Conexiune eșuată. Încearcă din nou.')
