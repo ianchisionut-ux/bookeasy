@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -72,6 +72,11 @@ export default function BookingFlow({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const daysScrollRef = useRef<HTMLDivElement>(null)
+
+  function scrollDays(direction: 'left' | 'right') {
+    daysScrollRef.current?.scrollBy({ left: direction === 'left' ? -220 : 220, behavior: 'smooth' })
+  }
 
   // reîncărcăm numele/telefonul salvate dintr-o rezervare anterioară pe acest browser
   useEffect(() => {
@@ -205,29 +210,45 @@ export default function BookingFlow({
       {/* Alege data — carusel orizontal de zile */}
       <div>
         <h2 className="font-semibold mb-3">Alege data</h2>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {days.map((d) => {
-            const active = toDateParam(d) === toDateParam(selectedDate)
-            const dayName = d.toLocaleDateString('ro-RO', { weekday: 'short', timeZone: 'Europe/Bucharest' })
-            const dayNum = d.getDate()
-            return (
-              <button
-                key={d.toISOString()}
-                onClick={() => setSelectedDate(d)}
-                className="shrink-0 w-16 py-2.5 rounded-2xl border text-center transition"
-                style={{
-                  borderColor: active ? accentColor : 'var(--border-soft)',
-                  background: active ? accentColor : 'white',
-                  color: active ? 'white' : 'var(--foreground)',
-                }}
-              >
-                <p className="text-xs uppercase" style={{ opacity: active ? 0.85 : 0.6 }}>
-                  {dayName.replace('.', '')}
-                </p>
-                <p className="text-lg font-semibold leading-tight">{dayNum}</p>
-              </button>
-            )
-          })}
+        <div className="relative flex items-center gap-1">
+          <button
+            onClick={() => scrollDays('left')}
+            aria-label="Zile anterioare"
+            className="hidden sm:flex shrink-0 w-8 h-8 rounded-full border border-[var(--border-soft)] items-center justify-center bg-white hover:bg-gray-50"
+          >
+            ‹
+          </button>
+          <div ref={daysScrollRef} className="flex gap-2 overflow-x-auto no-scrollbar pb-1 scroll-smooth">
+            {days.map((d) => {
+              const active = toDateParam(d) === toDateParam(selectedDate)
+              const dayName = d.toLocaleDateString('ro-RO', { weekday: 'short', timeZone: 'Europe/Bucharest' })
+              const dayNum = d.getDate()
+              return (
+                <button
+                  key={d.toISOString()}
+                  onClick={() => setSelectedDate(d)}
+                  className="shrink-0 w-16 py-2.5 rounded-2xl border text-center transition"
+                  style={{
+                    borderColor: active ? accentColor : 'var(--border-soft)',
+                    background: active ? accentColor : 'white',
+                    color: active ? 'white' : 'var(--foreground)',
+                  }}
+                >
+                  <p className="text-xs uppercase" style={{ opacity: active ? 0.85 : 0.6 }}>
+                    {dayName.replace('.', '')}
+                  </p>
+                  <p className="text-lg font-semibold leading-tight">{dayNum}</p>
+                </button>
+              )
+            })}
+          </div>
+          <button
+            onClick={() => scrollDays('right')}
+            aria-label="Zile următoare"
+            className="hidden sm:flex shrink-0 w-8 h-8 rounded-full border border-[var(--border-soft)] items-center justify-center bg-white hover:bg-gray-50"
+          >
+            ›
+          </button>
         </div>
       </div>
 
