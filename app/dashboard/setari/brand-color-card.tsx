@@ -21,16 +21,23 @@ export default function BrandColorCard({ initialColor }: { initialColor: string 
   const [savedAt, setSavedAt] = useState<number | null>(null)
 
   async function save(newColor: string | null) {
+    const previous = color
     setColor(newColor)
     setSaving(true)
     try {
-      await fetchWithTimeout('/api/business/settings', {
+      const res = await fetchWithTimeout('/api/business/brand-color', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ brandColor: newColor }),
       })
+      if (!res.ok) {
+        setColor(previous) // revenim vizual dacă salvarea chiar eșuează
+        alert('Nu am putut salva culoarea. Încearcă din nou.')
+        return
+      }
       setSavedAt(Date.now())
     } catch {
+      setColor(previous)
       alert('Conexiune eșuată. Încearcă din nou.')
     } finally {
       setSaving(false)
