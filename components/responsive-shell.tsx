@@ -9,22 +9,26 @@ export function ResponsiveShell({
   logoHref,
   logoLabel,
   navItems,
+  accentColor,
   accountContent,
   children,
 }: {
   logoHref: string
   logoLabel: string
   navItems: { href: string; label: string; badge?: number }[]
+  accentColor?: string // culoarea aleasă de business în Setări — dacă lipsește, folosim culoarea implicită bookeasy
   accountContent: React.ReactNode // blocul de cont/ieșire — separat, ca să nu intre în carusel
   children: React.ReactNode
 }) {
   const [accountOpen, setAccountOpen] = useState(false)
   const pathname = usePathname()
+  const accent = accentColor || 'var(--accent)'
+  const softTint = accentColor ? `${accentColor}0d` : 'var(--surface-muted)' // ~5% opacitate, discret
 
   return (
     <div className="min-h-screen bg-[var(--surface-muted)] lg:grid lg:grid-cols-[220px_1fr]">
       {/* header mobil, doar sub lg */}
-      <div className="lg:hidden sticky top-0 z-40 bg-white border-b border-[var(--border-soft)]">
+      <div className="lg:hidden sticky top-0 z-40 border-b border-[var(--border-soft)]" style={{ background: accentColor ? softTint : 'white' }}>
         <div className="flex items-center justify-between px-4 py-3">
           <Link href={logoHref} className="flex items-center gap-2">
             <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={24} height={24} />
@@ -33,7 +37,8 @@ export function ResponsiveShell({
           <button
             onClick={() => setAccountOpen(true)}
             aria-label="Cont"
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-[var(--accent-soft)] text-sm"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-sm"
+            style={{ background: accentColor ? `${accentColor}22` : 'var(--accent-soft)' }}
           >
             👤
           </button>
@@ -50,7 +55,7 @@ export function ResponsiveShell({
                 className="shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition flex items-center gap-1.5"
                 style={
                   active
-                    ? { background: 'var(--accent)', color: 'white' }
+                    ? { background: accent, color: 'white' }
                     : { background: 'var(--surface-muted)', color: 'var(--foreground)' }
                 }
               >
@@ -82,8 +87,8 @@ export function ResponsiveShell({
         </div>
       )}
 
-      {/* sidebar fix, doar de la lg in sus — neschimbat */}
-      <aside className="hidden lg:flex flex-col gap-1 p-4">
+      {/* sidebar fix, doar de la lg in sus */}
+      <aside className="hidden lg:flex flex-col gap-1 p-4" style={{ background: softTint }}>
         <Link href={logoHref} className="flex items-center gap-2 mb-1 px-2">
           <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={28} height={28} />
           <span className="font-semibold text-lg">{logoLabel}</span>
@@ -94,8 +99,12 @@ export function ResponsiveShell({
             <Link
               key={item.href}
               href={item.href}
-              className="px-3 py-2.5 rounded-xl text-sm font-medium transition flex items-center justify-between"
-              style={active ? { background: 'white', boxShadow: 'var(--shadow-card)' } : { color: 'var(--foreground-muted, #4b5563)' }}
+              className="px-3 py-2.5 rounded-xl text-sm font-medium transition flex items-center justify-between border-l-[3px]"
+              style={
+                active
+                  ? { background: 'white', boxShadow: 'var(--shadow-card)', borderLeftColor: accent, color: accent }
+                  : { color: 'var(--foreground-muted, #4b5563)', borderLeftColor: 'transparent' }
+              }
             >
               {item.label}
               {!!item.badge && (
