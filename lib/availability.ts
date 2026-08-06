@@ -68,6 +68,47 @@ export async function isWithinLeadTime(businessId: string, momentToCheck: Date):
   return momentToCheck.getTime() - Date.now() < minLeadMs
 }
 
+export async function getDaySlotsWithStatus(
+  businessId: string,
+  serviceId: string,
+  date: Date
+): Promise<{ time: string; available: boolean }[]> {
+  const service = await prisma.service.findUnique({ where: { id: serviceId } })
+  if (!service || service.type !== 'APPOINTMENT') return []
+
+  const weekday = date.getDay()
+  const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
+    prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
+    prisma.workingHours.findMany({ where: { businessId, weekday } }),
+    prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
+    getBlockedSlotsForDay(businessId, date),
+  ])
+
+  const duration = service.durationMin ?? 30
+  const step = business?.slotIntervalMinutes ?? duration
+  const minLeadMs = (business?.minLeadTimeMinutes ?? 120) * 60 * 1000
+  const earliestAllowed = new Date(Date.now() + minLeadMs)
+  const result: { time: string; available: boolean }[] = []
+
+  for (const wh of workingHours) {
+    let cursor = combineDateAndTime(date, wh.startTime)
+    const end = combineDateAndTime(date, wh.endTime)
+
+    while (addMinutes(cursor, duration) <= end) {
+      const slotEnd = addMinutes(cursor, duration)
+
+      const tooSoon = cursor < earliestAllowed
+      const blockedHere = blockedSlots.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
+      const bookedHere = existingBookings.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
+
+      result.push({ time: cursor.toISOString(), available: !tooSoon && !blockedHere && !bookedHere })
+      cursor = addMinutes(cursor, step)
+    }
+  }
+
+  return result
+}
+
 async function getSingleSlotAvailability(businessId: string, service: { id: string; durationMin: number | null }, date: Date) {
   const weekday = date.getDay()
   const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([

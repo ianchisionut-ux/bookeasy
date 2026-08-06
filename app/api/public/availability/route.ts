@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getAvailableSlots } from '@/lib/availability'
+import { getAvailableSlots, getDaySlotsWithStatus } from '@/lib/availability'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
@@ -27,10 +27,13 @@ export async function GET(req: NextRequest) {
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
   if (date < todayStart) {
-    return NextResponse.json({ slots: [] })
+    return NextResponse.json({ slots: [], allSlots: [] })
   }
 
-  const slots = await getAvailableSlots(businessId, serviceId, date)
+  const [slots, allSlots] = await Promise.all([
+    getAvailableSlots(businessId, serviceId, date),
+    getDaySlotsWithStatus(businessId, serviceId, date),
+  ])
 
-  return NextResponse.json({ slots })
+  return NextResponse.json({ slots, allSlots })
 }
