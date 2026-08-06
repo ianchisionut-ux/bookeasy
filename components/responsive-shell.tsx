@@ -5,6 +5,19 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 
+// amestecă o culoare hex cu alb, la un procent dat — produce o culoare SOLIDĂ (nu transparentă).
+// esențial pentru header-ul mobil, care e fix (sticky) — dacă am folosi transparență, conținutul
+// care defilează dedesubt s-ar vedea prin el, exact bug-ul de suprapunere din poză
+function blendWithWhite(hex: string, amount: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const nr = Math.round(r * amount + 255 * (1 - amount))
+  const ng = Math.round(g * amount + 255 * (1 - amount))
+  const nb = Math.round(b * amount + 255 * (1 - amount))
+  return `rgb(${nr}, ${ng}, ${nb})`
+}
+
 export function ResponsiveShell({
   logoHref,
   logoLabel,
@@ -23,7 +36,7 @@ export function ResponsiveShell({
   const [accountOpen, setAccountOpen] = useState(false)
   const pathname = usePathname()
   const accent = accentColor || 'var(--accent)'
-  const softTint = accentColor ? `${accentColor}26` : 'var(--surface-muted)' // ~15% opacitate, vizibil clar
+  const softTint = accentColor ? blendWithWhite(accentColor, 0.15) : 'var(--surface-muted)' // culoare solidă, opacă
 
   return (
     <div className="min-h-screen bg-[var(--surface-muted)] lg:grid lg:grid-cols-[220px_1fr]">
