@@ -13,8 +13,8 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 const WEEKDAY_SHORT = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
 
-function summarizeOpenDays(workingHours: { weekday: number; closed: boolean }[]) {
-  const openDays = workingHours.filter((h) => !h.closed).map((h) => h.weekday).sort((a, b) => a - b)
+function summarizeOpenDays(workingHours: { weekday: number }[]) {
+  const openDays = [...new Set(workingHours.map((h) => h.weekday))].sort((a, b) => a - b)
   if (openDays.length === 0) return null
   if (openDays.length === 7) return 'Deschis zilnic'
   // grupăm zile consecutive (ex: 1,2,3,4,5 -> "Lun–Vin")
