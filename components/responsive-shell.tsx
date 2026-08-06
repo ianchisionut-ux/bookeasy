@@ -23,7 +23,7 @@ export function ResponsiveShell({
   const [accountOpen, setAccountOpen] = useState(false)
   const pathname = usePathname()
   const accent = accentColor || 'var(--accent)'
-  const softTint = accentColor ? `${accentColor}0d` : 'var(--surface-muted)' // ~5% opacitate, discret
+  const softTint = accentColor ? `${accentColor}26` : 'var(--surface-muted)' // ~15% opacitate, vizibil clar
 
   return (
     <div className="min-h-screen bg-[var(--surface-muted)] lg:grid lg:grid-cols-[220px_1fr]">
