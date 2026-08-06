@@ -59,7 +59,7 @@ export default function BookingFlow({
   accentSoftColor: string
 }) {
   const isAppointment = category === 'SALON'
-  const days = useMemo(() => buildNextDays(14), [])
+  const days = useMemo(() => buildNextDays(30), [])
 
   const [service, setService] = useState<Service | null>(services[0] ?? null)
   const [selectedDate, setSelectedDate] = useState<Date>(days[0])
