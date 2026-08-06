@@ -46,13 +46,15 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
     .toUpperCase()
 
   const openSummary = summarizeOpenDays(business.workingHours)
+  const accent = business.brandColor || 'var(--accent)'
+  const accentSoft = business.brandColor ? `${business.brandColor}1a` : 'var(--accent-soft)'
 
   return (
     <>
       <PublicHeader />
 
       {/* banner tip Fresha — avatar cu inițiale, nume, categorie · program */}
-      <div className="bg-gradient-to-r from-[var(--accent)] to-[#4c3fd8] px-4 sm:px-6 py-6 sm:py-8">
+      <div className="px-4 sm:px-6 py-6 sm:py-8" style={{ background: accent }}>
         <div className="max-w-lg mx-auto flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-white font-semibold text-lg shrink-0">
             {initials}
@@ -76,6 +78,8 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
           businessId={business.id}
           businessSlug={business.slug}
           category={business.category}
+          accentColor={accent}
+          accentSoftColor={accentSoft}
           services={business.services.map((s) => ({
             id: s.id,
             name: s.name,

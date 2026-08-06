@@ -32,7 +32,13 @@ function buildNextDays(count: number) {
 }
 
 function toDateParam(d: Date) {
-  return d.toISOString().slice(0, 10)
+  // NU folosim toISOString() aici — convertește la UTC și, pentru fusul României
+  // (UTC+2/+3), miezul nopții local "alunecă" înapoi cu o zi. Extragem direct
+  // componentele locale ale datei, fără nicio conversie de fus orar.
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 export default function BookingFlow({
@@ -41,12 +47,16 @@ export default function BookingFlow({
   category,
   services,
   canPayOnline,
+  accentColor,
+  accentSoftColor,
 }: {
   businessId: string
   businessSlug: string
   category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE'
   services: Service[]
   canPayOnline: boolean
+  accentColor: string
+  accentSoftColor: string
 }) {
   const isAppointment = category === 'SALON'
   const days = useMemo(() => buildNextDays(14), [])
@@ -176,8 +186,8 @@ export default function BookingFlow({
                 onClick={() => selectService(s)}
                 className="text-left p-3.5 rounded-2xl border transition"
                 style={{
-                  borderColor: active ? 'var(--accent)' : 'var(--border-soft)',
-                  background: active ? 'var(--accent-soft)' : 'white',
+                  borderColor: active ? accentColor : 'var(--border-soft)',
+                  background: active ? accentSoftColor : 'white',
                 }}
               >
                 <p className="font-medium">{s.name}</p>
@@ -206,8 +216,8 @@ export default function BookingFlow({
                 onClick={() => setSelectedDate(d)}
                 className="shrink-0 w-16 py-2.5 rounded-2xl border text-center transition"
                 style={{
-                  borderColor: active ? 'var(--accent)' : 'var(--border-soft)',
-                  background: active ? 'var(--accent)' : 'white',
+                  borderColor: active ? accentColor : 'var(--border-soft)',
+                  background: active ? accentColor : 'white',
                   color: active ? 'white' : 'var(--foreground)',
                 }}
               >
@@ -250,8 +260,8 @@ export default function BookingFlow({
                     onClick={() => setSelectedSlot(slot.time)}
                     className="py-2.5 rounded-xl text-center text-sm font-medium border transition"
                     style={{
-                      borderColor: active ? 'var(--accent)' : 'var(--border-soft)',
-                      background: active ? 'var(--accent)' : 'white',
+                      borderColor: active ? accentColor : 'var(--border-soft)',
+                      background: active ? accentColor : 'white',
                       color: active ? 'white' : 'var(--foreground)',
                     }}
                   >
@@ -281,14 +291,14 @@ export default function BookingFlow({
             <button
               onClick={() => setPaymentMethod('CASH')}
               className="p-3.5 rounded-2xl border text-left flex items-center justify-between"
-              style={{ borderColor: paymentMethod === 'CASH' ? 'var(--accent)' : 'var(--border-soft)' }}
+              style={{ borderColor: paymentMethod === 'CASH' ? accentColor : 'var(--border-soft)' }}
             >
               <span className="font-medium">Numerar la locație</span>
             </button>
             <button
               onClick={() => setPaymentMethod('ONLINE')}
               className="p-3.5 rounded-2xl border text-left flex items-center justify-between"
-              style={{ borderColor: paymentMethod === 'ONLINE' ? 'var(--accent)' : 'var(--border-soft)' }}
+              style={{ borderColor: paymentMethod === 'ONLINE' ? accentColor : 'var(--border-soft)' }}
             >
               <span className="font-medium">Card online</span>
               <span className="text-sm text-gray-500">Avans {service.depositAmount} lei</span>
@@ -299,7 +309,12 @@ export default function BookingFlow({
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <Button onClick={submitBooking} disabled={submitting} className="w-full py-3.5 text-base">
+      <Button
+        onClick={submitBooking}
+        disabled={submitting}
+        className="w-full py-3.5 text-base"
+        style={{ background: accentColor, borderColor: accentColor }}
+      >
         {submitting ? 'Se trimite...' : 'Confirmă rezervarea'}
       </Button>
     </div>

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import SettingsForm from './settings-form'
 import { PublicPageLinkCard } from './public-page-link-card'
 import { SubscriptionCard } from './subscription-card'
+import BrandColorCard from './brand-color-card'
 
 // Luni primul, Duminică ultima — ordinea de afișare a programului de lucru
 // (valorile 'weekday' rămân 0=Duminică...6=Sâmbătă, standardul JS getDay(), doar ordinea vizuală se schimbă)
@@ -37,6 +38,8 @@ export default async function SetariPage() {
 
       <div className="flex flex-col gap-5">
         <PublicPageLinkCard slug={business.slug} />
+
+        <BrandColorCard initialColor={business.brandColor} />
 
         <SubscriptionCard planName={business.planName} billingStatus={business.billingStatus} />
 

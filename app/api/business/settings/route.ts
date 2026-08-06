@@ -13,6 +13,7 @@ const schema = z.object({
   teamSize: z.number().min(1).max(200).optional(),
   slotIntervalMinutes: z.number().min(5).max(120).nullable().optional(),
   minLeadTimeMinutes: z.number().min(30).max(1440).optional(),
+  brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
   workingHours: z.array(
     z.object({ weekday: z.number(), startTime: z.string(), endTime: z.string(), closed: z.boolean() })
   ),

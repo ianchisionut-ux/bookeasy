@@ -38,6 +38,7 @@ model Business {
   timezone           String       @default("Europe/Bucharest")
   slotIntervalMinutes Int?        // null = automat, după durata fiecărui serviciu; altfel interval fix (10/15/30...)
   minLeadTimeMinutes  Int          @default(120) // rezervările/anulările din exterior (bot, site) nu se pot face mai aproape de această limită; admin-ul manual e scutit
+  brandColor          String?      // culoarea de accent aleasă de business pentru pagina publică (hex); null = culoarea implicită bookeasy
   planName           String?      // numele planului, gestionat manual de admin până se configurează plata online
   billingStatus      BillingStatus @default(NEPLATIT)
   billingNote        String?      // notă liberă pentru superadmin (ex: "plătit cash august")

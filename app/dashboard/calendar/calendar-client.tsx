@@ -66,6 +66,7 @@ export default function CalendarClient({
   const router = useRouter()
   const [selected, setSelected] = useState<Event | null>(null)
   const [view, setView] = useState<any>(Views.WEEK)
+  const [currentDate, setCurrentDate] = useState<Date>(new Date())
   const [busy, setBusy] = useState(false)
   const [blockMode, setBlockMode] = useState(false)
 
@@ -211,6 +212,17 @@ export default function CalendarClient({
           >
             {blockMode ? '✓ Blocare activă — apasă ca să ieși' : '🔒 Blocare/Rezervare poziții'}
           </button>
+          <input
+            type="date"
+            value={`${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`}
+            onChange={(e) => {
+              if (!e.target.value) return
+              const [y, m, d] = e.target.value.split('-').map(Number)
+              setCurrentDate(new Date(y, m - 1, d))
+            }}
+            className="input-field text-sm py-1.5 hidden lg:block"
+            aria-label="Sari la o dată"
+          />
           <PrintButton />
         </div>
       </div>
@@ -223,6 +235,8 @@ export default function CalendarClient({
           culture="ro"
           view={view}
           onView={setView}
+          date={currentDate}
+          onNavigate={setCurrentDate}
           views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
           min={calendarMin}
           max={calendarMax}

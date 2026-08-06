@@ -2,6 +2,14 @@ import { prisma } from './prisma'
 
 const ACTIVE_STATUSES = ['PENDING', 'CONFIRMED', 'COMPLETED', 'NO_SHOW'] as const // excludem CANCELLED din venit/trend
 
+// formatare locală, fără toISOString() — evită deplasarea datei cu o zi pentru fusuri UTC+
+function formatLocalDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 export async function getDailyStats(businessId: string, days = 30) {
   const d = Math.min(days || 30, 365)
   const since = new Date(Date.now() - d * 24 * 60 * 60 * 1000)
@@ -97,8 +105,8 @@ export async function getSummaryStats(businessId: string, from?: string, to?: st
     .slice(0, 5)
 
   return {
-    from: fromDate.toISOString().slice(0, 10),
-    to: toDate.toISOString().slice(0, 10),
+    from: formatLocalDate(fromDate),
+    to: formatLocalDate(toDate),
     totalBookings: active.length,
     revenue,
     avgBookingValue,
