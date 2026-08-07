@@ -153,7 +153,7 @@ export default function ServicesManager({
                     {isSalon ? (
                       <>
                         <p>{(item as Service).durationMin ? `${(item as Service).durationMin} min` : '—'}</p>
-                        <p className="font-medium text-gray-900">{(item as Service).price ? `${(item as Service).price} lei` : '—'}</p>
+                        <p className="font-medium text-gray-900">{(item as Service).price ? `${(item as Service).price} lei` : ''}</p>
                       </>
                     ) : (
                       <>

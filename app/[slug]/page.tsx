@@ -60,7 +60,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
               <span className="font-medium">{s.name}</span>
               <div className="flex justify-between sm:contents text-sm text-gray-500">
                 <span>{s.durationMin ? `${s.durationMin} min` : '—'}</span>
-                <span className="font-medium text-gray-900">{s.price ? `${s.price} lei` : '—'}</span>
+                <span className="font-medium text-gray-900">{s.price ? `${s.price} lei` : ''}</span>
               </div>
             </CardInteractive>
           ))}

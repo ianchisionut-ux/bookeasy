@@ -58,7 +58,7 @@ export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VEN
       <h1 className="text-xl font-semibold mb-1">{isSalon ? 'Ce servicii oferi?' : 'Ce săli ai disponibile?'}</h1>
       <p className="text-sm text-gray-500 mb-6">
         {isSalon
-          ? 'Adaugă cel puțin un serviciu ca botul să poată propune programări.'
+          ? 'Adaugă serviciile ca botul să poată propune programări — sau sari peste, le adaugi oricând mai târziu din Servicii.'
           : 'Adaugă cel puțin o sală, cu capacitatea și prețul ei.'}
       </p>
 
@@ -123,7 +123,7 @@ export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VEN
         <Button variant="secondary" onClick={() => router.push('/onboarding/step-2')}>
           ← Înapoi
         </Button>
-        <Button onClick={handleSubmit} disabled={loading || items.length === 0}>
+        <Button onClick={handleSubmit} disabled={loading}>
           {loading ? 'Se salvează...' : 'Continuă →'}
         </Button>
       </div>
