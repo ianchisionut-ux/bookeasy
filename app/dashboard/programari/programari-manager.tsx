@@ -22,6 +22,8 @@ type Booking = {
   endAt: string
   status: string
   channel: string
+  confirmationRequestSent: boolean
+  customerConfirmed: boolean | null
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -203,18 +205,28 @@ export default function ProgramariManager({
                     )}
                     <td className="text-gray-500">{CHANNEL_LABEL[b.channel] ?? b.channel}</td>
                     <td>
-                      <select
-                        value={b.status}
-                        onChange={(e) => changeStatus(b.id, e.target.value)}
-                        className="text-xs py-1 px-2 rounded-full font-medium border-0"
-                        style={{ backgroundColor: `${STATUS_COLOR[b.status]}20`, color: STATUS_COLOR[b.status] }}
-                      >
-                        {Object.entries(STATUS_LABEL).map(([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          value={b.status}
+                          onChange={(e) => changeStatus(b.id, e.target.value)}
+                          className="text-xs py-1 px-2 rounded-full font-medium border-0"
+                          style={{ backgroundColor: `${STATUS_COLOR[b.status]}20`, color: STATUS_COLOR[b.status] }}
+                        >
+                          {Object.entries(STATUS_LABEL).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                        {b.confirmationRequestSent && b.status === 'CONFIRMED' && (
+                          <span
+                            title={b.customerConfirmed ? 'Confirmată de client' : 'Așteaptă confirmare de la client'}
+                            className="text-xs"
+                          >
+                            {b.customerConfirmed ? '✓' : '⏳'}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="pr-5 text-right">
                       {b.status !== 'CANCELLED' && (

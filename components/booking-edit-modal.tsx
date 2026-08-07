@@ -17,6 +17,8 @@ export type BookingDetail = {
   startAt: string
   endAt: string
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW'
+  confirmationRequestSent?: boolean
+  customerConfirmed?: boolean | null
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -157,6 +159,11 @@ export default function BookingEditModal({
                   📞 {booking.customerPhone}
                   {booking.practitionerName && <> · 🩺 {booking.practitionerName}</>}
                 </p>
+                {booking.confirmationRequestSent && booking.status === 'CONFIRMED' && (
+                  <p className="text-xs mt-0.5" style={{ color: booking.customerConfirmed ? '#16a34a' : '#eab308' }}>
+                    {booking.customerConfirmed ? '✓ Confirmată de client' : '⏳ Așteaptă confirmare de la client'}
+                  </p>
+                )}
               </div>
               <button onClick={() => setEditingPatient(true)} className="text-xs text-[var(--accent)] font-medium">
                 Editează

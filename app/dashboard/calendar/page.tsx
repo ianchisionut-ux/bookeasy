@@ -30,6 +30,8 @@ export default async function CalendarPage() {
     customerName: b.customer.name ?? b.customer.phone,
     customerPhone: b.customer.phone,
     serviceName: b.service.name,
+    confirmationRequestSent: b.confirmationRequestSent,
+    customerConfirmed: b.customerConfirmed,
   }))
 
   // intervalul orar afișat în calendar respectă programul real de lucru — cel mai

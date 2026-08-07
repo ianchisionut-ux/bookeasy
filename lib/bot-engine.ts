@@ -5,6 +5,7 @@ import { sendAlertEmail } from './email'
 import { rateLimit } from './rate-limit'
 
 const CANCEL_BOOKING_PATTERN = /^anulez\b/i
+const CONFIRM_BOOKING_PATTERN = /^(da|confirm|confirma[țt])\b/i
 
 export async function processIncomingMessage({
   businessId,
@@ -38,6 +39,16 @@ export async function processIncomingMessage({
     const reply = await handleBookingCancellation(businessId, channel, externalUserId)
     await sendMessage({ channel, channelId, to: externalUserId, text: reply })
     return
+  }
+
+  if (CONFIRM_BOOKING_PATTERN.test(text.trim())) {
+    const reply = await handleBookingConfirmation(businessId, externalUserId)
+    if (reply) {
+      await sendMessage({ channel, channelId, to: externalUserId, text: reply })
+      return
+    }
+    // "da" fără nicio programare în așteptare de confirmare — lăsăm mesajul să treacă
+    // mai departe prin conversația normală (ar putea fi un răspuns la altceva, ex: preț)
   }
 
   let conversation = await prisma.conversation.findFirst({ where: { businessId, channel, externalUserId } })
@@ -90,8 +101,32 @@ async function handleBookingCancellation(businessId: string, channel: string, ex
     return `Programarea ta e prea aproape (sub ${hours} ${hours === 1 ? 'oră' : 'ore'}) pentru anulare automată — te rugăm să suni direct.`
   }
 
-  await prisma.booking.update({ where: { id: upcomingBooking.id }, data: { status: 'CANCELLED' } })
+  await prisma.booking.update({ where: { id: upcomingBooking.id }, data: { status: 'CANCELLED', customerConfirmed: false } })
   return `Am anulat programarea pentru ${upcomingBooking.service.name}. Sper să te vedem altă dată!`
+}
+
+// caută cea mai apropiată programare a acestui client care așteaptă confirmare activă
+// (i-am trimis deja mesajul de "confirmi?" și încă n-a răspuns) — dacă găsește una, o
+// marchează confirmată; altfel întoarce null, ca "DA" să treacă mai departe prin
+// conversația normală (ar putea fi răspuns la altă întrebare a botului)
+async function handleBookingConfirmation(businessId: string, externalUserId: string): Promise<string | null> {
+  const booking = await prisma.booking.findFirst({
+    where: {
+      businessId,
+      status: 'CONFIRMED',
+      confirmationRequestSent: true,
+      customerConfirmed: null,
+      startAt: { gte: new Date() },
+      customer: { phone: externalUserId },
+    },
+    include: { service: true },
+    orderBy: { startAt: 'asc' },
+  })
+
+  if (!booking) return null
+
+  await prisma.booking.update({ where: { id: booking.id }, data: { customerConfirmed: true } })
+  return `Perfect, programarea pentru ${booking.service.name} e confirmată! Te așteptăm.`
 }
 
 async function notifyOwnerOfMissedMessage(businessId: string, channel: string) {

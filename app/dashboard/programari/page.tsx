@@ -50,6 +50,8 @@ export default async function ProgramariPage({
         endAt: b.endAt.toISOString(),
         status: b.status,
         channel: b.channel,
+        confirmationRequestSent: b.confirmationRequestSent,
+        customerConfirmed: b.customerConfirmed,
       }))}
       customers={customers.map((c) => ({ id: c.id, name: c.name ?? c.phone }))}
       services={services.map((s) => ({ id: s.id, name: s.name, durationMin: s.durationMin }))}

@@ -64,6 +64,41 @@ export async function sendAccessRequestNotification({
   })
 }
 
+export async function sendUnconfirmedBookingAlert({
+  to,
+  businessName,
+  customerName,
+  customerPhone,
+  serviceName,
+  startAt,
+}: {
+  to: string
+  businessName: string
+  customerName: string
+  customerPhone: string
+  serviceName: string
+  startAt: Date
+}) {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY lipsește — sar peste alerta de rezervare neconfirmată.')
+    return
+  }
+
+  const time = startAt.toLocaleString('ro-RO', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Bucharest' })
+
+  await getResend().emails.send({
+    from: 'Notificări <alerte@bookeasy.ro>',
+    to,
+    subject: `Rezervare neconfirmată — ${customerName}, ${time}`,
+    html: `
+      <p>Salut,</p>
+      <p>I-am cerut lui <strong>${customerName}</strong> (${customerPhone}) să confirme programarea pentru
+      <strong>${serviceName}</strong>, la ${businessName}, pe ${time} — dar nu a răspuns încă, iar ora se apropie.</p>
+      <p>Poate fi util să-l suni direct, ca să confirmi că vine.</p>
+    `,
+  })
+}
+
 export async function sendAlertEmail({
   to,
   subject,

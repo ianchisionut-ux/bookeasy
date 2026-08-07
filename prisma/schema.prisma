@@ -200,6 +200,9 @@ model Booking {
   depositPaid     Boolean       @default(false)
   reminder24hSent Boolean       @default(false)
   reminder1hSent  Boolean       @default(false)
+  confirmationRequestSent Boolean @default(false) // am cerut deja confirmare activă clientului
+  customerConfirmed       Boolean? // null = fără răspuns încă, true = a confirmat, false = a anulat ca răspuns la cerere
+  unconfirmedAlertSent    Boolean @default(false) // am anunțat deja proprietarul că rezervarea asta n-a fost confirmată
   createdAt       DateTime      @default(now())
   review          Review?
 }

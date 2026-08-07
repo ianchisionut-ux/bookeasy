@@ -40,6 +40,8 @@ type Event = {
   customerId: string
   customerName: string
   customerPhone: string
+  confirmationRequestSent?: boolean
+  customerConfirmed?: boolean | null
   serviceName: string
   isBlocked?: false
 }
@@ -301,6 +303,8 @@ export default function CalendarClient({
               customerName: selected.customerName,
               customerPhone: selected.customerPhone,
               serviceName: selected.serviceName,
+              confirmationRequestSent: selected.confirmationRequestSent,
+              customerConfirmed: selected.customerConfirmed,
               startAt: selected.start.toISOString(),
               endAt: selected.end.toISOString(),
               status: selected.status as BookingDetail['status'],
