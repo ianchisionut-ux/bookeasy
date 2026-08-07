@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Input, Textarea } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ChecklistGrid } from '@/components/checklist-grid'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { exportSectionsToPdf } from '@/lib/pdf-export'
+import { exportElementToPdf } from '@/lib/pdf-export'
 
 const MEDICAL_CONDITIONS = [
   { key: 'hipertensiune', label: 'Hipertensiune' },
@@ -53,16 +53,16 @@ const FEAR_ITEMS = [
 
 function PrintLine({ label, value }: { label: string; value?: string | null }) {
   return (
-    <p className="text-sm mb-1.5">
-      <span className="text-gray-500">{label}:</span>{' '}
-      <span className="border-b border-gray-400 inline-block min-w-[120px]">{value || '\u00A0'.repeat(20)}</span>
+    <p style={{ fontSize: '8px', margin: '1.5px 0', lineHeight: 1.3 }}>
+      <span style={{ color: '#666' }}>{label}:</span>{' '}
+      <span style={{ borderBottom: '1px solid #999' }}>{value || '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'}</span>
     </p>
   )
 }
 
 function PrintCheckbox({ label, checked }: { label: string; checked?: boolean }) {
   return (
-    <p className="text-sm mb-1 flex items-center gap-1.5">
+    <p style={{ fontSize: '8px', margin: '1px 0', lineHeight: 1.3, display: 'flex', alignItems: 'center', gap: '3px' }}>
       <span>{checked ? '☑' : '☐'}</span> {label}
     </p>
   )
@@ -78,6 +78,7 @@ export default function PatientRecordForm({
   medicalInitial: any
 }) {
   const router = useRouter()
+  const printRef = useRef<HTMLDivElement>(null)
   const [simple, setSimple] = useState(simpleInitial)
   const [form, setForm] = useState({
     cnp: medicalInitial?.cnp ?? '',
@@ -162,86 +163,25 @@ export default function PatientRecordForm({
     }
   }
 
-  function exportPdf() {
-    const allergyList = [
-      form.allergyAnesthesia && 'Anestezie',
-      form.allergyAntibiotics && 'Antibiotice',
-      form.allergyAspirin && 'Aspirină',
-      form.allergyIodine && 'Iod',
-      form.allergyLatex && 'Latex',
-      form.allergyNickel && 'Nichel',
-      form.allergyOther,
-    ]
-      .filter(Boolean)
-      .join(', ')
-    const conditionsList = Object.entries(conditions)
-      .filter(([, v]) => v)
-      .map(([k]) => MEDICAL_CONDITIONS.find((c) => c.key === k)?.label ?? k)
-      .join(', ')
-    const fearsList = Object.entries(fears)
-      .filter(([, v]) => v)
-      .map(([k]) => FEAR_ITEMS.find((f) => f.key === k)?.label ?? k)
-      .join(', ')
-
-    exportSectionsToPdf(
-      `fisa-pacient-${(simple.name || 'pacient').replace(/\s+/g, '-')}.pdf`,
-      'Fișa pacientului',
-      simple.name,
-      [
-        {
-          title: 'Date de contact',
-          rows: [
-            { label: 'Nume', value: simple.name },
-            { label: 'Telefon', value: simple.phone },
-            { label: 'Email', value: simple.email },
-            { label: 'Data nașterii', value: simple.dateOfBirth },
-          ],
-        },
-        {
-          title: 'Date personale',
-          rows: [
-            { label: 'CNP', value: form.cnp },
-            { label: 'Ocupație', value: form.occupation },
-            { label: 'Adresă', value: form.address },
-            { label: 'Localitate/Județ', value: form.city },
-          ],
-        },
-        { title: 'Contact urgență', rows: [{ label: 'Nume', value: form.emergencyContactName }, { label: 'Telefon', value: form.emergencyContactPhone }] },
-        {
-          title: 'Medici anteriori',
-          rows: [
-            { label: 'Medic de familie', value: form.familyDoctor },
-            { label: 'Ultima consultație', value: form.familyDoctorLastVisit },
-            { label: 'Medic dentist anterior', value: form.previousDentist },
-            { label: 'Ultima consultație', value: form.previousDentistLastVisit },
-          ],
-        },
-        {
-          title: 'Istoric medical',
-          rows: [
-            { label: 'Spitalizat', value: form.hospitalized ? form.hospitalizedDetails || 'Da' : '' },
-            { label: 'Intervenții chirurgicale', value: form.surgeries ? form.surgeriesDetails || 'Da' : '' },
-            { label: 'Medicație curentă', value: form.onMedication ? form.medicationDetails || 'Da' : '' },
-            { label: 'Fumător', value: form.smoker ? 'Da' : '' },
-          ],
-        },
-        { title: 'Alergii', rows: [{ label: 'Alergii cunoscute', value: allergyList || simple.allergies }] },
-        { title: 'Probleme medicale cunoscute', rows: [{ label: 'Afecțiuni', value: conditionsList }] },
-        {
-          title: 'Fișă stomatologică',
-          rows: [
-            { label: 'Frici', value: fearsList },
-            { label: 'Sângerare gingii', value: dental.bleedingGums ? 'Da' : '' },
-            { label: 'Frecvență periaj', value: dental.brushingFrequency },
-            { label: 'Scrâșnit dinți', value: dental.teethGrinding ? dental.teethGrindingTime || 'Da' : '' },
-            { label: 'Aparat dentar anterior', value: dental.previousBraces ? dental.previousBracesWhen || 'Da' : '' },
-            { label: 'Extracții dificile', value: dental.difficultExtractions ? dental.extractionProblems || 'Da' : '' },
-          ],
-        },
-        { title: 'Alte mențiuni', rows: [{ label: 'Note', value: form.generalNotes || simple.medicalNotes }] },
-      ],
-      { keepEmptyRows: true }
-    )
+  async function exportPdf() {
+    if (!printRef.current) return
+    const el = printRef.current
+    // elementul e ascuns implicit (display:none) — html2canvas nu poate randa ceva
+    // invizibil, deci îl facem temporar vizibil, dar în afara ecranului, doar cât
+    // durează exportul, apoi îl ascundem la loc
+    const prevDisplay = el.style.display
+    const prevPosition = el.style.position
+    const prevLeft = el.style.left
+    el.style.display = 'block'
+    el.style.position = 'fixed'
+    el.style.left = '-9999px'
+    try {
+      await exportElementToPdf(el, `fisa-pacient-${(simple.name || 'pacient').replace(/\s+/g, '-')}.pdf`)
+    } finally {
+      el.style.display = prevDisplay
+      el.style.position = prevPosition
+      el.style.left = prevLeft
+    }
   }
 
   return (
@@ -458,87 +398,95 @@ export default function PatientRecordForm({
         </div>
       </div>
 
-      <div className="print-only text-black">
-        <h1 className="text-xl font-bold mb-1">Fișa pacientului</h1>
-        <p className="text-sm text-gray-600 mb-4">{simple.name || 'Nume: ...........................'}</p>
+      <div ref={printRef} className="print-only" style={{ color: '#000', fontSize: '8.5px', lineHeight: 1.3 }}>
+        <h1 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 2px' }}>Fișa pacientului</h1>
+        <p style={{ fontSize: '9px', color: '#666', margin: '0 0 6px' }}>{simple.name || 'Nume: ...........................'}</p>
 
-        <h2 className="font-semibold mt-4 mb-2">Date de contact</h2>
-        <PrintLine label="Nume" value={simple.name} />
-        <PrintLine label="Telefon" value={simple.phone} />
-        <PrintLine label="Email" value={simple.email} />
-        <PrintLine label="Data nașterii" value={simple.dateOfBirth} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
+          <div>
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Date de contact</h2>
+            <PrintLine label="Nume" value={simple.name} />
+            <PrintLine label="Telefon" value={simple.phone} />
+            <PrintLine label="Email" value={simple.email} />
+            <PrintLine label="Data nașterii" value={simple.dateOfBirth} />
 
-        <h2 className="font-semibold mt-4 mb-2">Date personale</h2>
-        <PrintLine label="CNP" value={form.cnp} />
-        <PrintLine label="Ocupație" value={form.occupation} />
-        <PrintLine label="Adresă" value={form.address} />
-        <PrintLine label="Localitate / Județ" value={form.city} />
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Date personale</h2>
+            <PrintLine label="CNP" value={form.cnp} />
+            <PrintLine label="Ocupație" value={form.occupation} />
+            <PrintLine label="Adresă" value={form.address} />
+            <PrintLine label="Localitate / Județ" value={form.city} />
 
-        <h2 className="font-semibold mt-4 mb-2">Contact în caz de urgență</h2>
-        <PrintLine label="Nume" value={form.emergencyContactName} />
-        <PrintLine label="Telefon" value={form.emergencyContactPhone} />
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Contact urgență</h2>
+            <PrintLine label="Nume" value={form.emergencyContactName} />
+            <PrintLine label="Telefon" value={form.emergencyContactPhone} />
 
-        <h2 className="font-semibold mt-4 mb-2">Medici anteriori</h2>
-        <PrintLine label="Medic de familie" value={form.familyDoctor} />
-        <PrintLine label="Data ultimei consultații" value={form.familyDoctorLastVisit} />
-        <PrintLine label="Medic dentist anterior" value={form.previousDentist} />
-        <PrintLine label="Data ultimei consultații" value={form.previousDentistLastVisit} />
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Medici anteriori</h2>
+            <PrintLine label="Medic de familie" value={form.familyDoctor} />
+            <PrintLine label="Ultima consultație" value={form.familyDoctorLastVisit} />
+            <PrintLine label="Medic dentist anterior" value={form.previousDentist} />
+            <PrintLine label="Ultima consultație" value={form.previousDentistLastVisit} />
 
-        <h2 className="font-semibold mt-4 mb-2">Istoric medical general</h2>
-        <PrintCheckbox label="Ați fost spitalizat(ă)?" checked={form.hospitalized} />
-        <PrintCheckbox label="Ați suferit intervenții chirurgicale?" checked={form.surgeries} />
-        <PrintCheckbox label="Luați medicamente în prezent?" checked={form.onMedication} />
-        <PrintCheckbox label="Fumător" checked={form.smoker} />
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Istoric medical general</h2>
+            <PrintCheckbox label="Spitalizat(ă)" checked={form.hospitalized} />
+            <PrintCheckbox label="Intervenții chirurgicale" checked={form.surgeries} />
+            <PrintCheckbox label="Medicație curentă" checked={form.onMedication} />
+            <PrintCheckbox label="Fumător" checked={form.smoker} />
 
-        <h2 className="font-semibold mt-4 mb-2">Alergii</h2>
-        <div className="grid grid-cols-3 gap-1">
-          <PrintCheckbox label="Anestezie" checked={form.allergyAnesthesia} />
-          <PrintCheckbox label="Antibiotice" checked={form.allergyAntibiotics} />
-          <PrintCheckbox label="Aspirină" checked={form.allergyAspirin} />
-          <PrintCheckbox label="Iod" checked={form.allergyIodine} />
-          <PrintCheckbox label="Latex" checked={form.allergyLatex} />
-          <PrintCheckbox label="Nichel" checked={form.allergyNickel} />
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Alergii</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
+              <PrintCheckbox label="Anestezie" checked={form.allergyAnesthesia} />
+              <PrintCheckbox label="Antibiotice" checked={form.allergyAntibiotics} />
+              <PrintCheckbox label="Aspirină" checked={form.allergyAspirin} />
+              <PrintCheckbox label="Iod" checked={form.allergyIodine} />
+              <PrintCheckbox label="Latex" checked={form.allergyLatex} />
+              <PrintCheckbox label="Nichel" checked={form.allergyNickel} />
+            </div>
+            <PrintLine label="Altele" value={form.allergyOther} />
+
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Doar pentru femei</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              <PrintCheckbox label="Însărcinată" checked={form.pregnant} />
+              <PrintCheckbox label="Alăptează" checked={form.breastfeeding} />
+              <PrintCheckbox label="Anticoncepționale" checked={form.contraceptives} />
+              <PrintCheckbox label="Menopauză" checked={form.menopause} />
+            </div>
+          </div>
+
+          <div>
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Probleme medicale cunoscute</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              {MEDICAL_CONDITIONS.map((c) => (
+                <PrintCheckbox key={c.key} label={c.label} checked={conditions[c.key]} />
+              ))}
+            </div>
+
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Fișă stomatologică — frică de:</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              {FEAR_ITEMS.map((f) => (
+                <PrintCheckbox key={f.key} label={f.label} checked={fears[f.key]} />
+              ))}
+            </div>
+            <PrintCheckbox label="Sângerează gingiile la periaj" checked={dental.bleedingGums} />
+            <PrintLine label="Frecvență periaj" value={dental.brushingFrequency} />
+            <PrintCheckbox label="Inflamații/răni în gură" checked={dental.mouthSores} />
+            <PrintCheckbox label="Se mușcă pe obraji/limbă" checked={dental.cheekBiting} />
+            <PrintCheckbox label="Scrâșnește din dinți" checked={dental.teethGrinding} />
+            <PrintCheckbox label="A purtat aparat dentar" checked={dental.previousBraces} />
+            <PrintCheckbox label="Zgomote la maxilar" checked={dental.jawSounds} />
+            <PrintCheckbox label="A rămas blocat cu gura deschisă" checked={dental.jawLocked} />
+            <PrintCheckbox label="Extracții dificile" checked={dental.difficultExtractions} />
+            <PrintLine label="Probleme după anestezie" value={dental.injectionReaction} />
+            <PrintCheckbox label="Intervenții chirurgicale bucale" checked={dental.oralSurgery} />
+
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Alte mențiuni</h2>
+            <p style={{ fontSize: '8px', borderBottom: '1px solid #999', minHeight: '20px' }}>{form.generalNotes || '\u00A0'}</p>
+          </div>
         </div>
-        <PrintLine label="Altele" value={form.allergyOther} />
 
-        <h2 className="font-semibold mt-4 mb-2">Doar pentru femei</h2>
-        <PrintCheckbox label="Însărcinată" checked={form.pregnant} />
-        <PrintCheckbox label="Alăptează" checked={form.breastfeeding} />
-        <PrintCheckbox label="Anticoncepționale" checked={form.contraceptives} />
-        <PrintCheckbox label="Menopauză instalată" checked={form.menopause} />
-
-        <h2 className="font-semibold mt-4 mb-2">Probleme medicale cunoscute</h2>
-        <div className="grid grid-cols-2 gap-x-4">
-          {MEDICAL_CONDITIONS.map((c) => (
-            <PrintCheckbox key={c.key} label={c.label} checked={conditions[c.key]} />
-          ))}
-        </div>
-
-        <h2 className="font-semibold mt-4 mb-2">Fișă stomatologică — Vă este frică de:</h2>
-        <div className="grid grid-cols-2 gap-x-4">
-          {FEAR_ITEMS.map((f) => (
-            <PrintCheckbox key={f.key} label={f.label} checked={fears[f.key]} />
-          ))}
-        </div>
-        <PrintCheckbox label="Sângerează gingiile la periaj" checked={dental.bleedingGums} />
-        <PrintLine label="Frecvență periaj" value={dental.brushingFrequency} />
-        <PrintCheckbox label="Inflamații/răni în gură" checked={dental.mouthSores} />
-        <PrintCheckbox label="Se mușcă pe obraji/limbă" checked={dental.cheekBiting} />
-        <PrintCheckbox label="Scrâșnește din dinți" checked={dental.teethGrinding} />
-        <PrintCheckbox label="A purtat aparat dentar" checked={dental.previousBraces} />
-        <PrintCheckbox label="Zgomote la maxilar" checked={dental.jawSounds} />
-        <PrintCheckbox label="A rămas blocat cu gura deschisă" checked={dental.jawLocked} />
-        <PrintCheckbox label="Extracții dificile" checked={dental.difficultExtractions} />
-        <PrintLine label="Probleme după anestezie" value={dental.injectionReaction} />
-        <PrintCheckbox label="Intervenții chirurgicale bucale" checked={dental.oralSurgery} />
-
-        <h2 className="font-semibold mt-4 mb-2">Alte mențiuni</h2>
-        <p className="text-sm border-b border-gray-400 pb-6">{form.generalNotes || '\u00A0'}</p>
-
-        <p className="text-xs text-gray-500 mt-8">
+        <p style={{ fontSize: '6.5px', color: '#888', marginTop: '10px' }}>
           Nu voi face vinovat medicul sau oricare dintre membrii echipei sale de eventualele omisiuni.
         </p>
-        <div className="flex justify-between mt-8 text-sm">
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '8px' }}>
           <span>Data: ......................</span>
           <span>Semnătura pacientului (tutorelui): ......................................</span>
         </div>

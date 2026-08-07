@@ -1,5 +1,22 @@
 import jsPDF from 'jspdf'
 
+// export bazat pe elementul HTML randat real în browser — păstrează corect diacriticele
+// (ă, â, î, ș, ț), spre deosebire de fonturile built-in ale jsPDF, care le pierd complet
+export async function exportElementToPdf(element: HTMLElement, filename: string) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await new Promise<void>((resolve) => {
+    doc.html(element, {
+      callback: () => resolve(),
+      margin: [10, 10, 10, 10],
+      autoPaging: 'text',
+      width: 190, // lățime utilă A4 (mm), redusă pentru margini
+      windowWidth: element.scrollWidth || 800,
+      html2canvas: { scale: 0.26 }, // corelat cu raportul px→mm, ca textul să nu iasă tăiat
+    })
+  })
+  doc.save(filename)
+}
+
 export type PdfSection = {
   title: string
   rows: { label: string; value: string }[]

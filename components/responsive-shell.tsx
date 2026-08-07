@@ -41,7 +41,7 @@ export function ResponsiveShell({
   return (
     <div className="min-h-screen bg-[var(--surface-muted)] lg:grid lg:grid-cols-[220px_1fr]">
       {/* header mobil, doar sub lg */}
-      <div className="lg:hidden sticky top-0 z-40 border-b border-[var(--border-soft)]" style={{ background: accentColor ? softTint : 'white' }}>
+      <div className="lg:hidden sticky top-0 z-40 border-b border-[var(--border-soft)] screen-only" style={{ background: accentColor ? softTint : 'white' }}>
         <div className="flex items-center justify-between px-4 py-3">
           <Link href={logoHref} className="flex items-center gap-2">
             <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={24} height={24} />
