@@ -7,7 +7,7 @@ import { z } from 'zod'
 const stepSchemas = {
   1: z.object({
     name: z.string().min(2),
-    category: z.enum(['SALON', 'EVENT_VENUE']),
+    category: z.enum(['SALON', 'EVENT_VENUE']).optional(),
     contactPhone: z.string(),
     city: z.string(),
     address: z.string().optional(),
