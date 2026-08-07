@@ -151,7 +151,7 @@ export default function ProgramariManager({
               <th className="font-medium text-gray-500">Client</th>
               <th className="font-medium text-gray-500">Serviciu</th>
               <th className="font-medium text-gray-500">Data</th>
-              {category === 'SALON' ? (
+              {category === 'SALON' || category === 'CLINICA' ? (
                 <th className="font-medium text-gray-500">Telefon</th>
               ) : (
                 <>
@@ -168,7 +168,7 @@ export default function ProgramariManager({
             {groupByWeek(bookings).map((group) => (
               <Fragment key={`week-${group.year}-${group.week}`}>
                 <tr key={`week-${group.week}-${group.year}`} className="bg-[var(--surface-muted)]">
-                  <td colSpan={category === "SALON" ? 8 : 9} className="px-5 py-2 text-xs font-semibold text-gray-500">
+                  <td colSpan={category === "SALON" || category === "CLINICA" ? 8 : 9} className="px-5 py-2 text-xs font-semibold text-gray-500">
                     Săptămâna {group.week} · {group.rangeLabel} ({group.bookings.length} programări)
                   </td>
                 </tr>
@@ -180,7 +180,7 @@ export default function ProgramariManager({
                     <td className="font-medium">{b.customerName}</td>
                     <td>{b.serviceName}</td>
                     <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })}</td>
-                    {category === 'SALON' ? (
+                    {category === 'SALON' || category === 'CLINICA' ? (
                       <td className="text-gray-500">{b.customerPhone}</td>
                     ) : (
                       <>
@@ -216,7 +216,7 @@ export default function ProgramariManager({
             ))}
             {bookings.length === 0 && (
               <tr>
-                <td colSpan={category === "SALON" ? 8 : 9} className="text-center text-gray-500 py-8">
+                <td colSpan={category === "SALON" || category === "CLINICA" ? 8 : 9} className="text-center text-gray-500 py-8">
                   Nicio programare găsită.
                 </td>
               </tr>

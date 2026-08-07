@@ -1,6 +1,14 @@
 import { prisma } from '@/lib/prisma'
 import { Card } from '@/components/ui/card'
 
+const CATEGORY_LABEL: Record<string, string> = {
+  SALON: 'Saloane',
+  EVENT_VENUE: 'Spații evenimente',
+  HOTEL: 'Hoteluri',
+  PENSIUNE: 'Pensiuni',
+  CLINICA: 'Clinici',
+}
+
 export default async function SuperAdminOverview() {
   const [totalBusinesses, totalBookingsLast30d, activeSubscriptions, totalCustomers] = await Promise.all([
     prisma.business.count(),
@@ -40,7 +48,7 @@ export default async function SuperAdminOverview() {
         <ul className="text-sm flex flex-col gap-2">
           {byCategory.map((c) => (
             <li key={c.category} className="flex justify-between">
-              <span className="text-gray-500">{c.category === 'SALON' ? 'Saloane' : 'Spații evenimente'}</span>
+              <span className="text-gray-500">{CATEGORY_LABEL[c.category] ?? c.category}</span>
               <span className="font-medium">{c._count}</span>
             </li>
           ))}
