@@ -51,7 +51,7 @@ export default function PatientDetailTabs({
       {tab === 'SIMPLE' && <div className="card p-5">{simpleForm}</div>}
       {tab === 'MEDICAL' && <MedicalRecordForm customerId={customerId} initial={medicalRecordInitial} patientName={patientName} />}
       {tab === 'LETTER' && <MedicalLetterForm customerId={customerId} patientName={patientName} letters={letters} />}
-      {tab === 'DOCS' && <PatientDocuments customerId={customerId} documents={documents} />}
+      {tab === 'DOCS' && <PatientDocuments customerId={customerId} patientName={patientName} documents={documents} />}
     </div>
   )
 }
