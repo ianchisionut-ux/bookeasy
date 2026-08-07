@@ -21,7 +21,7 @@ type Business = {
   id: string
   slug: string
   name: string
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE'
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
   accountActive: boolean
   publicListed: boolean
   ownerEmail: string | null

@@ -66,7 +66,7 @@ export default function ProgramariManager({
   blockedSlots,
   filters,
 }: {
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE'
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
   bookings: Booking[]
   customers: { id: string; name: string }[]
   services: { id: string; name: string; durationMin: number | null }[]
