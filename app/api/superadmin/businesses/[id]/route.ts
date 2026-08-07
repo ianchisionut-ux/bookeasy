@@ -62,6 +62,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         await tx.servicePractitioner.deleteMany({ where: { practitioner: { businessId } } })
         await tx.practitionerWorkingHours.deleteMany({ where: { practitioner: { businessId } } })
         await tx.practitioner.deleteMany({ where: { businessId } })
+        await tx.patientDocument.deleteMany({ where: { businessId } })
+        await tx.patientMedicalRecord.deleteMany({ where: { customer: { businessId } } })
         await tx.customer.deleteMany({ where: { businessId } })
         await tx.service.deleteMany({ where: { businessId } })
         await tx.resource.deleteMany({ where: { businessId } })

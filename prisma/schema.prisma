@@ -61,6 +61,7 @@ model Business {
   conversations      Conversation[]
   reviews            Review[]
   practitioners      Practitioner[]
+  patientDocuments   PatientDocument[]
   photos             BusinessPhoto[]
   blockedSlots       BlockedSlot[]
   subscription       Subscription?
@@ -166,6 +167,8 @@ model Customer {
   medicalNotes     String?   // istoric medical/notă liberă — vizibilă STRICT în dashboard-ul clinicii
   createdAt        DateTime @default(now())
   bookings         Booking[]
+  medicalRecord    PatientMedicalRecord?
+  documents        PatientDocument[]
 
   @@unique([businessId, phone])
   @@unique([businessId, instagramUserId])
@@ -342,6 +345,72 @@ model ServicePractitioner {
   practitioner   Practitioner @relation(fields: [practitionerId], references: [id])
 
   @@unique([serviceId, practitionerId])
+}
+
+// ─── Fișă medicală completă (opțională, doar clinici) — inspirată din fișele
+// stomatologice/medicale reale. Câmpurile "des consultate" rămân dedicate, iar
+// listele lungi de tip da/nu (afecțiuni, temeri) sunt stocate ca JSON, ca fișa să
+// rămână ușor de extins fără migrări noi de fiecare dată ───
+
+model PatientMedicalRecord {
+  id         String   @id @default(cuid())
+  customerId String   @unique
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  cnp                     String?
+  address                 String?
+  city                    String?
+  occupation              String?
+  emergencyContactName    String?
+  emergencyContactPhone   String?
+
+  familyDoctor            String?
+  familyDoctorLastVisit   String?
+  previousDentist         String?
+  previousDentistLastVisit String?
+
+  hospitalized            Boolean?
+  hospitalizedDetails     String?
+  surgeries               Boolean?
+  surgeriesDetails        String?
+  onMedication            Boolean?
+  medicationDetails       String?
+  smoker                  Boolean?
+
+  allergyAnesthesia       Boolean?
+  allergyAntibiotics      Boolean?
+  allergyAspirin          Boolean?
+  allergyIodine           Boolean?
+  allergyLatex            Boolean?
+  allergyNickel           Boolean?
+  allergyOther            String?
+
+  pregnant                Boolean?
+  pregnantMonth           String?
+  breastfeeding           Boolean?
+  menstruationStarted     Boolean?
+  contraceptives          Boolean?
+  menopause               Boolean?
+
+  medicalConditions       Json?    // checklist tip {hipertensiune: true, diabet: false, ...}
+  dentalHistory            Json?   // checklist tip {fricaDeDentist: true, injectie: false, ...}
+  pediatricInfo            Json?   // înălțime, greutate, obiceiuri copii — doar dacă e cazul
+
+  generalNotes             String?
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+model PatientDocument {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  url        String
+  filename   String
+  uploadedAt DateTime @default(now())
 }
 
 model AccessRequest {

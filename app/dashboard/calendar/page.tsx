@@ -11,22 +11,28 @@ export default async function CalendarPage() {
     include: { workingHours: true },
   })
 
-  const bookings = await prisma.booking.findMany({
-    where: { businessId, status: { not: 'CANCELLED' } },
-    include: { customer: true, service: true },
-    orderBy: { startAt: 'asc' },
-  })
+  const isClinic = business?.category === 'CLINICA'
 
-  const blockedSlots = await prisma.blockedSlot.findMany({ where: { businessId } })
+  const [bookings, blockedSlots, practitioners] = await Promise.all([
+    prisma.booking.findMany({
+      where: { businessId, status: { not: 'CANCELLED' } },
+      include: { customer: true, service: true, practitioner: true },
+      orderBy: { startAt: 'asc' },
+    }),
+    prisma.blockedSlot.findMany({ where: { businessId } }),
+    isClinic ? prisma.practitioner.findMany({ where: { businessId, active: true }, orderBy: { name: 'asc' } }) : Promise.resolve([]),
+  ])
 
   const events = bookings.map((b) => ({
     id: b.id,
-    title: `${b.customer.name ?? b.customer.phone} — ${b.service.name}`,
+    title: `${b.customer.name ?? b.customer.phone} — ${b.service.name}${b.practitioner ? ` (${b.practitioner.name})` : ''}`,
     start: b.startAt,
     end: b.endAt,
     status: b.status,
     customerName: b.customer.name ?? b.customer.phone,
     serviceName: b.service.name,
+    practitionerId: b.practitionerId,
+    practitionerName: b.practitioner?.name ?? null,
   }))
 
   // intervalul orar afișat în calendar respectă programul real de lucru — cel mai
@@ -49,6 +55,7 @@ export default async function CalendarPage() {
       }))}
       minTime={minTime}
       maxTime={maxTime}
+      practitioners={practitioners.map((p) => ({ id: p.id, name: p.name }))}
     />
   )
 }
