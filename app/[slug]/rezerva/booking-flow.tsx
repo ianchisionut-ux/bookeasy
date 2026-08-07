@@ -65,6 +65,7 @@ export default function BookingFlow({
 
   const [service, setService] = useState<Service | null>(services[0] ?? null)
   const [practitioners, setPractitioners] = useState<Practitioner[]>([])
+  const [practitionersLoaded, setPractitionersLoaded] = useState(false)
   const [practitionerId, setPractitionerId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date>(days[0])
   const [daySlots, setDaySlots] = useState<DaySlot[]>([])
@@ -100,6 +101,7 @@ export default function BookingFlow({
   useEffect(() => {
     if (!isClinic || !service) return
     setPractitionerId(null)
+    setPractitionersLoaded(false)
     fetchWithTimeout(`/api/public/practitioners?businessId=${businessId}&serviceId=${service.id}`)
       .then((res) => res.json())
       .then((data) => {
@@ -108,12 +110,16 @@ export default function BookingFlow({
         if (list.length > 0) setPractitionerId(list[0].id) // pre-selectăm primul, dar se poate schimba
       })
       .catch(() => setPractitioners([]))
+      .finally(() => setPractitionersLoaded(true))
   }, [service, isClinic, businessId])
 
   // reîncarcă sloturile zilei de fiecare dată când se schimbă serviciul, medicul sau data aleasă
   useEffect(() => {
     if (!isAppointment || !service) return
-    if (isClinic && practitioners.length > 0 && !practitionerId) return // așteptăm alegerea medicului
+    // la clinici, așteptăm explicit să se termine încărcarea medicilor și să existe o
+    // selecție, altfel cererea de ore ar cădea greșit pe orele generale ale clinicii,
+    // nu pe programul medicului ales (bug real, confirmat)
+    if (isClinic && (!practitionersLoaded || (practitioners.length > 0 && !practitionerId))) return
     setLoadingSlots(true)
     setSelectedSlot(null)
     setError('')
@@ -124,7 +130,7 @@ export default function BookingFlow({
       .then((data) => setDaySlots(data.allSlots ?? []))
       .catch(() => setDaySlots([]))
       .finally(() => setLoadingSlots(false))
-  }, [service, selectedDate, businessId, isAppointment, isClinic, practitionerId])
+  }, [service, selectedDate, businessId, isAppointment, isClinic, practitionerId, practitionersLoaded])
 
   function selectService(s: Service) {
     setService(s)
