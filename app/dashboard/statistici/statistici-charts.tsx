@@ -105,7 +105,7 @@ export default function StatisticiCharts({ daily, summary }: { daily: Daily[]; s
                 <XAxis dataKey="label" tick={{ fontSize: 10 }} tickFormatter={(l) => l.slice(0, 3)} />
                 <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="count" fill="#6d5ffd" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" fill="var(--accent)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

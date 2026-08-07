@@ -4,9 +4,9 @@
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 
   /* accent violet, ca în referință (data selectată din calendar) */
-  --accent: #6d5ffd;
-  --accent-hover: #5c4fe0;
-  --accent-soft: #eeecff;
+  --accent: #7eb735;
+  --accent-hover: #6a9c2b;
+  --accent-soft: #eef6e3;
 
   --surface: #ffffff;
   --surface-muted: #f7f7f9;
