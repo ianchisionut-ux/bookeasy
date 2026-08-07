@@ -15,9 +15,8 @@ export default async function ProgramariPage({
   const { status, q } = await searchParams
 
   const business = await prisma.business.findUnique({ where: { id: businessId }, select: { category: true } })
-  const isClinic = business?.category === 'CLINICA'
 
-  const [bookings, customers, services, resources, blockedSlots, practitioners] = await Promise.all([
+  const [bookings, customers, services, blockedSlots] = await Promise.all([
     prisma.booking.findMany({
       where: {
         businessId,
@@ -26,15 +25,13 @@ export default async function ProgramariPage({
           ? { customer: { OR: [{ name: { contains: q, mode: 'insensitive' } }, { phone: { contains: q, mode: 'insensitive' } }] } }
           : {}),
       },
-      include: { customer: true, service: true, resource: true, practitioner: true },
+      include: { customer: true, service: true, resource: true },
       orderBy: { startAt: 'desc' },
       take: 200,
     }),
     prisma.customer.findMany({ where: { businessId }, orderBy: { name: 'asc' } }),
     prisma.service.findMany({ where: { businessId, active: true }, orderBy: { name: 'asc' } }),
-    prisma.resource.findMany({ where: { businessId }, orderBy: { name: 'asc' } }),
     prisma.blockedSlot.findMany({ where: { businessId } }),
-    isClinic ? prisma.practitioner.findMany({ where: { businessId, active: true }, orderBy: { name: 'asc' } }) : Promise.resolve([]),
   ])
 
   return (
@@ -49,7 +46,6 @@ export default async function ProgramariPage({
         serviceName: b.service.name,
         serviceId: b.serviceId,
         resourceName: b.resource?.name ?? null,
-        practitionerName: b.practitioner?.name ?? null,
         startAt: b.startAt.toISOString(),
         endAt: b.endAt.toISOString(),
         status: b.status,
@@ -58,7 +54,6 @@ export default async function ProgramariPage({
       customers={customers.map((c) => ({ id: c.id, name: c.name ?? c.phone }))}
       services={services.map((s) => ({ id: s.id, name: s.name, durationMin: s.durationMin }))}
       blockedSlots={blockedSlots.map((b) => ({ startAt: b.startAt.toISOString(), endAt: b.endAt.toISOString() }))}
-      practitioners={practitioners.map((p) => ({ id: p.id, name: p.name }))}
       filters={{ status: status ?? '', q: q ?? '' }}
     />
   )

@@ -52,15 +52,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
     category = business?.category ?? null
   }
 
-  const navItems = [
-    ...NAV_ITEMS.slice(0, 3),
-    ...(category === 'CLINICA' ? [{ href: '/dashboard/medici', label: 'Medici' }] : []),
-    ...NAV_ITEMS.slice(3),
-    ...(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin' }] : []),
-  ].map((item) => ({
+  const navItems = NAV_ITEMS.map((item) => ({
     ...item,
     label: category === 'CLINICA' ? CLINIC_NAV_LABEL_OVERRIDES[item.href] ?? item.label : item.label,
-  }))
+  })).concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin' }] : [])
 
   return (
     <ResponsiveShell
