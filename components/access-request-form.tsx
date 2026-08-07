@@ -58,8 +58,6 @@ export default function AccessRequestForm() {
       <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field w-full">
         <option value="SALON">Salon</option>
         <option value="EVENT_VENUE">Spații evenimente</option>
-        <option value="HOTEL">Hotel</option>
-        <option value="PENSIUNE">Pensiune</option>
       </select>
       <textarea
         placeholder="Spune-ne câte ceva despre afacerea ta (opțional)"
