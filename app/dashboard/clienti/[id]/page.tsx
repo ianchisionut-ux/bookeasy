@@ -25,30 +25,31 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
   if (!customer) notFound()
   const isClinic = business?.category === 'CLINICA'
-  const label = isClinic ? 'pacient' : 'client'
   const patientName = customer.name ?? customer.phone
+
+  const simpleInitial = {
+    name: customer.name ?? '',
+    phone: customer.phone,
+    email: customer.email ?? '',
+    notes: customer.notes ?? '',
+    dateOfBirth: customer.dateOfBirth ? customer.dateOfBirth.toISOString().slice(0, 10) : '',
+    allergies: customer.allergies ?? '',
+    medicalNotes: customer.medicalNotes ?? '',
+  }
 
   return (
     <div className="p-4 lg:p-8 max-w-2xl">
-      <div className="mb-4">
+      <div className="mb-4 screen-only">
         <BackLink href="/dashboard/clienti" label={`Înapoi la ${isClinic ? 'pacienți' : 'clienți'}`} />
       </div>
 
-      <h1 className="text-2xl font-semibold mb-6">{customer.name ?? 'Fără nume'}</h1>
+      <h1 className="text-2xl font-semibold mb-6 screen-only">{customer.name ?? 'Fără nume'}</h1>
 
       {isClinic ? (
         <PatientDetailTabs
           customerId={customer.id}
           patientName={patientName}
-          simpleInitial={{
-            name: customer.name ?? '',
-            phone: customer.phone,
-            email: customer.email ?? '',
-            notes: customer.notes ?? '',
-            dateOfBirth: customer.dateOfBirth ? customer.dateOfBirth.toISOString().slice(0, 10) : '',
-            allergies: customer.allergies ?? '',
-            medicalNotes: customer.medicalNotes ?? '',
-          }}
+          simpleInitial={simpleInitial}
           medicalRecordInitial={medicalRecord}
           documents={documents.map((d) => ({
             id: d.id,
@@ -61,37 +62,27 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       ) : (
         <Card className="mb-8">
           <h2 className="font-medium mb-4">Date client</h2>
-          <CustomerEditForm
-            customerId={customer.id}
-            isClinic={false}
-            initial={{
-              name: customer.name ?? '',
-              phone: customer.phone,
-              email: customer.email ?? '',
-              notes: customer.notes ?? '',
-              dateOfBirth: '',
-              allergies: '',
-              medicalNotes: '',
-            }}
-          />
+          <CustomerEditForm customerId={customer.id} isClinic={false} initial={simpleInitial} />
         </Card>
       )}
 
-      <h2 className="text-lg font-medium mb-3 mt-8">Istoric {isClinic ? 'consultații' : 'rezervări'}</h2>
-      <div className="flex flex-col gap-2">
-        {customer.bookings.map((b) => (
-          <Card key={b.id} className="flex items-center justify-between py-3">
-            <span className="font-medium">
-              {b.service.name}
-              {b.practitioner ? ` · ${b.practitioner.name}` : ''}
-            </span>
-            <span className="text-gray-500 text-sm">{b.startAt.toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' })}</span>
-            <Pill tone={b.status === 'CONFIRMED' ? 'success' : b.status === 'CANCELLED' ? 'danger' : 'neutral'}>
-              {b.status}
-            </Pill>
-          </Card>
-        ))}
-        {customer.bookings.length === 0 && <p className="text-sm text-gray-500">Niciun istoric încă.</p>}
+      <div className="screen-only">
+        <h2 className="text-lg font-medium mb-3 mt-8">Istoric {isClinic ? 'consultații' : 'rezervări'}</h2>
+        <div className="flex flex-col gap-2">
+          {customer.bookings.map((b) => (
+            <Card key={b.id} className="flex items-center justify-between py-3">
+              <span className="font-medium">
+                {b.service.name}
+                {b.practitioner ? ` · ${b.practitioner.name}` : ''}
+              </span>
+              <span className="text-gray-500 text-sm">{b.startAt.toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' })}</span>
+              <Pill tone={b.status === 'CONFIRMED' ? 'success' : b.status === 'CANCELLED' ? 'danger' : 'neutral'}>
+                {b.status}
+              </Pill>
+            </Card>
+          ))}
+          {customer.bookings.length === 0 && <p className="text-sm text-gray-500">Niciun istoric încă.</p>}
+        </div>
       </div>
     </div>
   )

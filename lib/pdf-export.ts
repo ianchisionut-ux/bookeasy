@@ -5,7 +5,13 @@ export type PdfSection = {
   rows: { label: string; value: string }[]
 }
 
-export function exportSectionsToPdf(filename: string, heading: string, subheading: string, sections: PdfSection[]) {
+export function exportSectionsToPdf(
+  filename: string,
+  heading: string,
+  subheading: string,
+  sections: PdfSection[],
+  options: { keepEmptyRows?: boolean } = {}
+) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const marginX = 15
@@ -36,8 +42,8 @@ export function exportSectionsToPdf(filename: string, heading: string, subheadin
   }
 
   for (const section of sections) {
-    const nonEmptyRows = section.rows.filter((r) => r.value && r.value.trim() !== '')
-    if (nonEmptyRows.length === 0) continue
+    const rows = options.keepEmptyRows ? section.rows : section.rows.filter((r) => r.value && r.value.trim() !== '')
+    if (rows.length === 0) continue
 
     ensureSpace(12)
     doc.setFontSize(12)
@@ -50,8 +56,9 @@ export function exportSectionsToPdf(filename: string, heading: string, subheadin
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
 
-    for (const row of nonEmptyRows) {
-      const text = `${row.label}: ${row.value}`
+    for (const row of rows) {
+      const value = row.value && row.value.trim() !== '' ? row.value : '.......................................'
+      const text = `${row.label}: ${value}`
       const lines = doc.splitTextToSize(text, maxWidth)
       ensureSpace(lines.length * 5 + 2)
       doc.text(lines, marginX, y)

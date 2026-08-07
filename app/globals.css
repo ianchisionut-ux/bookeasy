@@ -101,6 +101,18 @@ body {
   display: none;
 }
 
+.print-only {
+  display: none;
+}
+@media print {
+  .screen-only {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
+
 @media print {
   aside,
   .no-print,
