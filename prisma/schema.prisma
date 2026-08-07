@@ -62,6 +62,7 @@ model Business {
   reviews            Review[]
   practitioners      Practitioner[]
   patientDocuments   PatientDocument[]
+  medicalLetters     MedicalLetter[]
   photos             BusinessPhoto[]
   blockedSlots       BlockedSlot[]
   subscription       Subscription?
@@ -169,6 +170,7 @@ model Customer {
   bookings         Booking[]
   medicalRecord    PatientMedicalRecord?
   documents        PatientDocument[]
+  medicalLetters   MedicalLetter[]
 
   @@unique([businessId, phone])
   @@unique([businessId, instagramUserId])
@@ -319,6 +321,10 @@ model Practitioner {
   photoUrl       String?
   bio            String?
   active         Boolean                    @default(true)
+  break1Start    String? // pauze zilnice (ex: masă) — aceleași ore în fiecare zi lucrătoare
+  break1End      String?
+  break2Start    String?
+  break2End      String?
   createdAt      DateTime                   @default(now())
   workingHours   PractitionerWorkingHours[]
   services       ServicePractitioner[]
@@ -411,6 +417,59 @@ model PatientDocument {
   url        String
   filename   String
   uploadedAt DateTime @default(now())
+}
+
+model MedicalLetter {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  providerName    String? // Denumire Furnizor
+  doctorName      String? // Medic
+  contractNumber  String? // Contract/convenție nr.
+  casName         String? // CAS
+
+  patientName     String?
+  patientBirthDate String?
+  patientCnp      String?
+  consultationDate String?
+  hospitalizationPeriod String?
+  fileNumber      String? // nr. F.O. / Registrul de consultații
+
+  presentationReasons String?
+  oncologicalDiagnosis Boolean?
+  diagnosis           String?
+
+  anamnesis           String?
+  riskFactors         String?
+
+  clinicalExamGeneral String?
+  clinicalExamLocal   String?
+
+  labNormal           String?
+  labPathological     String?
+
+  ekg                 String?
+  eco                 String?
+  rx                  String?
+  otherParaclinical    String?
+
+  treatmentGiven      String?
+  otherHealthInfo     String?
+  recommendedTreatment String?
+
+  returnForHospitalization String? // "da, in termen de X" / "nu"
+  prescriptionStatus  String? // una din cele 3 opțiuni
+  medicalLeaveStatus  String? // una din cele 3 opțiuni
+  homeCareStatus      String? // una din cele 2 opțiuni
+  deviceStatus        String? // una din cele 2 opțiuni
+
+  letterDate          String?
+
+  createdAt           DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model AccessRequest {

@@ -6,6 +6,7 @@ import { Input, Textarea } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ChecklistGrid } from '@/components/checklist-grid'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { exportSectionsToPdf } from '@/lib/pdf-export'
 
 const MEDICAL_CONDITIONS = [
   { key: 'hipertensiune', label: 'Hipertensiune' },
@@ -49,7 +50,7 @@ const FEAR_ITEMS = [
   { key: 'alteZgomote', label: 'Alte zgomote din cabinet' },
 ]
 
-export default function MedicalRecordForm({ customerId, initial }: { customerId: string; initial: any }) {
+export default function MedicalRecordForm({ customerId, initial, patientName }: { customerId: string; initial: any; patientName: string }) {
   const [form, setForm] = useState({
     cnp: initial?.cnp ?? '',
     address: initial?.address ?? '',
@@ -129,6 +130,81 @@ export default function MedicalRecordForm({ customerId, initial }: { customerId:
     } finally {
       setSaving(false)
     }
+  }
+
+  function exportPdf() {
+    const allergyList = [
+      form.allergyAnesthesia && 'Anestezie',
+      form.allergyAntibiotics && 'Antibiotice',
+      form.allergyAspirin && 'Aspirină',
+      form.allergyIodine && 'Iod',
+      form.allergyLatex && 'Latex',
+      form.allergyNickel && 'Nichel',
+      form.allergyOther,
+    ]
+      .filter(Boolean)
+      .join(', ')
+
+    const conditionsList = Object.entries(conditions)
+      .filter(([, v]) => v)
+      .map(([k]) => MEDICAL_CONDITIONS.find((c) => c.key === k)?.label ?? k)
+      .join(', ')
+
+    const fearsList = Object.entries(fears)
+      .filter(([, v]) => v)
+      .map(([k]) => FEAR_ITEMS.find((f) => f.key === k)?.label ?? k)
+      .join(', ')
+
+    exportSectionsToPdf(`fisa-medicala-${patientName.replace(/\s+/g, '-')}.pdf`, 'Fișa pacientului', patientName, [
+      {
+        title: 'Date personale',
+        rows: [
+          { label: 'CNP', value: form.cnp },
+          { label: 'Ocupație', value: form.occupation },
+          { label: 'Adresă', value: form.address },
+          { label: 'Localitate/Județ', value: form.city },
+        ],
+      },
+      {
+        title: 'Contact urgență',
+        rows: [
+          { label: 'Nume', value: form.emergencyContactName },
+          { label: 'Telefon', value: form.emergencyContactPhone },
+        ],
+      },
+      {
+        title: 'Medici anteriori',
+        rows: [
+          { label: 'Medic de familie', value: form.familyDoctor },
+          { label: 'Ultima consultație', value: form.familyDoctorLastVisit },
+          { label: 'Medic dentist anterior', value: form.previousDentist },
+          { label: 'Ultima consultație', value: form.previousDentistLastVisit },
+        ],
+      },
+      {
+        title: 'Istoric medical',
+        rows: [
+          { label: 'Spitalizat', value: form.hospitalized ? form.hospitalizedDetails || 'Da' : '' },
+          { label: 'Intervenții chirurgicale', value: form.surgeries ? form.surgeriesDetails || 'Da' : '' },
+          { label: 'Medicație curentă', value: form.onMedication ? form.medicationDetails || 'Da' : '' },
+          { label: 'Fumător', value: form.smoker ? 'Da' : '' },
+        ],
+      },
+      { title: 'Alergii', rows: [{ label: 'Alergii cunoscute', value: allergyList }] },
+      { title: 'Probleme medicale cunoscute', rows: [{ label: 'Afecțiuni', value: conditionsList }] },
+      {
+        title: 'Fișă stomatologică',
+        rows: [
+          { label: 'Frici', value: fearsList },
+          { label: 'Sângerare gingii', value: dental.bleedingGums ? 'Da' : '' },
+          { label: 'Frecvență periaj', value: dental.brushingFrequency },
+          { label: 'Scrâșnit dinți', value: dental.teethGrinding ? dental.teethGrindingTime || 'Da' : '' },
+          { label: 'Aparat dentar anterior', value: dental.previousBraces ? dental.previousBracesWhen || 'Da' : '' },
+          { label: 'Extracții dificile', value: dental.difficultExtractions ? dental.extractionProblems || 'Da' : '' },
+        ],
+      },
+      { title: 'Alte mențiuni', rows: [{ label: 'Note', value: form.generalNotes }] },
+    ])
   }
 
   return (
@@ -371,10 +447,16 @@ export default function MedicalRecordForm({ customerId, initial }: { customerId:
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Button onClick={save} disabled={saving}>
           {saving ? 'Se salvează...' : 'Salvează fișa medicală'}
         </Button>
+        <button onClick={() => window.print()} className="btn-secondary text-sm">
+          🖨 Printează
+        </button>
+        <button onClick={exportPdf} className="btn-secondary text-sm">
+          ⬇ Export PDF
+        </button>
         {savedAt && <span className="text-xs text-gray-500">Salvat la {savedAt}</span>}
       </div>
     </div>

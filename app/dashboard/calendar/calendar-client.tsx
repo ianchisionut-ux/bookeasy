@@ -37,7 +37,9 @@ type Event = {
   start: Date
   end: Date
   status: string
+  customerId: string
   customerName: string
+  customerPhone: string
   serviceName: string
   practitionerId?: string | null
   practitionerName?: string | null
@@ -286,8 +288,7 @@ export default function CalendarClient({
           onSelectSlot={handleSelectSlot}
           onSelectEvent={handleSelectEvent}
           onEventDrop={moveOrResize}
-          onEventResize={moveOrResize}
-          resizable
+          resizable={false}
           draggableAccessor={(event: any) => !event.isBlocked}
           eventPropGetter={(event: any) => {
             if (event.isBlocked) {
@@ -319,8 +320,11 @@ export default function CalendarClient({
           booking={
             {
               id: selected.id,
+              customerId: selected.customerId,
               customerName: selected.customerName,
+              customerPhone: selected.customerPhone,
               serviceName: selected.serviceName,
+              practitionerName: selected.practitionerName,
               startAt: selected.start.toISOString(),
               endAt: selected.end.toISOString(),
               status: selected.status as BookingDetail['status'],

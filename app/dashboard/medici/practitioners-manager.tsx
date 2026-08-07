@@ -16,6 +16,10 @@ type Practitioner = {
   active: boolean
   workingHours: WorkingHour[]
   serviceIds: string[]
+  break1Start: string | null
+  break1End: string | null
+  break2Start: string | null
+  break2End: string | null
 }
 
 const WEEKDAY_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
@@ -142,6 +146,12 @@ function PractitionerDetail({
   const [hours, setHours] = useState<WorkingHour[]>(practitioner.workingHours)
   const [serviceIds, setServiceIds] = useState<string[]>(practitioner.serviceIds)
   const [active, setActive] = useState(practitioner.active)
+  const [break1Enabled, setBreak1Enabled] = useState(!!practitioner.break1Start)
+  const [break1Start, setBreak1Start] = useState(practitioner.break1Start ?? '13:00')
+  const [break1End, setBreak1End] = useState(practitioner.break1End ?? '14:00')
+  const [break2Enabled, setBreak2Enabled] = useState(!!practitioner.break2Start)
+  const [break2Start, setBreak2Start] = useState(practitioner.break2Start ?? '16:00')
+  const [break2End, setBreak2End] = useState(practitioner.break2End ?? '16:15')
   const [saving, setSaving] = useState(false)
 
   function hourFor(weekday: number) {
@@ -170,7 +180,15 @@ function PractitionerDetail({
       await fetchWithTimeout(`/api/business/practitioners/${practitioner.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active, workingHours: hours, serviceIds }),
+        body: JSON.stringify({
+          active,
+          workingHours: hours,
+          serviceIds,
+          break1Start: break1Enabled ? break1Start : null,
+          break1End: break1Enabled ? break1End : null,
+          break2Start: break2Enabled ? break2Start : null,
+          break2End: break2Enabled ? break2End : null,
+        }),
       })
       onSaved()
     } catch {
@@ -218,6 +236,39 @@ function PractitionerDetail({
               </div>
             )
           })}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-sm font-medium mb-2">Pauze (masă etc.)</p>
+        <p className="text-xs text-gray-400 mb-2">Aceleași ore în fiecare zi lucrătoare — nu se pot face programări în aceste intervale.</p>
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <label className="flex items-center gap-1.5 text-gray-500 w-28 shrink-0">
+              <input type="checkbox" checked={break1Enabled} onChange={(e) => setBreak1Enabled(e.target.checked)} />
+              Pauza 1
+            </label>
+            {break1Enabled && (
+              <div className="flex items-center gap-2">
+                <input type="time" value={break1Start} onChange={(e) => setBreak1Start(e.target.value)} className="input-field" />
+                <span className="text-gray-400">–</span>
+                <input type="time" value={break1End} onChange={(e) => setBreak1End(e.target.value)} className="input-field" />
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <label className="flex items-center gap-1.5 text-gray-500 w-28 shrink-0">
+              <input type="checkbox" checked={break2Enabled} onChange={(e) => setBreak2Enabled(e.target.checked)} />
+              Pauza 2
+            </label>
+            {break2Enabled && (
+              <div className="flex items-center gap-2">
+                <input type="time" value={break2Start} onChange={(e) => setBreak2Start(e.target.value)} className="input-field" />
+                <span className="text-gray-400">–</span>
+                <input type="time" value={break2End} onChange={(e) => setBreak2End(e.target.value)} className="input-field" />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

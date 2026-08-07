@@ -30,6 +30,10 @@ export default async function MediciPage() {
         active: p.active,
         workingHours: p.workingHours.map((h) => ({ weekday: h.weekday, startTime: h.startTime, endTime: h.endTime })),
         serviceIds: p.services.map((s) => s.serviceId),
+        break1Start: p.break1Start,
+        break1End: p.break1End,
+        break2Start: p.break2Start,
+        break2End: p.break2End,
       }))}
       services={services.map((s) => ({ id: s.id, name: s.name }))}
     />

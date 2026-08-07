@@ -12,18 +12,21 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   const session = await auth()
   const businessId = (session as any)?.businessId
 
-  const [customer, business, medicalRecord, documents] = await Promise.all([
+  const [customer, business, medicalRecord, documents, letters] = await Promise.all([
     prisma.customer.findUnique({
       where: { id },
-      include: { bookings: { include: { service: true }, orderBy: { startAt: 'desc' } } },
+      include: { bookings: { include: { service: true, practitioner: true }, orderBy: { startAt: 'desc' } } },
     }),
     prisma.business.findUnique({ where: { id: businessId }, select: { category: true } }),
     prisma.patientMedicalRecord.findUnique({ where: { customerId: id } }),
     prisma.patientDocument.findMany({ where: { customerId: id }, orderBy: { uploadedAt: 'desc' } }),
+    prisma.medicalLetter.findMany({ where: { customerId: id }, orderBy: { createdAt: 'desc' } }),
   ])
 
   if (!customer) notFound()
   const isClinic = business?.category === 'CLINICA'
+  const label = isClinic ? 'pacient' : 'client'
+  const patientName = customer.name ?? customer.phone
 
   return (
     <div className="p-4 lg:p-8 max-w-2xl">
@@ -51,6 +54,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
             />
           }
           customerId={customer.id}
+          patientName={patientName}
           medicalRecordInitial={medicalRecord}
           documents={documents.map((d) => ({
             id: d.id,
@@ -58,6 +62,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
             filename: d.filename,
             uploadedAt: d.uploadedAt.toISOString(),
           }))}
+          letters={letters.map((l) => ({ ...l, id: l.id }))}
         />
       ) : (
         <Card className="mb-8">
@@ -82,7 +87,10 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       <div className="flex flex-col gap-2">
         {customer.bookings.map((b) => (
           <Card key={b.id} className="flex items-center justify-between py-3">
-            <span className="font-medium">{b.service.name}</span>
+            <span className="font-medium">
+              {b.service.name}
+              {b.practitioner ? ` · ${b.practitioner.name}` : ''}
+            </span>
             <span className="text-gray-500 text-sm">{b.startAt.toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' })}</span>
             <Pill tone={b.status === 'CONFIRMED' ? 'success' : b.status === 'CANCELLED' ? 'danger' : 'neutral'}>
               {b.status}

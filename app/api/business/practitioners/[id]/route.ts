@@ -8,6 +8,10 @@ const patchSchema = z.object({
   specialization: z.string().nullable().optional(),
   bio: z.string().nullable().optional(),
   active: z.boolean().optional(),
+  break1Start: z.string().nullable().optional(),
+  break1End: z.string().nullable().optional(),
+  break2Start: z.string().nullable().optional(),
+  break2End: z.string().nullable().optional(),
   workingHours: z
     .array(z.object({ weekday: z.number().min(0).max(6), startTime: z.string(), endTime: z.string() }))
     .optional(),

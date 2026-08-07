@@ -9,8 +9,11 @@ import { Pill } from '@/components/ui/input'
 
 export type BookingDetail = {
   id: string
+  customerId: string
   customerName: string
+  customerPhone: string
   serviceName: string
+  practitionerName?: string | null
   startAt: string
   endAt: string
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW'
@@ -43,6 +46,32 @@ export default function BookingEditModal({
   const [status, setStatus] = useState(booking.status)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [editingPatient, setEditingPatient] = useState(false)
+  const [patientName, setPatientName] = useState(booking.customerName)
+  const [patientPhone, setPatientPhone] = useState(booking.customerPhone)
+  const [savingPatient, setSavingPatient] = useState(false)
+
+  async function savePatientInfo() {
+    setSavingPatient(true)
+    try {
+      const res = await fetchWithTimeout(`/api/customers/${booking.customerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: patientName, phone: patientPhone }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error ?? 'Nu am putut salva datele.')
+        return
+      }
+      setEditingPatient(false)
+      router.refresh()
+    } catch {
+      alert('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      setSavingPatient(false)
+    }
+  }
 
   function formatDateInput(iso: string) {
     const d = new Date(iso)
@@ -106,7 +135,35 @@ export default function BookingEditModal({
           <h2 className="font-medium">{booking.serviceName}</h2>
           <Pill tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Pill>
         </div>
-        <p className="text-sm text-gray-500 mb-4">{booking.customerName}</p>
+        <div className="mb-4">
+          {editingPatient ? (
+            <div className="flex flex-col gap-2">
+              <input type="text" value={patientName} onChange={(e) => setPatientName(e.target.value)} placeholder="Nume" className="input-field w-full text-sm" />
+              <input type="tel" value={patientPhone} onChange={(e) => setPatientPhone(e.target.value)} placeholder="Telefon" className="input-field w-full text-sm" />
+              <div className="flex gap-2">
+                <button onClick={savePatientInfo} disabled={savingPatient} className="text-xs text-[var(--accent)] font-medium">
+                  {savingPatient ? 'Se salvează...' : 'Salvează'}
+                </button>
+                <button onClick={() => setEditingPatient(false)} className="text-xs text-gray-500">
+                  Anulează
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-700 font-medium">{booking.customerName}</p>
+                <p className="text-xs text-gray-500">
+                  📞 {booking.customerPhone}
+                  {booking.practitionerName && <> · 🩺 {booking.practitionerName}</>}
+                </p>
+              </div>
+              <button onClick={() => setEditingPatient(true)} className="text-xs text-[var(--accent)] font-medium">
+                Editează
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="flex flex-col gap-3">
           <div>

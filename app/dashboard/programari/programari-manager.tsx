@@ -153,7 +153,7 @@ export default function ProgramariManager({
           <thead>
             <tr className="text-left border-b border-[var(--border-soft)]">
               <th className="py-3 px-5 font-medium text-gray-500">#</th>
-              <th className="font-medium text-gray-500">Client</th>
+              <th className="font-medium text-gray-500">{category === 'CLINICA' ? 'Pacient' : 'Client'}</th>
               <th className="font-medium text-gray-500">Serviciu</th>
               <th className="font-medium text-gray-500">Data</th>
               {category === 'SALON' ? (
@@ -187,7 +187,11 @@ export default function ProgramariManager({
                     <td className="py-3 px-5 text-gray-400 font-mono text-xs">
                       {b.sequenceNumber ? `#${String(b.sequenceNumber).padStart(3, '0')}` : '—'}
                     </td>
-                    <td className="font-medium">{b.customerName}</td>
+                    <td className="font-medium">
+                      <a href={`/dashboard/clienti/${b.customerId}`} className="text-[var(--accent)] hover:underline">
+                        {b.customerName}
+                      </a>
+                    </td>
                     <td>{b.serviceName}</td>
                     <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })}</td>
                     {category === 'SALON' ? (
@@ -335,7 +339,7 @@ function NewBookingForm({
         newCustomerMode
           ? 'Completează numele, telefonul, serviciul și data.'
           : isClinic
-            ? 'Completează client, serviciu, medic și oră.'
+            ? 'Completează pacient, serviciu, medic și oră.'
             : 'Completează client, serviciu și dată.'
       )
       return
@@ -399,18 +403,18 @@ function NewBookingForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-sm text-gray-500">Client</label>
+            <label className="text-sm text-gray-500">{isClinic ? 'Pacient' : 'Client'}</label>
             <button
               type="button"
               onClick={() => setNewCustomerMode((v) => !v)}
               className="text-xs text-[var(--accent)] font-medium"
             >
-              {newCustomerMode ? '← Alege client existent' : '+ Client nou'}
+              {newCustomerMode ? `← Alege ${isClinic ? 'pacient' : 'client'} existent` : `+ ${isClinic ? 'Pacient' : 'Client'} nou`}
             </button>
           </div>
           {newCustomerMode ? (
             <div className="flex flex-col gap-2">
-              <Input placeholder="Nume client" value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} />
+              <Input placeholder={isClinic ? 'Nume pacient' : 'Nume client'} value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} />
               <Input
                 placeholder="Telefon"
                 type="tel"
@@ -421,7 +425,7 @@ function NewBookingForm({
             </div>
           ) : (
             <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input-field w-full">
-              <option value="">Alege client</option>
+              <option value="">{isClinic ? 'Alege pacient' : 'Alege client'}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}

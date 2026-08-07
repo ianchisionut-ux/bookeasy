@@ -82,12 +82,22 @@ export async function getPractitionerDaySlotsWithStatus(
   if (!service || service.type !== 'APPOINTMENT') return []
 
   const weekday = date.getDay()
-  const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
+  const [business, practitioner, workingHours, existingBookings, blockedSlots] = await Promise.all([
     prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
+    prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true } }),
     prisma.practitionerWorkingHours.findMany({ where: { practitionerId, weekday } }),
     prisma.booking.findMany({ where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
     getBlockedSlotsForDay(businessId, date),
   ])
+
+  // pauzele medicului (masă etc.) — aceleași ore, în fiecare zi lucrătoare
+  const breaks: { startAt: Date; endAt: Date }[] = []
+  if (practitioner?.break1Start && practitioner.break1End) {
+    breaks.push({ startAt: combineDateAndTime(date, practitioner.break1Start), endAt: combineDateAndTime(date, practitioner.break1End) })
+  }
+  if (practitioner?.break2Start && practitioner.break2End) {
+    breaks.push({ startAt: combineDateAndTime(date, practitioner.break2Start), endAt: combineDateAndTime(date, practitioner.break2End) })
+  }
 
   const duration = service.durationMin ?? 30
   const step = business?.slotIntervalMinutes ?? duration
@@ -105,8 +115,9 @@ export async function getPractitionerDaySlotsWithStatus(
       const tooSoon = cursor < earliestAllowed
       const blockedHere = blockedSlots.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
       const bookedHere = existingBookings.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
+      const onBreak = breaks.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
 
-      result.push({ time: cursor.toISOString(), available: !tooSoon && !blockedHere && !bookedHere })
+      result.push({ time: cursor.toISOString(), available: !tooSoon && !blockedHere && !bookedHere && !onBreak })
       cursor = addMinutes(cursor, step)
     }
   }
@@ -128,14 +139,24 @@ export async function isPractitionerSlotStillAvailable(
   const duration = service.durationMin ?? 30
   const endAt = addMinutes(startAt, duration)
 
-  const [conflict, blocked] = await Promise.all([
+  const [conflict, blocked, practitioner] = await Promise.all([
     prisma.booking.findFirst({
       where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: endAt }, endAt: { gt: startAt } },
     }),
     isIntervalBlocked(businessId, startAt, endAt),
+    prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true } }),
   ])
 
-  return !conflict && !blocked
+  const breaks: { startAt: Date; endAt: Date }[] = []
+  if (practitioner?.break1Start && practitioner.break1End) {
+    breaks.push({ startAt: combineDateAndTime(startAt, practitioner.break1Start), endAt: combineDateAndTime(startAt, practitioner.break1End) })
+  }
+  if (practitioner?.break2Start && practitioner.break2End) {
+    breaks.push({ startAt: combineDateAndTime(startAt, practitioner.break2Start), endAt: combineDateAndTime(startAt, practitioner.break2End) })
+  }
+  const onBreak = breaks.some((b) => overlaps(startAt, endAt, b.startAt, b.endAt))
+
+  return !conflict && !blocked && !onBreak
 }
 
 export async function getDaySlotsWithStatus(
