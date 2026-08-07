@@ -8,6 +8,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   EVENT_VENUE: 'Spații evenimente',
   HOTEL: 'Hotel',
   PENSIUNE: 'Pensiune',
+  CLINICA: 'Clinică',
 }
 
 const STATUS_LABEL: Record<string, string> = {

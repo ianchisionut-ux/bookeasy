@@ -15,11 +15,11 @@ export default function ServicesManager({
   services,
   resources,
 }: {
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE'
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
   services: Service[]
   resources: Resource[]
 }) {
-  const isSalon = category === 'SALON'
+  const isSalon = category === 'SALON' || category === 'CLINICA'
   const router = useRouter()
 
   const [editingId, setEditingId] = useState<string | null>(null)

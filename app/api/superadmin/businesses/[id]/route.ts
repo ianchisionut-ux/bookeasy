@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 const patchSchema = z.object({
   name: z.string().min(2).optional(),
-  category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE']).optional(),
+  category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE', 'CLINICA']).optional(),
   planName: z.string().nullable().optional(),
   billingStatus: z.enum(['GRATUIT', 'NEPLATIT', 'PLATIT', 'RESTANT']).optional(),
   billingNote: z.string().nullable().optional(),
@@ -59,6 +59,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         await tx.businessPhoto.deleteMany({ where: { businessId } })
         await tx.conversation.deleteMany({ where: { businessId } })
         await tx.booking.deleteMany({ where: { businessId } })
+        await tx.servicePractitioner.deleteMany({ where: { practitioner: { businessId } } })
+        await tx.practitionerWorkingHours.deleteMany({ where: { practitioner: { businessId } } })
+        await tx.practitioner.deleteMany({ where: { businessId } })
         await tx.customer.deleteMany({ where: { businessId } })
         await tx.service.deleteMany({ where: { businessId } })
         await tx.resource.deleteMany({ where: { businessId } })

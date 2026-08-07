@@ -5,6 +5,14 @@ import Link from 'next/link'
 import BusinessRowActions from './business-row-actions'
 import CreateBusinessButton from './create-business-button'
 
+const CATEGORY_LABEL: Record<string, string> = {
+  SALON: 'Salon',
+  EVENT_VENUE: 'Spații evenimente',
+  HOTEL: 'Hotel',
+  PENSIUNE: 'Pensiune',
+  CLINICA: 'Clinică',
+}
+
 const STATUS_LABEL: Record<string, string> = {
   GRATUIT: 'Gratuit',
   NEPLATIT: 'Neplătit',
@@ -74,15 +82,7 @@ export default async function SuperAdminBusinesses({
                     {b.city} · /{b.slug}
                   </p>
                 </td>
-                <td>
-                  {b.category === 'SALON'
-                    ? 'Salon'
-                    : b.category === 'EVENT_VENUE'
-                      ? 'Spații evenimente'
-                      : b.category === 'HOTEL'
-                        ? 'Hotel'
-                        : 'Pensiune'}
-                </td>
+                <td>{CATEGORY_LABEL[b.category] ?? b.category}</td>
                 <td>
                   <Pill tone={STATUS_TONE[b.billingStatus]}>
                     {b.planName ? `${b.planName} · ` : ''}

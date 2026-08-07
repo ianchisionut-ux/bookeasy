@@ -16,6 +16,7 @@ type Service = {
 }
 
 type DaySlot = { time: string; available: boolean }
+type Practitioner = { id: string; name: string; specialization: string | null }
 
 const STORAGE_KEY = 'bookeasy_customer_info'
 
@@ -52,16 +53,19 @@ export default function BookingFlow({
 }: {
   businessId: string
   businessSlug: string
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE'
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
   services: Service[]
   canPayOnline: boolean
   accentColor: string
   accentSoftColor: string
 }) {
-  const isAppointment = category === 'SALON'
+  const isAppointment = category === 'SALON' || category === 'CLINICA'
+  const isClinic = category === 'CLINICA'
   const days = useMemo(() => buildNextDays(30), [])
 
   const [service, setService] = useState<Service | null>(services[0] ?? null)
+  const [practitioners, setPractitioners] = useState<Practitioner[]>([])
+  const [practitionerId, setPractitionerId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date>(days[0])
   const [daySlots, setDaySlots] = useState<DaySlot[]>([])
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
@@ -92,19 +96,35 @@ export default function BookingFlow({
     }
   }, [])
 
-  // reîncarcă sloturile zilei de fiecare dată când se schimbă serviciul sau data aleasă
+  // la clinici, când se schimbă serviciul, reîncărcăm lista de medici eligibili
+  useEffect(() => {
+    if (!isClinic || !service) return
+    setPractitionerId(null)
+    fetchWithTimeout(`/api/public/practitioners?businessId=${businessId}&serviceId=${service.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const list: Practitioner[] = data.practitioners ?? []
+        setPractitioners(list)
+        if (list.length > 0) setPractitionerId(list[0].id) // pre-selectăm primul, dar se poate schimba
+      })
+      .catch(() => setPractitioners([]))
+  }, [service, isClinic, businessId])
+
+  // reîncarcă sloturile zilei de fiecare dată când se schimbă serviciul, medicul sau data aleasă
   useEffect(() => {
     if (!isAppointment || !service) return
+    if (isClinic && practitioners.length > 0 && !practitionerId) return // așteptăm alegerea medicului
     setLoadingSlots(true)
     setSelectedSlot(null)
     setError('')
 
-    fetchWithTimeout(`/api/public/availability?businessId=${businessId}&serviceId=${service.id}&date=${toDateParam(selectedDate)}`)
+    const practitionerParam = isClinic && practitionerId ? `&practitionerId=${practitionerId}` : ''
+    fetchWithTimeout(`/api/public/availability?businessId=${businessId}&serviceId=${service.id}&date=${toDateParam(selectedDate)}${practitionerParam}`)
       .then((res) => res.json())
       .then((data) => setDaySlots(data.allSlots ?? []))
       .catch(() => setDaySlots([]))
       .finally(() => setLoadingSlots(false))
-  }, [service, selectedDate, businessId, isAppointment])
+  }, [service, selectedDate, businessId, isAppointment, isClinic, practitionerId])
 
   function selectService(s: Service) {
     setService(s)
@@ -142,6 +162,7 @@ export default function BookingFlow({
         body: JSON.stringify({
           businessId,
           serviceId: service.id,
+          practitionerId: isClinic ? practitionerId : undefined,
           startAt,
           customerName: name,
           customerPhone: phone,
@@ -206,6 +227,32 @@ export default function BookingFlow({
           {services.length === 0 && <p className="text-sm text-gray-500">Momentan niciun serviciu disponibil.</p>}
         </div>
       </div>
+
+      {/* Alege medicul — doar pentru clinici */}
+      {isClinic && practitioners.length > 0 && (
+        <div>
+          <h2 className="font-semibold mb-3">Alege medicul</h2>
+          <div className="flex flex-wrap gap-2">
+            {practitioners.map((p) => {
+              const active = practitionerId === p.id
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setPractitionerId(p.id)}
+                  className="text-left px-3.5 py-2 rounded-2xl border transition"
+                  style={{
+                    borderColor: active ? accentColor : 'var(--border-soft)',
+                    background: active ? accentSoftColor : 'white',
+                  }}
+                >
+                  <p className="text-sm font-medium">{p.name}</p>
+                  {p.specialization && <p className="text-xs text-gray-500">{p.specialization}</p>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Alege data — carusel orizontal de zile */}
       <div>

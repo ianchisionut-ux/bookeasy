@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getAvailableSlots, getDaySlotsWithStatus } from '@/lib/availability'
+import { getAvailableSlots, getDaySlotsWithStatus, getPractitionerDaySlotsWithStatus } from '@/lib/availability'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
   const businessId = req.nextUrl.searchParams.get('businessId')
   const serviceId = req.nextUrl.searchParams.get('serviceId')
   const dateParam = req.nextUrl.searchParams.get('date') // 'YYYY-MM-DD'
+  const practitionerId = req.nextUrl.searchParams.get('practitionerId') // opțional — doar pentru clinici
 
   if (!businessId || !serviceId || !dateParam) {
     return NextResponse.json({ error: 'Parametri lipsă' }, { status: 400 })
@@ -28,6 +29,11 @@ export async function GET(req: NextRequest) {
   todayStart.setHours(0, 0, 0, 0)
   if (date < todayStart) {
     return NextResponse.json({ slots: [], allSlots: [] })
+  }
+
+  if (practitionerId) {
+    const allSlots = await getPractitionerDaySlotsWithStatus(businessId, serviceId, practitionerId, date)
+    return NextResponse.json({ slots: allSlots.filter((s) => s.available).map((s) => s.time), allSlots })
   }
 
   const [slots, allSlots] = await Promise.all([

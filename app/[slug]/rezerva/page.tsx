@@ -9,6 +9,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   EVENT_VENUE: 'Spații evenimente',
   HOTEL: 'Hotel',
   PENSIUNE: 'Pensiune',
+  CLINICA: 'Clinică medicală',
 }
 
 const WEEKDAY_SHORT = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']

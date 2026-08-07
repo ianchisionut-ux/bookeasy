@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
       longitude: { not: null },
       // Hotel/Pensiune există în sistem (pot fi create din superadmin), dar nu apar
       // încă public — partea aia de produs nu e gata
-      category: { in: category ? [category as any] : ['SALON', 'EVENT_VENUE'] },
+      category: { in: category ? [category as any] : ['SALON', 'EVENT_VENUE', 'CLINICA'] },
       ...(city ? { city: { equals: city, mode: 'insensitive' } } : {}),
     },
     select: {

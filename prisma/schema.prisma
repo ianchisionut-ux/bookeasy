@@ -60,6 +60,7 @@ model Business {
   workingHours       WorkingHours[]
   conversations      Conversation[]
   reviews            Review[]
+  practitioners      Practitioner[]
   photos             BusinessPhoto[]
   blockedSlots       BlockedSlot[]
   subscription       Subscription?
@@ -84,6 +85,7 @@ enum BusinessType {
   EVENT_VENUE
   HOTEL
   PENSIUNE
+  CLINICA
 }
 
 model User {
@@ -137,6 +139,7 @@ model Service {
   requiresDeposit Boolean     @default(false)
   depositAmount   Decimal?
   bookings        Booking[]
+  practitioners   ServicePractitioner[]
 }
 
 enum ServiceType {
@@ -158,6 +161,8 @@ model Customer {
   instagramUserId  String?
   facebookUserId   String?
   notes            String?
+  dateOfBirth      DateTime? // relevant medical, folosit doar de clinici — niciodată expus public
+  medicalNotes     String?   // alergii/afecțiuni cunoscute, notă liberă — vizibilă STRICT în dashboard-ul clinicii
   createdAt        DateTime @default(now())
   bookings         Booking[]
 
@@ -178,6 +183,8 @@ model Booking {
   staff           Staff?        @relation(fields: [staffId], references: [id])
   resourceId      String?
   resource        Resource?     @relation(fields: [resourceId], references: [id])
+  practitionerId  String?       // doar pentru afaceri de tip CLINICA — medicul ales (opțional, dacă lipsește = orice medic disponibil)
+  practitioner    Practitioner? @relation(fields: [practitionerId], references: [id])
   startAt         DateTime
   endAt           DateTime
   status          BookingStatus @default(PENDING)
@@ -295,6 +302,45 @@ model PasswordResetToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+}
+
+// ─── Clinici (medici cu program propriu, separat de programul general al afacerii) ───
+
+model Practitioner {
+  id             String                     @id @default(cuid())
+  businessId     String
+  business       Business                   @relation(fields: [businessId], references: [id])
+  name           String
+  specialization String?
+  photoUrl       String?
+  bio            String?
+  active         Boolean                    @default(true)
+  createdAt      DateTime                   @default(now())
+  workingHours   PractitionerWorkingHours[]
+  services       ServicePractitioner[]
+  bookings       Booking[]
+}
+
+model PractitionerWorkingHours {
+  id             String       @id @default(cuid())
+  practitionerId String
+  practitioner   Practitioner @relation(fields: [practitionerId], references: [id])
+  weekday        Int
+  startTime      String
+  endTime        String
+}
+
+// legătură many-to-many: un serviciu poate fi oferit de mai mulți medici, un medic poate
+// oferi mai multe servicii — dacă un serviciu nu are niciun medic asociat, e considerat
+// disponibil la orice medic (comportament implicit, mai simplu pentru clinici mici)
+model ServicePractitioner {
+  id             String       @id @default(cuid())
+  serviceId      String
+  service        Service      @relation(fields: [serviceId], references: [id])
+  practitionerId String
+  practitioner   Practitioner @relation(fields: [practitionerId], references: [id])
+
+  @@unique([serviceId, practitionerId])
 }
 
 model AccessRequest {

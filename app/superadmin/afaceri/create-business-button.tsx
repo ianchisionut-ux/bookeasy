@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 export default function CreateBusinessButton() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ slug: '', name: '', email: '', category: 'SALON' as 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' })
+  const [form, setForm] = useState({ slug: '', name: '', email: '', category: 'SALON' as 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -55,11 +55,12 @@ export default function CreateBusinessButton() {
           <Input placeholder="Nume afacere" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <select
             value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value as 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' })}
+            onChange={(e) => setForm({ ...form, category: e.target.value as 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' })}
             className="input-field"
           >
             <option value="SALON">Salon</option>
             <option value="EVENT_VENUE">Spații evenimente</option>
+            <option value="CLINICA">Clinică medicală/stomatologică</option>
             <option value="HOTEL">Hotel (în dezvoltare, nu apare public)</option>
             <option value="PENSIUNE">Pensiune (în dezvoltare, nu apare public)</option>
           </select>

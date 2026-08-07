@@ -68,6 +68,75 @@ export async function isWithinLeadTime(businessId: string, momentToCheck: Date):
   return momentToCheck.getTime() - Date.now() < minLeadMs
 }
 
+// pentru clinici — sloturi calculate pe programul unui medic ANUME, cu verificare de
+// suprapunere doar față de programările ACELUIAȘI medic (nu blochează tot cabinetul,
+// alți medici pot avea pacienți în paralel)
+export async function getPractitionerDaySlotsWithStatus(
+  businessId: string,
+  serviceId: string,
+  practitionerId: string,
+  date: Date
+): Promise<{ time: string; available: boolean }[]> {
+  const service = await prisma.service.findUnique({ where: { id: serviceId } })
+  if (!service || service.type !== 'APPOINTMENT') return []
+
+  const weekday = date.getDay()
+  const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
+    prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
+    prisma.practitionerWorkingHours.findMany({ where: { practitionerId, weekday } }),
+    prisma.booking.findMany({ where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
+    getBlockedSlotsForDay(businessId, date),
+  ])
+
+  const duration = service.durationMin ?? 30
+  const step = business?.slotIntervalMinutes ?? duration
+  const minLeadMs = (business?.minLeadTimeMinutes ?? 120) * 60 * 1000
+  const earliestAllowed = new Date(Date.now() + minLeadMs)
+  const result: { time: string; available: boolean }[] = []
+
+  for (const wh of workingHours) {
+    let cursor = combineDateAndTime(date, wh.startTime)
+    const end = combineDateAndTime(date, wh.endTime)
+
+    while (addMinutes(cursor, duration) <= end) {
+      const slotEnd = addMinutes(cursor, duration)
+
+      const tooSoon = cursor < earliestAllowed
+      const blockedHere = blockedSlots.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
+      const bookedHere = existingBookings.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
+
+      result.push({ time: cursor.toISOString(), available: !tooSoon && !blockedHere && !bookedHere })
+      cursor = addMinutes(cursor, step)
+    }
+  }
+
+  return result
+}
+
+// verificare finală, la confirmare — echivalentul isSlotStillAvailable, dar per medic
+export async function isPractitionerSlotStillAvailable(
+  businessId: string,
+  serviceId: string,
+  practitionerId: string,
+  startAt: Date
+): Promise<boolean> {
+  const service = await prisma.service.findUnique({ where: { id: serviceId } })
+  if (!service) return false
+  if (await isWithinLeadTime(businessId, startAt)) return false
+
+  const duration = service.durationMin ?? 30
+  const endAt = addMinutes(startAt, duration)
+
+  const [conflict, blocked] = await Promise.all([
+    prisma.booking.findFirst({
+      where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: endAt }, endAt: { gt: startAt } },
+    }),
+    isIntervalBlocked(businessId, startAt, endAt),
+  ])
+
+  return !conflict && !blocked
+}
+
 export async function getDaySlotsWithStatus(
   businessId: string,
   serviceId: string,

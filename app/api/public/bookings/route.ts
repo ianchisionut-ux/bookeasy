@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { isSlotStillAvailable, isIntervalBlocked, isWithinLeadTime } from '@/lib/availability'
+import { isSlotStillAvailable, isIntervalBlocked, isWithinLeadTime, isPractitionerSlotStillAvailable } from '@/lib/availability'
 import { getNextSequenceNumber } from '@/lib/booking-number'
 import { createDepositCheckoutLink } from '@/lib/payments/create-checkout'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
@@ -9,6 +9,7 @@ import { z } from 'zod'
 const schema = z.object({
   businessId: z.string(),
   serviceId: z.string(),
+  practitionerId: z.string().optional(),
   startAt: z.string(),
   customerName: z.string().min(1),
   customerPhone: z.string().min(6),
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Date invalide, verifică formularul.' }, { status: 400 })
 
-  const { businessId, serviceId, customerName, customerPhone, paymentMethod } = parsed.data
+  const { businessId, serviceId, practitionerId, customerName, customerPhone, paymentMethod } = parsed.data
 
   const business = await prisma.business.findUnique({ where: { id: businessId } })
   if (!business || !business.publicListed || !business.accountActive) {
@@ -36,6 +37,13 @@ export async function POST(req: NextRequest) {
   const service = await prisma.service.findUnique({ where: { id: serviceId } })
   if (!service || service.businessId !== businessId || !service.active) {
     return NextResponse.json({ error: 'Serviciul nu mai este disponibil.' }, { status: 404 })
+  }
+
+  if (practitionerId) {
+    const practitioner = await prisma.practitioner.findUnique({ where: { id: practitionerId } })
+    if (!practitioner || practitioner.businessId !== businessId || !practitioner.active) {
+      return NextResponse.json({ error: 'Medicul ales nu mai este disponibil.' }, { status: 404 })
+    }
   }
 
   const startAt = new Date(parsed.data.startAt)
@@ -60,7 +68,11 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       )
     }
-    const stillFree = await isSlotStillAvailable(businessId, serviceId, startAt)
+
+    const stillFree = practitionerId
+      ? await isPractitionerSlotStillAvailable(businessId, serviceId, practitionerId, startAt)
+      : await isSlotStillAvailable(businessId, serviceId, startAt)
+
     if (!stillFree) {
       return NextResponse.json({ error: 'Ne pare rău, intervalul tocmai a fost ocupat. Alege altă oră.' }, { status: 409 })
     }
@@ -94,6 +106,7 @@ export async function POST(req: NextRequest) {
       customerId: customer.id,
       serviceId,
       resourceId,
+      practitionerId: practitionerId ?? null,
       startAt,
       endAt,
       status: wantsOnlinePayment ? 'PENDING' : 'CONFIRMED',

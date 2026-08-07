@@ -10,7 +10,7 @@ const schema = z.object({
   businessName: z.string().min(1),
   email: z.string().email(),
   phone: z.string().min(6),
-  category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE']).optional(),
+  category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE', 'CLINICA']).optional(),
   message: z.string().max(1000).optional(),
 })
 

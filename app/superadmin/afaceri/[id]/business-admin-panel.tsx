@@ -8,6 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
 
+const CATEGORY_LABEL: Record<string, string> = {
+  SALON: 'Salon',
+  EVENT_VENUE: 'Spații evenimente',
+  HOTEL: 'Hotel',
+  PENSIUNE: 'Pensiune',
+  CLINICA: 'Clinică',
+}
+
 type Channel = { id: string; type: string; externalId: string; wabaId: string | null; status: string }
 type Business = {
   id: string
@@ -98,15 +106,7 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
               ) : (
                 <h1 className="text-xl font-semibold">{business.name}</h1>
               )}
-              <Pill tone="accent">
-                {business.category === 'SALON'
-                  ? 'Salon'
-                  : business.category === 'EVENT_VENUE'
-                    ? 'Spații evenimente'
-                    : business.category === 'HOTEL'
-                      ? 'Hotel'
-                      : 'Pensiune'}
-              </Pill>
+              <Pill tone="accent">{CATEGORY_LABEL[business.category] ?? business.category}</Pill>
               <Pill tone={business.accountActive ? 'success' : 'danger'}>{business.accountActive ? 'Activ' : 'Dezactivat'}</Pill>
             </div>
             <p className="text-sm text-gray-500">

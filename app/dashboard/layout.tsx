@@ -32,10 +32,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   let brandColor: string | null = null
+  let category: string | null = null
   if (businessId) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
-      select: { accountActive: true, onboardingDone: true, onboardingStep: true, brandColor: true },
+      select: { accountActive: true, onboardingDone: true, onboardingStep: true, brandColor: true, category: true },
     })
     if (business && !business.accountActive) {
       redirect('/cont-suspendat')
@@ -44,10 +45,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
       redirect(`/onboarding/step-${business.onboardingStep}`)
     }
     brandColor = business?.brandColor ?? null
+    category = business?.category ?? null
   }
 
   const navItems = [
-    ...NAV_ITEMS,
+    ...NAV_ITEMS.slice(0, 3),
+    ...(category === 'CLINICA' ? [{ href: '/dashboard/medici', label: 'Medici' }] : []),
+    ...NAV_ITEMS.slice(3),
     ...(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin' }] : []),
   ]
 
