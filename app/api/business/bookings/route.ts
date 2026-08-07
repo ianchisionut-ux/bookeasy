@@ -5,15 +5,21 @@ import { isIntervalBlocked } from '@/lib/availability'
 import { getNextSequenceNumber } from '@/lib/booking-number'
 import { z } from 'zod'
 
-const schema = z.object({
-  customerId: z.string(),
-  serviceId: z.string(),
-  staffId: z.string().nullable().optional(),
-  resourceId: z.string().nullable().optional(),
-  startAt: z.string(),
-  endAt: z.string(),
-  status: z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW']).optional(),
-})
+const schema = z
+  .object({
+    customerId: z.string().optional(),
+    customerName: z.string().min(1).optional(),
+    customerPhone: z.string().min(6).optional(),
+    serviceId: z.string(),
+    staffId: z.string().nullable().optional(),
+    resourceId: z.string().nullable().optional(),
+    startAt: z.string(),
+    endAt: z.string(),
+    status: z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW']).optional(),
+  })
+  .refine((data) => data.customerId || (data.customerName && data.customerPhone), {
+    message: 'Alege un client existent sau completează nume și telefon pentru unul nou.',
+  })
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -35,12 +41,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Intervalul selectat este blocat pentru rezervări.' }, { status: 409 })
   }
 
+  // client existent (ales din listă) sau creat/regăsit pe loc, după numărul de telefon —
+  // ca administratorul să nu mai trebuiască să treacă prin /Clienti separat
+  let customerId = parsed.data.customerId
+  if (!customerId && parsed.data.customerPhone) {
+    const existing = await prisma.customer.findFirst({ where: { businessId, phone: parsed.data.customerPhone } })
+    if (existing) {
+      customerId = existing.id
+      if (parsed.data.customerName && !existing.name) {
+        await prisma.customer.update({ where: { id: existing.id }, data: { name: parsed.data.customerName } })
+      }
+    } else {
+      const created = await prisma.customer.create({
+        data: { businessId, name: parsed.data.customerName, phone: parsed.data.customerPhone },
+      })
+      customerId = created.id
+    }
+  }
+
   const sequenceNumber = await getNextSequenceNumber(businessId, new Date())
 
   const booking = await prisma.booking.create({
     data: {
       businessId,
-      customerId: parsed.data.customerId,
+      customerId: customerId!,
       serviceId: parsed.data.serviceId,
       staffId: parsed.data.staffId ?? null,
       resourceId: parsed.data.resourceId ?? null,

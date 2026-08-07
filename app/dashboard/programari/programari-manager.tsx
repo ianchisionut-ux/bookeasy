@@ -277,14 +277,23 @@ function NewBookingForm({
   onDone: () => void
 }) {
   const [customerId, setCustomerId] = useState('')
+  const [newCustomerMode, setNewCustomerMode] = useState(false)
+  const [newCustomerName, setNewCustomerName] = useState('')
+  const [newCustomerPhone, setNewCustomerPhone] = useState('')
   const [serviceId, setServiceId] = useState('')
   const [date, setDate] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
   async function submit() {
-    if (!customerId || !serviceId || !date) {
-      setError('Completează client, serviciu și dată.')
+    const hasCustomer = newCustomerMode ? newCustomerName.trim() && newCustomerPhone.trim().length >= 6 : !!customerId
+
+    if (!hasCustomer || !serviceId || !date) {
+      setError(
+        newCustomerMode
+          ? 'Completează numele, telefonul, serviciul și data.'
+          : 'Completează client, serviciu și dată.'
+      )
       return
     }
 
@@ -311,7 +320,9 @@ function NewBookingForm({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerId,
+          ...(newCustomerMode
+            ? { customerName: newCustomerName.trim(), customerPhone: newCustomerPhone.trim() }
+            : { customerId }),
           serviceId,
           startAt: start.toISOString(),
           endAt: end.toISOString(),
@@ -336,15 +347,37 @@ function NewBookingForm({
     <Card className="mb-5 max-w-2xl">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
-          <label className="text-sm text-gray-500 block mb-1.5">Client</label>
-          <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input-field w-full">
-            <option value="">Alege client</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-sm text-gray-500">Client</label>
+            <button
+              type="button"
+              onClick={() => setNewCustomerMode((v) => !v)}
+              className="text-xs text-[var(--accent)] font-medium"
+            >
+              {newCustomerMode ? '← Alege client existent' : '+ Client nou'}
+            </button>
+          </div>
+          {newCustomerMode ? (
+            <div className="flex flex-col gap-2">
+              <Input placeholder="Nume client" value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} />
+              <Input
+                placeholder="Telefon"
+                type="tel"
+                inputMode="tel"
+                value={newCustomerPhone}
+                onChange={(e) => setNewCustomerPhone(e.target.value)}
+              />
+            </div>
+          ) : (
+            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input-field w-full">
+              <option value="">Alege client</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">Serviciu</label>
