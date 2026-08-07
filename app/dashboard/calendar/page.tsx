@@ -2,6 +2,14 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import CalendarClient from './calendar-client'
 
+function computeMinMax(hours: { startTime: string; endTime: string }[], fallbackMin = '08:00', fallbackMax = '20:00') {
+  if (hours.length === 0) return { minTime: fallbackMin, maxTime: fallbackMax }
+  return {
+    minTime: hours.reduce((min, wh) => (wh.startTime < min ? wh.startTime : min), hours[0].startTime),
+    maxTime: hours.reduce((max, wh) => (wh.endTime > max ? wh.endTime : max), hours[0].endTime),
+  }
+}
+
 export default async function CalendarPage() {
   const session = await auth()
   const businessId = (session as any)?.businessId ?? ''
@@ -20,7 +28,9 @@ export default async function CalendarPage() {
       orderBy: { startAt: 'asc' },
     }),
     prisma.blockedSlot.findMany({ where: { businessId } }),
-    isClinic ? prisma.practitioner.findMany({ where: { businessId, active: true }, orderBy: { name: 'asc' } }) : Promise.resolve([]),
+    isClinic
+      ? prisma.practitioner.findMany({ where: { businessId, active: true }, include: { workingHours: true }, orderBy: { name: 'asc' } })
+      : Promise.resolve([]),
   ])
 
   const events = bookings.map((b) => ({
@@ -37,14 +47,9 @@ export default async function CalendarPage() {
     practitionerName: b.practitioner?.name ?? null,
   }))
 
-  // intervalul orar afișat în calendar respectă programul real de lucru — cel mai
-  // devreme început și cel mai târziu sfârșit din toate zilele configurate
-  let minTime = '08:00'
-  let maxTime = '20:00'
-  if (business?.workingHours.length) {
-    minTime = business.workingHours.reduce((min, wh) => (wh.startTime < min ? wh.startTime : min), business.workingHours[0].startTime)
-    maxTime = business.workingHours.reduce((max, wh) => (wh.endTime > max ? wh.endTime : max), business.workingHours[0].endTime)
-  }
+  // intervalul orar afișat implicit (când sunt "Toți medicii") respectă programul
+  // general al businessului — cel mai devreme început și cel mai târziu sfârșit
+  const { minTime, maxTime } = computeMinMax(business?.workingHours ?? [])
 
   return (
     <CalendarClient
@@ -57,7 +62,10 @@ export default async function CalendarPage() {
       }))}
       minTime={minTime}
       maxTime={maxTime}
-      practitioners={practitioners.map((p) => ({ id: p.id, name: p.name }))}
+      practitioners={practitioners.map((p) => {
+        const range = computeMinMax(p.workingHours, minTime, maxTime)
+        return { id: p.id, name: p.name, minTime: range.minTime, maxTime: range.maxTime }
+      })}
     />
   )
 }

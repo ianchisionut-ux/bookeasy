@@ -67,7 +67,7 @@ export default function CalendarClient({
   blockedSlots: BlockedSlot[]
   minTime: string
   maxTime: string
-  practitioners: { id: string; name: string }[]
+  practitioners: { id: string; name: string; minTime: string; maxTime: string }[]
 }) {
   const router = useRouter()
   const [selected, setSelected] = useState<Event | null>(null)
@@ -101,8 +101,14 @@ export default function CalendarClient({
     d.setHours(h, m, 0, 0)
     return d
   }
-  const calendarMin = timeToDate(minTime)
-  const calendarMax = timeToDate(maxTime)
+
+  // când e ales un medic anume, calendarul arată intervalul orar al programului LUI,
+  // nu programul general al businessului — fiecare medic își vede propriile ore
+  const selectedPractitioner = practitionerFilter !== 'ALL' ? practitioners.find((p) => p.id === practitionerFilter) : null
+  const effectiveMinTime = selectedPractitioner?.minTime ?? minTime
+  const effectiveMaxTime = selectedPractitioner?.maxTime ?? maxTime
+  const calendarMin = timeToDate(effectiveMinTime)
+  const calendarMax = timeToDate(effectiveMaxTime)
 
   const blockRange = useCallback(
     async (start: Date, end: Date) => {
@@ -254,6 +260,7 @@ export default function CalendarClient({
       </div>
       <div className="card printable p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
         <DnDCalendar
+          key={practitionerFilter}
           localizer={localizer}
           events={allEvents}
           startAccessor="start"
