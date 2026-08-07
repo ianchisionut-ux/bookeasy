@@ -307,7 +307,10 @@ function NewBookingForm({
   const [serviceId, setServiceId] = useState('')
   const [date, setDate] = useState('')
   const [practitionerId, setPractitionerId] = useState(practitioners.length === 1 ? practitioners[0].id : '')
-  const [slotDate, setSlotDate] = useState(new Date().toISOString().slice(0, 10))
+  const [slotDate, setSlotDate] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
   const [daySlots, setDaySlots] = useState<{ time: string; available: boolean }[]>([])
   const [selectedSlot, setSelectedSlot] = useState('')
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -474,7 +477,10 @@ function NewBookingForm({
                 type="date"
                 value={slotDate}
                 onChange={(e) => setSlotDate(e.target.value)}
-                min={new Date().toISOString().slice(0, 10)}
+                min={(() => {
+                  const d = new Date()
+                  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+                })()}
                 className="input-field w-full"
               />
             </div>
