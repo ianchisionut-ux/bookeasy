@@ -38,23 +38,17 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
       {isClinic ? (
         <PatientDetailTabs
-          simpleForm={
-            <CustomerEditForm
-              customerId={customer.id}
-              isClinic={isClinic}
-              initial={{
-                name: customer.name ?? '',
-                phone: customer.phone,
-                email: customer.email ?? '',
-                notes: customer.notes ?? '',
-                dateOfBirth: customer.dateOfBirth ? customer.dateOfBirth.toISOString().slice(0, 10) : '',
-                allergies: customer.allergies ?? '',
-                medicalNotes: customer.medicalNotes ?? '',
-              }}
-            />
-          }
           customerId={customer.id}
           patientName={patientName}
+          simpleInitial={{
+            name: customer.name ?? '',
+            phone: customer.phone,
+            email: customer.email ?? '',
+            notes: customer.notes ?? '',
+            dateOfBirth: customer.dateOfBirth ? customer.dateOfBirth.toISOString().slice(0, 10) : '',
+            allergies: customer.allergies ?? '',
+            medicalNotes: customer.medicalNotes ?? '',
+          }}
           medicalRecordInitial={medicalRecord}
           documents={documents.map((d) => ({
             id: d.id,

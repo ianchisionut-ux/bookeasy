@@ -110,9 +110,10 @@ body {
   main {
     padding: 0 !important;
   }
-  .printable {
+  .printable,
+  .card {
     box-shadow: none !important;
-    border: none !important;
+    border: 1px solid #e5e5e5 !important;
   }
 }
 @media (max-width: 640px) {

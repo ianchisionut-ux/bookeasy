@@ -451,12 +451,6 @@ export default function MedicalRecordForm({ customerId, initial, patientName }: 
         <Button onClick={save} disabled={saving}>
           {saving ? 'Se salvează...' : 'Salvează fișa medicală'}
         </Button>
-        <button onClick={() => window.print()} className="btn-secondary text-sm">
-          🖨 Printează
-        </button>
-        <button onClick={exportPdf} className="btn-secondary text-sm">
-          ⬇ Export PDF
-        </button>
         {savedAt && <span className="text-xs text-gray-500">Salvat la {savedAt}</span>}
       </div>
     </div>

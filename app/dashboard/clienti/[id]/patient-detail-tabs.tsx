@@ -1,37 +1,44 @@
 'use client'
 
 import { useState } from 'react'
-import MedicalRecordForm from './medical-record-form'
+import PatientFileTab from './patient-file-tab'
 import PatientDocuments from './patient-documents'
 import MedicalLetterForm from './medical-letter-form'
 
 export default function PatientDetailTabs({
-  simpleForm,
   customerId,
   patientName,
+  simpleInitial,
   medicalRecordInitial,
   documents,
   letters,
 }: {
-  simpleForm: React.ReactNode
   customerId: string
   patientName: string
+  simpleInitial: {
+    name: string
+    phone: string
+    email: string
+    notes: string
+    dateOfBirth: string
+    allergies: string
+    medicalNotes: string
+  }
   medicalRecordInitial: any
   documents: { id: string; url: string; filename: string; uploadedAt: string }[]
   letters: Record<string, any>[]
 }) {
-  const [tab, setTab] = useState<'SIMPLE' | 'MEDICAL' | 'LETTER' | 'DOCS'>('SIMPLE')
+  const [tab, setTab] = useState<'FILE' | 'LETTER' | 'DOCS'>('FILE')
 
   const tabs = [
-    { id: 'SIMPLE' as const, label: 'Fișă simplă' },
-    { id: 'MEDICAL' as const, label: 'Fișă medicală completă' },
+    { id: 'FILE' as const, label: 'Fișă pacient' },
     { id: 'LETTER' as const, label: `Scrisoare medicală${letters.length > 0 ? ` (${letters.length})` : ''}` },
     { id: 'DOCS' as const, label: `Documente${documents.length > 0 ? ` (${documents.length})` : ''}` },
   ]
 
   return (
     <div>
-      <div className="flex gap-2 mb-5 overflow-x-auto no-scrollbar pb-1">
+      <div className="flex gap-2 mb-5 overflow-x-auto no-scrollbar pb-1 no-print">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -48,8 +55,14 @@ export default function PatientDetailTabs({
         ))}
       </div>
 
-      {tab === 'SIMPLE' && <div className="card p-5">{simpleForm}</div>}
-      {tab === 'MEDICAL' && <MedicalRecordForm customerId={customerId} initial={medicalRecordInitial} patientName={patientName} />}
+      {tab === 'FILE' && (
+        <PatientFileTab
+          customerId={customerId}
+          patientName={patientName}
+          simpleInitial={simpleInitial}
+          medicalRecordInitial={medicalRecordInitial}
+        />
+      )}
       {tab === 'LETTER' && <MedicalLetterForm customerId={customerId} patientName={patientName} letters={letters} />}
       {tab === 'DOCS' && <PatientDocuments customerId={customerId} patientName={patientName} documents={documents} />}
     </div>

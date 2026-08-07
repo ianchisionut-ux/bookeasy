@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Input, Textarea } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { exportSectionsToPdf } from '@/lib/pdf-export'
 
 type FormState = {
   name: string
@@ -53,28 +52,6 @@ export default function CustomerEditForm({
     } finally {
       setSaving(false)
     }
-  }
-
-  function exportPdf() {
-    exportSectionsToPdf(`fisa-simpla-${(form.name || 'pacient').replace(/\s+/g, '-')}.pdf`, 'Fișă simplă pacient', form.name, [
-      {
-        title: 'Date de contact',
-        rows: [
-          { label: 'Nume', value: form.name },
-          { label: 'Telefon', value: form.phone },
-          { label: 'Email', value: form.email },
-          { label: 'Data nașterii', value: form.dateOfBirth },
-        ],
-      },
-      {
-        title: 'Medical (pe scurt)',
-        rows: [
-          { label: 'Alergii cunoscute', value: form.allergies },
-          { label: 'Istoric medical', value: form.medicalNotes },
-        ],
-      },
-      { title: 'Notițe interne', rows: [{ label: 'Notițe', value: form.notes }] },
-    ])
   }
 
   return (
@@ -141,16 +118,6 @@ export default function CustomerEditForm({
         <Button variant="secondary" onClick={handleSave} disabled={saving}>
           {saving ? 'Se salvează...' : 'Salvează modificările'}
         </Button>
-        {isClinic && (
-          <>
-            <button onClick={() => window.print()} className="btn-secondary text-sm">
-              🖨 Printează
-            </button>
-            <button onClick={exportPdf} className="btn-secondary text-sm">
-              ⬇ Export PDF
-            </button>
-          </>
-        )}
         {savedAt && <span className="text-xs text-gray-500">Salvat la {savedAt}</span>}
       </div>
     </div>
