@@ -81,7 +81,7 @@ export async function getPractitionerDaySlotsWithStatus(
   const service = await prisma.service.findUnique({ where: { id: serviceId } })
   if (!service || service.type !== 'APPOINTMENT') return []
 
-  const weekday = date.getDay()
+  const weekday = date.getUTCDay() // neambiguu, indiferent de fusul serverului
   const [business, practitioner, workingHours, existingBookings, blockedSlots] = await Promise.all([
     prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
     prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true } }),
@@ -167,7 +167,7 @@ export async function getDaySlotsWithStatus(
   const service = await prisma.service.findUnique({ where: { id: serviceId } })
   if (!service || service.type !== 'APPOINTMENT') return []
 
-  const weekday = date.getDay()
+  const weekday = date.getUTCDay() // neambiguu, indiferent de fusul serverului
   const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
     prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
     prisma.workingHours.findMany({ where: { businessId, weekday } }),
@@ -201,7 +201,7 @@ export async function getDaySlotsWithStatus(
 }
 
 async function getSingleSlotAvailability(businessId: string, service: { id: string; durationMin: number | null }, date: Date) {
-  const weekday = date.getDay()
+  const weekday = date.getUTCDay() // neambiguu, indiferent de fusul serverului
   const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
     prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
     prisma.workingHours.findMany({ where: { businessId, weekday } }),
@@ -260,11 +260,29 @@ async function getResourceAvailability(businessId: string, service: { id: string
     .map((r) => r.id)
 }
 
-function combineDateAndTime(date: Date, time: string) {
-  const [h, m] = time.split(':').map(Number)
-  const d = new Date(date)
-  d.setHours(h, m, 0, 0)
-  return d
+// offset-ul real al Bucureștiului față de UTC, pentru o dată dată — ține cont automat
+// de ora de vară/iarnă (EEST/EET), calculat din baza de date de fusuri orare ICU,
+// INDIFERENT de fusul orar cu care rulează efectiv procesul Node.js pe server
+function bucharestOffsetString(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Bucharest',
+    timeZoneName: 'longOffset',
+  }).formatToParts(date)
+  const raw = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT+02:00'
+  return raw.replace('GMT', '') // ex: "+03:00" sau "+02:00"
+}
+
+function combineDateAndTime(date: Date, time: string): Date {
+  // extragem anul/luna/ziua din obiectul `date` folosind componentele UTC — `date` e
+  // construit mereu ca miezul nopții pentru ziua respectivă, deci UTC și local coincid
+  // ca zi calendaristică indiferent de fusul serverului
+  const y = date.getUTCFullYear()
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(date.getUTCDate()).padStart(2, '0')
+  const offset = bucharestOffsetString(date)
+  // construim direct momentul UTC corect pentru "HH:MM ora României", fără să trecem
+  // deloc prin interpretarea locală a serverului (care s-a dovedit a fi UTC, nu București)
+  return new Date(`${y}-${m}-${d}T${time}:00${offset}`)
 }
 
 function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {

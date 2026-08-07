@@ -24,7 +24,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
-  const date = new Date(`${dateParam}T00:00:00`)
+  // parsăm explicit ca UTC (sufix Z) — indiferent de fusul cu care rulează efectiv
+  // procesul Node.js pe server, ziua calendaristică rămâne mereu cea corectă
+  const date = new Date(`${dateParam}T00:00:00Z`)
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
   if (date < todayStart) {

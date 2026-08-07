@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Parametri lipsă' }, { status: 400 })
   }
 
-  const date = new Date(`${dateParam}T00:00:00`)
+  const date = new Date(`${dateParam}T00:00:00Z`)
   // admin e scutit de intervalul minim de anticipație — poate programa oricând, chiar imediat
   const allSlots = await getPractitionerDaySlotsWithStatus(businessId, serviceId, practitionerId, date, true)
 
