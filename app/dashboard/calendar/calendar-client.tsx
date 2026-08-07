@@ -74,9 +74,9 @@ export default function CalendarClient({
   const [view, setView] = useState<any>(Views.WEEK)
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
   const [busy, setBusy] = useState(false)
-  const [practitionerFilter, setPractitionerFilter] = useState<string>('ALL')
+  const [practitionerFilter, setPractitionerFilter] = useState<string>(practitioners[0]?.id ?? '')
 
-  const visibleEvents = practitionerFilter === 'ALL' ? events : events.filter((e) => e.practitionerId === practitionerFilter)
+  const visibleEvents = practitioners.length === 0 ? events : events.filter((e) => e.practitionerId === practitionerFilter)
   const [blockMode, setBlockMode] = useState(false)
 
   useEffect(() => {
@@ -104,7 +104,7 @@ export default function CalendarClient({
 
   // când e ales un medic anume, calendarul arată intervalul orar al programului LUI,
   // nu programul general al businessului — fiecare medic își vede propriile ore
-  const selectedPractitioner = practitionerFilter !== 'ALL' ? practitioners.find((p) => p.id === practitionerFilter) : null
+  const selectedPractitioner = practitioners.find((p) => p.id === practitionerFilter) ?? null
   const effectiveMinTime = selectedPractitioner?.minTime ?? minTime
   const effectiveMaxTime = selectedPractitioner?.maxTime ?? maxTime
   const calendarMin = timeToDate(effectiveMinTime)
@@ -220,7 +220,6 @@ export default function CalendarClient({
                 className="input-field text-sm py-1.5"
                 aria-label="Filtrează după medic"
               >
-                <option value="ALL">Toți medicii</option>
                 {practitioners.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}

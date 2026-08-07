@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Input, Textarea } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ChecklistGrid } from '@/components/checklist-grid'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { exportElementToPdf } from '@/lib/pdf-export'
 
 const MEDICAL_CONDITIONS = [
   { key: 'hipertensiune', label: 'Hipertensiune' },
@@ -78,7 +77,6 @@ export default function PatientRecordForm({
   medicalInitial: any
 }) {
   const router = useRouter()
-  const printRef = useRef<HTMLDivElement>(null)
   const [simple, setSimple] = useState(simpleInitial)
   const [form, setForm] = useState({
     cnp: medicalInitial?.cnp ?? '',
@@ -160,27 +158,6 @@ export default function PatientRecordForm({
       setError('Conexiune eșuată. Încearcă din nou.')
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function exportPdf() {
-    if (!printRef.current) return
-    const el = printRef.current
-    // elementul e ascuns implicit (display:none) — html2canvas nu poate randa ceva
-    // invizibil, deci îl facem temporar vizibil, dar în afara ecranului, doar cât
-    // durează exportul, apoi îl ascundem la loc
-    const prevDisplay = el.style.display
-    const prevPosition = el.style.position
-    const prevLeft = el.style.left
-    el.style.display = 'block'
-    el.style.position = 'fixed'
-    el.style.left = '-9999px'
-    try {
-      await exportElementToPdf(el, `fisa-pacient-${(simple.name || 'pacient').replace(/\s+/g, '-')}.pdf`)
-    } finally {
-      el.style.display = prevDisplay
-      el.style.position = prevPosition
-      el.style.left = prevLeft
     }
   }
 
@@ -391,14 +368,11 @@ export default function PatientRecordForm({
           <button onClick={() => window.print()} className="btn-secondary text-sm">
             🖨 Printează
           </button>
-          <button onClick={exportPdf} className="btn-secondary text-sm">
-            ⬇ Export PDF
-          </button>
           {savedAt && <span className="text-xs text-gray-500">Salvat la {savedAt}</span>}
         </div>
       </div>
 
-      <div ref={printRef} className="print-only" style={{ color: '#000', fontSize: '8.5px', lineHeight: 1.3 }}>
+      <div className="print-only" style={{ color: '#000', fontSize: '8.5px', lineHeight: 1.3 }}>
         <h1 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 2px' }}>Fișa pacientului</h1>
         <p style={{ fontSize: '9px', color: '#666', margin: '0 0 6px' }}>{simple.name || 'Nume: ...........................'}</p>
 

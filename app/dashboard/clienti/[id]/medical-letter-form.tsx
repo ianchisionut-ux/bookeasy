@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/card'
 import { Input, Textarea } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { exportSectionsToPdf } from '@/lib/pdf-export'
 
 type Letter = Record<string, any>
 
@@ -105,93 +104,6 @@ export default function MedicalLetterForm({
     } catch {
       alert('Conexiune eșuată. Încearcă din nou.')
     }
-  }
-
-  function exportPdf(letter: Letter) {
-    exportSectionsToPdf(
-      `scrisoare-medicala-${(letter.patientName || 'pacient').replace(/\s+/g, '-')}.pdf`,
-      'Scrisoare medicală',
-      `${letter.providerName ?? ''} · ${letter.doctorName ?? ''}`,
-      [
-        {
-          title: 'Date furnizor',
-          rows: [
-            { label: 'Denumire furnizor', value: letter.providerName },
-            { label: 'Medic', value: letter.doctorName },
-            { label: 'Contract/convenție nr.', value: letter.contractNumber },
-            { label: 'CAS', value: letter.casName },
-          ],
-        },
-        {
-          title: 'Date pacient',
-          rows: [
-            { label: 'Nume', value: letter.patientName },
-            { label: 'Data nașterii', value: letter.patientBirthDate },
-            { label: 'CNP', value: letter.patientCnp },
-            { label: 'Data consultației', value: letter.consultationDate },
-            { label: 'Perioadă internare', value: letter.hospitalizationPeriod },
-            { label: 'Nr. F.O. / Registru consultații', value: letter.fileNumber },
-          ],
-        },
-        {
-          title: 'Motivul prezentării',
-          rows: [
-            { label: 'Motive', value: letter.presentationReasons },
-            { label: 'Afecțiune oncologică', value: letter.oncologicalDiagnosis ? 'Da' : 'Nu' },
-            { label: 'Diagnostic și cod', value: letter.diagnosis },
-          ],
-        },
-        {
-          title: 'Anamneză',
-          rows: [
-            { label: 'Anamneză', value: letter.anamnesis },
-            { label: 'Factori de risc', value: letter.riskFactors },
-          ],
-        },
-        {
-          title: 'Examen clinic',
-          rows: [
-            { label: 'General', value: letter.clinicalExamGeneral },
-            { label: 'Local', value: letter.clinicalExamLocal },
-          ],
-        },
-        {
-          title: 'Examene de laborator',
-          rows: [
-            { label: 'Valori normale', value: letter.labNormal },
-            { label: 'Valori patologice', value: letter.labPathological },
-          ],
-        },
-        {
-          title: 'Examene paraclinice',
-          rows: [
-            { label: 'EKG', value: letter.ekg },
-            { label: 'ECO', value: letter.eco },
-            { label: 'Rx', value: letter.rx },
-            { label: 'Altele', value: letter.otherParaclinical },
-          ],
-        },
-        {
-          title: 'Tratament',
-          rows: [
-            { label: 'Tratament efectuat', value: letter.treatmentGiven },
-            { label: 'Alte informații', value: letter.otherHealthInfo },
-            { label: 'Tratament recomandat', value: letter.recommendedTreatment },
-          ],
-        },
-        {
-          title: 'Concluzii',
-          rows: [
-            { label: 'Revenire pentru internare', value: letter.returnForHospitalization },
-            { label: 'Prescripție medicală', value: letter.prescriptionStatus },
-            { label: 'Concediu medical', value: letter.medicalLeaveStatus },
-            { label: 'Îngrijiri la domiciliu', value: letter.homeCareStatus },
-            { label: 'Dispozitive medicale', value: letter.deviceStatus },
-            { label: 'Data', value: letter.letterDate },
-          ],
-        },
-      ]
-    )
   }
 
   if (editingId) {
@@ -325,9 +237,6 @@ export default function MedicalLetterForm({
               </button>
               <button onClick={() => window.print()} className="text-xs text-gray-600 font-medium">
                 🖨 Printează
-              </button>
-              <button onClick={() => exportPdf(letter)} className="text-xs text-gray-600 font-medium">
-                ⬇ Export PDF
               </button>
               <button onClick={() => deleteLetter(letter.id)} className="text-xs text-red-600 font-medium">
                 Șterge

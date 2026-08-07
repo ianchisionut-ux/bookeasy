@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { exportSectionsToPdf } from '@/lib/pdf-export'
 
 type Doc = { id: string; url: string; filename: string; uploadedAt: string }
 
@@ -58,18 +57,6 @@ export default function PatientDocuments({
     }
   }
 
-  function exportPdf() {
-    exportSectionsToPdf(`documente-${patientName.replace(/\s+/g, '-')}.pdf`, 'Lista documentelor pacientului', patientName, [
-      {
-        title: 'Documente',
-        rows: documents.map((d) => ({
-          label: new Date(d.uploadedAt).toLocaleDateString('ro-RO', { dateStyle: 'medium', timeZone: 'Europe/Bucharest' }),
-          value: `${d.filename} — ${d.url}`,
-        })),
-      },
-    ])
-  }
-
   return (
     <Card>
       <div className="flex items-center justify-between mb-1">
@@ -77,9 +64,6 @@ export default function PatientDocuments({
         <div className="flex items-center gap-2">
           <button onClick={() => window.print()} className="btn-secondary text-sm">
             🖨 Printează
-          </button>
-          <button onClick={exportPdf} className="btn-secondary text-sm">
-            ⬇ Export PDF
           </button>
           <label className="btn-secondary text-sm cursor-pointer">
             {uploading ? 'Se încarcă...' : '+ Adaugă document'}
