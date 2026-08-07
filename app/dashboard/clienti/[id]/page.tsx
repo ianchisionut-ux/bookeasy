@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import CustomerEditForm from './customer-edit-form'
 import { Card } from '@/components/ui/card'
@@ -7,35 +8,46 @@ import { BackLink } from '@/components/ui/back-link'
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const customer = await prisma.customer.findUnique({
-    where: { id },
-    include: { bookings: { include: { service: true }, orderBy: { startAt: 'desc' } } },
-  })
+  const session = await auth()
+  const businessId = (session as any)?.businessId
+
+  const [customer, business] = await Promise.all([
+    prisma.customer.findUnique({
+      where: { id },
+      include: { bookings: { include: { service: true }, orderBy: { startAt: 'desc' } } },
+    }),
+    prisma.business.findUnique({ where: { id: businessId }, select: { category: true } }),
+  ])
 
   if (!customer) notFound()
+  const isClinic = business?.category === 'CLINICA'
 
   return (
     <div className="p-4 lg:p-8 max-w-2xl">
       <div className="mb-4">
-        <BackLink href="/dashboard/clienti" label="Înapoi la clienți" />
+        <BackLink href="/dashboard/clienti" label={`Înapoi la ${isClinic ? 'pacienți' : 'clienți'}`} />
       </div>
 
       <h1 className="text-2xl font-semibold mb-6">{customer.name ?? 'Fără nume'}</h1>
 
       <Card className="mb-8">
-        <h2 className="font-medium mb-4">Date client</h2>
+        <h2 className="font-medium mb-4">{isClinic ? 'Fișă pacient' : 'Date client'}</h2>
         <CustomerEditForm
           customerId={customer.id}
+          isClinic={isClinic}
           initial={{
             name: customer.name ?? '',
             phone: customer.phone,
             email: customer.email ?? '',
             notes: customer.notes ?? '',
+            dateOfBirth: customer.dateOfBirth ? customer.dateOfBirth.toISOString().slice(0, 10) : '',
+            allergies: customer.allergies ?? '',
+            medicalNotes: customer.medicalNotes ?? '',
           }}
         />
       </Card>
 
-      <h2 className="text-lg font-medium mb-3">Istoric rezervări</h2>
+      <h2 className="text-lg font-medium mb-3">Istoric {isClinic ? 'consultații' : 'rezervări'}</h2>
       <div className="flex flex-col gap-2">
         {customer.bookings.map((b) => (
           <Card key={b.id} className="flex items-center justify-between py-3">
@@ -46,7 +58,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
             </Pill>
           </Card>
         ))}
-        {customer.bookings.length === 0 && <p className="text-sm text-gray-500">Nicio rezervare încă.</p>}
+        {customer.bookings.length === 0 && <p className="text-sm text-gray-500">Niciun istoric încă.</p>}
       </div>
     </div>
   )

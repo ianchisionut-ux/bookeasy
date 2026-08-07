@@ -162,7 +162,8 @@ model Customer {
   facebookUserId   String?
   notes            String?
   dateOfBirth      DateTime? // relevant medical, folosit doar de clinici — niciodată expus public
-  medicalNotes     String?   // alergii/afecțiuni cunoscute, notă liberă — vizibilă STRICT în dashboard-ul clinicii
+  allergies        String?   // alergii cunoscute — câmp separat, vizibil clar pe fișă
+  medicalNotes     String?   // istoric medical/notă liberă — vizibilă STRICT în dashboard-ul clinicii
   createdAt        DateTime @default(now())
   bookings         Booking[]
 

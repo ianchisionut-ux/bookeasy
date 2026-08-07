@@ -75,7 +75,8 @@ export async function getPractitionerDaySlotsWithStatus(
   businessId: string,
   serviceId: string,
   practitionerId: string,
-  date: Date
+  date: Date,
+  ignoreLeadTime = false
 ): Promise<{ time: string; available: boolean }[]> {
   const service = await prisma.service.findUnique({ where: { id: serviceId } })
   if (!service || service.type !== 'APPOINTMENT') return []
@@ -90,7 +91,7 @@ export async function getPractitionerDaySlotsWithStatus(
 
   const duration = service.durationMin ?? 30
   const step = business?.slotIntervalMinutes ?? duration
-  const minLeadMs = (business?.minLeadTimeMinutes ?? 120) * 60 * 1000
+  const minLeadMs = ignoreLeadTime ? 0 : (business?.minLeadTimeMinutes ?? 120) * 60 * 1000
   const earliestAllowed = new Date(Date.now() + minLeadMs)
   const result: { time: string; available: boolean }[] = []
 

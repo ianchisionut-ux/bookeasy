@@ -8,6 +8,9 @@ const schema = z.object({
   phone: z.string().min(3).optional(),
   email: z.string().email().optional().or(z.literal('')),
   notes: z.string().optional(),
+  dateOfBirth: z.string().optional(),
+  allergies: z.string().optional(),
+  medicalNotes: z.string().optional(),
 })
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -37,7 +40,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  await prisma.customer.update({ where: { id }, data: parsed.data })
+  const { dateOfBirth, ...rest } = parsed.data
+  await prisma.customer.update({
+    where: { id },
+    data: { ...rest, dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : dateOfBirth === '' ? null : undefined },
+  })
 
   return NextResponse.json({ success: true })
 }

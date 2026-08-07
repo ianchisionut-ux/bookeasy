@@ -4,13 +4,26 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Input, Textarea } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+
+type FormState = {
+  name: string
+  phone: string
+  email: string
+  notes: string
+  dateOfBirth: string
+  allergies: string
+  medicalNotes: string
+}
 
 export default function CustomerEditForm({
   customerId,
   initial,
+  isClinic,
 }: {
   customerId: string
-  initial: { name: string; phone: string; email: string; notes: string }
+  initial: FormState
+  isClinic: boolean
 }) {
   const router = useRouter()
   const [form, setForm] = useState(initial)
@@ -22,7 +35,7 @@ export default function CustomerEditForm({
     setSaving(true)
     setError('')
     try {
-      const res = await fetch(`/api/customers/${customerId}`, {
+      const res = await fetchWithTimeout(`/api/customers/${customerId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -34,6 +47,8 @@ export default function CustomerEditForm({
       }
       setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' }))
       router.refresh()
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
     } finally {
       setSaving(false)
     }
@@ -52,17 +67,47 @@ export default function CustomerEditForm({
         </div>
       </div>
 
-      <div>
-        <label className="text-sm text-gray-500 block mb-1.5">Email</label>
-        <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-sm text-gray-500 block mb-1.5">Email</label>
+          <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        </div>
+        {isClinic && (
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">Data nașterii</label>
+            <Input type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} />
+          </div>
+        )}
       </div>
+
+      {isClinic && (
+        <>
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">Alergii cunoscute</label>
+            <Input
+              value={form.allergies}
+              onChange={(e) => setForm({ ...form, allergies: e.target.value })}
+              placeholder="Ex: penicilină, latex..."
+            />
+          </div>
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">Istoric medical / afecțiuni cunoscute</label>
+            <Textarea
+              value={form.medicalNotes}
+              onChange={(e) => setForm({ ...form, medicalNotes: e.target.value })}
+              placeholder="Ex: diabet, hipertensiune, tratamente în curs..."
+              className="min-h-[80px]"
+            />
+          </div>
+        </>
+      )}
 
       <div>
         <label className="text-sm text-gray-500 block mb-1.5">Notițe interne</label>
         <Textarea
           value={form.notes}
           onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          placeholder="Ex: preferă programări dimineața, alergic la anumite produse..."
+          placeholder={isClinic ? 'Ex: preferă programări dimineața...' : 'Ex: preferă programări dimineața, alergic la anumite produse...'}
           className="min-h-[80px]"
         />
       </div>

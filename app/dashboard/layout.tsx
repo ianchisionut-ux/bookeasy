@@ -19,6 +19,10 @@ const NAV_ITEMS = [
   { href: '/dashboard/setari', label: 'Setări' },
 ]
 
+const CLINIC_NAV_LABEL_OVERRIDES: Record<string, string> = {
+  '/dashboard/clienti': 'Pacienți',
+}
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
   if (!session) redirect('/login')
@@ -53,7 +57,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
     ...(category === 'CLINICA' ? [{ href: '/dashboard/medici', label: 'Medici' }] : []),
     ...NAV_ITEMS.slice(3),
     ...(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin' }] : []),
-  ]
+  ].map((item) => ({
+    ...item,
+    label: category === 'CLINICA' ? CLINIC_NAV_LABEL_OVERRIDES[item.href] ?? item.label : item.label,
+  }))
 
   return (
     <ResponsiveShell

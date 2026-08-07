@@ -16,38 +16,44 @@ export default async function ClientiPage({
   const { q } = await searchParams
   const query = q?.trim() ?? ''
 
-  const customers = await prisma.customer.findMany({
-    where: {
-      businessId,
-      ...(query && {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { phone: { contains: query, mode: 'insensitive' } },
-          { email: { contains: query, mode: 'insensitive' } },
-        ],
-      }),
-    },
-    include: { _count: { select: { bookings: true } } },
-    orderBy: { createdAt: 'desc' },
-  })
+  const [customers, business] = await Promise.all([
+    prisma.customer.findMany({
+      where: {
+        businessId,
+        ...(query && {
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { phone: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } },
+          ],
+        }),
+      },
+      include: { _count: { select: { bookings: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.business.findUnique({ where: { id: businessId }, select: { category: true } }),
+  ])
+
+  const isClinic = business?.category === 'CLINICA'
+  const label = isClinic ? 'Pacienți' : 'Clienți'
 
   return (
     <div className="p-4 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
-        <h1 className="text-2xl font-semibold">Clienți</h1>
+        <h1 className="text-2xl font-semibold">{label}</h1>
         <PrintButton />
       </div>
-      <p className="text-sm text-gray-500 mb-6">{customers.length} clienți în total</p>
+      <p className="text-sm text-gray-500 mb-6">{customers.length} {label.toLowerCase()} în total</p>
 
       <form method="get" className="mb-4 max-w-sm">
         <Input type="text" name="q" defaultValue={query} placeholder="Caută după nume, telefon sau email..." />
       </form>
 
-      <AddCustomerForm />
+      <AddCustomerForm isClinic={isClinic} />
 
       {customers.length === 0 && (
         <p className="text-sm text-gray-500">
-          {query ? `Niciun client găsit pentru "${query}".` : 'Niciun client încă.'}
+          {query ? `Niciun rezultat pentru "${query}".` : `Niciun ${isClinic ? 'pacient' : 'client'} încă.`}
         </p>
       )}
 
@@ -59,7 +65,7 @@ export default async function ClientiPage({
               <th className="py-3 px-5 font-medium text-gray-500">Nume</th>
               <th className="font-medium text-gray-500">Telefon</th>
               <th className="font-medium text-gray-500">Email</th>
-              <th className="font-medium text-gray-500">Rezervări</th>
+              <th className="font-medium text-gray-500">{isClinic ? 'Consultații' : 'Rezervări'}</th>
             </tr>
           </thead>
           <tbody>
