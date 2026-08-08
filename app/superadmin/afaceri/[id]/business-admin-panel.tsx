@@ -131,6 +131,9 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
                 <h1 className="text-xl font-semibold">{business.name}</h1>
               )}
               <Pill tone="accent">{CATEGORY_LABEL[business.category] ?? business.category}</Pill>
+              <Pill tone={business.teamSize > 1 ? 'accent' : 'neutral'}>
+                {business.teamSize > 1 ? 'Echipă' : 'Individual'}
+              </Pill>
               <Pill tone={business.accountActive ? 'success' : 'danger'}>{business.accountActive ? 'Activ' : 'Dezactivat'}</Pill>
             </div>
             <p className="text-sm text-gray-500">

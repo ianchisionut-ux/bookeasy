@@ -65,6 +65,7 @@ export default async function SuperAdminBusinesses({
             <tr className="text-left border-b border-[var(--border-soft)]">
               <th className="py-3 px-5 font-medium text-gray-500">Nume</th>
               <th className="font-medium text-gray-500">Categorie</th>
+              <th className="font-medium text-gray-500">Profil</th>
               <th className="font-medium text-gray-500">Plată</th>
               <th className="font-medium text-gray-500">Rezervări</th>
               <th className="font-medium text-gray-500">Public</th>
@@ -83,6 +84,9 @@ export default async function SuperAdminBusinesses({
                   </p>
                 </td>
                 <td>{CATEGORY_LABEL[b.category] ?? b.category}</td>
+                <td>
+                  <Pill tone={b.teamSize > 1 ? 'accent' : 'neutral'}>{b.teamSize > 1 ? 'Echipă' : 'Individual'}</Pill>
+                </td>
                 <td>
                   <Pill tone={STATUS_TONE[b.billingStatus]}>
                     {b.planName ? `${b.planName} · ` : ''}
