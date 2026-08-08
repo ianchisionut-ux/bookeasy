@@ -276,7 +276,7 @@ export default function SettingsForm({
           Orice programare nouă intră în sistem ca <strong>"În așteptare"</strong> — clientul primește
           automat, cu o zi înainte, la ora <strong>16:00</strong>, un mesaj cu detaliile programării și
           butoane de confirmare/anulare. Devine "Confirmată" abia după ce apasă. Mai primește și un
-          reminder scurt, cu 2 ore înainte de programare, în ziua respectivă. Fix, nu e configurabil.
+          reminder scurt, cu 1 oră înainte de programare, în ziua respectivă. Fix, nu e configurabil.
         </p>
       </Card>
 

@@ -70,11 +70,11 @@ async function sendDayBeforeReminders(now: Date, results: { dayBeforeSent: numbe
   }
 }
 
-// reminder scurt, informativ — cu 2 ore înainte, doar pentru programările deja
+// reminder scurt, informativ — cu 1 oră înainte, doar pentru programările deja
 // CONFIRMED (cele reconfirmate cu o zi înainte) — fără butoane, doar o notă
 async function sendTwoHourReminders(now: Date, results: { twoHourSent: number; failed: number }) {
-  const windowStart = new Date(now.getTime() + 1.75 * 60 * 60 * 1000)
-  const windowEnd = new Date(now.getTime() + 2.25 * 60 * 60 * 1000)
+  const windowStart = new Date(now.getTime() + 0.75 * 60 * 60 * 1000)
+  const windowEnd = new Date(now.getTime() + 1.25 * 60 * 60 * 1000)
 
   const bookings = await prisma.booking.findMany({
     where: { status: 'CONFIRMED', reminder1hSent: false, startAt: { gte: windowStart, lte: windowEnd } },
@@ -89,7 +89,7 @@ async function sendTwoHourReminders(now: Date, results: { twoHourSent: number; f
       results.failed++
       continue
     }
-    const text = `Programarea ta pentru ${booking.service.name} e peste 2 ore (${formatTime(booking.startAt)}). Te așteptăm!`
+    const text = `Programarea ta pentru ${booking.service.name} e peste 1 oră (${formatTime(booking.startAt)}). Te așteptăm!`
     try {
       const { sendMessage } = await import('@/lib/channel-senders')
       await sendMessage({ channel: 'WHATSAPP', channelId: channel.id, to: booking.customer.phone, text })
