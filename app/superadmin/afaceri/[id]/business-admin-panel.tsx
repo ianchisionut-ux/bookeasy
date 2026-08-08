@@ -42,16 +42,19 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
   const [loading, setLoading] = useState(false)
   const [teamMode, setTeamMode] = useState(business.teamSize > 1)
   const [savingTeam, setSavingTeam] = useState(false)
+  const [teamSaved, setTeamSaved] = useState(false)
+  const teamModeChanged = teamMode !== (business.teamSize > 1)
 
-  async function saveTeamMode(next: boolean) {
-    setTeamMode(next)
+  async function saveTeamMode() {
     setSavingTeam(true)
+    setTeamSaved(false)
     try {
       await fetch(`/api/superadmin/businesses/${business.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamSize: next ? 2 : 1 }),
+        body: JSON.stringify({ teamSize: teamMode ? 2 : 1 }),
       })
+      setTeamSaved(true)
       router.refresh()
     } finally {
       setSavingTeam(false)
@@ -193,10 +196,9 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
             Individual — un singur calendar, gestiune unică (ca acum). Echipă — proprietarul poate
             adăuga mai mulți medici/angajați, fiecare cu programul lui, calendar separabil per persoană.
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-3">
             <button
-              onClick={() => saveTeamMode(false)}
-              disabled={savingTeam}
+              onClick={() => setTeamMode(false)}
               className="flex-1 p-3 rounded-2xl border text-left"
               style={{
                 borderColor: !teamMode ? 'var(--accent)' : 'var(--border-soft)',
@@ -207,8 +209,7 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
               <p className="text-xs text-gray-500">1 calendar, fără alegere de persoană</p>
             </button>
             <button
-              onClick={() => saveTeamMode(true)}
-              disabled={savingTeam}
+              onClick={() => setTeamMode(true)}
               className="flex-1 p-3 rounded-2xl border text-left"
               style={{
                 borderColor: teamMode ? 'var(--accent)' : 'var(--border-soft)',
@@ -219,6 +220,15 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
               <p className="text-xs text-gray-500">Calendar separat, selectabil, per persoană</p>
             </button>
           </div>
+          {teamModeChanged && (
+            <div className="flex items-center gap-3">
+              <Button onClick={saveTeamMode} disabled={savingTeam}>
+                {savingTeam ? 'Se salvează...' : 'Salvează profilul'}
+              </Button>
+              <span className="text-xs text-amber-600">Modificare nesalvată</span>
+            </div>
+          )}
+          {teamSaved && !teamModeChanged && <p className="text-xs text-green-700">✓ Salvat</p>}
         </Card>
 
         <BillingSection
