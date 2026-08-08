@@ -146,7 +146,7 @@ export async function runBotStep({
       if (!choice) return showWelcome(business.name, business.slug)
 
       if (isMultiPractitioner) {
-        return proceedToPractitionerSelection(businessId, { ...currentState, serviceId: choice })
+        return proceedToPractitionerSelection(businessId, { ...currentState, serviceId: choice }, business.category === 'CLINICA')
       }
       return proceedToDaySelection(businessId, { ...currentState, serviceId: choice }, null)
     }
@@ -316,7 +316,10 @@ function showServiceMenu(services: { id: string; name: string; durationMin: numb
   }
 }
 
-async function proceedToPractitionerSelection(businessId: string, state: ConversationState) {
+async function proceedToPractitionerSelection(businessId: string, state: ConversationState, isClinic: boolean) {
+  const label = isClinic ? 'medic' : 'profesionist'
+  const labelPlural = isClinic ? 'Medici' : 'Profesioniști'
+
   const associations = await prisma.servicePractitioner.findMany({
     where: { serviceId: state.serviceId! },
     include: { practitioner: true },
@@ -327,7 +330,7 @@ async function proceedToPractitionerSelection(businessId: string, state: Convers
 
   if (eligible.length === 0) {
     return {
-      reply: { kind: 'text' as const, text: 'Momentan nu avem niciun specialist disponibil pentru acest serviciu. Te rugăm sună-ne direct.' },
+      reply: { kind: 'text' as const, text: `Momentan nu avem niciun ${label} disponibil pentru acest serviciu. Te rugăm sună-ne direct.` },
       newState: { step: 'IDLE' as const },
     }
   }
@@ -341,10 +344,10 @@ async function proceedToPractitionerSelection(businessId: string, state: Convers
   return {
     reply: {
       kind: 'choices' as const,
-      text: 'La ce specialist dorești programarea?',
-      header: 'Specialiști',
-      buttonLabel: 'Alege specialistul',
-      groups: [{ label: 'Specialiști', options }],
+      text: `La ce ${label} dorești programarea?`,
+      header: labelPlural,
+      buttonLabel: `Alege ${isClinic ? 'medicul' : 'profesionistul'}`,
+      groups: [{ label: labelPlural, options }],
     },
     newState: { ...state, step: 'SELECTING_PRACTITIONER' as const, practitionerOptions: options },
   }
@@ -449,15 +452,16 @@ async function notifyOwnerOperatorRequest(businessId: string, channel: string, e
   }).catch(() => {})
 }
 
-function proceedToConfirmation(business: { services: any[] }, state: ConversationState) {
+function proceedToConfirmation(business: { services: any[]; category: string }, state: ConversationState) {
   const service = business.services.find((s: any) => s.id === state.serviceId)
   const practitioner = state.practitionerId ? state.practitionerOptions?.find((p) => p.id === state.practitionerId) : null
+  const practitionerLabel = business.category === 'CLINICA' ? 'Medic' : 'Profesionist'
 
   const lines = [
     '*Confirmă programarea*',
     '',
     `Serviciu: ${service?.name ?? ''}`,
-    ...(practitioner ? [`Specialist: ${practitioner.title}`] : []),
+    ...(practitioner ? [`${practitionerLabel}: ${practitioner.title}`] : []),
     `Data: ${formatDate(state.startAt!)}`,
     `Nume: ${state.customerName}`,
     `Telefon: ${state.customerPhone}`,
