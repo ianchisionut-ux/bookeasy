@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Fragment } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -87,7 +87,8 @@ export default function ProgramariManager({
   filters: { status: string; q: string }
 }) {
   const router = useRouter()
-  const [adding, setAdding] = useState(false)
+  const searchParams = useSearchParams()
+  const [adding, setAdding] = useState(searchParams.get('add') === '1')
   const isClinic = category === 'CLINICA'
   const appointmentBased = isAppointmentBased(category)
   // 8 coloane (fără Sală/Medic) sau 9 (cu Sală sau Medic)

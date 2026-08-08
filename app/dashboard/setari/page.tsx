@@ -34,7 +34,7 @@ export default async function SetariPage() {
   return (
     <div className="p-4 lg:p-8 max-w-2xl">
       <h1 className="text-2xl font-semibold mb-1">Setări</h1>
-      <p className="text-sm text-gray-500 mb-6">Datele afacerii, programul de lucru și vizibilitatea publică.</p>
+      <p className="text-sm text-gray-500 mb-6">Datele profilului, programul de lucru și vizibilitatea publică.</p>
 
       <div className="flex flex-col gap-5">
         <PublicPageLinkCard slug={business.slug} />
@@ -42,6 +42,7 @@ export default async function SetariPage() {
         <SubscriptionCard planName={business.planName} billingStatus={business.billingStatus} />
 
         <SettingsForm
+          isMultiPractitioner={business.teamSize > 1}
           business={{
             name: business.name,
             contactPhone: business.contactPhone ?? '',

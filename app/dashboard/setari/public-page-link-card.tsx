@@ -34,7 +34,7 @@ export function PublicPageLinkCard({ slug }: { slug: string }) {
       <h2 className="font-medium mb-1">Pagina ta publică</h2>
       <p className="text-sm text-gray-500 mb-3">Link-urile pe care le trimiți clienților sau le pui pe rețele sociale.</p>
       <div className="flex flex-col gap-3">
-        <CopyableLink path={`/${slug}`} label="Profil afacere" />
+        <CopyableLink path={`/${slug}`} label="Profil public" />
         <CopyableLink path={`/${slug}/rezerva`} label="Rezervare directă" />
       </div>
     </Card>

@@ -12,6 +12,7 @@ type WorkingHour = { weekday: number; startTime: string; endTime: string; closed
 export default function SettingsForm({
   business,
   workingHours,
+  isMultiPractitioner,
 }: {
   business: {
     name: string
@@ -29,6 +30,7 @@ export default function SettingsForm({
     break3End: string | null
   }
   workingHours: WorkingHour[]
+  isMultiPractitioner: boolean
 }) {
   const [form, setForm] = useState(business)
   const [hours, setHours] = useState(workingHours)
@@ -74,10 +76,10 @@ export default function SettingsForm({
   return (
     <div className="flex flex-col gap-5">
       <Card>
-        <h2 className="font-medium mb-4">Date afacere</h2>
+        <h2 className="font-medium mb-4">Date profil</h2>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="text-sm text-gray-500 block mb-1.5">Nume afacere</label>
+            <label className="text-sm text-gray-500 block mb-1.5">Nume profil</label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -133,81 +135,93 @@ export default function SettingsForm({
         </div>
 
         <div className="pt-4 border-t border-[var(--border-soft)]">
-          <h3 className="text-sm font-medium mb-1">Pauze (masă etc.)</h3>
-          <p className="text-xs text-gray-500 mb-3">
-            Aceleași ore în fiecare zi lucrătoare — nu se pot face programări în aceste intervale.
-          </p>
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
-                <input type="checkbox" checked={break1Enabled} onChange={(e) => setBreak1Enabled(e.target.checked)} />
-                Pauza 1
-              </label>
-              {break1Enabled && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="time"
-                    value={form.break1Start ?? '13:00'}
-                    onChange={(e) => setForm({ ...form, break1Start: e.target.value })}
-                    className="input-field"
-                  />
-                  <span className="text-gray-400">–</span>
-                  <input
-                    type="time"
-                    value={form.break1End ?? '14:00'}
-                    onChange={(e) => setForm({ ...form, break1End: e.target.value })}
-                    className="input-field"
-                  />
+          {isMultiPractitioner ? (
+            <p className="text-sm text-gray-500">
+              Profilul e setat pe "Echipă" — fiecare medic/angajat își setează propriile pauze din{' '}
+              <a href="/dashboard/medici" className="text-[var(--accent)] underline">
+                Medici
+              </a>
+              , unde știu cel mai bine când au pauză pe calendarul lor.
+            </p>
+          ) : (
+            <>
+              <h3 className="text-sm font-medium mb-1">Pauze</h3>
+              <p className="text-xs text-gray-500 mb-3">
+                Aceleași ore în fiecare zi lucrătoare — nu se pot face programări în aceste intervale.
+              </p>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
+                    <input type="checkbox" checked={break1Enabled} onChange={(e) => setBreak1Enabled(e.target.checked)} />
+                    Pauza 1
+                  </label>
+                  {break1Enabled && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="time"
+                        value={form.break1Start ?? '13:00'}
+                        onChange={(e) => setForm({ ...form, break1Start: e.target.value })}
+                        className="input-field"
+                      />
+                      <span className="text-gray-400">–</span>
+                      <input
+                        type="time"
+                        value={form.break1End ?? '14:00'}
+                        onChange={(e) => setForm({ ...form, break1End: e.target.value })}
+                        className="input-field"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
-                <input type="checkbox" checked={break2Enabled} onChange={(e) => setBreak2Enabled(e.target.checked)} />
-                Pauza 2
-              </label>
-              {break2Enabled && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="time"
-                    value={form.break2Start ?? '16:00'}
-                    onChange={(e) => setForm({ ...form, break2Start: e.target.value })}
-                    className="input-field"
-                  />
-                  <span className="text-gray-400">–</span>
-                  <input
-                    type="time"
-                    value={form.break2End ?? '16:15'}
-                    onChange={(e) => setForm({ ...form, break2End: e.target.value })}
-                    className="input-field"
-                  />
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
+                    <input type="checkbox" checked={break2Enabled} onChange={(e) => setBreak2Enabled(e.target.checked)} />
+                    Pauza 2
+                  </label>
+                  {break2Enabled && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="time"
+                        value={form.break2Start ?? '16:00'}
+                        onChange={(e) => setForm({ ...form, break2Start: e.target.value })}
+                        className="input-field"
+                      />
+                      <span className="text-gray-400">–</span>
+                      <input
+                        type="time"
+                        value={form.break2End ?? '16:15'}
+                        onChange={(e) => setForm({ ...form, break2End: e.target.value })}
+                        className="input-field"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
-                <input type="checkbox" checked={break3Enabled} onChange={(e) => setBreak3Enabled(e.target.checked)} />
-                Pauza 3
-              </label>
-              {break3Enabled && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="time"
-                    value={form.break3Start ?? '18:00'}
-                    onChange={(e) => setForm({ ...form, break3Start: e.target.value })}
-                    className="input-field"
-                  />
-                  <span className="text-gray-400">–</span>
-                  <input
-                    type="time"
-                    value={form.break3End ?? '18:15'}
-                    onChange={(e) => setForm({ ...form, break3End: e.target.value })}
-                    className="input-field"
-                  />
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
+                    <input type="checkbox" checked={break3Enabled} onChange={(e) => setBreak3Enabled(e.target.checked)} />
+                    Pauza 3
+                  </label>
+                  {break3Enabled && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="time"
+                        value={form.break3Start ?? '18:00'}
+                        onChange={(e) => setForm({ ...form, break3Start: e.target.value })}
+                        className="input-field"
+                      />
+                      <span className="text-gray-400">–</span>
+                      <input
+                        type="time"
+                        value={form.break3End ?? '18:15'}
+                        onChange={(e) => setForm({ ...form, break3End: e.target.value })}
+                        className="input-field"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </Card>
 

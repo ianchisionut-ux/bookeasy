@@ -12,6 +12,8 @@ const patchSchema = z.object({
   break1End: z.string().nullable().optional(),
   break2Start: z.string().nullable().optional(),
   break2End: z.string().nullable().optional(),
+  break3Start: z.string().nullable().optional(),
+  break3End: z.string().nullable().optional(),
   workingHours: z
     .array(z.object({ weekday: z.number().min(0).max(6), startTime: z.string(), endTime: z.string() }))
     .optional(),

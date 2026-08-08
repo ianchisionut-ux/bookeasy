@@ -20,6 +20,8 @@ type Practitioner = {
   break1End: string | null
   break2Start: string | null
   break2End: string | null
+  break3Start: string | null
+  break3End: string | null
 }
 
 const WEEKDAY_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
@@ -152,6 +154,9 @@ function PractitionerDetail({
   const [break2Enabled, setBreak2Enabled] = useState(!!practitioner.break2Start)
   const [break2Start, setBreak2Start] = useState(practitioner.break2Start ?? '16:00')
   const [break2End, setBreak2End] = useState(practitioner.break2End ?? '16:15')
+  const [break3Enabled, setBreak3Enabled] = useState(!!practitioner.break3Start)
+  const [break3Start, setBreak3Start] = useState(practitioner.break3Start ?? '18:00')
+  const [break3End, setBreak3End] = useState(practitioner.break3End ?? '18:15')
   const [saving, setSaving] = useState(false)
 
   function hourFor(weekday: number) {
@@ -188,6 +193,8 @@ function PractitionerDetail({
           break1End: break1Enabled ? break1End : null,
           break2Start: break2Enabled ? break2Start : null,
           break2End: break2Enabled ? break2End : null,
+          break3Start: break3Enabled ? break3Start : null,
+          break3End: break3Enabled ? break3End : null,
         }),
       })
       onSaved()
@@ -240,7 +247,7 @@ function PractitionerDetail({
       </div>
 
       <div>
-        <p className="text-sm font-medium mb-2">Pauze (masă etc.)</p>
+        <p className="text-sm font-medium mb-2">Pauze</p>
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
@@ -265,6 +272,19 @@ function PractitionerDetail({
                 <input type="time" value={break2Start} onChange={(e) => setBreak2Start(e.target.value)} className="input-field" />
                 <span className="text-gray-400">–</span>
                 <input type="time" value={break2End} onChange={(e) => setBreak2End(e.target.value)} className="input-field" />
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
+              <input type="checkbox" checked={break3Enabled} onChange={(e) => setBreak3Enabled(e.target.checked)} />
+              Pauza 3
+            </label>
+            {break3Enabled && (
+              <div className="flex items-center gap-2">
+                <input type="time" value={break3Start} onChange={(e) => setBreak3Start(e.target.value)} className="input-field" />
+                <span className="text-gray-400">–</span>
+                <input type="time" value={break3End} onChange={(e) => setBreak3End(e.target.value)} className="input-field" />
               </div>
             )}
           </div>

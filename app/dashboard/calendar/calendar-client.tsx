@@ -6,6 +6,7 @@ import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
 import { ro } from 'date-fns/locale'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
@@ -264,6 +265,9 @@ export default function CalendarClient({
             aria-label="Sari la o dată"
           />
           <PrintButton />
+          <Link href="/dashboard/programari?add=1" className="btn-primary text-sm whitespace-nowrap">
+            + Adaugă programare
+          </Link>
         </div>
       </div>
       <div className="card printable p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">

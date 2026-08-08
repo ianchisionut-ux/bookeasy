@@ -91,7 +91,7 @@ export async function getPractitionerDaySlotsWithStatus(
   const weekday = date.getUTCDay() // neambiguu, indiferent de fusul serverului
   const [business, practitioner, workingHours, existingBookings, blockedSlots] = await Promise.all([
     prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
-    prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true } }),
+    prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
     prisma.practitionerWorkingHours.findMany({ where: { practitionerId, weekday } }),
     prisma.booking.findMany({ where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
     getBlockedSlotsForDay(businessId, date),
@@ -104,6 +104,9 @@ export async function getPractitionerDaySlotsWithStatus(
   }
   if (practitioner?.break2Start && practitioner.break2End) {
     breaks.push({ startAt: combineDateAndTime(date, practitioner.break2Start), endAt: combineDateAndTime(date, practitioner.break2End) })
+  }
+  if (practitioner?.break3Start && practitioner.break3End) {
+    breaks.push({ startAt: combineDateAndTime(date, practitioner.break3Start), endAt: combineDateAndTime(date, practitioner.break3End) })
   }
 
   const duration = service.durationMin ?? 30
@@ -151,7 +154,7 @@ export async function isPractitionerSlotStillAvailable(
       where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: endAt }, endAt: { gt: startAt } },
     }),
     isIntervalBlocked(businessId, startAt, endAt),
-    prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true } }),
+    prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
   ])
 
   const breaks: { startAt: Date; endAt: Date }[] = []
@@ -160,6 +163,9 @@ export async function isPractitionerSlotStillAvailable(
   }
   if (practitioner?.break2Start && practitioner.break2End) {
     breaks.push({ startAt: combineDateAndTime(startAt, practitioner.break2Start), endAt: combineDateAndTime(startAt, practitioner.break2End) })
+  }
+  if (practitioner?.break3Start && practitioner.break3End) {
+    breaks.push({ startAt: combineDateAndTime(startAt, practitioner.break3Start), endAt: combineDateAndTime(startAt, practitioner.break3End) })
   }
   const onBreak = breaks.some((b) => overlaps(startAt, endAt, b.startAt, b.endAt))
 

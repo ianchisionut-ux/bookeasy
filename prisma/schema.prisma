@@ -334,6 +334,8 @@ model Practitioner {
   break1End      String?
   break2Start    String?
   break2End      String?
+  break3Start    String?
+  break3End      String?
   createdAt      DateTime                   @default(now())
   workingHours   PractitionerWorkingHours[]
   services       ServicePractitioner[]

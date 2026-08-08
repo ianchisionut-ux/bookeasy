@@ -34,6 +34,8 @@ export default async function MediciPage() {
         break1End: p.break1End,
         break2Start: p.break2Start,
         break2End: p.break2End,
+        break3Start: p.break3Start,
+        break3End: p.break3End,
       }))}
       services={services.map((s) => ({ id: s.id, name: s.name }))}
     />
