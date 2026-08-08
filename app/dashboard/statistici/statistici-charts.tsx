@@ -29,7 +29,8 @@ const CHANNEL_LABEL: Record<string, string> = {
   MANUAL: 'Adăugat manual',
 }
 
-export default function StatisticiCharts({ daily, summary }: { daily: Daily[]; summary: Summary }) {
+export default function StatisticiCharts({ daily, summary, isClinic }: { daily: Daily[]; summary: Summary; isClinic: boolean }) {
+  const label = isClinic ? 'Programări' : 'Rezervări'
   return (
     <div className="p-4 lg:p-8">
       <h1 className="text-xl lg:text-2xl font-semibold mb-1">Statistici</h1>
@@ -38,7 +39,7 @@ export default function StatisticiCharts({ daily, summary }: { daily: Daily[]; s
       {/* ── carduri sumar ── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <Card>
-          <p className="text-xs text-gray-500 mb-1">Rezervări</p>
+          <p className="text-xs text-gray-500 mb-1">{label}</p>
           <p className="text-xl lg:text-2xl font-semibold">{summary.totalBookings}</p>
         </Card>
         <Card>
@@ -61,7 +62,7 @@ export default function StatisticiCharts({ daily, summary }: { daily: Daily[]; s
 
       {/* ── trend zilnic ── */}
       <Card className="mb-6">
-        <h2 className="font-medium mb-3">Rezervări pe zi</h2>
+        <h2 className="font-medium mb-3">{label} pe zi</h2>
         <div style={{ width: '100%', height: 220 }}>
           <ResponsiveContainer>
             <LineChart data={daily}>
@@ -69,7 +70,7 @@ export default function StatisticiCharts({ daily, summary }: { daily: Daily[]; s
               <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(d) => d.slice(5)} />
               <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
               <Tooltip />
-              <Line type="monotone" dataKey="bookings" stroke="var(--accent)" strokeWidth={2} dot={false} name="Rezervări" />
+              <Line type="monotone" dataKey="bookings" stroke="var(--accent)" strokeWidth={2} dot={false} name={label} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -80,7 +81,7 @@ export default function StatisticiCharts({ daily, summary }: { daily: Daily[]; s
         <Card>
           <h2 className="font-medium mb-1">Distribuție pe oră</h2>
           <p className="text-xs text-gray-500 mb-3">
-            Ora de vârf: <strong>{summary.peakHour.hour}:00</strong> ({summary.peakHour.count} rezervări)
+            Ora de vârf: <strong>{summary.peakHour.hour}:00</strong> ({summary.peakHour.count} {label.toLowerCase()})
           </p>
           <div style={{ width: '100%', height: 180 }}>
             <ResponsiveContainer>
@@ -98,7 +99,7 @@ export default function StatisticiCharts({ daily, summary }: { daily: Daily[]; s
         <Card>
           <h2 className="font-medium mb-1">Distribuție pe zi a săptămânii</h2>
           <p className="text-xs text-gray-500 mb-3">
-            Cea mai aglomerată: <strong>{summary.peakDayOfWeek.label}</strong> ({summary.peakDayOfWeek.count} rezervări)
+            Cea mai aglomerată: <strong>{summary.peakDayOfWeek.label}</strong> ({summary.peakDayOfWeek.count} {label.toLowerCase()})
           </p>
           <div style={{ width: '100%', height: 180 }}>
             <ResponsiveContainer>
@@ -120,7 +121,9 @@ export default function StatisticiCharts({ daily, summary }: { daily: Daily[]; s
           <ul className="text-sm flex flex-col gap-2">
             {summary.byChannel.map((c) => (
               <li key={c.channel} className="flex justify-between">
-                <span className="text-gray-500">{CHANNEL_LABEL[c.channel] ?? c.channel}</span>
+                <span className="text-gray-500">
+                  {c.channel === 'WEB' ? (isClinic ? 'Site (auto-programare)' : 'Site (auto-rezervare)') : (CHANNEL_LABEL[c.channel] ?? c.channel)}
+                </span>
                 <span className="font-medium">
                   {c.count} · {c.revenue.toLocaleString('ro-RO')} lei
                 </span>

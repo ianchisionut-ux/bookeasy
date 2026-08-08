@@ -53,7 +53,7 @@ const DOW_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 
 
 export async function getSummaryStats(businessId: string, from?: string, to?: string) {
   const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-  const toDate = to ? new Date(to) : new Date()
+  const toDate = to ? new Date(to) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
   toDate.setHours(23, 59, 59, 999)
 
   const bookings = await prisma.booking.findMany({
