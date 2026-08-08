@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
+import BillingSection from './billing-section'
 
 const CATEGORY_LABEL: Record<string, string> = {
   SALON: 'Salon',
@@ -29,6 +30,8 @@ type Business = {
   revenue: number
   planName: string | null
   teamSize: number
+  billingStatus: 'GRATUIT' | 'NEPLATIT' | 'PLATIT' | 'RESTANT'
+  billingNote: string | null
 }
 
 export default function BusinessAdminPanel({ business, channels }: { business: Business; channels: Channel[] }) {
@@ -113,9 +116,9 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* Header — nume, status, stats */}
-      <Card>
+    <div className="lg:grid lg:grid-cols-[1fr_380px] gap-5 items-start flex flex-col lg:flex">
+      {/* Header — nume, status, stats — pe toată lățimea */}
+      <Card className="lg:col-span-2">
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -182,79 +185,128 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
         )}
       </Card>
 
-      {/* Profilul afacerii — individual sau echipă de mai mulți medici/angajați */}
-      <Card>
-        <h2 className="font-medium mb-1">Profilul afacerii</h2>
-        <p className="text-sm text-gray-500 mb-3">
-          Individual — un singur calendar, gestiune unică (ca acum). Echipă — proprietarul poate
-          adăuga mai mulți medici/angajați, fiecare cu programul lui, calendar separabil per persoană.
-        </p>
-        <div className="flex gap-2">
-          <button
-            onClick={() => saveTeamMode(false)}
-            disabled={savingTeam}
-            className="flex-1 p-3 rounded-2xl border text-left"
-            style={{
-              borderColor: !teamMode ? 'var(--accent)' : 'var(--border-soft)',
-              background: !teamMode ? 'var(--accent-soft)' : 'white',
-            }}
-          >
-            <p className="text-sm font-medium">Individual</p>
-            <p className="text-xs text-gray-500">1 calendar, fără alegere de persoană</p>
-          </button>
-          <button
-            onClick={() => saveTeamMode(true)}
-            disabled={savingTeam}
-            className="flex-1 p-3 rounded-2xl border text-left"
-            style={{
-              borderColor: teamMode ? 'var(--accent)' : 'var(--border-soft)',
-              background: teamMode ? 'var(--accent-soft)' : 'white',
-            }}
-          >
-            <p className="text-sm font-medium">Echipă (mai mulți medici/angajați)</p>
-            <p className="text-xs text-gray-500">Calendar separat, selectabil, per persoană</p>
-          </button>
-        </div>
-      </Card>
+      {/* Coloana stângă — profil, facturare */}
+      <div className="flex flex-col gap-5">
+        <Card>
+          <h2 className="font-medium mb-1">Profilul afacerii</h2>
+          <p className="text-sm text-gray-500 mb-3">
+            Individual — un singur calendar, gestiune unică (ca acum). Echipă — proprietarul poate
+            adăuga mai mulți medici/angajați, fiecare cu programul lui, calendar separabil per persoană.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => saveTeamMode(false)}
+              disabled={savingTeam}
+              className="flex-1 p-3 rounded-2xl border text-left"
+              style={{
+                borderColor: !teamMode ? 'var(--accent)' : 'var(--border-soft)',
+                background: !teamMode ? 'var(--accent-soft)' : 'white',
+              }}
+            >
+              <p className="text-sm font-medium">Individual</p>
+              <p className="text-xs text-gray-500">1 calendar, fără alegere de persoană</p>
+            </button>
+            <button
+              onClick={() => saveTeamMode(true)}
+              disabled={savingTeam}
+              className="flex-1 p-3 rounded-2xl border text-left"
+              style={{
+                borderColor: teamMode ? 'var(--accent)' : 'var(--border-soft)',
+                background: teamMode ? 'var(--accent-soft)' : 'white',
+              }}
+            >
+              <p className="text-sm font-medium">Echipă (mai mulți medici/angajați)</p>
+              <p className="text-xs text-gray-500">Calendar separat, selectabil, per persoană</p>
+            </button>
+          </div>
+        </Card>
 
-      <ChannelSection
-        businessId={business.id}
-        label="MESSENGER"
-        type="FACEBOOK"
-        channel={channels.find((c) => c.type === 'FACEBOOK') ?? null}
-        idLabel="Page ID"
-        idPlaceholder="ex: 120984102888104"
-      />
+        <BillingSection
+          businessId={business.id}
+          initialPlanName={business.planName}
+          initialStatus={business.billingStatus}
+          initialNote={business.billingNote}
+        />
+      </div>
 
-      <ChannelSection
-        businessId={business.id}
-        label="INSTAGRAM"
-        type="INSTAGRAM"
-        channel={channels.find((c) => c.type === 'INSTAGRAM') ?? null}
-        idLabel="Instagram Business Account ID"
-        idPlaceholder="ex: 178414000000000"
-        helpText="Contul Instagram trebuie să fie profesional (Business/Creator) și legat de aceeași Pagină de Facebook ca Messenger."
-      />
-
-      <WhatsAppSection businessId={business.id} channel={channels.find((c) => c.type === 'WHATSAPP') ?? null} />
-
-      <ChannelSection
-        businessId={business.id}
-        label="GOOGLE BUSINESS PROFILE"
-        type="GOOGLE_BUSINESS"
-        channel={channels.find((c) => c.type === 'GOOGLE_BUSINESS') ?? null}
-        idLabel="Location / Account ID"
-        idPlaceholder="ex: accounts/123/locations/456"
-      />
-
-      <PaymentSection businessId={business.id} />
+      {/* Coloana dreaptă — integrări unificate, plată */}
+      <div className="flex flex-col gap-5">
+        <IntegrationsCard businessId={business.id} channels={channels} />
+        <PaymentSection businessId={business.id} />
+      </div>
     </div>
   )
 }
 
-function ChannelSection({
+function IntegrationsCard({ businessId, channels }: { businessId: string; channels: Channel[] }) {
+  const [tab, setTab] = useState<'FACEBOOK' | 'INSTAGRAM' | 'WHATSAPP' | 'GOOGLE_BUSINESS'>('FACEBOOK')
+
+  const tabs: { id: typeof tab; label: string }[] = [
+    { id: 'FACEBOOK', label: 'Messenger' },
+    { id: 'INSTAGRAM', label: 'Instagram' },
+    { id: 'WHATSAPP', label: 'WhatsApp' },
+    { id: 'GOOGLE_BUSINESS', label: 'Google' },
+  ]
+
+  return (
+    <Card>
+      <h2 className="text-xs font-semibold text-gray-500 tracking-wide mb-3">INTEGRĂRI</h2>
+      <div className="flex gap-1.5 mb-4 flex-wrap">
+        {tabs.map((t) => {
+          const channel = channels.find((c) => c.type === t.id)
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className="px-2.5 py-1 rounded-full text-xs font-medium border flex items-center gap-1"
+              style={
+                tab === t.id
+                  ? { background: 'var(--accent)', color: 'white', borderColor: 'var(--accent)' }
+                  : { borderColor: 'var(--border-soft)' }
+              }
+            >
+              {t.label}
+              {channel?.status === 'ACTIVE' && <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />}
+            </button>
+          )
+        })}
+      </div>
+
+      {tab === 'FACEBOOK' && (
+        <ChannelFields
+          businessId={businessId}
+          type="FACEBOOK"
+          channel={channels.find((c) => c.type === 'FACEBOOK') ?? null}
+          idLabel="Page ID"
+          idPlaceholder="ex: 120984102888104"
+        />
+      )}
+      {tab === 'INSTAGRAM' && (
+        <ChannelFields
+          businessId={businessId}
+          type="INSTAGRAM"
+          channel={channels.find((c) => c.type === 'INSTAGRAM') ?? null}
+          idLabel="Instagram Business Account ID"
+          idPlaceholder="ex: 178414000000000"
+          helpText="Contul Instagram trebuie să fie profesional (Business/Creator) și legat de aceeași Pagină de Facebook ca Messenger."
+        />
+      )}
+      {tab === 'WHATSAPP' && <WhatsAppFields businessId={businessId} channel={channels.find((c) => c.type === 'WHATSAPP') ?? null} />}
+      {tab === 'GOOGLE_BUSINESS' && (
+        <ChannelFields
+          businessId={businessId}
+          type="GOOGLE_BUSINESS"
+          channel={channels.find((c) => c.type === 'GOOGLE_BUSINESS') ?? null}
+          idLabel="Location / Account ID"
+          idPlaceholder="ex: accounts/123/locations/456"
+        />
+      )}
+    </Card>
+  )
+}
+
+function ChannelFields({
   businessId,
-  label,
   type,
   channel,
   idLabel,
@@ -262,7 +314,6 @@ function ChannelSection({
   helpText,
 }: {
   businessId: string
-  label: string
   type: string
   channel: Channel | null
   idLabel: string
@@ -287,11 +338,12 @@ function ChannelSection({
   }
 
   return (
-    <Card>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold text-gray-500 tracking-wide">{label}</h2>
-        {channel && <Pill tone={channel.status === 'ACTIVE' ? 'success' : 'neutral'}>{channel.status}</Pill>}
-      </div>
+    <div>
+      {channel && (
+        <div className="mb-3">
+          <Pill tone={channel.status === 'ACTIVE' ? 'success' : 'neutral'}>{channel.status}</Pill>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">{idLabel}</label>
@@ -313,11 +365,11 @@ function ChannelSection({
           {saving ? 'Se salvează...' : 'Salvează'}
         </Button>
       </div>
-    </Card>
+    </div>
   )
 }
 
-function WhatsAppSection({ businessId, channel }: { businessId: string; channel: Channel | null }) {
+function WhatsAppFields({ businessId, channel }: { businessId: string; channel: Channel | null }) {
   const router = useRouter()
   const [externalId, setExternalId] = useState(channel?.externalId ?? '')
   const [wabaId, setWabaId] = useState(channel?.wabaId ?? '')
@@ -348,11 +400,12 @@ function WhatsAppSection({ businessId, channel }: { businessId: string; channel:
   }
 
   return (
-    <Card>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold text-gray-500 tracking-wide">WHATSAPP</h2>
-        {channel && <Pill tone={channel.status === 'ACTIVE' ? 'success' : 'neutral'}>{channel.status}</Pill>}
-      </div>
+    <div>
+      {channel && (
+        <div className="mb-3">
+          <Pill tone={channel.status === 'ACTIVE' ? 'success' : 'neutral'}>{channel.status}</Pill>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
@@ -389,7 +442,7 @@ function WhatsAppSection({ businessId, channel }: { businessId: string; channel:
           {saving ? 'Se salvează...' : 'Salvează'}
         </Button>
       </div>
-    </Card>
+    </div>
   )
 }
 

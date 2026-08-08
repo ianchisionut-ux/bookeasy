@@ -39,6 +39,13 @@ export function ResponsiveShell({
   const accent = accentColor || 'var(--accent)'
   const softTint = accentColor ? blendWithWhite(accentColor, 0.15) : 'var(--surface-muted)' // culoare solidă, opacă
 
+  // când mai multe href-uri se potrivesc (ex: '/superadmin' e prefix pentru
+  // '/superadmin/afaceri'), câștigă mereu cel mai specific (cel mai lung) — altfel
+  // rămân "active" simultan un link general și unul specific, vizual confuz
+  const activeHref = navItems
+    .filter((item) => pathname === item.href || pathname?.startsWith(item.href + '/'))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href
+
   return (
     <div className="min-h-screen bg-[var(--surface-muted)] lg:grid lg:grid-cols-[220px_1fr]">
       {/* header mobil, doar sub lg */}
@@ -61,7 +68,7 @@ export function ResponsiveShell({
         {/* carusel orizontal de navigare — scroll cu degetul, fără dropdown */}
         <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
           {navItems.map((item) => {
-            const active = pathname === item.href || pathname?.startsWith(item.href + '/')
+            const active = item.href === activeHref
             return (
               <Link
                 key={item.href}
@@ -108,7 +115,7 @@ export function ResponsiveShell({
           <span className="font-semibold text-lg">{logoLabel}</span>
         </Link>
         {navItems.map((item) => {
-          const active = pathname === item.href || pathname?.startsWith(item.href + '/')
+          const active = item.href === activeHref
           return (
             <Link
               key={item.href}
