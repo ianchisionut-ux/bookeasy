@@ -23,6 +23,7 @@ export default function SettingsForm({
     slotIntervalMinutes: number | null
     minLeadTimeMinutes: number
     reminderMinutesBefore: number
+    operatorSilenceMinutes: number
     break1Start: string | null
     break1End: string | null
     break2Start: string | null
@@ -286,6 +287,26 @@ export default function SettingsForm({
           <option value="720">Cu 12 ore înainte</option>
           <option value="1440">Cu 24 de ore înainte (recomandat)</option>
           <option value="2880">Cu 48 de ore înainte</option>
+        </select>
+      </Card>
+
+      <Card>
+        <h2 className="font-medium mb-1">Tăcere bot după cerere de operator</h2>
+        <p className="text-sm text-gray-500 mb-3">
+          Când un client apasă "Operator" în conversația de pe WhatsApp/Messenger, botul nu mai
+          răspunde deloc pentru acest interval — ca să poți prelua tu conversația fără suprapuneri.
+          După ce trece timpul, botul revine automat la răspunsuri normale.
+        </p>
+        <select
+          value={form.operatorSilenceMinutes}
+          onChange={(e) => setForm({ ...form, operatorSilenceMinutes: Number(e.target.value) })}
+          className="input-field w-full"
+        >
+          <option value="15">15 minute</option>
+          <option value="30">30 de minute (recomandat)</option>
+          <option value="60">1 oră</option>
+          <option value="120">2 ore</option>
+          <option value="240">4 ore</option>
         </select>
       </Card>
 

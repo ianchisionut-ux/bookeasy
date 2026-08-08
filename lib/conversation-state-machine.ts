@@ -9,6 +9,7 @@ export type ChoiceOption = { id: string; title: string; subtitle?: string; url?:
 export type ChoiceGroup = { label: string; options: ChoiceOption[] }
 
 export type BotReply =
+  | { kind: 'none' }
   | { kind: 'text'; text: string }
   | { kind: 'choices'; text: string; header: string; buttonLabel: string; groups: ChoiceGroup[] }
   | { kind: 'buttons'; text: string; options: ChoiceOption[] }
@@ -23,6 +24,7 @@ export type ConversationState = {
     | 'COLLECTING_NAME'
     | 'COLLECTING_PHONE'
     | 'CONFIRMING'
+    | 'OPERATOR_SILENCE'
   serviceId?: string
   serviceOptions?: ChoiceOption[]
   practitionerId?: string
@@ -33,6 +35,7 @@ export type ConversationState = {
   timeOptions?: ChoiceOption[]
   customerName?: string
   customerPhone?: string
+  silentUntil?: string // ISO — cât timp botul nu mai răspunde deloc, după ce s-a cerut un operator
 }
 
 const CANCEL_PATTERNS = /^(nu|stop|anuleaz[ăa]|renun[țt]|las[ăa]|gata)\b/i
@@ -78,6 +81,16 @@ export async function runBotStep({
   channel: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
   externalUserId: string
 }): Promise<{ reply: BotReply; newState: ConversationState }> {
+  // botul tace complet cât timp un client a cerut un operator — nu răspunde nimic,
+  // ca să nu se suprapună peste ce scrie omul din spate. Rămâne așa până expiră timpul
+  // setat de admin în Setări, apoi revine automat la comportamentul normal
+  if (currentState.step === 'OPERATOR_SILENCE' && currentState.silentUntil) {
+    if (Date.now() < new Date(currentState.silentUntil).getTime()) {
+      return { reply: { kind: 'none' }, newState: currentState }
+    }
+    currentState = { step: 'IDLE' }
+  }
+
   const hoursSinceLastMessage = (Date.now() - conversationUpdatedAt.getTime()) / (1000 * 60 * 60)
   if (hoursSinceLastMessage > 24 && currentState.step !== 'IDLE') {
     currentState = { step: 'IDLE' }
@@ -120,9 +133,10 @@ export async function runBotStep({
 
         if (welcomeChoice === 'OPERATOR') {
           await notifyOwnerOperatorRequest(businessId, channel, externalUserId)
+          const silentUntil = new Date(Date.now() + (business.operatorSilenceMinutes ?? 30) * 60000).toISOString()
           return {
             reply: { kind: 'text', text: 'Te punem în legătură cu un coleg — te contactăm în cel mai scurt timp posibil!' },
-            newState: { step: 'IDLE' },
+            newState: { step: 'OPERATOR_SILENCE', silentUntil },
           }
         }
         if (welcomeChoice === 'LINK_REZERVARE') {

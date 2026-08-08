@@ -87,6 +87,8 @@ async function sendReply({
   to: string
   reply: BotReply
 }) {
+  if (reply.kind === 'none') return
+
   if (reply.kind === 'text') {
     await sendMessage({ channel, channelId, to, text: reply.text })
     return
