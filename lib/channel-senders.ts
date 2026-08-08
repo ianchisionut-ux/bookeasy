@@ -17,6 +17,20 @@ function normalizeWhatsAppPhone(phone: string): string {
   return digits
 }
 
+// fetch() nu aruncă eroare pentru răspunsuri 4xx/5xx — doar pentru eșec de rețea. Meta
+// poate respinge silențios un mesaj (număr neverificat în modul de test, token expirat,
+// format greșit etc.) și, fără verificare explicită, codul ar raporta "succes" oricum,
+// deși mesajul n-a plecat niciodată cu adevărat
+async function metaFetch(url: string, options: RequestInit): Promise<any> {
+  const res = await fetch(url, options)
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const message = data?.error?.message ?? `Meta a respins cererea (status ${res.status})`
+    throw new Error(message)
+  }
+  return data
+}
+
 export async function sendMessage({
   channel,
   channelId,
@@ -33,7 +47,7 @@ export async function sendMessage({
   const accessToken = decrypt(channelRecord.accessToken)
 
   if (channel === 'WHATSAPP') {
-    await fetch(`https://graph.facebook.com/v21.0/${channelRecord.externalId}/messages`, {
+    await metaFetch(`https://graph.facebook.com/v21.0/${channelRecord.externalId}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ messaging_product: 'whatsapp', to: normalizeWhatsAppPhone(to), type: 'text', text: { body: text } }),
@@ -42,7 +56,7 @@ export async function sendMessage({
   }
 
   // Instagram și Facebook Messenger folosesc același Send API
-  await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
+  await metaFetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ recipient: { id: to }, message: { text } }),
@@ -66,7 +80,7 @@ export async function sendWhatsAppButtons({
   if (!channelRecord) throw new Error('Channel not found')
   const accessToken = decrypt(channelRecord.accessToken)
 
-  await fetch(`https://graph.facebook.com/v21.0/${channelRecord.externalId}/messages`, {
+  await metaFetch(`https://graph.facebook.com/v21.0/${channelRecord.externalId}/messages`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -102,7 +116,7 @@ export async function sendMessengerButtons({
   if (!channelRecord) throw new Error('Channel not found')
   const accessToken = decrypt(channelRecord.accessToken)
 
-  await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
+  await metaFetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -163,7 +177,7 @@ export async function sendWhatsAppList({
     })),
   }))
 
-  await fetch(`https://graph.facebook.com/v21.0/${channelRecord.externalId}/messages`, {
+  await metaFetch(`https://graph.facebook.com/v21.0/${channelRecord.externalId}/messages`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -201,7 +215,7 @@ export async function sendMessengerCarousel({
     buttons: [{ type: 'postback', title: c.buttonLabel.slice(0, 20), payload: c.id }],
   }))
 
-  await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
+  await metaFetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
