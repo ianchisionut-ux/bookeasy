@@ -35,6 +35,31 @@ export async function processIncomingMessage({
     return
   }
 
+  const trimmed = text.trim()
+
+  // apăsare pe butonul din reminder-ul de reconfirmare (trimis cu o zi înainte, la
+  // 16:00) — mai precis decât potrivirea pe text liber, fiindcă țintește exact
+  // rezervarea respectivă, nu ghicește care e "cea mai apropiată"
+  if (trimmed.startsWith('REMINDER_CONFIRM_')) {
+    const bookingId = trimmed.replace('REMINDER_CONFIRM_', '')
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
+    if (booking && booking.businessId === businessId) {
+      await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED', customerConfirmed: true } })
+      await sendMessage({ channel, channelId, to: externalUserId, text: 'Perfect, programarea ta a fost confirmată! Te așteptăm.' })
+    }
+    return
+  }
+
+  if (trimmed.startsWith('REMINDER_CANCEL_')) {
+    const bookingId = trimmed.replace('REMINDER_CANCEL_', '')
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
+    if (booking && booking.businessId === businessId) {
+      await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CANCELLED', customerConfirmed: false } })
+      await sendMessage({ channel, channelId, to: externalUserId, text: 'Am anulat programarea. Sper să te vedem altă dată!' })
+    }
+    return
+  }
+
   if (CANCEL_BOOKING_PATTERN.test(text.trim())) {
     const reply = await handleBookingCancellation(businessId, channel, externalUserId)
     await sendMessage({ channel, channelId, to: externalUserId, text: reply })

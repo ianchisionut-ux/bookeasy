@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       practitionerId: practitionerId ?? null,
       startAt,
       endAt,
-      status: wantsOnlinePayment ? 'PENDING' : 'CONFIRMED',
+      status: 'PENDING',
       channel: 'WEB',
       sequenceNumber,
     },

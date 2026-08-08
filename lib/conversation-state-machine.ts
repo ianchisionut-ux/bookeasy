@@ -547,7 +547,7 @@ async function createBooking({
       practitionerId: practitionerId ?? null,
       startAt: startDate,
       endAt: endDate,
-      status: 'CONFIRMED',
+      status: 'PENDING',
       channel,
       sequenceNumber,
     },

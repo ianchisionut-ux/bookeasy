@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { sendMessage } from '@/lib/channel-senders'
+import { sendWhatsAppButtons, sendMessengerButtons } from '@/lib/channel-senders'
 import { sendUnconfirmedBookingAlert } from '@/lib/email'
 
 export async function GET(req: NextRequest) {
@@ -10,50 +10,71 @@ export async function GET(req: NextRequest) {
   }
 
   const now = new Date()
-  const results = { sent24h: 0, sent1h: 0, unconfirmedAlerts: 0, failed: 0 }
+  const results = { dayBeforeSent: 0, twoHourSent: 0, unconfirmedAlerts: 0, failed: 0 }
 
-  await send24hReminders(now, results)
-  await send1hReminders(now, results)
+  await sendDayBeforeReminders(now, results)
+  await sendTwoHourReminders(now, results)
   await sendUnconfirmedAlerts(now, results)
 
   return NextResponse.json(results)
 }
 
-// timpul de trimitere e configurabil per business (Setări → Reminder) — aducem un
-// interval larg (până la 48h, cel mai mare timp posibil de ales) și filtrăm exact în
-// funcție de reminderMinutesBefore al fiecărei afaceri în parte
-async function send24hReminders(now: Date, results: { sent24h: number; failed: number }) {
-  const maxWindowEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000)
+// ora Bucureștiului "acum", indiferent de fusul serverului
+function bucharestNow(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Bucharest',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '0'
+  return {
+    hour: Number(get('hour')),
+    minute: Number(get('minute')),
+    year: Number(get('year')),
+    month: Number(get('month')),
+    day: Number(get('day')),
+  }
+}
+
+// reminder-ul principal — orice programare PENDING pentru MÂINE (ziua calendaristică
+// următoare, oră București) primește, o singură dată, la ora 16:00, un mesaj cu butoane
+// de confirmare/anulare. Abia atunci devine CONFIRMED în sistem — nu automat la creare
+async function sendDayBeforeReminders(now: Date, results: { dayBeforeSent: number; failed: number }) {
+  const b = bucharestNow(now)
+  // fereastra cron e la 15 min — declanșăm doar în intervalul 16:00–16:15, o singură dată pe zi
+  if (b.hour !== 16 || b.minute >= 15) return
+
+  const tomorrowStart = new Date(Date.UTC(b.year, b.month - 1, b.day + 1, 0, 0, 0) - 3 * 60 * 60 * 1000)
+  const tomorrowEnd = new Date(tomorrowStart.getTime() + 24 * 60 * 60 * 1000)
 
   const bookings = await prisma.booking.findMany({
-    where: { status: 'CONFIRMED', reminder24hSent: false, startAt: { gte: now, lte: maxWindowEnd } },
+    where: { status: 'PENDING', reminder24hSent: false, startAt: { gte: tomorrowStart, lt: tomorrowEnd } },
     include: { customer: true, service: true, business: { include: { channels: true } } },
   })
 
   for (const booking of bookings) {
-    const targetMinutes = booking.business.reminderMinutesBefore ?? 1440
-    const minutesUntil = (booking.startAt.getTime() - now.getTime()) / 60000
-    // toleranță de ±7.5 min (jumătate din intervalul de 15 min al cron-ului), ca fiecare
-    // programare să primească reminder o singură dată, exact aproape de timpul ales
-    if (Math.abs(minutesUntil - targetMinutes) > 7.5) continue
-
-    const ok = await sendReminder(booking, 'main')
+    const ok = await sendConfirmationRequest(booking)
     if (ok) {
-      // reminder-ul principal e și cererea de confirmare activă — marcăm ambele
       await prisma.booking.update({
         where: { id: booking.id },
         data: { reminder24hSent: true, confirmationRequestSent: true },
       })
-      results.sent24h++
+      results.dayBeforeSent++
     } else {
       results.failed++
     }
   }
 }
 
-async function send1hReminders(now: Date, results: { sent1h: number; failed: number }) {
-  const windowStart = new Date(now.getTime() + 0.75 * 60 * 60 * 1000)
-  const windowEnd = new Date(now.getTime() + 1.25 * 60 * 60 * 1000)
+// reminder scurt, informativ — cu 2 ore înainte, doar pentru programările deja
+// CONFIRMED (cele reconfirmate cu o zi înainte) — fără butoane, doar o notă
+async function sendTwoHourReminders(now: Date, results: { twoHourSent: number; failed: number }) {
+  const windowStart = new Date(now.getTime() + 1.75 * 60 * 60 * 1000)
+  const windowEnd = new Date(now.getTime() + 2.25 * 60 * 60 * 1000)
 
   const bookings = await prisma.booking.findMany({
     where: { status: 'CONFIRMED', reminder1hSent: false, startAt: { gte: windowStart, lte: windowEnd } },
@@ -61,25 +82,33 @@ async function send1hReminders(now: Date, results: { sent1h: number; failed: num
   })
 
   for (const booking of bookings) {
-    const ok = await sendReminder(booking, '1h')
-    if (ok) {
+    const channel = booking.business.channels.find(
+      (c: any) => c.type === booking.channel && c.status === 'ACTIVE' && c.enabledByOwner
+    )
+    if (!channel) {
+      results.failed++
+      continue
+    }
+    const text = `Programarea ta pentru ${booking.service.name} e peste 2 ore (${formatTime(booking.startAt)}). Te așteptăm!`
+    try {
+      const { sendMessage } = await import('@/lib/channel-senders')
+      await sendMessage({ channel: booking.channel, channelId: channel.id, to: booking.customer.phone, text })
       await prisma.booking.update({ where: { id: booking.id }, data: { reminder1hSent: true } })
-      results.sent1h++
-    } else {
+      results.twoHourSent++
+    } catch {
       results.failed++
     }
   }
 }
 
-// dacă am cerut confirmare (la reminder-ul de 24h) și clientul tot n-a răspuns, iar
-// programarea e la mai puțin de 3 ore — anunțăm proprietarul, o dată, ca să poată suna
-// direct clientul dacă vrea să se asigure că vine
+// dacă am cerut confirmare (reminder-ul de la 16:00) și clientul tot n-a răspuns, iar
+// programarea e la mai puțin de 3 ore — anunțăm proprietarul, o dată
 async function sendUnconfirmedAlerts(now: Date, results: { unconfirmedAlerts: number }) {
   const windowEnd = new Date(now.getTime() + 3 * 60 * 60 * 1000)
 
   const bookings = await prisma.booking.findMany({
     where: {
-      status: 'CONFIRMED',
+      status: 'PENDING',
       confirmationRequestSent: true,
       customerConfirmed: null,
       unconfirmedAlertSent: false,
@@ -106,27 +135,44 @@ async function sendUnconfirmedAlerts(now: Date, results: { unconfirmedAlerts: nu
   }
 }
 
-async function sendReminder(booking: any, type: 'main' | '1h') {
+async function sendConfirmationRequest(booking: any): Promise<boolean> {
   const channel = booking.business.channels.find(
     (c: any) => c.type === booking.channel && c.status === 'ACTIVE' && c.enabledByOwner
   )
   if (!channel) return false
 
-  const text =
-    type === 'main'
-      ? `Ai o programare la ${booking.business.name} pentru ${booking.service.name}, pe ${formatDateTime(booking.startAt)}. Confirmi? Răspunde DA pentru confirmare, sau ANULEZ dacă nu mai poți veni.`
-      : `Programarea ta pentru ${booking.service.name} e peste o oră (${formatTime(booking.startAt)}). Te așteptăm!`
+  const dateTime = booking.startAt.toLocaleString('ro-RO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Bucharest',
+  })
+
+  const bodyText = [
+    '*Confirmă programarea*',
+    '',
+    `Serviciu: ${booking.service.name}`,
+    `Data: ${dateTime}`,
+    `Locație: ${booking.business.name}`,
+  ].join('\n')
+
+  const options = [
+    { id: `REMINDER_CONFIRM_${booking.id}`, title: 'Confirmă programarea' },
+    { id: `REMINDER_CANCEL_${booking.id}`, title: 'Anulează programarea' },
+  ]
 
   try {
-    await sendMessage({ channel: booking.channel, channelId: channel.id, to: booking.customer.phone, text })
+    if (booking.channel === 'WHATSAPP') {
+      await sendWhatsAppButtons({ channelId: channel.id, to: booking.customer.phone, bodyText, options })
+    } else {
+      await sendMessengerButtons({ channelId: channel.id, to: booking.customer.phone, bodyText, options })
+    }
     return true
   } catch {
     return false
   }
-}
-
-function formatDateTime(date: Date) {
-  return new Date(date).toLocaleString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
 }
 
 function formatTime(date: Date) {
