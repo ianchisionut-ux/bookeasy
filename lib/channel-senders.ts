@@ -46,7 +46,7 @@ export async function sendWhatsAppButtons({
   channelId: string
   to: string
   bodyText: string
-  options: { id: string; title: string }[]
+  options: { id: string; title: string; url?: string }[]
 }) {
   const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
   if (!channelRecord) throw new Error('Channel not found')
@@ -82,7 +82,7 @@ export async function sendMessengerButtons({
   channelId: string
   to: string
   bodyText: string
-  options: { id: string; title: string }[]
+  options: { id: string; title: string; url?: string }[]
 }) {
   const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
   if (!channelRecord) throw new Error('Channel not found')
@@ -99,7 +99,13 @@ export async function sendMessengerButtons({
           payload: {
             template_type: 'button',
             text: bodyText.slice(0, 640),
-            buttons: options.slice(0, 3).map((o) => ({ type: 'postback', title: o.title.slice(0, 20), payload: o.id })),
+            // butoanele cu url deschid pagina direct în browser, la un singur tap —
+            // Messenger permite amestecul de tipuri (postback + web_url) în același mesaj
+            buttons: options.slice(0, 3).map((o) =>
+              o.url
+                ? { type: 'web_url', title: o.title.slice(0, 20), url: o.url }
+                : { type: 'postback', title: o.title.slice(0, 20), payload: o.id }
+            ),
           },
         },
       },

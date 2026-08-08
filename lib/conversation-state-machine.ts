@@ -5,7 +5,7 @@ import { getNextSequenceNumber } from './booking-number'
 // fluxul botului folosește opțiuni interactive tappable (listă pe WhatsApp, carousel pe
 // Messenger/Instagram) — clientul apasă direct pe alegere. Rămâne și un fallback pe
 // text simplu (scrie numărul din listă), pentru robustețe.
-export type ChoiceOption = { id: string; title: string; subtitle?: string }
+export type ChoiceOption = { id: string; title: string; subtitle?: string; url?: string }
 export type ChoiceGroup = { label: string; options: ChoiceOption[] }
 
 export type BotReply =
@@ -37,11 +37,13 @@ export type ConversationState = {
 
 const CANCEL_PATTERNS = /^(nu|stop|anuleaz[ăa]|renun[țt]|las[ăa]|gata)\b/i
 const RESTART_PATTERNS = /^(reia|de la [îi]nceput|resetez[ăa]?|programare|nou[ăa])\b/i
-const WELCOME_OPTIONS: ChoiceOption[] = [
-  { id: 'START_PROGRAMARE', title: 'Fă o programare' },
-  { id: 'OPERATOR', title: 'Vorbește cu un operator' },
-  { id: 'LINK_REZERVARE', title: 'Vezi pagina de rezervare' },
-]
+function getWelcomeOptions(slug: string): ChoiceOption[] {
+  return [
+    { id: 'START_PROGRAMARE', title: 'Programare aici' },
+    { id: 'OPERATOR', title: 'Operator' },
+    { id: 'LINK_REZERVARE', title: 'Programare pe site', url: `${process.env.APP_URL}/${slug}/rezerva` },
+  ]
+}
 
 const CONFIRM_OPTIONS: ChoiceOption[] = [
   { id: 'CONFIRM_BOOKING', title: 'Confirmă programarea' },
@@ -102,7 +104,7 @@ export async function runBotStep({
 
   switch (currentState.step) {
     case 'IDLE': {
-      return showWelcome(business.name)
+      return showWelcome(business.name, business.slug)
     }
 
     default:
@@ -114,7 +116,7 @@ export async function runBotStep({
       // dacă încă n-am arătat lista reală de servicii, suntem la meniul de start —
       // potrivim răspunsul (tap sau număr scris) cu cele 3 opțiuni inițiale
       if (!currentState.serviceOptions) {
-        const welcomeChoice = matchChoice(incomingText, WELCOME_OPTIONS)
+        const welcomeChoice = matchChoice(incomingText, getWelcomeOptions(business.slug))
 
         if (welcomeChoice === 'OPERATOR') {
           await notifyOwnerOperatorRequest(businessId, channel, externalUserId)
@@ -124,8 +126,11 @@ export async function runBotStep({
           }
         }
         if (welcomeChoice === 'LINK_REZERVARE') {
+          // pe Messenger/Instagram, butonul deschide pagina direct în browser — clientul
+          // n-a mai ajuns aici deloc. Acest răspuns e doar fallback-ul pentru WhatsApp,
+          // unde Meta nu permite un buton care deschide un link direct în text liber
           return {
-            reply: { kind: 'text', text: `Poți vedea toate detaliile și rezerva direct aici: ${process.env.APP_URL}/${business.slug}/rezerva` },
+            reply: { kind: 'text', text: `${process.env.APP_URL}/${business.slug}/rezerva` },
             newState: { step: 'IDLE' },
           }
         }
@@ -133,12 +138,12 @@ export async function runBotStep({
           return showServiceMenu(business.services)
         }
 
-        return showWelcome(business.name)
+        return showWelcome(business.name, business.slug)
       }
 
       const options = currentState.serviceOptions
       const choice = matchChoice(incomingText, options)
-      if (!choice) return showWelcome(business.name)
+      if (!choice) return showWelcome(business.name, business.slug)
 
       if (isMultiPractitioner) {
         return proceedToPractitionerSelection(businessId, { ...currentState, serviceId: choice })
@@ -240,7 +245,7 @@ export async function runBotStep({
       const cancelled = matched === 'CANCEL_BOOKING'
 
       if (cancelled) {
-        return showWelcome(business.name)
+        return showWelcome(business.name, business.slug)
       }
 
       if (!confirmed) {
@@ -272,15 +277,15 @@ export async function runBotStep({
     }
 
     default:
-      return showWelcome(business.name)
+      return showWelcome(business.name, business.slug)
   }
 }
 
 // primul mesaj — salut + 3 opțiuni: fă o programare, vorbește cu un operator, sau
 // linkul direct către pagina publică de rezervare
-function showWelcome(businessName: string) {
+function showWelcome(businessName: string, slug: string) {
   return {
-    reply: { kind: 'buttons' as const, text: `Salut! Bine ai venit la ${businessName}. Cu ce te putem ajuta?`, options: WELCOME_OPTIONS },
+    reply: { kind: 'buttons' as const, text: `Salut! Bine ai venit la ${businessName}. Cu ce te putem ajuta?`, options: getWelcomeOptions(slug) },
     newState: { step: 'SELECTING_SERVICE' as const },
   }
 }
