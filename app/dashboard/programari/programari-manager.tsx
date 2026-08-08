@@ -90,6 +90,7 @@ export default function ProgramariManager({
   const searchParams = useSearchParams()
   const [adding, setAdding] = useState(searchParams.get('add') === '1')
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null)
+  const [sendingConfirmId, setSendingConfirmId] = useState<string | null>(null)
   const isClinic = category === 'CLINICA'
   const appointmentBased = isAppointmentBased(category)
   // 8 coloane (fără Sală/Medic) sau 9 (cu Sală sau Medic)
@@ -137,6 +138,23 @@ export default function ProgramariManager({
       alert('Conexiune eșuată. Încearcă din nou.')
     } finally {
       setSendingReminderId(null)
+    }
+  }
+
+  async function sendConfirmationRequest(id: string) {
+    setSendingConfirmId(id)
+    try {
+      const res = await fetchWithTimeout(`/api/business/bookings/${id}/send-confirmation-request`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data.error ?? 'Nu am putut trimite cererea de confirmare.')
+        return
+      }
+      alert('Cerere de confirmare trimisă — clientul poate confirma sau anula direct din WhatsApp.')
+    } catch {
+      alert('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      setSendingConfirmId(null)
     }
   }
 
@@ -268,6 +286,15 @@ export default function ProgramariManager({
                       </div>
                     </td>
                     <td className="pr-5 text-right whitespace-nowrap">
+                      {b.status === 'PENDING' && (
+                        <button
+                          onClick={() => sendConfirmationRequest(b.id)}
+                          disabled={sendingConfirmId === b.id}
+                          className="text-xs text-[var(--accent)] font-medium mr-3"
+                        >
+                          {sendingConfirmId === b.id ? 'Se trimite...' : 'Cere reconfirmare'}
+                        </button>
+                      )}
                       {b.status === 'CONFIRMED' && (
                         <button
                           onClick={() => sendReminder(b.id)}

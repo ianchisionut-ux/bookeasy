@@ -3,6 +3,20 @@ import { decrypt } from './crypto'
 
 type Channel = 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
 
+// WhatsApp cere formatul internațional complet, fără 0 la început, fără "+", fără
+// spații/liniuțe (ex: "40745895623", nu "0745895623" sau "+40 745 895 623"). Clienții
+// scriu numărul cum vor la rezervare — normalizăm mereu chiar înainte de trimitere,
+// presupunând România (40) dacă nu are deja alt prefix de țară
+function normalizeWhatsAppPhone(phone: string): string {
+  let digits = phone.replace(/[^\d]/g, '') // scoate tot ce nu e cifră (spații, -, +, paranteze)
+  if (digits.startsWith('0')) {
+    digits = '40' + digits.slice(1) // 0745... → 40745...
+  } else if (!digits.startsWith('40') && digits.length === 9) {
+    digits = '40' + digits // 745895623 (fără 0, fără prefix) → 40745895623
+  }
+  return digits
+}
+
 export async function sendMessage({
   channel,
   channelId,
@@ -22,7 +36,7 @@ export async function sendMessage({
     await fetch(`https://graph.facebook.com/v21.0/${channelRecord.externalId}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text } }),
+      body: JSON.stringify({ messaging_product: 'whatsapp', to: normalizeWhatsAppPhone(to), type: 'text', text: { body: text } }),
     })
     return
   }
@@ -57,7 +71,7 @@ export async function sendWhatsAppButtons({
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       messaging_product: 'whatsapp',
-      to,
+      to: normalizeWhatsAppPhone(to),
       type: 'interactive',
       interactive: {
         type: 'button',
@@ -154,7 +168,7 @@ export async function sendWhatsAppList({
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       messaging_product: 'whatsapp',
-      to,
+      to: normalizeWhatsAppPhone(to),
       type: 'interactive',
       interactive: {
         type: 'list',

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { sendWhatsAppButtons, sendMessengerButtons } from '@/lib/channel-senders'
 import { sendUnconfirmedBookingAlert } from '@/lib/email'
+import { sendConfirmationRequest } from '@/lib/confirmation-request'
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -132,46 +132,6 @@ async function sendUnconfirmedAlerts(now: Date, results: { unconfirmedAlerts: nu
 
     await prisma.booking.update({ where: { id: booking.id }, data: { unconfirmedAlertSent: true } })
     results.unconfirmedAlerts++
-  }
-}
-
-async function sendConfirmationRequest(booking: any): Promise<boolean> {
-  const channel = booking.business.channels.find(
-    (c: any) => c.type === booking.channel && c.status === 'ACTIVE' && c.enabledByOwner
-  )
-  if (!channel) return false
-
-  const dateTime = booking.startAt.toLocaleString('ro-RO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Europe/Bucharest',
-  })
-
-  const bodyText = [
-    '*Confirmă programarea*',
-    '',
-    `Serviciu: ${booking.service.name}`,
-    `Data: ${dateTime}`,
-    `Locație: ${booking.business.name}`,
-  ].join('\n')
-
-  const options = [
-    { id: `REMINDER_CONFIRM_${booking.id}`, title: 'Confirmă programarea' },
-    { id: `REMINDER_CANCEL_${booking.id}`, title: 'Anulează programarea' },
-  ]
-
-  try {
-    if (booking.channel === 'WHATSAPP') {
-      await sendWhatsAppButtons({ channelId: channel.id, to: booking.customer.phone, bodyText, options })
-    } else {
-      await sendMessengerButtons({ channelId: channel.id, to: booking.customer.phone, bodyText, options })
-    }
-    return true
-  } catch {
-    return false
   }
 }
 
