@@ -39,8 +39,6 @@ export default async function SetariPage() {
       <div className="flex flex-col gap-5">
         <PublicPageLinkCard slug={business.slug} />
 
-        <BrandColorCard initialColor={business.brandColor} />
-
         <SubscriptionCard planName={business.planName} billingStatus={business.billingStatus} />
 
         <SettingsForm
@@ -56,9 +54,13 @@ export default async function SetariPage() {
             break1End: business.break1End,
             break2Start: business.break2Start,
             break2End: business.break2End,
+            break3Start: business.break3Start,
+            break3End: business.break3End,
           }}
           workingHours={workingHours}
         />
+
+        <BrandColorCard initialColor={business.brandColor} />
       </div>
     </div>
   )

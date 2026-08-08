@@ -60,7 +60,7 @@ export default function PractitionersManager({
   }
 
   async function deletePractitioner(id: string) {
-    if (!confirm('Ștergi definitiv acest medic?')) return
+    if (!confirm('Ștergi definitiv această persoană?')) return
     try {
       const res = await fetchWithTimeout(`/api/business/practitioners/${id}`, { method: 'DELETE' })
       if (!res.ok) {
@@ -77,22 +77,22 @@ export default function PractitionersManager({
   return (
     <div className="p-4 lg:p-8 max-w-3xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
-        <h1 className="text-2xl font-semibold">Medici</h1>
-        <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : '+ Adaugă medic'}</Button>
+        <h1 className="text-2xl font-semibold">Medici / Angajați</h1>
+        <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : '+ Adaugă persoană'}</Button>
       </div>
       <p className="text-sm text-gray-500 mb-6">
-        Fiecare medic are propriul program și, opțional, serviciile pe care le oferă. Pacienții pot alege un medic
-        anume sau lăsa sistemul să ofere prima oră liberă.
+        Fiecare persoană are propriul program și, opțional, serviciile pe care le oferă. Clienții pot
+        alege o persoană anume la rezervare.
       </p>
 
       {adding && (
         <Card className="mb-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-            <Input placeholder="Nume medic" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            <Input placeholder="Nume" value={newName} onChange={(e) => setNewName(e.target.value)} />
             <Input placeholder="Specializare (opțional)" value={newSpecialization} onChange={(e) => setNewSpecialization(e.target.value)} />
           </div>
           <Button onClick={createPractitioner} disabled={saving || !newName.trim()}>
-            {saving ? 'Se salvează...' : 'Salvează medicul'}
+            {saving ? 'Se salvează...' : 'Salvează'}
           </Button>
         </Card>
       )}
@@ -127,7 +127,7 @@ export default function PractitionersManager({
           </CardInteractive>
         ))}
         {practitioners.length === 0 && !adding && (
-          <p className="text-sm text-gray-500">Niciun medic adăugat încă. Apasă "+ Adaugă medic" ca să începi.</p>
+          <p className="text-sm text-gray-500">Nicio persoană adăugată încă. Apasă "+ Adaugă persoană" ca să începi.</p>
         )}
       </div>
     </div>
@@ -241,10 +241,9 @@ function PractitionerDetail({
 
       <div>
         <p className="text-sm font-medium mb-2">Pauze (masă etc.)</p>
-        <p className="text-xs text-gray-400 mb-2">Aceleași ore în fiecare zi lucrătoare — nu se pot face programări în aceste intervale.</p>
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <label className="flex items-center gap-1.5 text-gray-500 w-28 shrink-0">
+            <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
               <input type="checkbox" checked={break1Enabled} onChange={(e) => setBreak1Enabled(e.target.checked)} />
               Pauza 1
             </label>
@@ -257,7 +256,7 @@ function PractitionerDetail({
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <label className="flex items-center gap-1.5 text-gray-500 w-28 shrink-0">
+            <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
               <input type="checkbox" checked={break2Enabled} onChange={(e) => setBreak2Enabled(e.target.checked)} />
               Pauza 2
             </label>

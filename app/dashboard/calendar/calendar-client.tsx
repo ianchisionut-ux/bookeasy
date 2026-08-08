@@ -44,6 +44,8 @@ type Event = {
   confirmationRequestSent?: boolean
   customerConfirmed?: boolean | null
   serviceName: string
+  practitionerId?: string | null
+  practitionerName?: string | null
   isBlocked?: false
 }
 
@@ -62,17 +64,22 @@ export default function CalendarClient({
   blockedSlots,
   minTime,
   maxTime,
+  practitioners,
 }: {
   events: Event[]
   blockedSlots: BlockedSlot[]
   minTime: string
   maxTime: string
+  practitioners: { id: string; name: string; minTime: string; maxTime: string }[]
 }) {
   const router = useRouter()
   const [selected, setSelected] = useState<Event | null>(null)
   const [view, setView] = useState<any>(Views.WEEK)
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
   const [busy, setBusy] = useState(false)
+  const [practitionerFilter, setPractitionerFilter] = useState<string>(practitioners[0]?.id ?? '')
+
+  const visibleEvents = practitioners.length === 0 ? events : events.filter((e) => e.practitionerId === practitionerFilter)
   const [blockMode, setBlockMode] = useState(false)
 
   useEffect(() => {
@@ -89,7 +96,7 @@ export default function CalendarClient({
     isBlocked: true,
   }))
 
-  const allEvents = [...events, ...blockedEvents]
+  const allEvents = [...visibleEvents, ...blockedEvents]
 
   function timeToDate(time: string) {
     const [h, m] = time.split(':').map(Number)
@@ -98,8 +105,11 @@ export default function CalendarClient({
     return d
   }
 
-  const calendarMin = timeToDate(minTime)
-  const calendarMax = timeToDate(maxTime)
+  const selectedPractitioner = practitioners.find((p) => p.id === practitionerFilter) ?? null
+  const effectiveMinTime = selectedPractitioner?.minTime ?? minTime
+  const effectiveMaxTime = selectedPractitioner?.maxTime ?? maxTime
+  const calendarMin = timeToDate(effectiveMinTime)
+  const calendarMax = timeToDate(effectiveMaxTime)
 
   const blockRange = useCallback(
     async (start: Date, end: Date) => {
@@ -202,7 +212,23 @@ export default function CalendarClient({
     <div className="h-[calc(100vh-56px)] lg:h-[calc(100vh-40px)] p-4 lg:p-8 flex flex-col">
       <div className="mb-4 screen-only">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <h1 className="text-xl lg:text-2xl font-semibold">Calendar rezervări</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl lg:text-2xl font-semibold">Calendar rezervări</h1>
+            {practitioners.length > 0 && (
+              <select
+                value={practitionerFilter}
+                onChange={(e) => setPractitionerFilter(e.target.value)}
+                className="input-field text-sm py-1.5"
+                aria-label="Filtrează după persoană"
+              >
+                {practitioners.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
         <p className="text-xs text-gray-500 mb-3">
           {blockMode
@@ -242,6 +268,7 @@ export default function CalendarClient({
       </div>
       <div className="card printable p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
         <DnDCalendar
+          key={practitionerFilter}
           localizer={localizer}
           events={allEvents}
           startAccessor="start"
@@ -312,6 +339,7 @@ export default function CalendarClient({
               customerName: selected.customerName,
               customerPhone: selected.customerPhone,
               serviceName: selected.serviceName,
+              practitionerName: selected.practitionerName,
               confirmationRequestSent: selected.confirmationRequestSent,
               customerConfirmed: selected.customerConfirmed,
               startAt: selected.start.toISOString(),

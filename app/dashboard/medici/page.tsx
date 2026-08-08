@@ -8,8 +8,8 @@ export default async function MediciPage() {
   const businessId = (session as any)?.businessId
   if (!businessId) redirect('/login')
 
-  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { category: true } })
-  if (business?.category !== 'CLINICA') redirect('/dashboard')
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { teamSize: true } })
+  if (!business || business.teamSize <= 1) redirect('/dashboard')
 
   const [practitioners, services] = await Promise.all([
     prisma.practitioner.findMany({

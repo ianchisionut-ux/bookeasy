@@ -42,6 +42,8 @@ model Business {
   break1End           String?
   break2Start         String?
   break2End           String?
+  break3Start         String?
+  break3End           String?
   brandColor          String?      // culoarea de accent aleasă de business pentru pagina publică (hex); null = culoarea implicită bookeasy
   planName           String?      // numele planului, gestionat manual de admin până se configurează plata online
   billingStatus      BillingStatus @default(NEPLATIT)

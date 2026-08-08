@@ -16,6 +16,7 @@ type Service = {
 }
 
 type DaySlot = { time: string; available: boolean }
+type Practitioner = { id: string; name: string; specialization: string | null }
 
 const STORAGE_KEY = 'bookeasy_customer_info'
 
@@ -42,6 +43,7 @@ export default function BookingFlow({
   businessId,
   businessSlug,
   category,
+  isMultiPractitioner,
   services,
   canPayOnline,
   accentColor,
@@ -50,17 +52,19 @@ export default function BookingFlow({
   businessId: string
   businessSlug: string
   category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  isMultiPractitioner: boolean
   services: Service[]
   canPayOnline: boolean
   accentColor: string
   accentSoftColor: string
 }) {
-  // clinicile funcționează exact ca saloanele — gestiune unică, un singur calendar,
-  // fără alegere de medic (fiecare medic care vrea platforma își face cont separat)
   const isAppointment = category === 'SALON' || category === 'CLINICA'
   const days = useMemo(() => buildNextDays(30), [])
 
   const [service, setService] = useState<Service | null>(services[0] ?? null)
+  const [practitioners, setPractitioners] = useState<Practitioner[]>([])
+  const [practitionersLoaded, setPractitionersLoaded] = useState(false)
+  const [practitionerId, setPractitionerId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date>(days[0])
   const [daySlots, setDaySlots] = useState<DaySlot[]>([])
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
@@ -77,7 +81,6 @@ export default function BookingFlow({
     daysScrollRef.current?.scrollBy({ left: direction === 'left' ? -220 : 220, behavior: 'smooth' })
   }
 
-  // reîncărcăm numele/telefonul salvate dintr-o rezervare anterioară pe acest browser
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
@@ -91,19 +94,39 @@ export default function BookingFlow({
     }
   }, [])
 
-  // reîncarcă sloturile zilei de fiecare dată când se schimbă serviciul sau data aleasă
+  // când businessul are mai multe persoane, la schimbarea serviciului reîncărcăm lista
+  // de persoane eligibile pentru acel serviciu
+  useEffect(() => {
+    if (!isMultiPractitioner || !service) return
+    setPractitionerId(null)
+    setPractitionersLoaded(false)
+    fetchWithTimeout(`/api/public/practitioners?businessId=${businessId}&serviceId=${service.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const list: Practitioner[] = data.practitioners ?? []
+        setPractitioners(list)
+        if (list.length > 0) setPractitionerId(list[0].id)
+      })
+      .catch(() => setPractitioners([]))
+      .finally(() => setPractitionersLoaded(true))
+  }, [service, isMultiPractitioner, businessId])
+
   useEffect(() => {
     if (!isAppointment || !service) return
+    // așteptăm explicit ca lista de persoane să se termine de încărcat, altfel cererea
+    // de ore ar cădea greșit pe programul general, nu pe cel al persoanei alese
+    if (isMultiPractitioner && (!practitionersLoaded || (practitioners.length > 0 && !practitionerId))) return
     setLoadingSlots(true)
     setSelectedSlot(null)
     setError('')
 
-    fetchWithTimeout(`/api/public/availability?businessId=${businessId}&serviceId=${service.id}&date=${toDateParam(selectedDate)}`)
+    const practitionerParam = isMultiPractitioner && practitionerId ? `&practitionerId=${practitionerId}` : ''
+    fetchWithTimeout(`/api/public/availability?businessId=${businessId}&serviceId=${service.id}&date=${toDateParam(selectedDate)}${practitionerParam}`)
       .then((res) => res.json())
       .then((data) => setDaySlots(data.allSlots ?? []))
       .catch(() => setDaySlots([]))
       .finally(() => setLoadingSlots(false))
-  }, [service, selectedDate, businessId, isAppointment])
+  }, [service, selectedDate, businessId, isAppointment, isMultiPractitioner, practitionerId, practitionersLoaded])
 
   function selectService(s: Service) {
     setService(s)
@@ -141,6 +164,7 @@ export default function BookingFlow({
         body: JSON.stringify({
           businessId,
           serviceId: service.id,
+          practitionerId: isMultiPractitioner ? practitionerId : undefined,
           startAt,
           customerName: name,
           customerPhone: phone,
@@ -205,6 +229,32 @@ export default function BookingFlow({
           {services.length === 0 && <p className="text-sm text-gray-500">Momentan niciun serviciu disponibil.</p>}
         </div>
       </div>
+
+      {/* Alege medicul/persoana — doar dacă businessul are mai multe persoane */}
+      {isMultiPractitioner && practitioners.length > 0 && (
+        <div>
+          <h2 className="font-semibold mb-3">Alege persoana</h2>
+          <div className="flex flex-wrap gap-2">
+            {practitioners.map((p) => {
+              const active = practitionerId === p.id
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setPractitionerId(p.id)}
+                  className="text-left px-3.5 py-2 rounded-2xl border transition"
+                  style={{
+                    borderColor: active ? accentColor : 'var(--border-soft)',
+                    background: active ? accentSoftColor : 'white',
+                  }}
+                >
+                  <p className="text-sm font-medium">{p.name}</p>
+                  {p.specialization && <p className="text-xs text-gray-500">{p.specialization}</p>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Alege data — carusel orizontal de zile */}
       <div>

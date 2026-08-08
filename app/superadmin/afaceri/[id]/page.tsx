@@ -43,6 +43,7 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
             bookingsCount: business._count.bookings,
             revenue: totalRevenue,
             planName: business.planName,
+            teamSize: business.teamSize,
           }}
           channels={business.channels.map((c) => ({
             id: c.id,

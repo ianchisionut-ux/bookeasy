@@ -2,6 +2,14 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import CalendarClient from './calendar-client'
 
+function computeMinMax(hours: { startTime: string; endTime: string }[], fallbackMin = '08:00', fallbackMax = '20:00') {
+  if (hours.length === 0) return { minTime: fallbackMin, maxTime: fallbackMax }
+  return {
+    minTime: hours.reduce((min, wh) => (wh.startTime < min ? wh.startTime : min), hours[0].startTime),
+    maxTime: hours.reduce((max, wh) => (wh.endTime > max ? wh.endTime : max), hours[0].endTime),
+  }
+}
+
 export default async function CalendarPage() {
   const session = await auth()
   const businessId = (session as any)?.businessId ?? ''
@@ -11,18 +19,23 @@ export default async function CalendarPage() {
     include: { workingHours: true },
   })
 
-  const [bookings, blockedSlots] = await Promise.all([
+  const isMultiPractitioner = (business?.teamSize ?? 1) > 1
+
+  const [bookings, blockedSlots, practitioners] = await Promise.all([
     prisma.booking.findMany({
       where: { businessId, status: { not: 'CANCELLED' } },
-      include: { customer: true, service: true },
+      include: { customer: true, service: true, practitioner: true },
       orderBy: { startAt: 'asc' },
     }),
     prisma.blockedSlot.findMany({ where: { businessId } }),
+    isMultiPractitioner
+      ? prisma.practitioner.findMany({ where: { businessId, active: true }, include: { workingHours: true }, orderBy: { name: 'asc' } })
+      : Promise.resolve([]),
   ])
 
   const events = bookings.map((b) => ({
     id: b.id,
-    title: `${b.customer.name ?? b.customer.phone} — ${b.service.name}`,
+    title: `${b.customer.name ?? b.customer.phone} — ${b.service.name}${b.practitioner ? ` (${b.practitioner.name})` : ''}`,
     start: b.startAt,
     end: b.endAt,
     status: b.status,
@@ -30,18 +43,13 @@ export default async function CalendarPage() {
     customerName: b.customer.name ?? b.customer.phone,
     customerPhone: b.customer.phone,
     serviceName: b.service.name,
+    practitionerId: b.practitionerId,
+    practitionerName: b.practitioner?.name ?? null,
     confirmationRequestSent: b.confirmationRequestSent,
     customerConfirmed: b.customerConfirmed,
   }))
 
-  // intervalul orar afișat în calendar respectă programul real de lucru — cel mai
-  // devreme început și cel mai târziu sfârșit din toate zilele configurate
-  let minTime = '08:00'
-  let maxTime = '20:00'
-  if (business?.workingHours.length) {
-    minTime = business.workingHours.reduce((min, wh) => (wh.startTime < min ? wh.startTime : min), business.workingHours[0].startTime)
-    maxTime = business.workingHours.reduce((max, wh) => (wh.endTime > max ? wh.endTime : max), business.workingHours[0].endTime)
-  }
+  const { minTime, maxTime } = computeMinMax(business?.workingHours ?? [])
 
   return (
     <CalendarClient
@@ -54,6 +62,10 @@ export default async function CalendarPage() {
       }))}
       minTime={minTime}
       maxTime={maxTime}
+      practitioners={practitioners.map((p) => {
+        const range = computeMinMax(p.workingHours, minTime, maxTime)
+        return { id: p.id, name: p.name, minTime: range.minTime, maxTime: range.maxTime }
+      })}
     />
   )
 }

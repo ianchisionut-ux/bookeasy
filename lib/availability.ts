@@ -48,7 +48,7 @@ export async function isSlotStillAvailable(businessId: string, serviceId: string
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { break1Start: true, break1End: true, break2Start: true, break2End: true },
+    select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true },
   })
   const onBreak = getBusinessBreaks(business, startAt).some((b) => overlaps(startAt, endAt, b.startAt, b.endAt))
   if (onBreak) return false
@@ -91,7 +91,7 @@ export async function getPractitionerDaySlotsWithStatus(
   const weekday = date.getUTCDay() // neambiguu, indiferent de fusul serverului
   const [business, practitioner, workingHours, existingBookings, blockedSlots] = await Promise.all([
     prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
-    prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true } }),
+    prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
     prisma.practitionerWorkingHours.findMany({ where: { practitionerId, weekday } }),
     prisma.booking.findMany({ where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
     getBlockedSlotsForDay(businessId, date),
@@ -151,7 +151,7 @@ export async function isPractitionerSlotStillAvailable(
       where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: endAt }, endAt: { gt: startAt } },
     }),
     isIntervalBlocked(businessId, startAt, endAt),
-    prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true } }),
+    prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
   ])
 
   const breaks: { startAt: Date; endAt: Date }[] = []
@@ -178,7 +178,7 @@ export async function getDaySlotsWithStatus(
   const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
     prisma.business.findUnique({
       where: { id: businessId },
-      select: { slotIntervalMinutes: true, minLeadTimeMinutes: true, break1Start: true, break1End: true, break2Start: true, break2End: true },
+      select: { slotIntervalMinutes: true, minLeadTimeMinutes: true, break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true },
     }),
     prisma.workingHours.findMany({ where: { businessId, weekday } }),
     prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
@@ -218,7 +218,7 @@ async function getSingleSlotAvailability(businessId: string, service: { id: stri
   const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
     prisma.business.findUnique({
       where: { id: businessId },
-      select: { slotIntervalMinutes: true, minLeadTimeMinutes: true, break1Start: true, break1End: true, break2Start: true, break2End: true },
+      select: { slotIntervalMinutes: true, minLeadTimeMinutes: true, break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true },
     }),
     prisma.workingHours.findMany({ where: { businessId, weekday } }),
     prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
@@ -292,7 +292,14 @@ function bucharestOffsetString(date: Date): string {
 }
 
 function getBusinessBreaks(
-  business: { break1Start: string | null; break1End: string | null; break2Start: string | null; break2End: string | null } | null,
+  business: {
+    break1Start: string | null
+    break1End: string | null
+    break2Start: string | null
+    break2End: string | null
+    break3Start: string | null
+    break3End: string | null
+  } | null,
   date: Date
 ): { startAt: Date; endAt: Date }[] {
   const breaks: { startAt: Date; endAt: Date }[] = []
@@ -301,6 +308,9 @@ function getBusinessBreaks(
   }
   if (business?.break2Start && business.break2End) {
     breaks.push({ startAt: combineDateAndTime(date, business.break2Start), endAt: combineDateAndTime(date, business.break2End) })
+  }
+  if (business?.break3Start && business.break3End) {
+    breaks.push({ startAt: combineDateAndTime(date, business.break3Start), endAt: combineDateAndTime(date, business.break3End) })
   }
   return breaks
 }

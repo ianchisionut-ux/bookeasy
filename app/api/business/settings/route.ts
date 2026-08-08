@@ -17,6 +17,8 @@ const schema = z.object({
   break1End: z.string().nullable().optional(),
   break2Start: z.string().nullable().optional(),
   break2End: z.string().nullable().optional(),
+  break3Start: z.string().nullable().optional(),
+  break3End: z.string().nullable().optional(),
   workingHours: z.array(
     z.object({ weekday: z.number(), startTime: z.string(), endTime: z.string(), closed: z.boolean() })
   ),

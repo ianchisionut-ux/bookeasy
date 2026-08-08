@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Fragment } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card } from '@/components/ui/card'
@@ -19,6 +19,7 @@ type Booking = {
   serviceName: string
   serviceId: string
   resourceName: string | null
+  practitionerName: string | null
   startAt: string
   endAt: string
   status: string
@@ -52,7 +53,6 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> 
   NO_SHOW: 'danger',
 }
 
-// aceleași culori ca în calendar, ca statusul să se recunoască vizual instant în ambele locuri
 const STATUS_COLOR: Record<string, string> = {
   CONFIRMED: '#16a34a',
   PENDING: '#eab308',
@@ -61,31 +61,37 @@ const STATUS_COLOR: Record<string, string> = {
   NO_SHOW: '#ef4444',
 }
 
-// Saloanele și clinicile funcționează la fel — gestiune unică, un singur calendar,
-// fără angajați/medici multipli (fiecare care vrea platforma își face cont separat)
-function isSingleManagement(category: string) {
+// Saloanele și clinicile au servicii cu durată fixă (Telefon), spațiile de evenimente
+// au săli/resurse (Sală) — dimensiune independentă de teamSize
+function isAppointmentBased(category: string) {
   return category === 'SALON' || category === 'CLINICA'
 }
 
 export default function ProgramariManager({
   category,
+  isMultiPractitioner,
   bookings,
   customers,
   services,
   blockedSlots,
+  practitioners,
   filters,
 }: {
   category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  isMultiPractitioner: boolean
   bookings: Booking[]
   customers: { id: string; name: string }[]
   services: { id: string; name: string; durationMin: number | null }[]
   blockedSlots: { startAt: string; endAt: string }[]
+  practitioners: { id: string; name: string }[]
   filters: { status: string; q: string }
 }) {
   const router = useRouter()
   const [adding, setAdding] = useState(false)
   const isClinic = category === 'CLINICA'
-  const single = isSingleManagement(category)
+  const appointmentBased = isAppointmentBased(category)
+  // 8 coloane (fără Sală/Medic) sau 9 (cu Sală sau Medic)
+  const colCount = appointmentBased && !isMultiPractitioner ? 8 : 9
 
   async function changeStatus(id: string, status: string) {
     try {
@@ -144,9 +150,11 @@ export default function ProgramariManager({
       {adding && (
         <NewBookingForm
           category={category}
+          isMultiPractitioner={isMultiPractitioner}
           customers={customers}
           services={services}
           blockedSlots={blockedSlots}
+          practitioners={practitioners}
           onDone={() => {
             setAdding(false)
             router.refresh()
@@ -163,7 +171,12 @@ export default function ProgramariManager({
               <th className="font-medium text-gray-500">{isClinic ? 'Pacient' : 'Client'}</th>
               <th className="font-medium text-gray-500">Serviciu</th>
               <th className="font-medium text-gray-500">Data</th>
-              {single ? (
+              {isMultiPractitioner ? (
+                <>
+                  <th className="font-medium text-gray-500">Medic</th>
+                  <th className="font-medium text-gray-500">Telefon</th>
+                </>
+              ) : appointmentBased ? (
                 <th className="font-medium text-gray-500">Telefon</th>
               ) : (
                 <>
@@ -180,7 +193,7 @@ export default function ProgramariManager({
             {groupByWeek(bookings).map((group) => (
               <Fragment key={`week-${group.year}-${group.week}`}>
                 <tr key={`week-${group.week}-${group.year}`} className="bg-[var(--surface-muted)]">
-                  <td colSpan={single ? 8 : 9} className="px-5 py-2 text-xs font-semibold text-gray-500">
+                  <td colSpan={colCount} className="px-5 py-2 text-xs font-semibold text-gray-500">
                     Săptămâna {group.week} · {group.rangeLabel} ({group.bookings.length} programări)
                   </td>
                 </tr>
@@ -196,7 +209,12 @@ export default function ProgramariManager({
                     </td>
                     <td>{b.serviceName}</td>
                     <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })}</td>
-                    {single ? (
+                    {isMultiPractitioner ? (
+                      <>
+                        <td className="text-gray-500">{b.practitionerName ?? '—'}</td>
+                        <td className="text-gray-500">{b.customerPhone}</td>
+                      </>
+                    ) : appointmentBased ? (
                       <td className="text-gray-500">{b.customerPhone}</td>
                     ) : (
                       <>
@@ -243,7 +261,7 @@ export default function ProgramariManager({
             ))}
             {bookings.length === 0 && (
               <tr>
-                <td colSpan={single ? 8 : 9} className="text-center text-gray-500 py-8">
+                <td colSpan={colCount} className="text-center text-gray-500 py-8">
                   Nicio programare găsită.
                 </td>
               </tr>
@@ -289,15 +307,19 @@ function weekRangeLabel(bookings: Booking[]) {
 
 function NewBookingForm({
   category,
+  isMultiPractitioner,
   customers,
   services,
   blockedSlots,
+  practitioners,
   onDone,
 }: {
   category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  isMultiPractitioner: boolean
   customers: { id: string; name: string }[]
   services: { id: string; name: string; durationMin: number | null }[]
   blockedSlots: { startAt: string; endAt: string }[]
+  practitioners: { id: string; name: string }[]
   onDone: () => void
 }) {
   const isClinic = category === 'CLINICA'
@@ -307,23 +329,54 @@ function NewBookingForm({
   const [newCustomerPhone, setNewCustomerPhone] = useState('')
   const [serviceId, setServiceId] = useState('')
   const [date, setDate] = useState('')
+  const [practitionerId, setPractitionerId] = useState(practitioners.length === 1 ? practitioners[0].id : '')
+  const [slotDate, setSlotDate] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
+  const [daySlots, setDaySlots] = useState<{ time: string; available: boolean }[]>([])
+  const [selectedSlot, setSelectedSlot] = useState('')
+  const [loadingSlots, setLoadingSlots] = useState(false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
+  useEffect(() => {
+    if (!isMultiPractitioner || !serviceId || !practitionerId || !slotDate) {
+      setDaySlots([])
+      return
+    }
+    setLoadingSlots(true)
+    setSelectedSlot('')
+    fetchWithTimeout(
+      `/api/business/practitioner-availability?serviceId=${serviceId}&practitionerId=${practitionerId}&date=${slotDate}`
+    )
+      .then((res) => res.json())
+      .then((data) => setDaySlots(data.allSlots ?? []))
+      .catch(() => setDaySlots([]))
+      .finally(() => setLoadingSlots(false))
+  }, [isMultiPractitioner, serviceId, practitionerId, slotDate])
+
   async function submit() {
     const hasCustomer = newCustomerMode ? newCustomerName.trim() && newCustomerPhone.trim().length >= 6 : !!customerId
+    const hasDateInfo = isMultiPractitioner ? !!selectedSlot : !!date
 
-    if (!hasCustomer || !serviceId || !date) {
+    if (!hasCustomer || !serviceId || !hasDateInfo) {
       setError(
         newCustomerMode
           ? 'Completează numele, telefonul, serviciul și data.'
-          : `Completează ${isClinic ? 'pacient' : 'client'}, serviciu și dată.`
+          : isMultiPractitioner
+            ? `Completează ${isClinic ? 'pacient' : 'client'}, serviciu, persoană și oră.`
+            : `Completează ${isClinic ? 'pacient' : 'client'}, serviciu și dată.`
       )
+      return
+    }
+    if (isMultiPractitioner && !practitionerId) {
+      setError('Alege persoana.')
       return
     }
 
     const service = services.find((s) => s.id === serviceId)
-    const start = new Date(date)
+    const start = isMultiPractitioner ? new Date(selectedSlot) : new Date(date)
     const end = new Date(start.getTime() + (service?.durationMin ?? 30) * 60000)
 
     if (start < new Date()) {
@@ -331,10 +384,12 @@ function NewBookingForm({
       return
     }
 
-    const overlapsBlocked = blockedSlots.some((b) => start < new Date(b.endAt) && new Date(b.startAt) < end)
-    if (overlapsBlocked) {
-      setError('Intervalul ales e blocat pentru rezervări — modifică-l direct din calendar dacă e nevoie.')
-      return
+    if (!isMultiPractitioner) {
+      const overlapsBlocked = blockedSlots.some((b) => start < new Date(b.endAt) && new Date(b.startAt) < end)
+      if (overlapsBlocked) {
+        setError('Intervalul ales e blocat pentru rezervări — modifică-l direct din calendar dacă e nevoie.')
+        return
+      }
     }
 
     setSaving(true)
@@ -349,6 +404,7 @@ function NewBookingForm({
             ? { customerName: newCustomerName.trim(), customerPhone: newCustomerPhone.trim() }
             : { customerId }),
           serviceId,
+          practitionerId: isMultiPractitioner ? practitionerId : undefined,
           startAt: start.toISOString(),
           endAt: end.toISOString(),
         }),
@@ -417,18 +473,94 @@ function NewBookingForm({
         </div>
       </div>
 
-      <div className="mb-3 max-w-xs">
-        <div>
-          <label className="text-sm text-gray-500 block mb-1.5">Data și ora</label>
-          <input
-            type="datetime-local"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
-            className="input-field w-full"
-          />
+      {isMultiPractitioner ? (
+        <div className="mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            {practitioners.length > 1 && (
+              <div>
+                <label className="text-sm text-gray-500 block mb-1.5">Persoana</label>
+                <select value={practitionerId} onChange={(e) => setPractitionerId(e.target.value)} className="input-field w-full">
+                  <option value="">Alege persoana</option>
+                  {practitioners.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {practitioners.length === 0 && (
+              <p className="text-sm text-amber-600 sm:col-span-2">
+                Nicio persoană activă — adaugă una din <a href="/dashboard/medici" className="underline">Medici</a> ca să poți programa.
+              </p>
+            )}
+            <div>
+              <label className="text-sm text-gray-500 block mb-1.5">Data</label>
+              <input
+                type="date"
+                value={slotDate}
+                onChange={(e) => setSlotDate(e.target.value)}
+                min={(() => {
+                  const d = new Date()
+                  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+                })()}
+                className="input-field w-full"
+              />
+            </div>
+          </div>
+
+          {practitionerId && serviceId && (
+            <div>
+              <label className="text-sm text-gray-500 block mb-2">
+                Oră disponibilă {services.find((s) => s.id === serviceId)?.durationMin ? `(pas de ${services.find((s) => s.id === serviceId)?.durationMin} min, după durata serviciului)` : ''}
+              </label>
+              {loadingSlots ? (
+                <p className="text-sm text-gray-400">Se încarcă orele...</p>
+              ) : daySlots.length === 0 ? (
+                <p className="text-sm text-gray-500">Niciun program setat pentru această persoană în ziua aleasă.</p>
+              ) : (
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  {daySlots.map((slot) => {
+                    const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
+                    if (!slot.available) {
+                      return (
+                        <span key={slot.time} className="py-2 rounded-lg text-center text-sm text-gray-300 border border-[var(--border-soft)] line-through select-none">
+                          {time}
+                        </span>
+                      )
+                    }
+                    const active = selectedSlot === slot.time
+                    return (
+                      <button
+                        key={slot.time}
+                        type="button"
+                        onClick={() => setSelectedSlot(slot.time)}
+                        className="py-2 rounded-lg text-center text-sm font-medium border transition"
+                        style={active ? { background: 'var(--accent)', color: 'white', borderColor: 'var(--accent)' } : {}}
+                      >
+                        {time}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      </div>
+      ) : (
+        <div className="mb-3 max-w-xs">
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">Data și ora</label>
+            <input
+              type="datetime-local"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+              className="input-field w-full"
+            />
+          </div>
+        </div>
+      )}
 
       {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
 

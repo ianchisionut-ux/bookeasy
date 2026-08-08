@@ -37,10 +37,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   let brandColor: string | null = null
   let category: string | null = null
+  let teamSize = 1
   if (businessId) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
-      select: { accountActive: true, onboardingDone: true, onboardingStep: true, brandColor: true, category: true },
+      select: { accountActive: true, onboardingDone: true, onboardingStep: true, brandColor: true, category: true, teamSize: true },
     })
     if (business && !business.accountActive) {
       redirect('/cont-suspendat')
@@ -50,12 +51,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }
     brandColor = business?.brandColor ?? null
     category = business?.category ?? null
+    teamSize = business?.teamSize ?? 1
   }
 
-  const navItems = NAV_ITEMS.map((item) => ({
-    ...item,
-    label: category === 'CLINICA' ? CLINIC_NAV_LABEL_OVERRIDES[item.href] ?? item.label : item.label,
-  })).concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin' }] : [])
+  const navItems = [
+    ...NAV_ITEMS.slice(0, 3),
+    ...(teamSize > 1 ? [{ href: '/dashboard/medici', label: 'Medici' }] : []),
+    ...NAV_ITEMS.slice(3),
+  ]
+    .map((item) => ({
+      ...item,
+      label: category === 'CLINICA' ? CLINIC_NAV_LABEL_OVERRIDES[item.href] ?? item.label : item.label,
+    }))
+    .concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin' }] : [])
 
   return (
     <ResponsiveShell

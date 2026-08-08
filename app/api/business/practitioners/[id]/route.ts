@@ -77,7 +77,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   })
   if (upcomingBookings > 0) {
     return NextResponse.json(
-      { error: `Medicul are ${upcomingBookings} programări viitoare — anulează-le sau reprogramează-le mai întâi.` },
+      { error: `Această persoană are ${upcomingBookings} programări viitoare — anulează-le sau reprogramează-le mai întâi.` },
       { status: 409 }
     )
   }

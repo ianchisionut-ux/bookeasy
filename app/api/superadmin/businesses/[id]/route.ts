@@ -11,6 +11,7 @@ const patchSchema = z.object({
   billingNote: z.string().nullable().optional(),
   publicListed: z.boolean().optional(),
   accountActive: z.boolean().optional(),
+  teamSize: z.number().min(1).max(200).optional(),
 })
 
 async function requireSuperAdmin() {

@@ -79,6 +79,7 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
           businessId={business.id}
           businessSlug={business.slug}
           category={business.category}
+          isMultiPractitioner={business.teamSize > 1}
           accentColor={accent}
           accentSoftColor={accentSoft}
           services={business.services.map((s) => ({

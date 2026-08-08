@@ -28,6 +28,7 @@ type Business = {
   bookingsCount: number
   revenue: number
   planName: string | null
+  teamSize: number
 }
 
 export default function BusinessAdminPanel({ business, channels }: { business: Business; channels: Channel[] }) {
@@ -36,6 +37,23 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
   const [name, setName] = useState(business.name)
   const [resetSentTo, setResetSentTo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [teamMode, setTeamMode] = useState(business.teamSize > 1)
+  const [savingTeam, setSavingTeam] = useState(false)
+
+  async function saveTeamMode(next: boolean) {
+    setTeamMode(next)
+    setSavingTeam(true)
+    try {
+      await fetch(`/api/superadmin/businesses/${business.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamSize: next ? 2 : 1 }),
+      })
+      router.refresh()
+    } finally {
+      setSavingTeam(false)
+    }
+  }
 
   async function saveName() {
     setLoading(true)
@@ -162,6 +180,41 @@ export default function BusinessAdminPanel({ business, channels }: { business: B
             Link de configurare a parolei trimis către <strong>{resetSentTo}</strong>. Linkul expiră în 24 de ore.
           </div>
         )}
+      </Card>
+
+      {/* Profilul afacerii — individual sau echipă de mai mulți medici/angajați */}
+      <Card>
+        <h2 className="font-medium mb-1">Profilul afacerii</h2>
+        <p className="text-sm text-gray-500 mb-3">
+          Individual — un singur calendar, gestiune unică (ca acum). Echipă — proprietarul poate
+          adăuga mai mulți medici/angajați, fiecare cu programul lui, calendar separabil per persoană.
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => saveTeamMode(false)}
+            disabled={savingTeam}
+            className="flex-1 p-3 rounded-2xl border text-left"
+            style={{
+              borderColor: !teamMode ? 'var(--accent)' : 'var(--border-soft)',
+              background: !teamMode ? 'var(--accent-soft)' : 'white',
+            }}
+          >
+            <p className="text-sm font-medium">Individual</p>
+            <p className="text-xs text-gray-500">1 calendar, fără alegere de persoană</p>
+          </button>
+          <button
+            onClick={() => saveTeamMode(true)}
+            disabled={savingTeam}
+            className="flex-1 p-3 rounded-2xl border text-left"
+            style={{
+              borderColor: teamMode ? 'var(--accent)' : 'var(--border-soft)',
+              background: teamMode ? 'var(--accent-soft)' : 'white',
+            }}
+          >
+            <p className="text-sm font-medium">Echipă (mai mulți medici/angajați)</p>
+            <p className="text-xs text-gray-500">Calendar separat, selectabil, per persoană</p>
+          </button>
+        </div>
       </Card>
 
       <ChannelSection
