@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
 import { PrintButton } from '@/components/print-button'
+import { CheckCircle2, Clock } from 'lucide-react'
 
 type Booking = {
   id: string
@@ -219,11 +220,12 @@ export default function ProgramariManager({
                           ))}
                         </select>
                         {b.confirmationRequestSent && b.status === 'CONFIRMED' && (
-                          <span
-                            title={b.customerConfirmed ? 'Confirmată de client' : 'Așteaptă confirmare de la client'}
-                            className="text-xs"
-                          >
-                            {b.customerConfirmed ? '✓' : '⏳'}
+                          <span title={b.customerConfirmed ? 'Confirmată de client' : 'Așteaptă confirmare de la client'}>
+                            {b.customerConfirmed ? (
+                              <CheckCircle2 size={13} color="#16a34a" />
+                            ) : (
+                              <Clock size={13} color="#eab308" />
+                            )}
                           </span>
                         )}
                       </div>

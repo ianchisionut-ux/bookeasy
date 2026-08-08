@@ -1,14 +1,16 @@
 'use client'
 
+import { Printer } from 'lucide-react'
+
 export function PrintButton() {
   return (
     <button
       onClick={() => window.print()}
       aria-label="Printează"
       title="Printează"
-      className="btn-secondary text-sm w-9 h-9 flex items-center justify-center p-0"
+      className="btn-secondary text-sm flex items-center gap-1.5"
     >
-      🖨
+      <Printer size={16} strokeWidth={2} /> Printează
     </button>
   )
 }

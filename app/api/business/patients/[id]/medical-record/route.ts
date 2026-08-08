@@ -35,7 +35,7 @@ const schema = z.object({
   contraceptives: z.boolean().nullable().optional(),
   menopause: z.boolean().nullable().optional(),
   medicalConditions: z.record(z.boolean()).optional(),
-  dentalHistory: z.record(z.any()).optional(),
+  clinicalHistory: z.record(z.any()).optional(),
   pediatricInfo: z.record(z.any()).optional(),
   generalNotes: z.string().optional(),
 })

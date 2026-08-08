@@ -10,6 +10,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import BookingEditModal, { BookingDetail } from '@/components/booking-edit-modal'
+import { Lock, CheckCircle2 } from 'lucide-react'
 import { PrintButton } from '@/components/print-button'
 
 const locales = { ro }
@@ -199,7 +200,7 @@ export default function CalendarClient({
 
   return (
     <div className="h-[calc(100vh-56px)] lg:h-[calc(100vh-40px)] p-4 lg:p-8 flex flex-col">
-      <div className="mb-4">
+      <div className="mb-4 screen-only">
         <div className="flex items-center justify-between gap-2 mb-2">
           <h1 className="text-xl lg:text-2xl font-semibold">Calendar rezervări</h1>
         </div>
@@ -212,10 +213,18 @@ export default function CalendarClient({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setBlockMode((v) => !v)}
-            className="btn-secondary text-sm whitespace-nowrap"
+            className="btn-secondary text-sm whitespace-nowrap flex items-center gap-1.5"
             style={blockMode ? { background: 'var(--accent)', color: 'white', borderColor: 'var(--accent)' } : {}}
           >
-            {blockMode ? '✓ Blocare activă — apasă ca să ieși' : '🔒 Blocare poziții'}
+            {blockMode ? (
+              <>
+                <CheckCircle2 size={15} /> Blocare activă — apasă ca să ieși
+              </>
+            ) : (
+              <>
+                <Lock size={15} /> Blocare poziții
+              </>
+            )}
           </button>
           <input
             type="date"

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { User } from 'lucide-react'
 import { SignOutButton } from './sign-out-button'
 
 export function SidebarUserBlock({ label, status = 'Activ' }: { label: string; status?: string }) {
@@ -7,7 +8,7 @@ export function SidebarUserBlock({ label, status = 'Activ' }: { label: string; s
       <div className="h-px bg-[var(--border-soft)] mb-3" />
       <div className="flex items-center gap-2.5 px-2 mb-2">
         <div className="w-8 h-8 rounded-full bg-[var(--accent-soft)] flex items-center justify-center text-sm">
-          👤
+          <User size={15} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{label}</p>

@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { Card } from '@/components/ui/card'
 import { Pill } from '@/components/ui/input'
 import RequestActions from './request-actions'
+import { Mail, Phone } from 'lucide-react'
 
 const CATEGORY_LABEL: Record<string, string> = {
   SALON: 'Salon',
@@ -48,9 +49,9 @@ export default async function AccessRequestsPage() {
               </div>
               <Pill tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Pill>
             </div>
-            <p className="text-sm text-gray-600 mb-1">
-              📧 <a href={`mailto:${r.email}`} className="text-[var(--accent)]">{r.email}</a> · 📞{' '}
-              <a href={`tel:${r.phone}`} className="text-[var(--accent)]">{r.phone}</a>
+            <p className="text-sm text-gray-600 mb-1 flex items-center gap-1 flex-wrap">
+              <Mail size={13} /> <a href={`mailto:${r.email}`} className="text-[var(--accent)]">{r.email}</a> ·
+              <Phone size={13} /> <a href={`tel:${r.phone}`} className="text-[var(--accent)]">{r.phone}</a>
             </p>
             {r.message && <p className="text-sm text-gray-500 italic mb-2">"{r.message}"</p>}
             <RequestActions id={r.id} status={r.status} />

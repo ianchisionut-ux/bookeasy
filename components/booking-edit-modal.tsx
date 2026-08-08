@@ -6,6 +6,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
+import { Phone, Stethoscope, CheckCircle2, Clock } from 'lucide-react'
 
 export type BookingDetail = {
   id: string
@@ -155,13 +156,28 @@ export default function BookingEditModal({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-700 font-medium">{booking.customerName}</p>
-                <p className="text-xs text-gray-500">
-                  📞 {booking.customerPhone}
-                  {booking.practitionerName && <> · 🩺 {booking.practitionerName}</>}
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <Phone size={12} /> {booking.customerPhone}
+                  {booking.practitionerName && (
+                    <>
+                      {' '}· <Stethoscope size={12} className="inline" /> {booking.practitionerName}
+                    </>
+                  )}
                 </p>
                 {booking.confirmationRequestSent && booking.status === 'CONFIRMED' && (
-                  <p className="text-xs mt-0.5" style={{ color: booking.customerConfirmed ? '#16a34a' : '#eab308' }}>
-                    {booking.customerConfirmed ? '✓ Confirmată de client' : '⏳ Așteaptă confirmare de la client'}
+                  <p
+                    className="text-xs mt-0.5 flex items-center gap-1"
+                    style={{ color: booking.customerConfirmed ? '#16a34a' : '#eab308' }}
+                  >
+                    {booking.customerConfirmed ? (
+                      <>
+                        <CheckCircle2 size={12} /> Confirmată de client
+                      </>
+                    ) : (
+                      <>
+                        <Clock size={12} /> Așteaptă confirmare de la client
+                      </>
+                    )}
                   </p>
                 )}
               </div>

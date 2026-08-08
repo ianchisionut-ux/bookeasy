@@ -111,6 +111,11 @@ body {
   .print-only {
     display: block !important;
   }
+  /* calendarul e construit cu înălțime de ecran (100vh) — la print lăsăm conținutul
+     să curgă natural pe pagină, altfel s-ar tăia din ce nu încape în fereastra vizibilă */
+  [class*='h-[calc(100vh'] {
+    height: auto !important;
+  }
 }
 
 @media print {

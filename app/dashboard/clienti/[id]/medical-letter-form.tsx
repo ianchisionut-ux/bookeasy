@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Input, Textarea } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { Printer } from 'lucide-react'
 
 type Letter = Record<string, any>
 
@@ -236,7 +237,7 @@ export default function MedicalLetterForm({
                 Editează
               </button>
               <button onClick={() => window.print()} className="text-xs text-gray-600 font-medium">
-                🖨 Printează
+                <Printer size={14} className="inline mr-1" style={{ verticalAlign: '-2px' }} /> Printează
               </button>
               <button onClick={() => deleteLetter(letter.id)} className="text-xs text-red-600 font-medium">
                 Șterge

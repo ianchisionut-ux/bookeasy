@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { Star, CheckCircle2 } from 'lucide-react'
 
 type Review = {
   id: string
@@ -90,21 +91,32 @@ export default function ReviewsManager({
   return (
     <div className="p-4 lg:p-8 max-w-2xl">
       <h1 className="text-2xl font-semibold mb-1">Recenzii</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        {rating ? `★ ${rating.toFixed(1)} · ${reviewCount} recenzii` : 'Nicio recenzie încă'}
+      <p className="text-sm text-gray-500 mb-6 flex items-center gap-1">
+        {rating ? (
+          <>
+            <Star size={13} fill="#eab308" color="#eab308" /> {rating.toFixed(1)} · {reviewCount} recenzii
+          </>
+        ) : (
+          'Nicio recenzie încă'
+        )}
       </p>
 
       <div className="flex flex-col gap-3">
         {reviews.map((r) => (
           <Card key={r.id}>
             <div className="flex items-center justify-between mb-1">
-              <p className="font-medium">
+              <p className="font-medium flex items-center gap-1.5">
                 {r.authorName}
-                {r.verified && <span className="ml-2 text-xs text-green-700 font-normal">✓ client verificat</span>}
+                {r.verified && (
+                  <span className="text-xs text-green-700 font-normal flex items-center gap-1">
+                    <CheckCircle2 size={12} /> client verificat
+                  </span>
+                )}
               </p>
-              <p className="text-sm" style={{ color: '#eab308' }}>
-                {'★'.repeat(r.rating)}
-                <span className="text-gray-300">{'★'.repeat(5 - r.rating)}</span>
+              <p className="flex gap-0.5" style={{ color: '#eab308' }}>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} size={14} fill={i < r.rating ? '#eab308' : 'none'} color={i < r.rating ? '#eab308' : '#d1d5db'} />
+                ))}
               </p>
             </div>
             {r.comment && <p className="text-sm text-gray-600 mb-1">{r.comment}</p>}

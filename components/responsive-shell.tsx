@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { User } from 'lucide-react'
 
 // amestecă o culoare hex cu alb, la un procent dat — produce o culoare SOLIDĂ (nu transparentă).
 // esențial pentru header-ul mobil, care e fix (sticky) — dacă am folosi transparență, conținutul
@@ -53,7 +54,7 @@ export function ResponsiveShell({
             className="w-9 h-9 flex items-center justify-center rounded-full text-sm"
             style={{ background: accentColor ? `${accentColor}22` : 'var(--accent-soft)' }}
           >
-            👤
+            <User size={16} />
           </button>
         </div>
 

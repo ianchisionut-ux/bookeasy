@@ -6,6 +6,7 @@ import NearbyBusinesses from '@/components/nearby-businesses'
 import { PublicHeader } from '@/components/ui/public-header'
 import { BackLink } from '@/components/ui/back-link'
 import { CardInteractive } from '@/components/ui/card'
+import { Star, Phone } from 'lucide-react'
 
 export default async function PublicBusinessPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -37,14 +38,20 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
         </div>
 
         <h1 className="text-xl sm:text-2xl font-semibold mb-1">{business.name}</h1>
-        <p className="text-sm text-gray-500 mb-1">
+        <p className="text-sm text-gray-500 mb-1 flex items-center gap-1">
           {business.address ?? business.city}
-          {business.rating ? ` · ★ ${business.rating.toString()} (${business.reviewCount ?? 0} recenzii)` : ''}
+          {business.rating ? (
+            <>
+              · <Star size={13} fill="#eab308" color="#eab308" /> {business.rating.toString()} ({business.reviewCount ?? 0} recenzii)
+            </>
+          ) : (
+            ''
+          )}
         </p>
         {business.contactPhone && (
           <p className="text-sm text-gray-500 mb-4">
-            <a href={`tel:${business.contactPhone}`} className="hover:text-[var(--accent)] transition">
-              📞 {business.contactPhone}
+            <a href={`tel:${business.contactPhone}`} className="hover:text-[var(--accent)] transition flex items-center gap-1">
+              <Phone size={13} /> {business.contactPhone}
             </a>
           </p>
         )}
@@ -95,9 +102,10 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
               <div key={r.id} className="card p-4">
                 <div className="flex items-center justify-between mb-1">
                   <p className="font-medium">{r.authorName}</p>
-                  <p className="text-sm" style={{ color: '#eab308' }}>
-                    {'★'.repeat(r.rating)}
-                    <span className="text-gray-300">{'★'.repeat(5 - r.rating)}</span>
+                  <p className="flex gap-0.5">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} size={13} fill={i < r.rating ? '#eab308' : 'none'} color={i < r.rating ? '#eab308' : '#d1d5db'} />
+                    ))}
                   </p>
                 </div>
                 {r.comment && <p className="text-sm text-gray-600 mb-2">{r.comment}</p>}

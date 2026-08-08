@@ -46,6 +46,13 @@ export async function isSlotStillAvailable(businessId: string, serviceId: string
 
   if (await isRangeBlocked(businessId, startAt, endAt)) return false
 
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { break1Start: true, break1End: true, break2Start: true, break2End: true },
+  })
+  const onBreak = getBusinessBreaks(business, startAt).some((b) => overlaps(startAt, endAt, b.startAt, b.endAt))
+  if (onBreak) return false
+
   const conflict = await prisma.booking.findFirst({
     where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: endAt }, endAt: { gt: startAt } },
   })
@@ -169,11 +176,16 @@ export async function getDaySlotsWithStatus(
 
   const weekday = date.getUTCDay() // neambiguu, indiferent de fusul serverului
   const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
-    prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
+    prisma.business.findUnique({
+      where: { id: businessId },
+      select: { slotIntervalMinutes: true, minLeadTimeMinutes: true, break1Start: true, break1End: true, break2Start: true, break2End: true },
+    }),
     prisma.workingHours.findMany({ where: { businessId, weekday } }),
     prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
     getBlockedSlotsForDay(businessId, date),
   ])
+
+  const breaks = getBusinessBreaks(business, date)
 
   const duration = service.durationMin ?? 30
   const step = business?.slotIntervalMinutes ?? duration
@@ -191,8 +203,9 @@ export async function getDaySlotsWithStatus(
       const tooSoon = cursor < earliestAllowed
       const blockedHere = blockedSlots.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
       const bookedHere = existingBookings.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
+      const onBreak = breaks.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
 
-      result.push({ time: cursor.toISOString(), available: !tooSoon && !blockedHere && !bookedHere })
+      result.push({ time: cursor.toISOString(), available: !tooSoon && !blockedHere && !bookedHere && !onBreak })
       cursor = addMinutes(cursor, step)
     }
   }
@@ -203,11 +216,16 @@ export async function getDaySlotsWithStatus(
 async function getSingleSlotAvailability(businessId: string, service: { id: string; durationMin: number | null }, date: Date) {
   const weekday = date.getUTCDay() // neambiguu, indiferent de fusul serverului
   const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
-    prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
+    prisma.business.findUnique({
+      where: { id: businessId },
+      select: { slotIntervalMinutes: true, minLeadTimeMinutes: true, break1Start: true, break1End: true, break2Start: true, break2End: true },
+    }),
     prisma.workingHours.findMany({ where: { businessId, weekday } }),
     prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
     getBlockedSlotsForDay(businessId, date),
   ])
+
+  const breaks = getBusinessBreaks(business, date)
 
   const duration = service.durationMin ?? 30
   // implicit, pasul dintre sloturi = durata serviciului ales — se "autogestionează",
@@ -231,8 +249,9 @@ async function getSingleSlotAvailability(businessId: string, service: { id: stri
       const tooSoon = cursor < earliestAllowed
       const blockedHere = blockedSlots.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
       const bookedHere = existingBookings.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
+      const onBreak = breaks.some((b) => overlaps(cursor, slotEnd, b.startAt, b.endAt))
 
-      if (!tooSoon && !blockedHere && !bookedHere) slots.push(cursor.toISOString())
+      if (!tooSoon && !blockedHere && !bookedHere && !onBreak) slots.push(cursor.toISOString())
       cursor = addMinutes(cursor, step)
     }
   }
@@ -270,6 +289,20 @@ function bucharestOffsetString(date: Date): string {
   }).formatToParts(date)
   const raw = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT+02:00'
   return raw.replace('GMT', '') // ex: "+03:00" sau "+02:00"
+}
+
+function getBusinessBreaks(
+  business: { break1Start: string | null; break1End: string | null; break2Start: string | null; break2End: string | null } | null,
+  date: Date
+): { startAt: Date; endAt: Date }[] {
+  const breaks: { startAt: Date; endAt: Date }[] = []
+  if (business?.break1Start && business.break1End) {
+    breaks.push({ startAt: combineDateAndTime(date, business.break1Start), endAt: combineDateAndTime(date, business.break1End) })
+  }
+  if (business?.break2Start && business.break2End) {
+    breaks.push({ startAt: combineDateAndTime(date, business.break2Start), endAt: combineDateAndTime(date, business.break2End) })
+  }
+  return breaks
 }
 
 function combineDateAndTime(date: Date, time: string): Date {

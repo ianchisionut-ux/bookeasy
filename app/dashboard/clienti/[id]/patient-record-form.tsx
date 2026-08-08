@@ -7,6 +7,7 @@ import { Input, Textarea } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ChecklistGrid } from '@/components/checklist-grid'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { Printer } from 'lucide-react'
 
 const MEDICAL_CONDITIONS = [
   { key: 'hipertensiune', label: 'Hipertensiune' },
@@ -40,14 +41,38 @@ const MEDICAL_CONDITIONS = [
   { key: 'tuberculoza', label: 'Tuberculoză' },
 ]
 
-const FEAR_ITEMS = [
-  { key: 'dentist', label: 'Dentist' },
-  { key: 'frezaZgomot', label: 'Zgomotul frezei' },
-  { key: 'acSeringa', label: 'Acul de seringă' },
-  { key: 'mirosSubstante', label: 'Mirosul unor substanțe' },
-  { key: 'injectie', label: 'Injecție' },
+const SYMPTOM_ITEMS = [
   { key: 'durere', label: 'Durere' },
-  { key: 'alteZgomote', label: 'Alte zgomote din cabinet' },
+  { key: 'febra', label: 'Febră' },
+  { key: 'oboseala', label: 'Oboseală / astenie' },
+  { key: 'ameteli', label: 'Amețeli' },
+  { key: 'greata', label: 'Greață / vărsături' },
+  { key: 'respiratie', label: 'Dificultăți respiratorii' },
+  { key: 'palpitatii', label: 'Palpitații' },
+  { key: 'eruptii', label: 'Erupții cutanate / mâncărimi' },
+  { key: 'umflaturi', label: 'Umflături / edeme' },
+  { key: 'tuse', label: 'Tuse' },
+  { key: 'insomnie', label: 'Insomnie' },
+  { key: 'scadereGreutate', label: 'Scădere în greutate neintenționată' },
+  { key: 'apetit', label: 'Pierderea apetitului' },
+  { key: 'tranzit', label: 'Constipație / diaree' },
+]
+
+const GENERAL_FEARS = [
+  { key: 'injectii', label: 'Injecții / recoltări de sânge' },
+  { key: 'durere', label: 'Durere' },
+  { key: 'proceduriMedicale', label: 'Proceduri medicale în general' },
+  { key: 'rezultateAnalize', label: 'Rezultate ale analizelor' },
+  { key: 'spitalizare', label: 'Spitalizare' },
+]
+
+const FAMILY_HISTORY_ITEMS = [
+  { key: 'diabet', label: 'Diabet' },
+  { key: 'boliCardiovasculare', label: 'Boli cardiovasculare' },
+  { key: 'cancer', label: 'Cancer' },
+  { key: 'boliGenetice', label: 'Boli genetice cunoscute' },
+  { key: 'hipertensiune', label: 'Hipertensiune' },
+  { key: 'boliPsihice', label: 'Boli psihice' },
 ]
 
 function PrintLine({ label, value }: { label: string; value?: string | null }) {
@@ -87,8 +112,8 @@ export default function PatientRecordForm({
     emergencyContactPhone: medicalInitial?.emergencyContactPhone ?? '',
     familyDoctor: medicalInitial?.familyDoctor ?? '',
     familyDoctorLastVisit: medicalInitial?.familyDoctorLastVisit ?? '',
-    previousDentist: medicalInitial?.previousDentist ?? '',
-    previousDentistLastVisit: medicalInitial?.previousDentistLastVisit ?? '',
+    previousSpecialist: medicalInitial?.previousDentist ?? '',
+    previousSpecialistLastVisit: medicalInitial?.previousDentistLastVisit ?? '',
     hospitalized: medicalInitial?.hospitalized ?? false,
     hospitalizedDetails: medicalInitial?.hospitalizedDetails ?? '',
     surgeries: medicalInitial?.surgeries ?? false,
@@ -111,22 +136,14 @@ export default function PatientRecordForm({
     generalNotes: medicalInitial?.generalNotes ?? '',
   })
   const [conditions, setConditions] = useState<Record<string, boolean>>(medicalInitial?.medicalConditions ?? {})
-  const [fears, setFears] = useState<Record<string, boolean>>(medicalInitial?.dentalHistory?.fears ?? {})
-  const [dental, setDental] = useState({
-    bleedingGums: medicalInitial?.dentalHistory?.bleedingGums ?? false,
-    brushingFrequency: medicalInitial?.dentalHistory?.brushingFrequency ?? '',
-    mouthSores: medicalInitial?.dentalHistory?.mouthSores ?? false,
-    cheekBiting: medicalInitial?.dentalHistory?.cheekBiting ?? false,
-    teethGrinding: medicalInitial?.dentalHistory?.teethGrinding ?? false,
-    teethGrindingTime: medicalInitial?.dentalHistory?.teethGrindingTime ?? '',
-    previousBraces: medicalInitial?.dentalHistory?.previousBraces ?? false,
-    previousBracesWhen: medicalInitial?.dentalHistory?.previousBracesWhen ?? '',
-    jawSounds: medicalInitial?.dentalHistory?.jawSounds ?? false,
-    jawLocked: medicalInitial?.dentalHistory?.jawLocked ?? false,
-    difficultExtractions: medicalInitial?.dentalHistory?.difficultExtractions ?? false,
-    extractionProblems: medicalInitial?.dentalHistory?.extractionProblems ?? '',
-    injectionReaction: medicalInitial?.dentalHistory?.injectionReaction ?? '',
-    oralSurgery: medicalInitial?.dentalHistory?.oralSurgery ?? false,
+  const [fears, setFears] = useState<Record<string, boolean>>(medicalInitial?.clinicalHistory?.fears ?? {})
+  const [symptoms, setSymptoms] = useState<Record<string, boolean>>(medicalInitial?.clinicalHistory?.symptoms ?? {})
+  const [familyHistory, setFamilyHistory] = useState<Record<string, boolean>>(medicalInitial?.clinicalHistory?.familyHistory ?? {})
+  const [visit, setVisit] = useState({
+    visitReason: medicalInitial?.clinicalHistory?.visitReason ?? '',
+    symptomsSince: medicalInitial?.clinicalHistory?.symptomsSince ?? '',
+    painScale: medicalInitial?.clinicalHistory?.painScale ?? '',
+    previousTreatments: medicalInitial?.clinicalHistory?.previousTreatments ?? '',
   })
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<string | null>(null)
@@ -136,6 +153,7 @@ export default function PatientRecordForm({
     setSaving(true)
     setError('')
     try {
+      const { previousSpecialist, previousSpecialistLastVisit, ...restForm } = form
       const [res1, res2] = await Promise.all([
         fetchWithTimeout(`/api/customers/${customerId}`, {
           method: 'PATCH',
@@ -145,7 +163,13 @@ export default function PatientRecordForm({
         fetchWithTimeout(`/api/business/patients/${customerId}/medical-record`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...form, medicalConditions: conditions, dentalHistory: { ...dental, fears } }),
+          body: JSON.stringify({
+            ...restForm,
+            previousDentist: previousSpecialist,
+            previousDentistLastVisit: previousSpecialistLastVisit,
+            medicalConditions: conditions,
+            clinicalHistory: { ...visit, fears, symptoms, familyHistory },
+          }),
         }),
       ])
       if (!res1.ok || !res2.ok) {
@@ -199,8 +223,8 @@ export default function PatientRecordForm({
             <Input placeholder="Data ultimei consultații" value={form.familyDoctorLastVisit} onChange={(e) => setForm({ ...form, familyDoctorLastVisit: e.target.value })} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input placeholder="Medic dentist anterior" value={form.previousDentist} onChange={(e) => setForm({ ...form, previousDentist: e.target.value })} />
-            <Input placeholder="Data ultimei consultații" value={form.previousDentistLastVisit} onChange={(e) => setForm({ ...form, previousDentistLastVisit: e.target.value })} />
+            <Input placeholder="Medic specialist anterior" value={form.previousSpecialist} onChange={(e) => setForm({ ...form, previousSpecialist: e.target.value })} />
+            <Input placeholder="Data ultimei consultații" value={form.previousSpecialistLastVisit} onChange={(e) => setForm({ ...form, previousSpecialistLastVisit: e.target.value })} />
           </div>
         </Card>
 
@@ -294,64 +318,51 @@ export default function PatientRecordForm({
         </Card>
 
         <Card>
-          <h3 className="font-medium mb-3">Fișă stomatologică</h3>
-          <p className="text-sm text-gray-500 mb-2">Vă este frică de:</p>
-          <ChecklistGrid items={FEAR_ITEMS} value={fears} onChange={(k, v) => setFears({ ...fears, [k]: v })} />
-          <div className="flex flex-col gap-2.5 mt-4">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={dental.bleedingGums} onChange={(e) => setDental({ ...dental, bleedingGums: e.target.checked })} />
-              Sângerează gingiile la periaj
-            </label>
-            <Input placeholder="De câte ori vă periați pe dinți?" value={dental.brushingFrequency} onChange={(e) => setDental({ ...dental, brushingFrequency: e.target.value })} />
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={dental.mouthSores} onChange={(e) => setDental({ ...dental, mouthSores: e.target.checked })} />
-              Inflamații sau răni în gură care durează mai mult timp
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={dental.cheekBiting} onChange={(e) => setDental({ ...dental, cheekBiting: e.target.checked })} />
-              Se mușcă des pe obraji sau limbă
-            </label>
-            <div>
-              <label className="flex items-center gap-2 text-sm mb-1">
-                <input type="checkbox" checked={dental.teethGrinding} onChange={(e) => setDental({ ...dental, teethGrinding: e.target.checked })} />
-                Strânge/scrâșnește din dinți
-              </label>
-              {dental.teethGrinding && (
-                <Input placeholder="Ziua sau noaptea?" value={dental.teethGrindingTime} onChange={(e) => setDental({ ...dental, teethGrindingTime: e.target.value })} />
-              )}
-            </div>
-            <div>
-              <label className="flex items-center gap-2 text-sm mb-1">
-                <input type="checkbox" checked={dental.previousBraces} onChange={(e) => setDental({ ...dental, previousBraces: e.target.checked })} />
-                A purtat aparat dentar anterior
-              </label>
-              {dental.previousBraces && (
-                <Input placeholder="Când?" value={dental.previousBracesWhen} onChange={(e) => setDental({ ...dental, previousBracesWhen: e.target.value })} />
-              )}
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={dental.jawSounds} onChange={(e) => setDental({ ...dental, jawSounds: e.target.checked })} />
-              Zgomote/scârțâituri la nivelul maxilarului
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={dental.jawLocked} onChange={(e) => setDental({ ...dental, jawLocked: e.target.checked })} />
-              A rămas blocat cu gura deschisă
-            </label>
-            <div>
-              <label className="flex items-center gap-2 text-sm mb-1">
-                <input type="checkbox" checked={dental.difficultExtractions} onChange={(e) => setDental({ ...dental, difficultExtractions: e.target.checked })} />
-                A avut extracții dificile / probleme după extracții
-              </label>
-              {dental.difficultExtractions && (
-                <Input placeholder="Descriere pe scurt" value={dental.extractionProblems} onChange={(e) => setDental({ ...dental, extractionProblems: e.target.value })} />
-              )}
-            </div>
-            <Input placeholder="Probleme după anestezie (dacă e cazul)" value={dental.injectionReaction} onChange={(e) => setDental({ ...dental, injectionReaction: e.target.value })} />
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={dental.oralSurgery} onChange={(e) => setDental({ ...dental, oralSurgery: e.target.checked })} />
-              A suferit intervenții chirurgicale la nivelul cavității bucale
-            </label>
+          <h3 className="font-medium mb-3">Motivul vizitei</h3>
+          <Textarea
+            placeholder="De ce v-ați programat? Ce vă supără?"
+            value={visit.visitReason}
+            onChange={(e) => setVisit({ ...visit, visitReason: e.target.value })}
+            className="mb-2"
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Input
+              placeholder="De când aveți aceste simptome?"
+              value={visit.symptomsSince}
+              onChange={(e) => setVisit({ ...visit, symptomsSince: e.target.value })}
+            />
+            <Input
+              placeholder="Intensitatea durerii (0-10, dacă e cazul)"
+              value={visit.painScale}
+              onChange={(e) => setVisit({ ...visit, painScale: e.target.value })}
+            />
           </div>
+        </Card>
+
+        <Card>
+          <h3 className="font-medium mb-3">Simptome curente</h3>
+          <ChecklistGrid items={SYMPTOM_ITEMS} value={symptoms} onChange={(k, v) => setSymptoms({ ...symptoms, [k]: v })} />
+        </Card>
+
+        <Card>
+          <h3 className="font-medium mb-3">Tratamente încercate anterior</h3>
+          <Textarea
+            placeholder="Medicamente luate, tratamente încercate pentru problema actuală..."
+            value={visit.previousTreatments}
+            onChange={(e) => setVisit({ ...visit, previousTreatments: e.target.value })}
+            className="min-h-[70px]"
+          />
+        </Card>
+
+        <Card>
+          <h3 className="font-medium mb-3">Istoric medical familial</h3>
+          <p className="text-sm text-gray-500 mb-2">Afecțiuni cunoscute în familie (părinți, frați, bunici):</p>
+          <ChecklistGrid items={FAMILY_HISTORY_ITEMS} value={familyHistory} onChange={(k, v) => setFamilyHistory({ ...familyHistory, [k]: v })} />
+        </Card>
+
+        <Card>
+          <h3 className="font-medium mb-3">Temeri legate de vizita medicală</h3>
+          <ChecklistGrid items={GENERAL_FEARS} value={fears} onChange={(k, v) => setFears({ ...fears, [k]: v })} />
         </Card>
 
         <Card>
@@ -366,7 +377,7 @@ export default function PatientRecordForm({
             {saving ? 'Se salvează...' : 'Salvează fișa'}
           </Button>
           <button onClick={() => window.print()} className="btn-secondary text-sm">
-            🖨 Printează
+            <Printer size={14} className="inline mr-1" style={{ verticalAlign: '-2px' }} /> Printează
           </button>
           {savedAt && <span className="text-xs text-gray-500">Salvat la {savedAt}</span>}
         </div>
@@ -397,8 +408,8 @@ export default function PatientRecordForm({
             <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Medici anteriori</h2>
             <PrintLine label="Medic de familie" value={form.familyDoctor} />
             <PrintLine label="Ultima consultație" value={form.familyDoctorLastVisit} />
-            <PrintLine label="Medic dentist anterior" value={form.previousDentist} />
-            <PrintLine label="Ultima consultație" value={form.previousDentistLastVisit} />
+            <PrintLine label="Medic specialist anterior" value={form.previousSpecialist} />
+            <PrintLine label="Ultima consultație" value={form.previousSpecialistLastVisit} />
 
             <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Istoric medical general</h2>
             <PrintCheckbox label="Spitalizat(ă)" checked={form.hospitalized} />
@@ -434,23 +445,32 @@ export default function PatientRecordForm({
               ))}
             </div>
 
-            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Fișă stomatologică — frică de:</h2>
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Motivul vizitei</h2>
+            <PrintLine label="Motiv" value={visit.visitReason} />
+            <PrintLine label="De când" value={visit.symptomsSince} />
+            <PrintLine label="Intensitate durere (0-10)" value={visit.painScale} />
+
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Simptome curente</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-              {FEAR_ITEMS.map((f) => (
+              {SYMPTOM_ITEMS.map((s) => (
+                <PrintCheckbox key={s.key} label={s.label} checked={symptoms[s.key]} />
+              ))}
+            </div>
+            <PrintLine label="Tratamente încercate" value={visit.previousTreatments} />
+
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Istoric familial</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              {FAMILY_HISTORY_ITEMS.map((f) => (
+                <PrintCheckbox key={f.key} label={f.label} checked={familyHistory[f.key]} />
+              ))}
+            </div>
+
+            <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Temeri legate de vizita medicală</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              {GENERAL_FEARS.map((f) => (
                 <PrintCheckbox key={f.key} label={f.label} checked={fears[f.key]} />
               ))}
             </div>
-            <PrintCheckbox label="Sângerează gingiile la periaj" checked={dental.bleedingGums} />
-            <PrintLine label="Frecvență periaj" value={dental.brushingFrequency} />
-            <PrintCheckbox label="Inflamații/răni în gură" checked={dental.mouthSores} />
-            <PrintCheckbox label="Se mușcă pe obraji/limbă" checked={dental.cheekBiting} />
-            <PrintCheckbox label="Scrâșnește din dinți" checked={dental.teethGrinding} />
-            <PrintCheckbox label="A purtat aparat dentar" checked={dental.previousBraces} />
-            <PrintCheckbox label="Zgomote la maxilar" checked={dental.jawSounds} />
-            <PrintCheckbox label="A rămas blocat cu gura deschisă" checked={dental.jawLocked} />
-            <PrintCheckbox label="Extracții dificile" checked={dental.difficultExtractions} />
-            <PrintLine label="Probleme după anestezie" value={dental.injectionReaction} />
-            <PrintCheckbox label="Intervenții chirurgicale bucale" checked={dental.oralSurgery} />
 
             <h2 style={{ fontSize: '9.5px', fontWeight: 700, margin: '4px 0 2px', borderBottom: '1px solid #ccc' }}>Alte mențiuni</h2>
             <p style={{ fontSize: '8px', borderBottom: '1px solid #999', minHeight: '20px' }}>{form.generalNotes || '\u00A0'}</p>

@@ -38,6 +38,10 @@ model Business {
   timezone           String       @default("Europe/Bucharest")
   slotIntervalMinutes Int?        // null = automat, după durata fiecărui serviciu; altfel interval fix (10/15/30...)
   minLeadTimeMinutes  Int          @default(120) // rezervările/anulările din exterior (bot, site) nu se pot face mai aproape de această limită; admin-ul manual e scutit
+  break1Start         String? // pauze zilnice (ex: masă) — aceleași ore în fiecare zi lucrătoare, nu se pot face programări
+  break1End           String?
+  break2Start         String?
+  break2End           String?
   brandColor          String?      // culoarea de accent aleasă de business pentru pagina publică (hex); null = culoarea implicită bookeasy
   planName           String?      // numele planului, gestionat manual de admin până se configurează plata online
   billingStatus      BillingStatus @default(NEPLATIT)
@@ -402,7 +406,8 @@ model PatientMedicalRecord {
   menopause               Boolean?
 
   medicalConditions       Json?    // checklist tip {hipertensiune: true, diabet: false, ...}
-  dentalHistory            Json?   // checklist tip {fricaDeDentist: true, injectie: false, ...}
+  dentalHistory            Json?   // păstrat pentru compatibilitate — nu mai e folosit de fișa generală
+  clinicalHistory          Json?   // fișă generală, orice specialitate: motivul vizitei, istoric familial, semne vitale
   pediatricInfo            Json?   // înălțime, greutate, obiceiuri copii — doar dacă e cazul
 
   generalNotes             String?
