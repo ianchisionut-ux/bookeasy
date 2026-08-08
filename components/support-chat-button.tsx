@@ -1,16 +1,39 @@
 'use client'
 
-import { useState } from 'react'
-import { MessageCircle, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { MessageCircle, X, CheckCircle2, Clock } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+
+type Ticket = {
+  id: string
+  subject: string
+  message: string
+  status: 'NEW' | 'IN_PROGRESS' | 'RESOLVED'
+  reply: string | null
+  createdAt: string
+}
+
+const STATUS_LABEL: Record<string, string> = { NEW: 'Nou', IN_PROGRESS: 'În lucru', RESOLVED: 'Rezolvat' }
 
 export function SupportChatButton() {
   const [open, setOpen] = useState(false)
+  const [view, setView] = useState<'list' | 'new'>('list')
+  const [tickets, setTickets] = useState<Ticket[]>([])
+  const [loadingTickets, setLoadingTickets] = useState(false)
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setLoadingTickets(true)
+    fetchWithTimeout('/api/business/support-tickets')
+      .then((res) => res.json())
+      .then((data) => setTickets(data.tickets ?? []))
+      .catch(() => setTickets([]))
+      .finally(() => setLoadingTickets(false))
+  }, [open])
 
   async function submit() {
     if (subject.trim().length < 2 || message.trim().length < 5) {
@@ -30,9 +53,11 @@ export function SupportChatButton() {
         setError(data.error ?? 'Nu am putut trimite. Încearcă din nou.')
         return
       }
-      setSent(true)
+      const data = await res.json()
+      setTickets((prev) => [data.ticket, ...prev])
       setSubject('')
       setMessage('')
+      setView('list')
     } catch {
       setError('Conexiune eșuată. Încearcă din nou.')
     } finally {
@@ -42,7 +67,7 @@ export function SupportChatButton() {
 
   function close() {
     setOpen(false)
-    setSent(false)
+    setView('list')
     setError('')
   }
 
@@ -61,24 +86,53 @@ export function SupportChatButton() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end bg-black/20 sm:bg-transparent" onClick={close}>
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:w-96 sm:mr-5 sm:mb-5 p-5"
+            className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:w-96 sm:mr-5 sm:mb-5 p-5 max-h-[80vh] flex flex-col"
           >
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold">Contactează suportul</h2>
+            <div className="flex items-center justify-between mb-3 shrink-0">
+              <h2 className="font-semibold">Suport bookeasy</h2>
               <button onClick={close} aria-label="Închide">
                 <X size={18} />
               </button>
             </div>
 
-            {sent ? (
-              <div className="py-4">
-                <p className="text-sm text-gray-600 mb-4">
-                  Mesajul a fost trimis. Îți răspundem cât de curând posibil.
-                </p>
-                <button onClick={close} className="btn-secondary w-full">
-                  Închide
+            {view === 'list' ? (
+              <>
+                <div className="flex-1 overflow-y-auto -mx-1 px-1">
+                  {loadingTickets ? (
+                    <p className="text-sm text-gray-400 py-4">Se încarcă...</p>
+                  ) : tickets.length === 0 ? (
+                    <p className="text-sm text-gray-500 py-4">
+                      Nicio conversație încă. Ai o problemă sau o întrebare? Scrie-ne — ajunge direct la echipa bookeasy.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {tickets.map((t) => (
+                        <div key={t.id} className="rounded-xl border border-[var(--border-soft)] p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm font-medium">{t.subject}</p>
+                            <span className="text-xs flex items-center gap-1" style={{ color: t.status === 'RESOLVED' ? '#16a34a' : '#eab308' }}>
+                              {t.status === 'RESOLVED' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                              {STATUS_LABEL[t.status]}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 whitespace-pre-wrap mb-2">{t.message}</p>
+                          {t.reply && (
+                            <div className="rounded-lg p-2 mt-1" style={{ background: 'var(--accent-soft)' }}>
+                              <p className="text-xs font-medium mb-0.5" style={{ color: 'var(--accent)' }}>
+                                Răspuns bookeasy
+                              </p>
+                              <p className="text-xs text-gray-700 whitespace-pre-wrap">{t.reply}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => setView('new')} className="btn-primary w-full mt-3 shrink-0">
+                  + Tichet nou
                 </button>
-              </div>
+              </>
             ) : (
               <div className="flex flex-col gap-2.5">
                 <p className="text-sm text-gray-500 mb-1">
@@ -97,9 +151,14 @@ export function SupportChatButton() {
                   className="input-field min-h-[100px]"
                 />
                 {error && <p className="text-sm text-red-600">{error}</p>}
-                <button onClick={submit} disabled={sending} className="btn-primary w-full">
-                  {sending ? 'Se trimite...' : 'Trimite'}
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setView('list')} className="btn-secondary flex-1">
+                    Înapoi
+                  </button>
+                  <button onClick={submit} disabled={sending} className="btn-primary flex-1">
+                    {sending ? 'Se trimite...' : 'Trimite'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
