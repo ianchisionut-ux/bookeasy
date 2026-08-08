@@ -61,18 +61,21 @@ type BlockedEvent = {
 type BlockedSlot = { id: string; startAt: string; endAt: string; reason: string | null }
 
 export default function CalendarClient({
+  category,
   events,
   blockedSlots,
   minTime,
   maxTime,
   practitioners,
 }: {
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
   events: Event[]
   blockedSlots: BlockedSlot[]
   minTime: string
   maxTime: string
   practitioners: { id: string; name: string; minTime: string; maxTime: string }[]
 }) {
+  const isClinic = category === 'CLINICA'
   const router = useRouter()
   const [selected, setSelected] = useState<Event | null>(null)
   const [view, setView] = useState<any>(Views.WEEK)
@@ -198,7 +201,7 @@ export default function CalendarClient({
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))
-          alert(data.error ?? 'Nu am putut muta rezervarea.')
+          alert(data.error ?? `Nu am putut muta ${isClinic ? 'programarea' : 'rezervarea'}.`)
           return
         }
         router.refresh()
@@ -214,7 +217,7 @@ export default function CalendarClient({
       <div className="mb-4 screen-only">
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl lg:text-2xl font-semibold">Calendar rezervări</h1>
+            <h1 className="text-xl lg:text-2xl font-semibold">{isClinic ? 'Calendar programări' : 'Calendar rezervări'}</h1>
             {practitioners.length > 0 && (
               <select
                 value={practitionerFilter}
@@ -234,7 +237,7 @@ export default function CalendarClient({
         <p className="text-xs text-gray-500 mb-3">
           {blockMode
             ? 'Selectează cu mouse-ul un interval ca să-l blochezi — click pe o zonă blocată pentru a o debloca'
-            : 'Click pe o rezervare pentru detalii/editare'}
+            : `Click pe o ${isClinic ? 'programare' : 'rezervare'} pentru detalii/editare`}
           {busy && <span className="text-gray-400"> · se actualizează...</span>}
         </p>
         <div className="flex flex-wrap items-center gap-2">
@@ -296,7 +299,7 @@ export default function CalendarClient({
             date: 'Dată',
             time: 'Oră',
             event: 'Eveniment',
-            noEventsInRange: 'Nicio rezervare în acest interval.',
+            noEventsInRange: isClinic ? 'Nicio programare în acest interval.' : 'Nicio rezervare în acest interval.',
             showMore: (count: number) => `+${count} mai multe`,
           }}
           formats={{
@@ -336,6 +339,7 @@ export default function CalendarClient({
 
       {selected && (
         <BookingEditModal
+          isClinic={isClinic}
           booking={
             {
               id: selected.id,

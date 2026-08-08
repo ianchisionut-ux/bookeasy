@@ -1,9 +1,10 @@
-import { sendWhatsAppButtons, sendMessengerButtons } from './channel-senders'
+import { sendWhatsAppButtons } from './channel-senders'
 
 export async function sendConfirmationRequest(booking: any): Promise<boolean> {
-  const channel = booking.business.channels.find(
-    (c: any) => c.type === booking.channel && c.status === 'ACTIVE' && c.enabledByOwner
-  )
+  // reminder-ul merge mereu pe WhatsApp, indiferent pe ce canal a fost făcută
+  // programarea inițial (bot, site sau introdusă manual de admin) — dacă avem telefon,
+  // avem cum să trimitem
+  const channel = booking.business.channels.find((c: any) => c.type === 'WHATSAPP' && c.status === 'ACTIVE' && c.enabledByOwner)
   if (!channel) return false
 
   const dateTime = booking.startAt.toLocaleString('ro-RO', {
@@ -29,11 +30,7 @@ export async function sendConfirmationRequest(booking: any): Promise<boolean> {
   ]
 
   try {
-    if (booking.channel === 'WHATSAPP') {
-      await sendWhatsAppButtons({ channelId: channel.id, to: booking.customer.phone, bodyText, options })
-    } else {
-      await sendMessengerButtons({ channelId: channel.id, to: booking.customer.phone, bodyText, options })
-    }
+    await sendWhatsAppButtons({ channelId: channel.id, to: booking.customer.phone, bodyText, options })
     return true
   } catch {
     return false

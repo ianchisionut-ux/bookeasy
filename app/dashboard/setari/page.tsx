@@ -37,11 +37,12 @@ export default async function SetariPage() {
       <p className="text-sm text-gray-500 mb-6">Datele profilului, programul de lucru și vizibilitatea publică.</p>
 
       <div className="flex flex-col gap-5">
-        <PublicPageLinkCard slug={business.slug} />
+        <PublicPageLinkCard slug={business.slug} isClinic={business.category === 'CLINICA'} />
 
         <SubscriptionCard planName={business.planName} billingStatus={business.billingStatus} />
 
         <SettingsForm
+          isClinic={business.category === 'CLINICA'}
           isMultiPractitioner={business.teamSize > 1}
           business={{
             name: business.name,
@@ -63,7 +64,7 @@ export default async function SetariPage() {
           workingHours={workingHours}
         />
 
-        <BrandColorCard initialColor={business.brandColor} />
+        <BrandColorCard initialColor={business.brandColor} isClinic={business.category === 'CLINICA'} />
       </div>
     </div>
   )

@@ -194,7 +194,7 @@ export default function BookingFlow({
   if (done) {
     return (
       <Card>
-        <h2 className="text-lg font-semibold mb-1">Rezervare confirmată! 🎉</h2>
+        <h2 className="text-lg font-semibold mb-1">{category === 'CLINICA' ? 'Programare confirmată! 🎉' : 'Rezervare confirmată! 🎉'}</h2>
         <p className="text-sm text-gray-600">Te așteptăm — vei primi confirmarea și pe telefonul indicat.</p>
       </Card>
     )
@@ -385,7 +385,7 @@ export default function BookingFlow({
         className="w-full py-3.5 text-base"
         style={{ background: accentColor, borderColor: accentColor }}
       >
-        {submitting ? 'Se trimite...' : 'Confirmă rezervarea'}
+        {submitting ? 'Se trimite...' : category === 'CLINICA' ? 'Confirmă programarea' : 'Confirmă rezervarea'}
       </Button>
     </div>
   )

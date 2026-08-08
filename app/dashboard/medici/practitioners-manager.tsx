@@ -89,7 +89,7 @@ export default function PractitionersManager({
       </div>
       <p className="text-sm text-gray-500 mb-6">
         Fiecare {label} are propriul program și, opțional, serviciile pe care le oferă. Clienții pot
-        alege un(o) {label} anume la rezervare.
+        alege un(o) {label} anume la {isClinic ? 'programare' : 'rezervare'}.
       </p>
 
       {adding && (

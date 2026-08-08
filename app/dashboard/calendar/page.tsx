@@ -53,6 +53,7 @@ export default async function CalendarPage() {
 
   return (
     <CalendarClient
+      category={business?.category ?? 'SALON'}
       events={events}
       blockedSlots={blockedSlots.map((b) => ({
         id: b.id,

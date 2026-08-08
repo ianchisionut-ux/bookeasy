@@ -13,6 +13,7 @@ export default function SettingsForm({
   business,
   workingHours,
   isMultiPractitioner,
+  isClinic,
 }: {
   business: {
     name: string
@@ -33,6 +34,7 @@ export default function SettingsForm({
   }
   workingHours: WorkingHour[]
   isMultiPractitioner: boolean
+  isClinic: boolean
 }) {
   const [form, setForm] = useState(business)
   const [hours, setHours] = useState(workingHours)
@@ -230,7 +232,7 @@ export default function SettingsForm({
       <Card>
         <h2 className="font-medium mb-1">Interval între ore disponibile</h2>
         <p className="text-sm text-gray-500 mb-3">
-          Cum se împart orele oferite clienților la rezervare.
+          Cum se împart orele oferite {isClinic ? 'pacienților' : 'clienților'} la {isClinic ? 'programare' : 'rezervare'}.
         </p>
         <select
           value={form.slotIntervalMinutes ?? 'auto'}
@@ -243,17 +245,17 @@ export default function SettingsForm({
           <option value="30">Fix, din 30 în 30 minute</option>
         </select>
         <p className="text-xs text-gray-400 mt-2">
-          Indiferent de setare, două rezervări nu se pot suprapune niciodată — verificarea se face
+          Indiferent de setare, două {isClinic ? 'programări' : 'rezervări'} nu se pot suprapune niciodată — verificarea se face
           mereu pe durata reală a fiecărui serviciu.
         </p>
       </Card>
 
       <Card>
-        <h2 className="font-medium mb-1">Interval minim pentru rezervări din exterior</h2>
+        <h2 className="font-medium mb-1">Interval minim pentru {isClinic ? 'programări' : 'rezervări'} din exterior</h2>
         <p className="text-sm text-gray-500 mb-3">
-          Rezervările venite prin bot (WhatsApp/Instagram/Facebook) sau de pe site nu se pot face
+          {isClinic ? 'Programările venite' : 'Rezervările venite'} prin bot (WhatsApp/Instagram/Facebook) sau de pe site nu se pot face
           mai aproape de acest interval — ca să ai timp să vezi programările. La fel și anulările
-          făcute de clienți. Rezervările create manual de tine din dashboard nu sunt afectate — le
+          făcute de {isClinic ? 'pacienți' : 'clienți'}. {isClinic ? 'Programările create' : 'Rezervările create'} manual de tine din dashboard nu sunt afectate — le
           poți face oricând, chiar cu 30 de minute înainte.
         </p>
         <select

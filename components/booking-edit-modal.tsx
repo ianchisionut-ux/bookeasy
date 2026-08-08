@@ -40,9 +40,11 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> 
 
 export default function BookingEditModal({
   booking,
+  isClinic,
   onClose,
 }: {
   booking: BookingDetail
+  isClinic: boolean
   onClose: () => void
 }) {
   const router = useRouter()
@@ -118,7 +120,7 @@ export default function BookingEditModal({
   }
 
   async function cancelBooking() {
-    if (!confirm('Anulezi această rezervare?')) return
+    if (!confirm(`Anulezi această ${isClinic ? 'programare' : 'rezervare'}?`)) return
     setSaving(true)
     try {
       await fetchWithTimeout(`/api/business/bookings/${booking.id}`, { method: 'DELETE' })
@@ -215,7 +217,7 @@ export default function BookingEditModal({
 
         <div className="flex justify-between mt-5">
           <button onClick={cancelBooking} disabled={saving} className="text-sm text-red-600 font-medium">
-            Anulează rezervarea
+            {isClinic ? 'Anulează programarea' : 'Anulează rezervarea'}
           </button>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose}>

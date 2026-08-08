@@ -115,7 +115,7 @@ export default function ProgramariManager({
   }
 
   async function cancelBooking(id: string) {
-    if (!confirm('Anulezi această rezervare?')) return
+    if (!confirm(`Anulezi această ${isClinic ? 'programare' : 'rezervare'}?`)) return
     try {
       await fetchWithTimeout(`/api/business/bookings/${id}`, { method: 'DELETE' })
       router.refresh()
@@ -435,14 +435,14 @@ function NewBookingForm({
     const end = new Date(start.getTime() + (service?.durationMin ?? 30) * 60000)
 
     if (start < new Date()) {
-      setError('Nu poți crea o rezervare într-un interval din trecut.')
+      setError(`Nu poți crea o ${isClinic ? 'programare' : 'rezervare'} într-un interval din trecut.`)
       return
     }
 
     if (!isMultiPractitioner) {
       const overlapsBlocked = blockedSlots.some((b) => start < new Date(b.endAt) && new Date(b.startAt) < end)
       if (overlapsBlocked) {
-        setError('Intervalul ales e blocat pentru rezervări — modifică-l direct din calendar dacă e nevoie.')
+        setError(`Intervalul ales e blocat pentru ${isClinic ? 'programări' : 'rezervări'} — modifică-l direct din calendar dacă e nevoie.`)
         return
       }
     }

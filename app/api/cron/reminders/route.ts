@@ -82,9 +82,9 @@ async function sendTwoHourReminders(now: Date, results: { twoHourSent: number; f
   })
 
   for (const booking of bookings) {
-    const channel = booking.business.channels.find(
-      (c: any) => c.type === booking.channel && c.status === 'ACTIVE' && c.enabledByOwner
-    )
+    // la fel ca la cererea de reconfirmare — mereu pe WhatsApp, indiferent pe ce canal
+    // a fost făcută programarea inițial
+    const channel = booking.business.channels.find((c: any) => c.type === 'WHATSAPP' && c.status === 'ACTIVE' && c.enabledByOwner)
     if (!channel) {
       results.failed++
       continue
@@ -92,7 +92,7 @@ async function sendTwoHourReminders(now: Date, results: { twoHourSent: number; f
     const text = `Programarea ta pentru ${booking.service.name} e peste 2 ore (${formatTime(booking.startAt)}). Te așteptăm!`
     try {
       const { sendMessage } = await import('@/lib/channel-senders')
-      await sendMessage({ channel: booking.channel, channelId: channel.id, to: booking.customer.phone, text })
+      await sendMessage({ channel: 'WHATSAPP', channelId: channel.id, to: booking.customer.phone, text })
       await prisma.booking.update({ where: { id: booking.id }, data: { reminder1hSent: true } })
       results.twoHourSent++
     } catch {
