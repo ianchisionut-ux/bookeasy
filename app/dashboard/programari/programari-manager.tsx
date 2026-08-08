@@ -124,6 +124,21 @@ export default function ProgramariManager({
     }
   }
 
+  async function deletePermanently(id: string) {
+    if (!confirm(`Ștergi definitiv această ${isClinic ? 'programare' : 'rezervare'}? Nu se mai poate anula acțiunea — dispare complet, inclusiv din istoric.`)) return
+    try {
+      const res = await fetchWithTimeout(`/api/business/bookings/${id}/delete-permanently`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error ?? 'Nu am putut șterge.')
+        return
+      }
+      router.refresh()
+    } catch {
+      alert('Conexiune eșuată. Încearcă din nou.')
+    }
+  }
+
   async function sendReminder(id: string) {
     setSendingReminderId(id)
     try {
@@ -305,10 +320,13 @@ export default function ProgramariManager({
                         </button>
                       )}
                       {b.status !== 'CANCELLED' && (
-                        <button onClick={() => cancelBooking(b.id)} className="text-xs text-red-600 font-medium">
+                        <button onClick={() => cancelBooking(b.id)} className="text-xs text-red-600 font-medium mr-3">
                           Anulează
                         </button>
                       )}
+                      <button onClick={() => deletePermanently(b.id)} className="text-xs text-gray-400 font-medium">
+                        Șterge definitiv
+                      </button>
                     </td>
                   </tr>
                 ))}
