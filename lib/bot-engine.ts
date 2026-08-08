@@ -1,6 +1,6 @@
 import { prisma } from './prisma'
-import { runBotStep, ConversationState } from './conversation-state-machine'
-import { sendMessage } from './channel-senders'
+import { runBotStep, ConversationState, BotReply } from './conversation-state-machine'
+import { sendMessage, sendWhatsAppList, sendMessengerCarousel } from './channel-senders'
 import { sendAlertEmail } from './email'
 import { rateLimit } from './rate-limit'
 
@@ -50,7 +50,6 @@ export async function processIncomingMessage({
     // "da" fără nicio programare în așteptare de confirmare — lăsăm mesajul să treacă
     // mai departe prin conversația normală (ar putea fi un răspuns la altceva, ex: preț)
   }
-
   let conversation = await prisma.conversation.findFirst({ where: { businessId, channel, externalUserId } })
   if (!conversation) {
     conversation = await prisma.conversation.create({
@@ -72,7 +71,56 @@ export async function processIncomingMessage({
     data: { state: newState as any, updatedAt: new Date() },
   })
 
-  await sendMessage({ channel, channelId, to: externalUserId, text: reply })
+  await sendReply({ channel, channelId, to: externalUserId, reply })
+}
+
+// alege automat formatul potrivit de trimitere: listă interactivă pe WhatsApp, carousel
+// pe Messenger/Instagram, sau text simplu — în funcție de tipul de răspuns și canal
+async function sendReply({
+  channel,
+  channelId,
+  to,
+  reply,
+}: {
+  channel: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
+  channelId: string
+  to: string
+  reply: BotReply
+}) {
+  if (reply.kind === 'text') {
+    await sendMessage({ channel, channelId, to, text: reply.text })
+    return
+  }
+
+  // reply.kind === 'choices'
+  if (channel === 'WHATSAPP') {
+    await sendWhatsAppList({
+      channelId,
+      to,
+      headerText: reply.header,
+      bodyText: reply.text,
+      buttonText: reply.buttonLabel,
+      groups: reply.groups,
+    })
+    return
+  }
+
+  // Messenger/Instagram — carousel real, cu titlul grupului (zi) inclus în titlul
+  // cardului dacă sunt mai multe grupuri (ex: mai multe zile)
+  const multiGroup = reply.groups.length > 1
+  const cards = reply.groups.flatMap((g) =>
+    g.options.map((o) => ({
+      id: o.id,
+      title: multiGroup ? `${g.label} — ${o.title}` : o.title,
+      subtitle: o.subtitle,
+      buttonLabel: reply.buttonLabel,
+    }))
+  )
+
+  // carousel-ul (generic template) nu are un câmp separat de text introductiv, deci
+  // trimitem întâi textul, apoi cardurile
+  await sendMessage({ channel, channelId, to, text: reply.text })
+  await sendMessengerCarousel({ channelId, to, cards })
 }
 
 async function handleBookingCancellation(businessId: string, channel: string, externalUserId: string) {

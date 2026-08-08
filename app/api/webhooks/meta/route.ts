@@ -59,16 +59,21 @@ async function handleWhatsAppEntry(entry: any) {
     businessId: channel.businessId,
     channel: 'WHATSAPP',
     externalUserId: message.from,
-    text: message.text?.body ?? extractNonTextContent(message),
+    // dacă a apăsat pe o opțiune din listă, folosim ID-ul acelei opțiuni direct —
+    // altfel, textul scris de mână
+    text: message.interactive?.list_reply?.id ?? message.text?.body ?? extractNonTextContent(message),
     channelId: channel.id,
   })
 }
 
 async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') {
   const messaging = entry.messaging?.[0]
-  if (!messaging?.message) return
+  // apăsarea pe un buton de carousel vine ca "postback", nu ca "message" — trebuie
+  // tratate separat, altfel butoanele din carousel sunt complet ignorate
+  const effectiveText = messaging?.postback?.payload ?? messaging?.message?.quick_reply?.payload ?? messaging?.message?.text
+  if (!messaging || (!messaging.message && !messaging.postback)) return
 
-  const messageId = messaging.message.mid
+  const messageId = messaging.message?.mid ?? messaging.postback?.mid
   if (messageId && !(await markMessageProcessed(messageId))) return
 
   const pageId = entry.id
@@ -79,7 +84,7 @@ async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') 
     businessId: channel.businessId,
     channel: type,
     externalUserId: messaging.sender.id,
-    text: messaging.message.text ?? '[atașament]',
+    text: effectiveText ?? '[atașament]',
     channelId: channel.id,
   })
 }
