@@ -115,7 +115,6 @@ export function ResponsiveShell({
           <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={28} height={28} />
           <span className="font-semibold text-lg">{logoLabel}</span>
         </Link>
-        <SidebarClock />
         {navItems.map((item) => {
           const active = item.href === activeHref
           return (
@@ -136,6 +135,9 @@ export function ResponsiveShell({
             </Link>
           )
         })}
+        <div className="mt-auto">
+          <SidebarClock />
+        </div>
         {accountContent}
       </aside>
 
