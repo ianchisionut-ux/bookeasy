@@ -89,6 +89,7 @@ export default function ProgramariManager({
   const router = useRouter()
   const searchParams = useSearchParams()
   const [adding, setAdding] = useState(searchParams.get('add') === '1')
+  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null)
   const isClinic = category === 'CLINICA'
   const appointmentBased = isAppointmentBased(category)
   // 8 coloane (fără Sală/Medic) sau 9 (cu Sală sau Medic)
@@ -119,6 +120,23 @@ export default function ProgramariManager({
       router.refresh()
     } catch {
       alert('Conexiune eșuată. Încearcă din nou.')
+    }
+  }
+
+  async function sendReminder(id: string) {
+    setSendingReminderId(id)
+    try {
+      const res = await fetchWithTimeout(`/api/business/bookings/${id}/send-reminder`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data.error ?? 'Nu am putut trimite reminder-ul.')
+        return
+      }
+      alert('Reminder trimis pe WhatsApp!')
+    } catch {
+      alert('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      setSendingReminderId(null)
     }
   }
 
@@ -249,7 +267,16 @@ export default function ProgramariManager({
                         )}
                       </div>
                     </td>
-                    <td className="pr-5 text-right">
+                    <td className="pr-5 text-right whitespace-nowrap">
+                      {b.status === 'CONFIRMED' && (
+                        <button
+                          onClick={() => sendReminder(b.id)}
+                          disabled={sendingReminderId === b.id}
+                          className="text-xs text-[var(--accent)] font-medium mr-3"
+                        >
+                          {sendingReminderId === b.id ? 'Se trimite...' : 'Reminder'}
+                        </button>
+                      )}
                       {b.status !== 'CANCELLED' && (
                         <button onClick={() => cancelBooking(b.id)} className="text-xs text-red-600 font-medium">
                           Anulează
