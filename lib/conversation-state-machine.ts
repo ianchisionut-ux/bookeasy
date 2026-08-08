@@ -182,6 +182,27 @@ export async function runBotStep({
         return proceedToTimeSelection(businessId, currentState, currentState.practitionerId ?? null, true)
       }
 
+      // dacă a mai rezervat vreodată la această afacere, îl recunoaștem automat după
+      // numărul de telefon (WhatsApp) sau ID-ul de platformă (Messenger/Instagram) —
+      // nu-l mai punem să scrie din nou numele și telefonul
+      const knownCustomer = await prisma.customer.findFirst({
+        where:
+          channel === 'WHATSAPP'
+            ? { businessId, phone: externalUserId }
+            : channel === 'INSTAGRAM'
+              ? { businessId, instagramUserId: externalUserId }
+              : { businessId, facebookUserId: externalUserId },
+      })
+
+      if (knownCustomer?.name && knownCustomer.phone) {
+        return proceedToConfirmation(business, {
+          ...currentState,
+          startAt: choice,
+          customerName: knownCustomer.name,
+          customerPhone: knownCustomer.phone,
+        })
+      }
+
       return {
         reply: { kind: 'text', text: 'Perfect! Cum te numești, ca să confirm rezervarea?' },
         newState: { ...currentState, step: 'COLLECTING_NAME', startAt: choice },
