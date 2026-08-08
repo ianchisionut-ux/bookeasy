@@ -1,6 +1,6 @@
 import { prisma } from './prisma'
 import { runBotStep, ConversationState, BotReply } from './conversation-state-machine'
-import { sendMessage, sendWhatsAppList, sendMessengerCarousel } from './channel-senders'
+import { sendMessage, sendWhatsAppList, sendMessengerCarousel, sendWhatsAppButtons, sendMessengerButtons } from './channel-senders'
 import { sendAlertEmail } from './email'
 import { rateLimit } from './rate-limit'
 
@@ -89,6 +89,15 @@ async function sendReply({
 }) {
   if (reply.kind === 'text') {
     await sendMessage({ channel, channelId, to, text: reply.text })
+    return
+  }
+
+  if (reply.kind === 'buttons') {
+    if (channel === 'WHATSAPP') {
+      await sendWhatsAppButtons({ channelId, to, bodyText: reply.text, options: reply.options })
+    } else {
+      await sendMessengerButtons({ channelId, to, bodyText: reply.text, options: reply.options })
+    }
     return
   }
 

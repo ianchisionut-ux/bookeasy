@@ -38,6 +38,7 @@ model Business {
   timezone           String       @default("Europe/Bucharest")
   slotIntervalMinutes Int?        // null = automat, după durata fiecărui serviciu; altfel interval fix (10/15/30...)
   minLeadTimeMinutes  Int          @default(120) // rezervările/anulările din exterior (bot, site) nu se pot face mai aproape de această limită; admin-ul manual e scutit
+  reminderMinutesBefore Int        @default(1440) // cu cât timp înainte de programare trimitem reminder-ul + cererea de confirmare pe WhatsApp (implicit 24h)
   break1Start         String? // pauze zilnice (ex: masă) — aceleași ore în fiecare zi lucrătoare, nu se pot face programări
   break1End           String?
   break2Start         String?

@@ -35,6 +35,78 @@ export async function sendMessage({
   })
 }
 
+// butoane verticale, stivuite — max 3, folosite pentru meniuri scurte (start, confirmare)
+// unde clientul trebuie să vadă toate opțiunile deodată, nu într-un carousel cu swipe
+export async function sendWhatsAppButtons({
+  channelId,
+  to,
+  bodyText,
+  options,
+}: {
+  channelId: string
+  to: string
+  bodyText: string
+  options: { id: string; title: string }[]
+}) {
+  const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
+  if (!channelRecord) throw new Error('Channel not found')
+  const accessToken = decrypt(channelRecord.accessToken)
+
+  await fetch(`https://graph.facebook.com/v21.0/${channelRecord.externalId}/messages`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'interactive',
+      interactive: {
+        type: 'button',
+        body: { text: bodyText.slice(0, 1024) },
+        action: {
+          buttons: options.slice(0, 3).map((o) => ({
+            type: 'reply',
+            reply: { id: o.id.slice(0, 256), title: o.title.slice(0, 20) },
+          })),
+        },
+      },
+    }),
+  })
+}
+
+export async function sendMessengerButtons({
+  channelId,
+  to,
+  bodyText,
+  options,
+}: {
+  channelId: string
+  to: string
+  bodyText: string
+  options: { id: string; title: string }[]
+}) {
+  const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
+  if (!channelRecord) throw new Error('Channel not found')
+  const accessToken = decrypt(channelRecord.accessToken)
+
+  await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      recipient: { id: to },
+      message: {
+        attachment: {
+          type: 'template',
+          payload: {
+            template_type: 'button',
+            text: bodyText.slice(0, 640),
+            buttons: options.slice(0, 3).map((o) => ({ type: 'postback', title: o.title.slice(0, 20), payload: o.id })),
+          },
+        },
+      },
+    }),
+  })
+}
+
 export type ChoiceGroup = {
   label: string // ex: numele zilei — apare ca titlu de secțiune (WhatsApp) sau se include în titlul cardului (Messenger)
   options: { id: string; title: string; subtitle?: string }[] // id = valoarea reală trimisă înapoi la selectare (ex: ISO al orei)

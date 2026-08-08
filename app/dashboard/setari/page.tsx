@@ -51,6 +51,7 @@ export default async function SetariPage() {
             publicListed: business.publicListed,
             slotIntervalMinutes: business.slotIntervalMinutes,
             minLeadTimeMinutes: business.minLeadTimeMinutes,
+            reminderMinutesBefore: business.reminderMinutesBefore,
             break1Start: business.break1Start,
             break1End: business.break1End,
             break2Start: business.break2Start,

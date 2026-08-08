@@ -22,6 +22,7 @@ export default function SettingsForm({
     publicListed: boolean
     slotIntervalMinutes: number | null
     minLeadTimeMinutes: number
+    reminderMinutesBefore: number
     break1Start: string | null
     break1End: string | null
     break2Start: string | null
@@ -263,6 +264,28 @@ export default function SettingsForm({
           <option value="90">Minim 1 oră 30 min înainte</option>
           <option value="120">Minim 2 ore înainte (recomandat)</option>
           <option value="180">Minim 3 ore înainte</option>
+        </select>
+      </Card>
+
+      <Card>
+        <h2 className="font-medium mb-1">Reminder pe WhatsApp înainte de programare</h2>
+        <p className="text-sm text-gray-500 mb-3">
+          Cu cât timp înainte de oră trimitem clientului un mesaj de reminder (și îi cerem
+          confirmarea) pe WhatsApp. Se aplică tuturor programărilor confirmate.
+        </p>
+        <select
+          value={form.reminderMinutesBefore}
+          onChange={(e) => setForm({ ...form, reminderMinutesBefore: Number(e.target.value) })}
+          className="input-field w-full"
+        >
+          <option value="30">Cu 30 de minute înainte</option>
+          <option value="60">Cu 1 oră înainte</option>
+          <option value="120">Cu 2 ore înainte</option>
+          <option value="180">Cu 3 ore înainte</option>
+          <option value="360">Cu 6 ore înainte</option>
+          <option value="720">Cu 12 ore înainte</option>
+          <option value="1440">Cu 24 de ore înainte (recomandat)</option>
+          <option value="2880">Cu 48 de ore înainte</option>
         </select>
       </Card>
 

@@ -13,6 +13,7 @@ const schema = z.object({
   teamSize: z.number().min(1).max(200).optional(),
   slotIntervalMinutes: z.number().min(5).max(120).nullable().optional(),
   minLeadTimeMinutes: z.number().min(30).max(1440).optional(),
+  reminderMinutesBefore: z.number().min(15).max(2880).optional(),
   break1Start: z.string().nullable().optional(),
   break1End: z.string().nullable().optional(),
   break2Start: z.string().nullable().optional(),

@@ -11,6 +11,7 @@ export type ChoiceGroup = { label: string; options: ChoiceOption[] }
 export type BotReply =
   | { kind: 'text'; text: string }
   | { kind: 'choices'; text: string; header: string; buttonLabel: string; groups: ChoiceGroup[] }
+  | { kind: 'buttons'; text: string; options: ChoiceOption[] }
 
 export type ConversationState = {
   step:
@@ -20,6 +21,7 @@ export type ConversationState = {
     | 'SELECTING_DAY'
     | 'SELECTING_TIME'
     | 'COLLECTING_NAME'
+    | 'COLLECTING_PHONE'
     | 'CONFIRMING'
   serviceId?: string
   serviceOptions?: ChoiceOption[]
@@ -30,6 +32,7 @@ export type ConversationState = {
   startAt?: string
   timeOptions?: ChoiceOption[]
   customerName?: string
+  customerPhone?: string
 }
 
 const CANCEL_PATTERNS = /^(nu|stop|anuleaz[ăa]|renun[țt]|las[ăa]|gata)\b/i
@@ -38,6 +41,11 @@ const WELCOME_OPTIONS: ChoiceOption[] = [
   { id: 'START_PROGRAMARE', title: 'Fă o programare' },
   { id: 'OPERATOR', title: 'Vorbește cu un operator' },
   { id: 'LINK_REZERVARE', title: 'Vezi pagina de rezervare' },
+]
+
+const CONFIRM_OPTIONS: ChoiceOption[] = [
+  { id: 'CONFIRM_BOOKING', title: 'Confirmă programarea' },
+  { id: 'CANCEL_BOOKING', title: 'Anulează' },
 ]
 
 // potrivește răspunsul clientului cu o opțiune — fie direct după ID (a apăsat pe o
@@ -185,23 +193,38 @@ export async function runBotStep({
       if (name.length < 2) {
         return { reply: { kind: 'text', text: 'Te rog scrie-mi numele tău complet.' }, newState: currentState }
       }
-      const service = business.services.find((s: any) => s.id === currentState.serviceId)
-      const practitioner = currentState.practitionerId
-        ? currentState.practitionerOptions?.find((p) => p.id === currentState.practitionerId)
-        : null
+      // pe WhatsApp avem deja numărul de telefon (e chiar externalUserId) — nu mai
+      // întrebăm încă o dată, doar confirmăm scurt. Pe Messenger/Instagram nu avem
+      // niciun număr real, deci trebuie cerut explicit
+      if (channel === 'WHATSAPP') {
+        return proceedToConfirmation(business, { ...currentState, customerName: name, customerPhone: externalUserId })
+      }
       return {
-        reply: {
-          kind: 'text',
-          text: `Confirm: ${service?.name}${practitioner ? ` cu ${practitioner.title}` : ''}, ${formatDate(currentState.startAt!)}, pe numele ${name}. Răspunde DA pentru confirmare.`,
-        },
-        newState: { ...currentState, step: 'CONFIRMING', customerName: name },
+        reply: { kind: 'text', text: 'Mulțumesc! Pe ce număr de telefon te putem contacta pentru programare?' },
+        newState: { ...currentState, step: 'COLLECTING_PHONE', customerName: name },
       }
     }
 
+    case 'COLLECTING_PHONE': {
+      const phone = incomingText.trim().replace(/[^\d+]/g, '')
+      if (phone.length < 8) {
+        return { reply: { kind: 'text', text: 'Te rog scrie un număr de telefon valid.' }, newState: currentState }
+      }
+      return proceedToConfirmation(business, { ...currentState, customerPhone: phone })
+    }
+
     case 'CONFIRMING': {
-      if (!/^da\b/i.test(incomingText.trim())) {
+      const matched = matchChoice(incomingText, CONFIRM_OPTIONS)
+      const confirmed = matched === 'CONFIRM_BOOKING' || /^da\b/i.test(incomingText.trim())
+      const cancelled = matched === 'CANCEL_BOOKING'
+
+      if (cancelled) {
+        return showWelcome(business.name)
+      }
+
+      if (!confirmed) {
         return {
-          reply: { kind: 'text', text: 'Ok, spune-mi dacă vrei să modificăm ceva, sau scrie "programare" ca s-o luăm de la capăt.' },
+          reply: { kind: 'buttons', text: 'Alege o opțiune:', options: CONFIRM_OPTIONS },
           newState: currentState,
         }
       }
@@ -212,6 +235,7 @@ export async function runBotStep({
         practitionerId: currentState.practitionerId ?? null,
         startAt: currentState.startAt!,
         customerName: currentState.customerName!,
+        customerPhone: currentState.customerPhone!,
         channel,
         externalUserId,
       })
@@ -235,13 +259,7 @@ export async function runBotStep({
 // linkul direct către pagina publică de rezervare
 function showWelcome(businessName: string) {
   return {
-    reply: {
-      kind: 'choices' as const,
-      text: `Salut! Bine ai venit la ${businessName}. Cu ce te putem ajuta?`,
-      header: businessName,
-      buttonLabel: 'Alege o opțiune',
-      groups: [{ label: 'Opțiuni', options: WELCOME_OPTIONS }],
-    },
+    reply: { kind: 'buttons' as const, text: `Salut! Bine ai venit la ${businessName}. Cu ce te putem ajuta?`, options: WELCOME_OPTIONS },
     newState: { step: 'SELECTING_SERVICE' as const },
   }
 }
@@ -405,12 +423,33 @@ async function notifyOwnerOperatorRequest(businessId: string, channel: string, e
   }).catch(() => {})
 }
 
+function proceedToConfirmation(business: { services: any[] }, state: ConversationState) {
+  const service = business.services.find((s: any) => s.id === state.serviceId)
+  const practitioner = state.practitionerId ? state.practitionerOptions?.find((p) => p.id === state.practitionerId) : null
+
+  const lines = [
+    '*Confirmă programarea*',
+    '',
+    `Serviciu: ${service?.name ?? ''}`,
+    ...(practitioner ? [`Specialist: ${practitioner.title}`] : []),
+    `Data: ${formatDate(state.startAt!)}`,
+    `Nume: ${state.customerName}`,
+    `Telefon: ${state.customerPhone}`,
+  ]
+
+  return {
+    reply: { kind: 'buttons' as const, text: lines.join('\n'), options: CONFIRM_OPTIONS },
+    newState: { ...state, step: 'CONFIRMING' as const },
+  }
+}
+
 async function createBooking({
   businessId,
   serviceId,
   practitionerId,
   startAt,
   customerName,
+  customerPhone,
   channel,
   externalUserId,
 }: {
@@ -419,6 +458,7 @@ async function createBooking({
   practitionerId: string | null
   startAt: string
   customerName: string
+  customerPhone: string
   channel: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
   externalUserId: string
 }): Promise<{ success: boolean }> {
@@ -434,9 +474,11 @@ async function createBooking({
     : await isSlotStillAvailable(businessId, serviceId, startDate)
   if (!stillFree) return { success: false }
 
-  // identificăm clientul diferit în funcție de canal — doar pe WhatsApp externalUserId
-  // e efectiv numărul de telefon; pe Instagram/Facebook e un ID intern al platformei
-  const phoneField = { phone: externalUserId }
+  // identificarea clientului în bază rămâne legată de externalUserId (unic per canal —
+  // pe WhatsApp e chiar numărul de telefon, pe Instagram/Facebook e ID-ul intern al
+  // platformei), dar numărul de telefon SALVAT pe fișa clientului e mereu cel real,
+  // dat explicit de client — altfel pe Messenger/Instagram s-ar fi salvat greșit ID-ul
+  // intern al platformei în loc de telefon
   const channelIdField =
     channel === 'INSTAGRAM' ? { instagramUserId: externalUserId } : channel === 'FACEBOOK' ? { facebookUserId: externalUserId } : {}
 
@@ -447,8 +489,8 @@ async function createBooking({
         : channel === 'INSTAGRAM'
           ? { businessId_instagramUserId: { businessId, instagramUserId: externalUserId } }
           : { businessId_facebookUserId: { businessId, facebookUserId: externalUserId } },
-    create: { businessId, name: customerName, ...phoneField, ...channelIdField },
-    update: { name: customerName },
+    create: { businessId, name: customerName, phone: customerPhone, ...channelIdField },
+    update: { name: customerName, phone: customerPhone },
   })
 
   const sequenceNumber = await getNextSequenceNumber(businessId, startDate)

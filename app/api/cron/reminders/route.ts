@@ -19,19 +19,27 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(results)
 }
 
+// timpul de trimitere e configurabil per business (Setări → Reminder) — aducem un
+// interval larg (până la 48h, cel mai mare timp posibil de ales) și filtrăm exact în
+// funcție de reminderMinutesBefore al fiecărei afaceri în parte
 async function send24hReminders(now: Date, results: { sent24h: number; failed: number }) {
-  const windowStart = new Date(now.getTime() + 23.75 * 60 * 60 * 1000)
-  const windowEnd = new Date(now.getTime() + 24.25 * 60 * 60 * 1000)
+  const maxWindowEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000)
 
   const bookings = await prisma.booking.findMany({
-    where: { status: 'CONFIRMED', reminder24hSent: false, startAt: { gte: windowStart, lte: windowEnd } },
+    where: { status: 'CONFIRMED', reminder24hSent: false, startAt: { gte: now, lte: maxWindowEnd } },
     include: { customer: true, service: true, business: { include: { channels: true } } },
   })
 
   for (const booking of bookings) {
-    const ok = await sendReminder(booking, '24h')
+    const targetMinutes = booking.business.reminderMinutesBefore ?? 1440
+    const minutesUntil = (booking.startAt.getTime() - now.getTime()) / 60000
+    // toleranță de ±7.5 min (jumătate din intervalul de 15 min al cron-ului), ca fiecare
+    // programare să primească reminder o singură dată, exact aproape de timpul ales
+    if (Math.abs(minutesUntil - targetMinutes) > 7.5) continue
+
+    const ok = await sendReminder(booking, 'main')
     if (ok) {
-      // reminder-ul de 24h e și cererea de confirmare activă — marcăm ambele
+      // reminder-ul principal e și cererea de confirmare activă — marcăm ambele
       await prisma.booking.update({
         where: { id: booking.id },
         data: { reminder24hSent: true, confirmationRequestSent: true },
@@ -98,15 +106,15 @@ async function sendUnconfirmedAlerts(now: Date, results: { unconfirmedAlerts: nu
   }
 }
 
-async function sendReminder(booking: any, type: '24h' | '1h') {
+async function sendReminder(booking: any, type: 'main' | '1h') {
   const channel = booking.business.channels.find(
     (c: any) => c.type === booking.channel && c.status === 'ACTIVE' && c.enabledByOwner
   )
   if (!channel) return false
 
   const text =
-    type === '24h'
-      ? `Ai o programare mâine la ${booking.business.name} pentru ${booking.service.name}, ora ${formatTime(booking.startAt)}. Confirmi? Răspunde DA pentru confirmare, sau ANULEZ dacă nu mai poți veni.`
+    type === 'main'
+      ? `Ai o programare la ${booking.business.name} pentru ${booking.service.name}, pe ${formatDateTime(booking.startAt)}. Confirmi? Răspunde DA pentru confirmare, sau ANULEZ dacă nu mai poți veni.`
       : `Programarea ta pentru ${booking.service.name} e peste o oră (${formatTime(booking.startAt)}). Te așteptăm!`
 
   try {
@@ -115,6 +123,10 @@ async function sendReminder(booking: any, type: '24h' | '1h') {
   } catch {
     return false
   }
+}
+
+function formatDateTime(date: Date) {
+  return new Date(date).toLocaleString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
 }
 
 function formatTime(date: Date) {

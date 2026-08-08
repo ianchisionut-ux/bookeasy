@@ -61,7 +61,7 @@ async function handleWhatsAppEntry(entry: any) {
     externalUserId: message.from,
     // dacă a apăsat pe o opțiune din listă, folosim ID-ul acelei opțiuni direct —
     // altfel, textul scris de mână
-    text: message.interactive?.list_reply?.id ?? message.text?.body ?? extractNonTextContent(message),
+    text: message.interactive?.list_reply?.id ?? message.interactive?.button_reply?.id ?? message.text?.body ?? extractNonTextContent(message),
     channelId: channel.id,
   })
 }
