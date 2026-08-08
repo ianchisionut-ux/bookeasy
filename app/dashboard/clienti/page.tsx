@@ -29,7 +29,7 @@ export default async function ClientiPage({
         }),
       },
       include: { _count: { select: { bookings: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { name: 'asc' },
     }),
     prisma.business.findUnique({ where: { id: businessId }, select: { category: true } }),
   ])

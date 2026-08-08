@@ -67,6 +67,30 @@ function isAppointmentBased(category: string) {
   return category === 'SALON' || category === 'CLINICA'
 }
 
+function SortableHeader({
+  label,
+  column,
+  sortColumn,
+  sortAsc,
+  onClick,
+}: {
+  label: string
+  column: SortColumn
+  sortColumn: SortColumn | null
+  sortAsc: boolean
+  onClick: () => void
+}) {
+  const active = sortColumn === column
+  return (
+    <th
+      onClick={onClick}
+      className="font-medium text-gray-500 cursor-pointer select-none hover:text-[var(--foreground)]"
+    >
+      {label} {active && (sortAsc ? '↑' : '↓')}
+    </th>
+  )
+}
+
 export default function ProgramariManager({
   category,
   isMultiPractitioner,
@@ -91,6 +115,17 @@ export default function ProgramariManager({
   const [adding, setAdding] = useState(searchParams.get('add') === '1')
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null)
   const [sendingConfirmId, setSendingConfirmId] = useState<string | null>(null)
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
+  const [sortAsc, setSortAsc] = useState(true)
+
+  function toggleSort(column: SortColumn) {
+    if (sortColumn === column) {
+      setSortAsc((v) => !v)
+    } else {
+      setSortColumn(column)
+      setSortAsc(true)
+    }
+  }
   const isClinic = category === 'CLINICA'
   const appointmentBased = isAppointmentBased(category)
   // 8 coloane (fără Sală/Medic) sau 9 (cu Sală sau Medic)
@@ -173,6 +208,86 @@ export default function ProgramariManager({
     }
   }
 
+  function renderRow(b: Booking) {
+    return (
+      <tr key={b.id} className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--surface-muted)]">
+        <td className="py-3 px-5 text-gray-400 font-mono text-xs">
+          {b.sequenceNumber ? `#${String(b.sequenceNumber).padStart(3, '0')}` : '—'}
+        </td>
+        <td className="font-medium">
+          <a href={`/dashboard/clienti/${b.customerId}`} className="text-[var(--accent)] hover:underline">
+            {b.customerName}
+          </a>
+        </td>
+        <td>{b.serviceName}</td>
+        <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })}</td>
+        {isMultiPractitioner ? (
+          <>
+            <td className="text-gray-500">{b.practitionerName ?? '—'}</td>
+            <td className="text-gray-500">{b.customerPhone}</td>
+          </>
+        ) : appointmentBased ? (
+          <td className="text-gray-500">{b.customerPhone}</td>
+        ) : (
+          <>
+            <td className="text-gray-500">{b.resourceName ?? '—'}</td>
+            <td className="text-gray-500">{b.customerPhone}</td>
+          </>
+        )}
+        <td className="text-gray-500">{CHANNEL_LABEL[b.channel] ?? b.channel}</td>
+        <td>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={b.status}
+              onChange={(e) => changeStatus(b.id, e.target.value)}
+              className="text-xs py-1 px-2 rounded-full font-medium border-0"
+              style={{ backgroundColor: `${STATUS_COLOR[b.status]}20`, color: STATUS_COLOR[b.status] }}
+            >
+              {Object.entries(STATUS_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            {b.confirmationRequestSent && b.status === 'CONFIRMED' && (
+              <span title={b.customerConfirmed ? 'Confirmată de client' : 'Așteaptă confirmare de la client'}>
+                {b.customerConfirmed ? <CheckCircle2 size={13} color="#16a34a" /> : <Clock size={13} color="#eab308" />}
+              </span>
+            )}
+          </div>
+        </td>
+        <td className="pr-5 text-right whitespace-nowrap">
+          {b.status === 'PENDING' && (
+            <button
+              onClick={() => sendConfirmationRequest(b.id)}
+              disabled={sendingConfirmId === b.id}
+              className="text-xs text-[var(--accent)] font-medium mr-3"
+            >
+              {sendingConfirmId === b.id ? 'Se trimite...' : 'Cere reconfirmare'}
+            </button>
+          )}
+          {b.status === 'CONFIRMED' && (
+            <button
+              onClick={() => sendReminder(b.id)}
+              disabled={sendingReminderId === b.id}
+              className="text-xs text-[var(--accent)] font-medium mr-3"
+            >
+              {sendingReminderId === b.id ? 'Se trimite...' : 'Reminder'}
+            </button>
+          )}
+          {b.status !== 'CANCELLED' && (
+            <button onClick={() => cancelBooking(b.id)} className="text-xs text-red-600 font-medium mr-3">
+              Anulează
+            </button>
+          )}
+          <button onClick={() => deletePermanently(b.id)} className="text-xs text-gray-400 font-medium">
+            Șterge definitiv
+          </button>
+        </td>
+      </tr>
+    )
+  }
+
   return (
     <div className="p-4 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
@@ -219,119 +334,41 @@ export default function ProgramariManager({
         <table className="w-full text-sm min-w-[760px]">
           <thead>
             <tr className="text-left border-b border-[var(--border-soft)]">
-              <th className="py-3 px-5 font-medium text-gray-500">#</th>
-              <th className="font-medium text-gray-500">{isClinic ? 'Pacient' : 'Client'}</th>
-              <th className="font-medium text-gray-500">Serviciu</th>
-              <th className="font-medium text-gray-500">Data</th>
+              <SortableHeader label="#" column="sequenceNumber" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('sequenceNumber')} />
+              <SortableHeader label={isClinic ? 'Pacient' : 'Client'} column="customerName" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('customerName')} />
+              <SortableHeader label="Serviciu" column="serviceName" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('serviceName')} />
+              <SortableHeader label="Data" column="startAt" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('startAt')} />
               {isMultiPractitioner ? (
                 <>
-                  <th className="font-medium text-gray-500">Medic</th>
-                  <th className="font-medium text-gray-500">Telefon</th>
+                  <SortableHeader label="Medic" column="practitionerName" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('practitionerName')} />
+                  <SortableHeader label="Telefon" column="customerPhone" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('customerPhone')} />
                 </>
               ) : appointmentBased ? (
-                <th className="font-medium text-gray-500">Telefon</th>
+                <SortableHeader label="Telefon" column="customerPhone" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('customerPhone')} />
               ) : (
                 <>
                   <th className="font-medium text-gray-500">Sală</th>
-                  <th className="font-medium text-gray-500">Telefon</th>
+                  <SortableHeader label="Telefon" column="customerPhone" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('customerPhone')} />
                 </>
               )}
-              <th className="font-medium text-gray-500">Canal</th>
-              <th className="font-medium text-gray-500">Status</th>
+              <SortableHeader label="Canal" column="channel" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('channel')} />
+              <SortableHeader label="Status" column="status" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('status')} />
               <th className="font-medium text-gray-500"></th>
             </tr>
           </thead>
           <tbody>
-            {groupByWeek(bookings).map((group) => (
-              <Fragment key={`week-${group.year}-${group.week}`}>
-                <tr key={`week-${group.week}-${group.year}`} className="bg-[var(--surface-muted)]">
-                  <td colSpan={colCount} className="px-5 py-2 text-xs font-semibold text-gray-500">
-                    Săptămâna {group.week} · {group.rangeLabel} ({group.bookings.length} programări)
-                  </td>
-                </tr>
-                {group.bookings.map((b) => (
-                  <tr key={b.id} className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--surface-muted)]">
-                    <td className="py-3 px-5 text-gray-400 font-mono text-xs">
-                      {b.sequenceNumber ? `#${String(b.sequenceNumber).padStart(3, '0')}` : '—'}
-                    </td>
-                    <td className="font-medium">
-                      <a href={`/dashboard/clienti/${b.customerId}`} className="text-[var(--accent)] hover:underline">
-                        {b.customerName}
-                      </a>
-                    </td>
-                    <td>{b.serviceName}</td>
-                    <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })}</td>
-                    {isMultiPractitioner ? (
-                      <>
-                        <td className="text-gray-500">{b.practitionerName ?? '—'}</td>
-                        <td className="text-gray-500">{b.customerPhone}</td>
-                      </>
-                    ) : appointmentBased ? (
-                      <td className="text-gray-500">{b.customerPhone}</td>
-                    ) : (
-                      <>
-                        <td className="text-gray-500">{b.resourceName ?? '—'}</td>
-                        <td className="text-gray-500">{b.customerPhone}</td>
-                      </>
-                    )}
-                    <td className="text-gray-500">{CHANNEL_LABEL[b.channel] ?? b.channel}</td>
-                    <td>
-                      <div className="flex items-center gap-1.5">
-                        <select
-                          value={b.status}
-                          onChange={(e) => changeStatus(b.id, e.target.value)}
-                          className="text-xs py-1 px-2 rounded-full font-medium border-0"
-                          style={{ backgroundColor: `${STATUS_COLOR[b.status]}20`, color: STATUS_COLOR[b.status] }}
-                        >
-                          {Object.entries(STATUS_LABEL).map(([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                        {b.confirmationRequestSent && b.status === 'CONFIRMED' && (
-                          <span title={b.customerConfirmed ? 'Confirmată de client' : 'Așteaptă confirmare de la client'}>
-                            {b.customerConfirmed ? (
-                              <CheckCircle2 size={13} color="#16a34a" />
-                            ) : (
-                              <Clock size={13} color="#eab308" />
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="pr-5 text-right whitespace-nowrap">
-                      {b.status === 'PENDING' && (
-                        <button
-                          onClick={() => sendConfirmationRequest(b.id)}
-                          disabled={sendingConfirmId === b.id}
-                          className="text-xs text-[var(--accent)] font-medium mr-3"
-                        >
-                          {sendingConfirmId === b.id ? 'Se trimite...' : 'Cere reconfirmare'}
-                        </button>
-                      )}
-                      {b.status === 'CONFIRMED' && (
-                        <button
-                          onClick={() => sendReminder(b.id)}
-                          disabled={sendingReminderId === b.id}
-                          className="text-xs text-[var(--accent)] font-medium mr-3"
-                        >
-                          {sendingReminderId === b.id ? 'Se trimite...' : 'Reminder'}
-                        </button>
-                      )}
-                      {b.status !== 'CANCELLED' && (
-                        <button onClick={() => cancelBooking(b.id)} className="text-xs text-red-600 font-medium mr-3">
-                          Anulează
-                        </button>
-                      )}
-                      <button onClick={() => deletePermanently(b.id)} className="text-xs text-gray-400 font-medium">
-                        Șterge definitiv
-                      </button>
-                    </td>
-                  </tr>
+            {sortColumn
+              ? sortBookings(bookings, sortColumn, sortAsc).map((b) => renderRow(b))
+              : groupByWeek(bookings).map((group) => (
+                  <Fragment key={`week-${group.year}-${group.week}`}>
+                    <tr key={`week-${group.week}-${group.year}`} className="bg-[var(--surface-muted)]">
+                      <td colSpan={colCount} className="px-5 py-2 text-xs font-semibold text-gray-500">
+                        Săptămâna {group.week} · {group.rangeLabel} ({group.bookings.length} programări)
+                      </td>
+                    </tr>
+                    {group.bookings.map((b) => renderRow(b))}
+                  </Fragment>
                 ))}
-              </Fragment>
-            ))}
             {bookings.length === 0 && (
               <tr>
                 <td colSpan={colCount} className="text-center text-gray-500 py-8">
@@ -345,6 +382,32 @@ export default function ProgramariManager({
       </Card>
     </div>
   )
+}
+
+type SortColumn = 'sequenceNumber' | 'customerName' | 'serviceName' | 'startAt' | 'practitionerName' | 'customerPhone' | 'channel' | 'status'
+
+function sortBookings(bookings: Booking[], column: SortColumn, asc: boolean): Booking[] {
+  const sorted = [...bookings].sort((a, b) => {
+    let av: string | number = ''
+    let bv: string | number = ''
+    if (column === 'sequenceNumber') {
+      av = a.sequenceNumber ?? 0
+      bv = b.sequenceNumber ?? 0
+    } else if (column === 'startAt') {
+      av = new Date(a.startAt).getTime()
+      bv = new Date(b.startAt).getTime()
+    } else if (column === 'practitionerName') {
+      av = a.practitionerName ?? ''
+      bv = b.practitionerName ?? ''
+    } else {
+      av = (a[column] ?? '') as string
+      bv = (b[column] ?? '') as string
+    }
+    if (av < bv) return asc ? -1 : 1
+    if (av > bv) return asc ? 1 : -1
+    return 0
+  })
+  return sorted
 }
 
 function groupByWeek(bookings: Booking[]) {

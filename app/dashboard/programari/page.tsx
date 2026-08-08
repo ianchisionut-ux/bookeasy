@@ -27,7 +27,7 @@ export default async function ProgramariPage({
           : {}),
       },
       include: { customer: true, service: true, resource: true, practitioner: true },
-      orderBy: { sequenceNumber: 'desc' },
+      orderBy: { startAt: 'desc' },
       take: 200,
     }),
     prisma.customer.findMany({ where: { businessId }, orderBy: { name: 'asc' } }),
