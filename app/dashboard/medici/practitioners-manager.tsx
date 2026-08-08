@@ -28,9 +28,11 @@ const WEEKDAY_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Viner
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
 export default function PractitionersManager({
+  isClinic,
   practitioners,
   services,
 }: {
+  isClinic: boolean
   practitioners: Practitioner[]
   services: { id: string; name: string }[]
 }) {
@@ -40,6 +42,9 @@ export default function PractitionersManager({
   const [newSpecialization, setNewSpecialization] = useState('')
   const [saving, setSaving] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const label = isClinic ? 'medic' : 'profesionist'
+  const labelPlural = isClinic ? 'Medici' : 'Profesioniști'
+  const labelCap = isClinic ? 'Medic' : 'Profesionist'
 
   async function createPractitioner() {
     if (!newName.trim()) return
@@ -62,7 +67,7 @@ export default function PractitionersManager({
   }
 
   async function deletePractitioner(id: string) {
-    if (!confirm('Ștergi definitiv această persoană?')) return
+    if (!confirm(`Ștergi definitiv acest(ă) ${label}?`)) return
     try {
       const res = await fetchWithTimeout(`/api/business/practitioners/${id}`, { method: 'DELETE' })
       if (!res.ok) {
@@ -79,12 +84,12 @@ export default function PractitionersManager({
   return (
     <div className="p-4 lg:p-8 max-w-3xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
-        <h1 className="text-2xl font-semibold">Medici / Angajați</h1>
-        <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : '+ Adaugă persoană'}</Button>
+        <h1 className="text-2xl font-semibold">{labelPlural}</h1>
+        <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : `+ Adaugă ${label}`}</Button>
       </div>
       <p className="text-sm text-gray-500 mb-6">
-        Fiecare persoană are propriul program și, opțional, serviciile pe care le oferă. Clienții pot
-        alege o persoană anume la rezervare.
+        Fiecare {label} are propriul program și, opțional, serviciile pe care le oferă. Clienții pot
+        alege un(o) {label} anume la rezervare.
       </p>
 
       {adding && (
@@ -129,7 +134,7 @@ export default function PractitionersManager({
           </CardInteractive>
         ))}
         {practitioners.length === 0 && !adding && (
-          <p className="text-sm text-gray-500">Nicio persoană adăugată încă. Apasă "+ Adaugă persoană" ca să începi.</p>
+          <p className="text-sm text-gray-500">Niciun {label} adăugat încă. Apasă "+ Adaugă {label}" ca să începi.</p>
         )}
       </div>
     </div>

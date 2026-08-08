@@ -492,7 +492,11 @@ function NewBookingForm({
             )}
             {practitioners.length === 0 && (
               <p className="text-sm text-amber-600 sm:col-span-2">
-                Nicio persoană activă — adaugă una din <a href="/dashboard/medici" className="underline">Medici</a> ca să poți programa.
+                Nicio persoană activă — adaugă una din{' '}
+                <a href="/dashboard/medici" className="underline">
+                  {isClinic ? 'Medici' : 'Echipă'}
+                </a>{' '}
+                ca să poți programa.
               </p>
             )}
             <div>

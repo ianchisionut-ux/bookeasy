@@ -56,7 +56,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const navItems = [
     ...NAV_ITEMS.slice(0, 3),
-    ...(teamSize > 1 ? [{ href: '/dashboard/medici', label: 'Medici' }] : []),
+    ...(teamSize > 1 ? [{ href: '/dashboard/medici', label: category === 'CLINICA' ? 'Medici' : 'Echipă' }] : []),
     ...NAV_ITEMS.slice(3),
   ]
     .map((item) => ({
