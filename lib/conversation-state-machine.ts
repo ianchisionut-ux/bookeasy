@@ -1,17 +1,26 @@
 import { prisma } from './prisma'
-import { extractBookingIntent } from './nlu'
 import { getAvailableSlots, isSlotStillAvailable } from './availability'
 import { getNextSequenceNumber } from './booking-number'
 
+// fluxul botului e complet pe bază de opțiuni numerotate (servicii, ore disponibile) — clientul răspunde cu un
+// număr (1, 2, 3...), nu cu text liber interpretat de AI. Simplu, previzibil, ieftin.
 export type ConversationState = {
   step: 'IDLE' | 'SELECTING_SERVICE' | 'SELECTING_SLOT' | 'COLLECTING_NAME' | 'CONFIRMING'
   serviceId?: string
+  serviceOptions?: string[] // ID-urile serviciilor, în ordinea afișată clientului
   startAt?: string
+  slotOptions?: string[] // orele disponibile (ISO), în ordinea afișată clientului
   customerName?: string
 }
 
 const CANCEL_PATTERNS = /^(nu|stop|anuleaz[ăa]|renun[țt]|las[ăa]|gata)\b/i
-const RESTART_PATTERNS = /^(reia|de la [îi]nceput|resetez[ăa]?)\b/i
+const RESTART_PATTERNS = /^(reia|de la [îi]nceput|resetez[ăa]?|programare|nou[ăa])\b/i
+
+function parseChoice(text: string, max: number): number | null {
+  const n = parseInt(text.trim(), 10)
+  if (Number.isNaN(n) || n < 1 || n > max) return null
+  return n
+}
 
 export async function runBotStep({
   businessId,
@@ -30,14 +39,11 @@ export async function runBotStep({
 }): Promise<{ reply: string; newState: ConversationState }> {
   const hoursSinceLastMessage = (Date.now() - conversationUpdatedAt.getTime()) / (1000 * 60 * 60)
   if (hoursSinceLastMessage > 24 && currentState.step !== 'IDLE') {
-    return {
-      reply: 'Bine ai revenit! Programarea anterioară nu s-a finalizat, așa că o luăm de la capăt. Ce serviciu te interesează?',
-      newState: { step: 'SELECTING_SERVICE' },
-    }
+    currentState = { step: 'IDLE' }
   }
 
   if (currentState.step !== 'IDLE' && CANCEL_PATTERNS.test(incomingText.trim())) {
-    return { reply: 'Am anulat. Dacă vrei să faci o programare, scrie-mi oricând.', newState: { step: 'IDLE' } }
+    return { reply: 'Am anulat. Scrie-mi "programare" oricând vrei să faci o rezervare nouă.', newState: { step: 'IDLE' } }
   }
 
   if (RESTART_PATTERNS.test(incomingText.trim())) {
@@ -52,32 +58,29 @@ export async function runBotStep({
 
   switch (currentState.step) {
     case 'IDLE': {
-      const intent = await extractBookingIntent(incomingText, business.services)
-      if (intent.serviceId) return proceedToSlotSelection(businessId, { ...currentState, serviceId: intent.serviceId })
-
-      return {
-        reply: `Salut! Bine ai venit la ${business.name}. Ce serviciu te interesează?\n\n${business.services
-          .map((s) => `• ${s.name}`)
-          .join('\n')}`,
-        newState: { step: 'SELECTING_SERVICE' },
-      }
+      return showServiceMenu(business.name, business.services)
     }
 
     case 'SELECTING_SERVICE': {
-      const intent = await extractBookingIntent(incomingText, business.services)
-      if (!intent.serviceId) return { reply: 'Nu am recunoscut serviciul, poți alege din listă?', newState: currentState }
-      return proceedToSlotSelection(businessId, { ...currentState, serviceId: intent.serviceId })
+      const options = currentState.serviceOptions ?? []
+      const choice = parseChoice(incomingText, options.length)
+      if (!choice) {
+        return { reply: 'Te rog scrie doar numărul serviciului dorit, din lista de mai sus.', newState: currentState }
+      }
+      return proceedToSlotSelection(businessId, { ...currentState, serviceId: options[choice - 1] })
     }
 
     case 'SELECTING_SLOT': {
-      const intent = await extractBookingIntent(incomingText, business.services)
-      if (!intent.selectedSlot) {
-        return { reply: 'Nu am înțeles ora aleasă, te rog scrie exact ca în listă (ex: "Marți 14:00").', newState: currentState }
+      const options = currentState.slotOptions ?? []
+      const choice = parseChoice(incomingText, options.length)
+      if (!choice) {
+        return { reply: 'Te rog scrie doar numărul orei dorite, din lista de mai sus.', newState: currentState }
       }
+      const selectedSlot = options[choice - 1]
 
       // verificăm din nou disponibilitatea chiar înainte de a cere numele — un alt client
       // ar fi putut ocupa slotul între timp
-      const stillFree = await isSlotStillAvailable(businessId, currentState.serviceId!, new Date(intent.selectedSlot))
+      const stillFree = await isSlotStillAvailable(businessId, currentState.serviceId!, new Date(selectedSlot))
       if (!stillFree) {
         return {
           reply: 'Ne pare rău, slotul tocmai a fost ocupat. Te rog alege altă oră din listă.',
@@ -87,12 +90,15 @@ export async function runBotStep({
 
       return {
         reply: 'Perfect! Cum te numești, ca să confirm rezervarea?',
-        newState: { ...currentState, step: 'COLLECTING_NAME', startAt: intent.selectedSlot },
+        newState: { ...currentState, step: 'COLLECTING_NAME', startAt: selectedSlot },
       }
     }
 
     case 'COLLECTING_NAME': {
       const name = incomingText.trim()
+      if (name.length < 2) {
+        return { reply: 'Te rog scrie-mi numele tău complet.', newState: currentState }
+      }
       const service = business.services.find((s) => s.id === currentState.serviceId)
       return {
         reply: `Confirm: ${service?.name}, ${formatDate(currentState.startAt!)}, pe numele ${name}. Răspunde DA pentru confirmare.`,
@@ -102,7 +108,7 @@ export async function runBotStep({
 
     case 'CONFIRMING': {
       if (!/^da\b/i.test(incomingText.trim())) {
-        return { reply: 'Ok, spune-mi dacă vrei să modificăm ceva.', newState: currentState }
+        return { reply: 'Ok, spune-mi dacă vrei să modificăm ceva, sau scrie "programare" ca s-o luăm de la capăt.', newState: currentState }
       }
 
       const result = await createBooking({
@@ -116,7 +122,7 @@ export async function runBotStep({
 
       if (!result.success) {
         return {
-          reply: 'Ne pare rău, slotul tocmai a fost ocupat de altcineva. Te rog alege altă oră.',
+          reply: 'Ne pare rău, slotul tocmai a fost ocupat de altcineva. Scrie "programare" ca să alegi altă oră.',
           newState: { step: 'IDLE' },
         }
       }
@@ -128,15 +134,48 @@ export async function runBotStep({
     }
 
     default:
-      return { reply: 'Ne poți spune ce serviciu te interesează?', newState: { step: 'SELECTING_SERVICE' } }
+      return showServiceMenu(business.name, business.services)
+  }
+}
+
+function showServiceMenu(businessName: string, services: { id: string; name: string; durationMin: number | null; price: any }[]) {
+  if (services.length === 0) {
+    return {
+      reply: `Salut! Bine ai venit la ${businessName}. Momentan nu avem servicii disponibile online — te rugăm sună-ne direct.`,
+      newState: { step: 'IDLE' as const },
+    }
+  }
+  const options = services.map((s) => s.id)
+  const list = services
+    .map((s, i) => `${i + 1}. ${s.name}${s.durationMin ? ` (${s.durationMin} min)` : ''}${s.price ? ` — ${s.price} lei` : ''}`)
+    .join('\n')
+  return {
+    reply: `Salut! Bine ai venit la ${businessName}. Ce serviciu te interesează?\n\n${list}\n\nScrie numărul serviciului dorit.`,
+    newState: { step: 'SELECTING_SERVICE' as const, serviceOptions: options },
   }
 }
 
 async function proceedToSlotSelection(businessId: string, state: ConversationState) {
-  const slots = await getAvailableSlots(businessId, state.serviceId!, new Date())
+  // căutăm ore libere azi, iar dacă nu găsim, în următoarele 6 zile — ca să nu răspundem
+  // cu "nicio oră liberă" doar pentru că azi e deja plin
+  let slots: string[] = []
+  for (let i = 0; i < 7 && slots.length === 0; i++) {
+    const d = new Date()
+    d.setDate(d.getDate() + i)
+    slots = await getAvailableSlots(businessId, state.serviceId!, d)
+  }
+
+  if (slots.length === 0) {
+    return {
+      reply: 'Ne pare rău, nu avem ore libere în perioada următoare. Te rugăm sună-ne direct.',
+      newState: { step: 'IDLE' as const },
+    }
+  }
+
+  const shown = slots.slice(0, 8)
   return {
-    reply: `Sloturi disponibile:\n${slots.slice(0, 5).map((s) => `• ${formatDate(s)}`).join('\n')}`,
-    newState: { ...state, step: 'SELECTING_SLOT' as const },
+    reply: `Ore disponibile:\n${shown.map((s, i) => `${i + 1}. ${formatDate(s)}`).join('\n')}\n\nScrie numărul orei alese.`,
+    newState: { ...state, step: 'SELECTING_SLOT' as const, slotOptions: shown },
   }
 }
 

@@ -15,7 +15,6 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.0",
     "@prisma/client": "^6.0.0",
     "@vercel/blob": "^2.6.1",
     "bcryptjs": "^2.4.3",
