@@ -57,8 +57,8 @@ async function sendDayBeforeReminders(now: Date, results: { dayBeforeSent: numbe
   })
 
   for (const booking of bookings) {
-    const ok = await sendConfirmationRequest(booking)
-    if (ok) {
+    const { success } = await sendConfirmationRequest(booking)
+    if (success) {
       await prisma.booking.update({
         where: { id: booking.id },
         data: { reminder24hSent: true, confirmationRequestSent: true },

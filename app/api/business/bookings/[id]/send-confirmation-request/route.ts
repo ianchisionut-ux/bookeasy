@@ -17,9 +17,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!booking || booking.businessId !== businessId) return NextResponse.json({ error: 'not found' }, { status: 404 })
   if (!booking.customer.phone) return NextResponse.json({ error: 'Pacientul nu are un număr de telefon salvat.' }, { status: 400 })
 
-  const ok = await sendConfirmationRequest(booking)
-  if (!ok) {
-    return NextResponse.json({ error: 'Nu am putut trimite — canalul nu e conectat/activ pentru acest business.' }, { status: 400 })
+  const result = await sendConfirmationRequest(booking)
+  if (!result.success) {
+    return NextResponse.json({ error: result.error ?? 'Nu am putut trimite mesajul.' }, { status: 400 })
   }
 
   await prisma.booking.update({ where: { id }, data: { confirmationRequestSent: true } })
