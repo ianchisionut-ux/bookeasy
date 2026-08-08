@@ -65,6 +65,7 @@ model Business {
   customers          Customer[]
   bookings           Booking[]
   waitlistEntries    WaitlistEntry[]
+  supportTickets     SupportTicket[]
   channels           Channel[]
   workingHours       WorkingHours[]
   conversations      Conversation[]
@@ -499,6 +500,24 @@ model AccessRequest {
   message      String?
   status       AccessRequestStatus @default(NEW)
   createdAt    DateTime            @default(now())
+}
+
+model SupportTicket {
+  id         String             @id @default(cuid())
+  businessId String
+  business   Business           @relation(fields: [businessId], references: [id])
+  subject    String
+  message    String
+  status     SupportTicketStatus @default(NEW)
+  reply      String? // răspunsul tău, vizibil apoi și adminului afacerii
+  repliedAt  DateTime?
+  createdAt  DateTime           @default(now())
+}
+
+enum SupportTicketStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
 }
 
 enum AccessRequestStatus {

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import { SidebarUserBlock } from '@/components/sidebar-user-block'
 import { ResponsiveShell } from '@/components/responsive-shell'
+import { SupportChatButton } from '@/components/support-chat-button'
 
 // layout-ul se randează mereu din nou, la fiecare cerere — fără nicio cache, ca
 // setări cum e culoarea businessului să apară imediat, nu doar la un moment ulterior
@@ -74,6 +75,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       accountContent={<SidebarUserBlock label={userEmail || 'Cont'} />}
     >
       {children}
+      <SupportChatButton />
     </ResponsiveShell>
   )
 }
