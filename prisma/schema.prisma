@@ -64,6 +64,7 @@ model Business {
   services           Service[]
   customers          Customer[]
   bookings           Booking[]
+  waitlistEntries    WaitlistEntry[]
   channels           Channel[]
   workingHours       WorkingHours[]
   conversations      Conversation[]
@@ -176,6 +177,7 @@ model Customer {
   medicalNotes     String?   // istoric medical/notă liberă — vizibilă STRICT în dashboard-ul clinicii
   createdAt        DateTime @default(now())
   bookings         Booking[]
+  waitlistEntries  WaitlistEntry[]
   medicalRecord    PatientMedicalRecord?
   documents        PatientDocument[]
   medicalLetters   MedicalLetter[]
@@ -503,6 +505,30 @@ enum AccessRequestStatus {
   CONTACTED
   CONVERTED
   DISMISSED
+}
+
+model WaitlistEntry {
+  id             String   @id @default(cuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id])
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  serviceId      String
+  service        Service  @relation(fields: [serviceId], references: [id])
+  practitionerId String? // opțional — dacă vrea strict o anumită persoană, nu oricine e liber
+  desiredDate    DateTime // ziua dorită (00:00) — dacă se eliberează un loc în acea zi, e anunțat primul din listă
+  status         WaitlistStatus @default(WAITING)
+  notifiedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([businessId, serviceId, desiredDate, status])
+}
+
+enum WaitlistStatus {
+  WAITING
+  NOTIFIED // i-am oferit un loc liber, așteptăm răspunsul
+  CONVERTED // a confirmat, i-am făcut rezervarea
+  EXPIRED // n-a răspuns la timp sau ziua a trecut fără loc liber
 }
 
 model MissedMessageAlert {

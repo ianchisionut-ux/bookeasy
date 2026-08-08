@@ -58,7 +58,7 @@ export async function getSummaryStats(businessId: string, from?: string, to?: st
 
   const bookings = await prisma.booking.findMany({
     where: { businessId, startAt: { gte: fromDate, lte: toDate } },
-    include: { service: true },
+    include: { service: true, practitioner: true },
   })
 
   const active = bookings.filter((b) => b.status !== 'CANCELLED')
@@ -104,6 +104,18 @@ export async function getSummaryStats(businessId: string, from?: string, to?: st
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
 
+  // pe medic/profesionist — util doar la afacerile cu echipă de mai multe persoane;
+  // rezervările fără persoană asignată (gestiune unică) sunt ignorate aici
+  const byPractitionerMap = new Map<string, { name: string; count: number; revenue: number }>()
+  active.forEach((b) => {
+    if (!b.practitionerId || !b.practitioner) return
+    const cur = byPractitionerMap.get(b.practitionerId) ?? { name: b.practitioner.name, count: 0, revenue: 0 }
+    cur.count += 1
+    cur.revenue += Number(b.service.price ?? 0)
+    byPractitionerMap.set(b.practitionerId, cur)
+  })
+  const byPractitioner = Array.from(byPractitionerMap.values()).sort((a, b) => b.count - a.count)
+
   return {
     from: formatLocalDate(fromDate),
     to: formatLocalDate(toDate),
@@ -119,5 +131,6 @@ export async function getSummaryStats(businessId: string, from?: string, to?: st
     byDayOfWeek,
     peakDayOfWeek,
     topServices,
+    byPractitioner,
   }
 }
