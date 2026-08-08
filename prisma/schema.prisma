@@ -511,6 +511,14 @@ model MissedMessageAlert {
   sentAt     DateTime @default(now())
 }
 
+// Meta livrează webhook-urile cel puțin o dată — poate trimite ACELAȘI mesaj de mai
+// multe ori. Fără această evidență, botul ar procesa un răspuns al clientului de 2+ ori,
+// avansând conversația greșit sau cerând din nou aceeași informație
+model ProcessedWebhookMessage {
+  id          String   @id // ID-ul mesajului dat de Meta — garantat unic per mesaj real
+  processedAt DateTime @default(now())
+}
+
 // ─────────────────────────────────────────────
 // Billing
 // ─────────────────────────────────────────────

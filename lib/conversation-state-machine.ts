@@ -156,27 +156,55 @@ function showServiceMenu(businessName: string, services: { id: string; name: str
 }
 
 async function proceedToSlotSelection(businessId: string, state: ConversationState) {
-  // căutăm ore libere azi, iar dacă nu găsim, în următoarele 6 zile — ca să nu răspundem
-  // cu "nicio oră liberă" doar pentru că azi e deja plin
-  let slots: string[] = []
-  for (let i = 0; i < 7 && slots.length === 0; i++) {
+  // adunăm ore libere din următoarele zile (nu doar prima zi cu loc), ca clientul să
+  // poată alege între mai multe zile deodată, nu doar cea mai apropiată
+  const byDay: { label: string; slots: string[] }[] = []
+  let totalSlots = 0
+
+  for (let i = 0; i < 10 && totalSlots < 12; i++) {
     const d = new Date()
     d.setDate(d.getDate() + i)
-    slots = await getAvailableSlots(businessId, state.serviceId!, d)
+    const daySlots = await getAvailableSlots(businessId, state.serviceId!, d)
+    if (daySlots.length === 0) continue
+
+    const label = d.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Bucharest' })
+    const take = daySlots.slice(0, 12 - totalSlots)
+    byDay.push({ label, slots: take })
+    totalSlots += take.length
   }
 
-  if (slots.length === 0) {
+  if (byDay.length === 0) {
     return {
       reply: 'Ne pare rău, nu avem ore libere în perioada următoare. Te rugăm sună-ne direct.',
       newState: { step: 'IDLE' as const },
     }
   }
 
-  const shown = slots.slice(0, 8)
+  const shown = byDay.flatMap((d) => d.slots)
+  let counter = 0
+  const list = byDay
+    .map((d) => {
+      const dayLines = d.slots
+        .map((s) => {
+          counter++
+          return `${counter}. ${formatTime(s)}`
+        })
+        .join('\n')
+      return `📅 ${capitalize(d.label)}\n${dayLines}`
+    })
+    .join('\n\n')
   return {
-    reply: `Ore disponibile:\n${shown.map((s, i) => `${i + 1}. ${formatDate(s)}`).join('\n')}\n\nScrie numărul orei alese.`,
+    reply: `Ore disponibile:\n\n${list}\n\nScrie numărul orei alese.`,
     newState: { ...state, step: 'SELECTING_SLOT' as const, slotOptions: shown },
   }
+}
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
 }
 
 async function createBooking({

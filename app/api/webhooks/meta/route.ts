@@ -45,6 +45,10 @@ async function handleWhatsAppEntry(entry: any) {
   const message = value?.messages?.[0]
   if (!message) return
 
+  // Meta poate livra același eveniment de mai multe ori — dacă am mai procesat deja
+  // acest ID de mesaj, ignorăm complet, ca botul să nu avanseze conversația de 2 ori
+  if (message.id && !(await markMessageProcessed(message.id))) return
+
   const phoneNumberId = value.metadata.phone_number_id
   const channel = await prisma.channel.findUnique({
     where: { type_externalId: { type: 'WHATSAPP', externalId: phoneNumberId } },
@@ -64,6 +68,9 @@ async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') 
   const messaging = entry.messaging?.[0]
   if (!messaging?.message) return
 
+  const messageId = messaging.message.mid
+  if (messageId && !(await markMessageProcessed(messageId))) return
+
   const pageId = entry.id
   const channel = await prisma.channel.findUnique({ where: { type_externalId: { type, externalId: pageId } } })
   if (!channel) return
@@ -75,6 +82,19 @@ async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') 
     text: messaging.message.text ?? '[atașament]',
     channelId: channel.id,
   })
+}
+
+// întoarce true dacă e prima oară când vedem acest ID de mesaj (deci trebuie procesat),
+// și false dacă l-am mai procesat deja (deci sărim peste el). Bazat pe constrângerea
+// unică din baza de date — sigur chiar și dacă mai multe cereri ajung simultan
+async function markMessageProcessed(messageId: string): Promise<boolean> {
+  try {
+    await prisma.processedWebhookMessage.create({ data: { id: messageId } })
+    return true
+  } catch {
+    // eroare de constrângere unică — ID-ul există deja, e un duplicat
+    return false
+  }
 }
 
 function extractNonTextContent(message: any) {
