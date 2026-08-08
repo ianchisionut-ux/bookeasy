@@ -1,5 +1,5 @@
 import { prisma } from './prisma'
-import { getAvailableSlots, isSlotStillAvailable } from './availability'
+import { getAvailableSlots, isSlotStillAvailable, getPractitionerDaySlotsWithStatus, isPractitionerSlotStillAvailable } from './availability'
 import { getNextSequenceNumber } from './booking-number'
 
 // fluxul botului folosește opțiuni interactive tappable (listă pe WhatsApp, carousel pe
@@ -13,16 +13,32 @@ export type BotReply =
   | { kind: 'choices'; text: string; header: string; buttonLabel: string; groups: ChoiceGroup[] }
 
 export type ConversationState = {
-  step: 'IDLE' | 'SELECTING_SERVICE' | 'SELECTING_SLOT' | 'COLLECTING_NAME' | 'CONFIRMING'
+  step:
+    | 'IDLE'
+    | 'SELECTING_SERVICE'
+    | 'SELECTING_PRACTITIONER'
+    | 'SELECTING_DAY'
+    | 'SELECTING_TIME'
+    | 'COLLECTING_NAME'
+    | 'CONFIRMING'
   serviceId?: string
   serviceOptions?: ChoiceOption[]
+  practitionerId?: string
+  practitionerOptions?: ChoiceOption[]
+  selectedDay?: string // ISO al zilei alese (00:00)
+  dayOptions?: ChoiceOption[]
   startAt?: string
-  slotOptions?: ChoiceOption[]
+  timeOptions?: ChoiceOption[]
   customerName?: string
 }
 
 const CANCEL_PATTERNS = /^(nu|stop|anuleaz[ăa]|renun[țt]|las[ăa]|gata)\b/i
 const RESTART_PATTERNS = /^(reia|de la [îi]nceput|resetez[ăa]?|programare|nou[ăa])\b/i
+const WELCOME_OPTIONS: ChoiceOption[] = [
+  { id: 'START_PROGRAMARE', title: 'Fă o programare' },
+  { id: 'OPERATOR', title: 'Vorbește cu un operator' },
+  { id: 'LINK_REZERVARE', title: 'Vezi pagina de rezervare' },
+]
 
 // potrivește răspunsul clientului cu o opțiune — fie direct după ID (a apăsat pe o
 // opțiune interactivă, tap-ul trimite înapoi exact ID-ul), fie ca fallback după numărul
@@ -70,45 +86,97 @@ export async function runBotStep({
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    include: { services: { where: { active: true } } },
+    include: { services: { where: { active: true, type: 'APPOINTMENT' } } },
   })
   if (!business) return { reply: { kind: 'text', text: 'A apărut o eroare, te rugăm încearcă mai târziu.' }, newState: { step: 'IDLE' } }
 
+  const isMultiPractitioner = business.teamSize > 1
+
   switch (currentState.step) {
     case 'IDLE': {
-      return showServiceMenu(business.name, business.services)
+      return showWelcome(business.name)
     }
 
+    default:
+      break
+  }
+
+  switch (currentState.step) {
     case 'SELECTING_SERVICE': {
-      const options = currentState.serviceOptions ?? []
+      // dacă încă n-am arătat lista reală de servicii, suntem la meniul de start —
+      // potrivim răspunsul (tap sau număr scris) cu cele 3 opțiuni inițiale
+      if (!currentState.serviceOptions) {
+        const welcomeChoice = matchChoice(incomingText, WELCOME_OPTIONS)
+
+        if (welcomeChoice === 'OPERATOR') {
+          await notifyOwnerOperatorRequest(businessId, channel, externalUserId)
+          return {
+            reply: { kind: 'text', text: 'Te punem în legătură cu un coleg — te contactăm în cel mai scurt timp posibil!' },
+            newState: { step: 'IDLE' },
+          }
+        }
+        if (welcomeChoice === 'LINK_REZERVARE') {
+          return {
+            reply: { kind: 'text', text: `Poți vedea toate detaliile și rezerva direct aici: ${process.env.APP_URL}/${business.slug}/rezerva` },
+            newState: { step: 'IDLE' },
+          }
+        }
+        if (welcomeChoice === 'START_PROGRAMARE') {
+          return showServiceMenu(business.services)
+        }
+
+        return showWelcome(business.name)
+      }
+
+      const options = currentState.serviceOptions
+      const choice = matchChoice(incomingText, options)
+      if (!choice) return showWelcome(business.name)
+
+      if (isMultiPractitioner) {
+        return proceedToPractitionerSelection(businessId, { ...currentState, serviceId: choice })
+      }
+      return proceedToDaySelection(businessId, { ...currentState, serviceId: choice }, null)
+    }
+
+    case 'SELECTING_PRACTITIONER': {
+      const options = currentState.practitionerOptions ?? []
       const choice = matchChoice(incomingText, options)
       if (!choice) {
-        return { reply: { kind: 'text', text: 'Te rog alege un serviciu din lista de mai sus.' }, newState: currentState }
+        return { reply: { kind: 'text', text: 'Te rog alege un specialist din lista de mai sus.' }, newState: currentState }
       }
-      return proceedToSlotSelection(businessId, { ...currentState, serviceId: choice })
+      return proceedToDaySelection(businessId, { ...currentState, practitionerId: choice }, choice)
     }
 
-    case 'SELECTING_SLOT': {
-      const options = currentState.slotOptions ?? []
+    case 'SELECTING_DAY': {
+      const options = currentState.dayOptions ?? []
+      const choice = matchChoice(incomingText, options)
+      if (!choice) {
+        return { reply: { kind: 'text', text: 'Te rog alege o zi din lista de mai sus.' }, newState: currentState }
+      }
+      return proceedToTimeSelection(businessId, { ...currentState, selectedDay: choice }, currentState.practitionerId ?? null)
+    }
+
+    case 'SELECTING_TIME': {
+      const options = currentState.timeOptions ?? []
       const choice = matchChoice(incomingText, options)
       if (!choice) {
         return { reply: { kind: 'text', text: 'Te rog alege o oră din lista de mai sus.' }, newState: currentState }
       }
-      const selectedSlot = choice
 
-      // verificăm din nou disponibilitatea chiar înainte de a cere numele — un alt client
-      // ar fi putut ocupa slotul între timp
-      const stillFree = await isSlotStillAvailable(businessId, currentState.serviceId!, new Date(selectedSlot))
+      // verificăm din nou disponibilitatea chiar înainte de a cere numele — un alt
+      // client ar fi putut ocupa slotul între timp. Dacă s-a ocupat, reafișăm direct
+      // orele actualizate pentru aceeași zi, fără mesaj de eroare care întrerupe fluxul
+      const stillFree = currentState.practitionerId
+        ? await isPractitionerSlotStillAvailable(businessId, currentState.serviceId!, currentState.practitionerId, new Date(choice))
+        : await isSlotStillAvailable(businessId, currentState.serviceId!, new Date(choice))
+
       if (!stillFree) {
-        return {
-          reply: { kind: 'text', text: 'Ne pare rău, slotul tocmai a fost ocupat. Te rog alege altă oră din listă.' },
-          newState: currentState,
-        }
+        return proceedToTimeSelection(businessId, currentState, currentState.practitionerId ?? null, true)
       }
 
       return {
         reply: { kind: 'text', text: 'Perfect! Cum te numești, ca să confirm rezervarea?' },
-        newState: { ...currentState, step: 'COLLECTING_NAME', startAt: selectedSlot },
+        newState: { ...currentState, step: 'COLLECTING_NAME', startAt: choice },
       }
     }
 
@@ -117,11 +185,14 @@ export async function runBotStep({
       if (name.length < 2) {
         return { reply: { kind: 'text', text: 'Te rog scrie-mi numele tău complet.' }, newState: currentState }
       }
-      const service = business.services.find((s) => s.id === currentState.serviceId)
+      const service = business.services.find((s: any) => s.id === currentState.serviceId)
+      const practitioner = currentState.practitionerId
+        ? currentState.practitionerOptions?.find((p) => p.id === currentState.practitionerId)
+        : null
       return {
         reply: {
           kind: 'text',
-          text: `Confirm: ${service?.name}, ${formatDate(currentState.startAt!)}, pe numele ${name}. Răspunde DA pentru confirmare.`,
+          text: `Confirm: ${service?.name}${practitioner ? ` cu ${practitioner.title}` : ''}, ${formatDate(currentState.startAt!)}, pe numele ${name}. Răspunde DA pentru confirmare.`,
         },
         newState: { ...currentState, step: 'CONFIRMING', customerName: name },
       }
@@ -138,6 +209,7 @@ export async function runBotStep({
       const result = await createBooking({
         businessId,
         serviceId: currentState.serviceId!,
+        practitionerId: currentState.practitionerId ?? null,
         startAt: currentState.startAt!,
         customerName: currentState.customerName!,
         channel,
@@ -145,10 +217,7 @@ export async function runBotStep({
       })
 
       if (!result.success) {
-        return {
-          reply: { kind: 'text', text: 'Ne pare rău, slotul tocmai a fost ocupat de altcineva. Scrie "programare" ca să alegi altă oră.' },
-          newState: { step: 'IDLE' },
-        }
+        return proceedToTimeSelection(businessId, currentState, currentState.practitionerId ?? null, true)
       }
 
       return {
@@ -158,17 +227,29 @@ export async function runBotStep({
     }
 
     default:
-      return showServiceMenu(business.name, business.services)
+      return showWelcome(business.name)
   }
 }
 
-function showServiceMenu(businessName: string, services: { id: string; name: string; durationMin: number | null; price: any }[]) {
+// primul mesaj — salut + 3 opțiuni: fă o programare, vorbește cu un operator, sau
+// linkul direct către pagina publică de rezervare
+function showWelcome(businessName: string) {
+  return {
+    reply: {
+      kind: 'choices' as const,
+      text: `Salut! Bine ai venit la ${businessName}. Cu ce te putem ajuta?`,
+      header: businessName,
+      buttonLabel: 'Alege o opțiune',
+      groups: [{ label: 'Opțiuni', options: WELCOME_OPTIONS }],
+    },
+    newState: { step: 'SELECTING_SERVICE' as const },
+  }
+}
+
+function showServiceMenu(services: { id: string; name: string; durationMin: number | null; price: any }[]) {
   if (services.length === 0) {
     return {
-      reply: {
-        kind: 'text' as const,
-        text: `Salut! Bine ai venit la ${businessName}. Momentan nu avem servicii disponibile online — te rugăm sună-ne direct.`,
-      },
+      reply: { kind: 'text' as const, text: 'Momentan nu avem servicii disponibile online — te rugăm sună-ne direct.' },
       newState: { step: 'IDLE' as const },
     }
   }
@@ -182,7 +263,7 @@ function showServiceMenu(businessName: string, services: { id: string; name: str
   return {
     reply: {
       kind: 'choices' as const,
-      text: `Salut! Bine ai venit la ${businessName}. Ce serviciu te interesează?`,
+      text: 'Ce serviciu te interesează?',
       header: 'Servicii',
       buttonLabel: 'Alege serviciul',
       groups: [{ label: 'Servicii', options }],
@@ -191,48 +272,143 @@ function showServiceMenu(businessName: string, services: { id: string; name: str
   }
 }
 
-async function proceedToSlotSelection(businessId: string, state: ConversationState) {
-  // adunăm ore libere din următoarele zile (nu doar prima zi cu loc), grupate pe zi —
-  // WhatsApp limitează la 10 rânduri TOTAL într-o listă, deci ne oprim la 10
-  const groups: ChoiceGroup[] = []
-  let totalSlots = 0
+async function proceedToPractitionerSelection(businessId: string, state: ConversationState) {
+  const associations = await prisma.servicePractitioner.findMany({
+    where: { serviceId: state.serviceId! },
+    include: { practitioner: true },
+  })
+  const eligible = associations.length > 0
+    ? associations.map((a) => a.practitioner).filter((p) => p.active)
+    : await prisma.practitioner.findMany({ where: { businessId, active: true } })
 
-  for (let i = 0; i < 10 && totalSlots < 10; i++) {
-    const d = new Date()
-    d.setDate(d.getDate() + i)
-    const daySlots = await getAvailableSlots(businessId, state.serviceId!, d)
-    if (daySlots.length === 0) continue
-
-    const label = d.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Bucharest' })
-    const take = daySlots.slice(0, 10 - totalSlots)
-    groups.push({ label: capitalize(label), options: take.map((s) => ({ id: s, title: formatTime(s) })) })
-    totalSlots += take.length
-  }
-
-  if (groups.length === 0) {
+  if (eligible.length === 0) {
     return {
-      reply: { kind: 'text' as const, text: 'Ne pare rău, nu avem ore libere în perioada următoare. Te rugăm sună-ne direct.' },
+      reply: { kind: 'text' as const, text: 'Momentan nu avem niciun specialist disponibil pentru acest serviciu. Te rugăm sună-ne direct.' },
       newState: { step: 'IDLE' as const },
     }
   }
 
-  const allOptions = groups.flatMap((g) => g.options)
+  if (eligible.length === 1) {
+    // un singur specialist eligibil — nu mai întrebăm, trecem direct la alegerea zilei
+    return proceedToDaySelection(businessId, { ...state, practitionerId: eligible[0].id }, eligible[0].id)
+  }
+
+  const options: ChoiceOption[] = eligible.map((p) => ({ id: p.id, title: p.name, subtitle: p.specialization ?? undefined }))
+  return {
+    reply: {
+      kind: 'choices' as const,
+      text: 'La ce specialist dorești programarea?',
+      header: 'Specialiști',
+      buttonLabel: 'Alege specialistul',
+      groups: [{ label: 'Specialiști', options }],
+    },
+    newState: { ...state, step: 'SELECTING_PRACTITIONER' as const, practitionerOptions: options },
+  }
+}
+
+// zilele afișate sunt STRICT cele cu cel puțin o oră liberă — nu apar deloc zile fără
+// nimic disponibil, ca să nu ducă clientul într-o fundătură
+async function proceedToDaySelection(businessId: string, state: ConversationState, practitionerId: string | null) {
+  const dayOptions: ChoiceOption[] = []
+
+  for (let i = 0; i < 14 && dayOptions.length < 10; i++) {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() + i)
+
+    const slots = practitionerId
+      ? (await getPractitionerDaySlotsWithStatus(businessId, state.serviceId!, practitionerId, d)).filter((s) => s.available)
+      : await getAvailableSlots(businessId, state.serviceId!, d)
+
+    if (slots.length === 0) continue
+
+    const label = d.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Bucharest' })
+    dayOptions.push({ id: d.toISOString(), title: capitalize(label), subtitle: `${slots.length} ore disponibile` })
+  }
+
+  if (dayOptions.length === 0) {
+    return {
+      reply: { kind: 'text' as const, text: 'Ne pare rău, nu avem zile disponibile în perioada următoare. Te rugăm sună-ne direct.' },
+      newState: { step: 'IDLE' as const },
+    }
+  }
 
   return {
     reply: {
       kind: 'choices' as const,
-      text: 'Alege ora care ți se potrivește:',
+      text: 'Alege ziua care ți se potrivește:',
+      header: 'Zile disponibile',
+      buttonLabel: 'Alege ziua',
+      groups: [{ label: 'Zile', options: dayOptions }],
+    },
+    newState: { ...state, step: 'SELECTING_DAY' as const, dayOptions },
+  }
+}
+
+// orele afișate sunt STRICT cele libere, chiar acum — niciodată o oră deja ocupată sau
+// blocată de administrator. Recalculate mereu la moment, ca să nu apară niciodată
+// mesajul de "s-a ocupat între timp"
+async function proceedToTimeSelection(
+  businessId: string,
+  state: ConversationState,
+  practitionerId: string | null,
+  wasJustTaken = false
+) {
+  const day = new Date(state.selectedDay!)
+
+  const allSlots = practitionerId
+    ? await getPractitionerDaySlotsWithStatus(businessId, state.serviceId!, practitionerId, day)
+    : (await getAvailableSlots(businessId, state.serviceId!, day)).map((s) => ({ time: s, available: true }))
+
+  const available = allSlots.filter((s) => s.available)
+
+  if (available.length === 0) {
+    return {
+      reply: { kind: 'text' as const, text: 'Ne pare rău, nu mai sunt ore libere în această zi. Scrie "programare" ca să alegi altă zi.' },
+      newState: { step: 'IDLE' as const },
+    }
+  }
+
+  const timeOptions: ChoiceOption[] = available.slice(0, 10).map((s) => ({ id: s.time, title: formatTime(s.time) }))
+
+  return {
+    reply: {
+      kind: 'choices' as const,
+      text: wasJustTaken
+        ? 'Ne pare rău, ora aleasă tocmai a fost ocupată — iată orele actualizate, încă disponibile:'
+        : 'Alege ora care ți se potrivește:',
       header: 'Ore disponibile',
       buttonLabel: 'Alege ora',
-      groups,
+      groups: [{ label: 'Ore', options: timeOptions }],
     },
-    newState: { ...state, step: 'SELECTING_SLOT' as const, slotOptions: allOptions },
+    newState: { ...state, step: 'SELECTING_TIME' as const, timeOptions },
   }
+}
+
+async function notifyOwnerOperatorRequest(businessId: string, channel: string, externalUserId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: { users: { where: { role: 'OWNER' } } },
+  })
+  const owner = business?.users[0]
+  if (!owner) return
+
+  const { sendAlertEmail } = await import('./email')
+  await sendAlertEmail({
+    to: owner.email,
+    subject: `Un client cere să vorbească cu un operator (${channel})`,
+    businessName: business!.name,
+    channelType: channel,
+    isExpired: false,
+    daysLeft: 0,
+    reconnectUrl: `${process.env.APP_URL}/dashboard/canale`,
+  }).catch(() => {})
 }
 
 async function createBooking({
   businessId,
   serviceId,
+  practitionerId,
   startAt,
   customerName,
   channel,
@@ -240,6 +416,7 @@ async function createBooking({
 }: {
   businessId: string
   serviceId: string
+  practitionerId: string | null
   startAt: string
   customerName: string
   channel: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
@@ -252,12 +429,14 @@ async function createBooking({
   const endDate = new Date(startDate.getTime() + (service.durationMin ?? 30) * 60000)
 
   // verificare "ultima clipă" — cineva ar fi putut ocupa exact acest slot între timp
-  const stillFree = await isSlotStillAvailable(businessId, serviceId, startDate)
+  const stillFree = practitionerId
+    ? await isPractitionerSlotStillAvailable(businessId, serviceId, practitionerId, startDate)
+    : await isSlotStillAvailable(businessId, serviceId, startDate)
   if (!stillFree) return { success: false }
 
   // identificăm clientul diferit în funcție de canal — doar pe WhatsApp externalUserId
   // e efectiv numărul de telefon; pe Instagram/Facebook e un ID intern al platformei
-  const phoneField = channel === 'WHATSAPP' ? { phone: externalUserId } : { phone: externalUserId }
+  const phoneField = { phone: externalUserId }
   const channelIdField =
     channel === 'INSTAGRAM' ? { instagramUserId: externalUserId } : channel === 'FACEBOOK' ? { facebookUserId: externalUserId } : {}
 
@@ -279,6 +458,7 @@ async function createBooking({
       businessId,
       customerId: customer.id,
       serviceId,
+      practitionerId: practitionerId ?? null,
       startAt: startDate,
       endAt: endDate,
       status: 'CONFIRMED',
@@ -299,5 +479,5 @@ function formatTime(iso: string) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('ro-RO', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
+  return new Date(iso).toLocaleString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
 }
