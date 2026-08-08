@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { Printer, FileText } from 'lucide-react'
+import { FileText } from 'lucide-react'
 
 type Doc = { id: string; url: string; filename: string; uploadedAt: string }
 
@@ -63,9 +63,6 @@ export default function PatientDocuments({
       <div className="flex items-center justify-between mb-1">
         <h2 className="font-medium">Documente</h2>
         <div className="flex items-center gap-2">
-          <button onClick={() => window.print()} className="btn-secondary text-sm">
-            <Printer size={14} className="inline mr-1" style={{ verticalAlign: '-2px' }} /> Printează
-          </button>
           <label className="btn-secondary text-sm cursor-pointer">
             {uploading ? 'Se încarcă...' : '+ Adaugă document'}
             <input ref={fileInputRef} type="file" onChange={handleUpload} disabled={uploading} className="hidden" />

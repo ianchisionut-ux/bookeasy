@@ -56,9 +56,16 @@ export default function MedicalLetterForm({
 }) {
   const router = useRouter()
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [printingLetter, setPrintingLetter] = useState<Letter | null>(null)
   const [form, setForm] = useState<Letter>({ ...EMPTY, patientName })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  function handlePrint(letter: Letter) {
+    setPrintingLetter(letter)
+    // așteptăm un tick ca blocul print-only să apuce să se randeze cu datele corecte
+    setTimeout(() => window.print(), 50)
+  }
 
   function startNew() {
     setForm({ ...EMPTY, patientName })
@@ -236,7 +243,7 @@ export default function MedicalLetterForm({
               <button onClick={() => startEdit(letter)} className="text-xs text-[var(--accent)] font-medium">
                 Editează
               </button>
-              <button onClick={() => window.print()} className="text-xs text-gray-600 font-medium">
+              <button onClick={() => handlePrint(letter)} className="text-xs text-gray-600 font-medium">
                 <Printer size={14} className="inline mr-1" style={{ verticalAlign: '-2px' }} /> Printează
               </button>
               <button onClick={() => deleteLetter(letter.id)} className="text-xs text-red-600 font-medium">
@@ -245,6 +252,65 @@ export default function MedicalLetterForm({
             </div>
           </Card>
         ))
+      )}
+
+      {printingLetter && (
+        <div className="print-only" style={{ color: '#000', fontSize: '9px', lineHeight: 1.4 }}>
+          <h1 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 6px' }}>Scrisoare medicală</h1>
+          <p style={{ fontSize: '9px', color: '#666', margin: '0 0 8px' }}>
+            {printingLetter.providerName} · {printingLetter.doctorName}
+          </p>
+
+          <h2 style={{ fontSize: '10px', fontWeight: 700, margin: '6px 0 2px', borderBottom: '1px solid #ccc' }}>Date furnizor</h2>
+          <p>Contract/convenție nr.: {printingLetter.contractNumber || '.......'}</p>
+          <p>CAS: {printingLetter.casName || '.......'}</p>
+
+          <h2 style={{ fontSize: '10px', fontWeight: 700, margin: '6px 0 2px', borderBottom: '1px solid #ccc' }}>Date pacient</h2>
+          <p>Nume: {printingLetter.patientName || '.......'}</p>
+          <p>Data nașterii: {printingLetter.patientBirthDate || '.......'}</p>
+          <p>CNP: {printingLetter.patientCnp || '.......'}</p>
+          <p>Data consultației: {printingLetter.consultationDate || '.......'}</p>
+          <p>Perioadă internare: {printingLetter.hospitalizationPeriod || '.......'}</p>
+          <p>Nr. F.O. / Registru consultații: {printingLetter.fileNumber || '.......'}</p>
+
+          <h2 style={{ fontSize: '10px', fontWeight: 700, margin: '6px 0 2px', borderBottom: '1px solid #ccc' }}>Motivul prezentării</h2>
+          <p>{printingLetter.presentationReasons || '.......'}</p>
+          <p>Afecțiune oncologică: {printingLetter.oncologicalDiagnosis ? 'Da' : 'Nu'}</p>
+          <p>Diagnostic și cod: {printingLetter.diagnosis || '.......'}</p>
+
+          <h2 style={{ fontSize: '10px', fontWeight: 700, margin: '6px 0 2px', borderBottom: '1px solid #ccc' }}>Anamneză</h2>
+          <p>{printingLetter.anamnesis || '.......'}</p>
+          <p>Factori de risc: {printingLetter.riskFactors || '.......'}</p>
+
+          <h2 style={{ fontSize: '10px', fontWeight: 700, margin: '6px 0 2px', borderBottom: '1px solid #ccc' }}>Examen clinic</h2>
+          <p>General: {printingLetter.clinicalExamGeneral || '.......'}</p>
+          <p>Local: {printingLetter.clinicalExamLocal || '.......'}</p>
+
+          <h2 style={{ fontSize: '10px', fontWeight: 700, margin: '6px 0 2px', borderBottom: '1px solid #ccc' }}>Examene de laborator</h2>
+          <p>Valori normale: {printingLetter.labNormal || '.......'}</p>
+          <p>Valori patologice: {printingLetter.labPathological || '.......'}</p>
+
+          <h2 style={{ fontSize: '10px', fontWeight: 700, margin: '6px 0 2px', borderBottom: '1px solid #ccc' }}>Examene paraclinice</h2>
+          <p>EKG: {printingLetter.ekg || '.......'} · ECO: {printingLetter.eco || '.......'} · Rx: {printingLetter.rx || '.......'}</p>
+          <p>Altele: {printingLetter.otherParaclinical || '.......'}</p>
+
+          <h2 style={{ fontSize: '10px', fontWeight: 700, margin: '6px 0 2px', borderBottom: '1px solid #ccc' }}>Tratament</h2>
+          <p>Tratament efectuat: {printingLetter.treatmentGiven || '.......'}</p>
+          <p>Alte informații: {printingLetter.otherHealthInfo || '.......'}</p>
+          <p>Tratament recomandat: {printingLetter.recommendedTreatment || '.......'}</p>
+
+          <h2 style={{ fontSize: '10px', fontWeight: 700, margin: '6px 0 2px', borderBottom: '1px solid #ccc' }}>Concluzii</h2>
+          <p>Revenire pentru internare: {printingLetter.returnForHospitalization || '.......'}</p>
+          <p>Prescripție medicală: {printingLetter.prescriptionStatus || '.......'}</p>
+          <p>Concediu medical: {printingLetter.medicalLeaveStatus || '.......'}</p>
+          <p>Îngrijiri la domiciliu: {printingLetter.homeCareStatus || '.......'}</p>
+          <p>Dispozitive medicale: {printingLetter.deviceStatus || '.......'}</p>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '14px' }}>
+            <span>Data: {printingLetter.letterDate || '......................'}</span>
+            <span>Semnătura și parafa medicului: ......................................</span>
+          </div>
+        </div>
       )}
     </div>
   )

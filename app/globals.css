@@ -116,6 +116,35 @@ body {
   [class*='h-[calc(100vh'] {
     height: auto !important;
   }
+  /* react-big-calendar calculează înălțimile vizualizărilor Lună/Agendă cu JavaScript,
+     la randare pe ecran — la print acele înălțimi rămân "înghețate" la 0, deci grila
+     apare goală. Forțăm layout natural, pe conținut, doar la print */
+  .rbc-month-view,
+  .rbc-time-view,
+  .rbc-agenda-view {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .rbc-month-row {
+    flex: none !important;
+    min-height: 90px !important;
+    overflow: visible !important;
+  }
+  .rbc-row-content {
+    position: static !important;
+  }
+  .rbc-agenda-view table {
+    height: auto !important;
+  }
+  .rbc-time-content {
+    overflow: visible !important;
+  }
+  .printable {
+    flex: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
 }
 
 @media print {
