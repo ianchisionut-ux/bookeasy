@@ -292,9 +292,9 @@ export default function ProgramariManager({
     <div className="p-4 lg:p-8">
       <div className="flex flex-wrap items-center gap-2 mb-5">
         <h1 className="text-2xl font-semibold mr-1">Programări</h1>
-        <span className="text-sm text-gray-500 mr-2">{bookings.length} programări</span>
-        <form method="get" className="flex flex-wrap items-center gap-2">
-          <Input name="q" defaultValue={filters.q} placeholder="Caută client (nume/telefon)..." className="w-52" />
+        <span className="text-sm text-gray-500 mr-1 whitespace-nowrap">{bookings.length} programări</span>
+        <form method="get" className="contents">
+          <Input name="q" defaultValue={filters.q} placeholder="Caută client..." className="w-40" />
           <select name="status" defaultValue={filters.status} className="input-field">
             <option value="">Toate statusurile</option>
             {Object.entries(STATUS_LABEL).map(([value, label]) => (
@@ -303,7 +303,7 @@ export default function ProgramariManager({
               </option>
             ))}
           </select>
-          <button type="submit" className="btn-secondary">
+          <button type="submit" className="btn-secondary whitespace-nowrap">
             Filtrează
           </button>
         </form>

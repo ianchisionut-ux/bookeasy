@@ -41,14 +41,13 @@ export default async function ClientiPage({
     <div className="p-4 lg:p-8">
       <div className="flex flex-wrap items-center gap-2 mb-5">
         <h1 className="text-2xl font-semibold mr-1">{label}</h1>
-        <span className="text-sm text-gray-500 mr-2">{customers.length} {label.toLowerCase()} în total</span>
-        <form method="get" className="flex items-center">
-          <Input type="text" name="q" defaultValue={query} placeholder="Caută după nume, telefon sau email..." className="w-64" />
+        <span className="text-sm text-gray-500 mr-1 whitespace-nowrap">{customers.length} {label.toLowerCase()}</span>
+        <form method="get" className="contents">
+          <Input type="text" name="q" defaultValue={query} placeholder="Caută nume, telefon, email..." className="w-52" />
         </form>
         <PrintButton />
+        <AddCustomerForm isClinic={isClinic} />
       </div>
-
-      <AddCustomerForm isClinic={isClinic} />
 
       {customers.length === 0 && (
         <p className="text-sm text-gray-500">

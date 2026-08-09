@@ -54,7 +54,7 @@ export default function AddCustomerForm({ isClinic = false }: { isClinic?: boole
   }
 
   return (
-    <Card className="mb-5 max-w-md">
+    <Card className="mb-5 max-w-md w-full">
       <div className="flex flex-col gap-2">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <Input placeholder="Nume" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
