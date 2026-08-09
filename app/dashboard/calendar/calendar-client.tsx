@@ -13,6 +13,7 @@ import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import BookingEditModal, { BookingDetail } from '@/components/booking-edit-modal'
 import { Lock, CheckCircle2 } from 'lucide-react'
 import { PrintButton } from '@/components/print-button'
+import { SidebarClock } from '@/components/sidebar-clock'
 
 const locales = { ro }
 const localizer = dateFnsLocalizer({
@@ -233,6 +234,7 @@ export default function CalendarClient({
               </select>
             )}
           </div>
+          <SidebarClock inline />
         </div>
         <p className="text-xs text-gray-500 mb-3">
           {blockMode

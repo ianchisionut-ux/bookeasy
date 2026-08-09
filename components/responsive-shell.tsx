@@ -5,7 +5,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { User } from 'lucide-react'
-import { SidebarClock } from './sidebar-clock'
 
 // amestecă o culoare hex cu alb, la un procent dat — produce o culoare SOLIDĂ (nu transparentă).
 // esențial pentru header-ul mobil, care e fix (sticky) — dacă am folosi transparență, conținutul
@@ -135,9 +134,6 @@ export function ResponsiveShell({
             </Link>
           )
         })}
-        <div className="mt-auto">
-          <SidebarClock />
-        </div>
         {accountContent}
       </aside>
 
