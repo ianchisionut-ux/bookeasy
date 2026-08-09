@@ -60,18 +60,29 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   }
 
   if (provider === 'google') {
-    const locations = await fetch('https://mybusinessbusinessinformation.googleapis.com/v1/accounts', {
+    const accounts = await fetch('https://mybusinessbusinessinformation.googleapis.com/v1/accounts', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     }).then((r) => r.json())
 
-    const externalId = locations.accounts?.[0]?.name ?? businessId
+    const accountName = accounts.accounts?.[0]?.name // ex: "accounts/123456"
+
+    // recenziile se cer pe LOCAȚIE, nu pe cont — trebuie numele complet al resursei
+    // (ex: "accounts/123456/locations/789") ca să putem sincroniza ulterior recenziile
+    let locationName = accountName ?? businessId
+    if (accountName) {
+      const locations = await fetch(
+        `https://mybusinessbusinessinformation.googleapis.com/v1/${accountName}/locations?readMask=name,title`,
+        { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
+      ).then((r) => r.json())
+      locationName = locations.locations?.[0]?.name ?? locationName // ex: "accounts/123456/locations/789"
+    }
 
     await prisma.channel.upsert({
-      where: { type_externalId: { type: 'GOOGLE_BUSINESS', externalId } },
+      where: { type_externalId: { type: 'GOOGLE_BUSINESS', externalId: locationName } },
       create: {
         businessId,
         type: 'GOOGLE_BUSINESS',
-        externalId,
+        externalId: locationName,
         accessToken: encrypt(tokenData.access_token),
         refreshToken: encrypt(tokenData.refresh_token),
         expiresAt: new Date(Date.now() + tokenData.expires_in * 1000),

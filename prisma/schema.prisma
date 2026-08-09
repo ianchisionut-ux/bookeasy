@@ -298,12 +298,15 @@ model Review {
   business   Business @relation(fields: [businessId], references: [id])
   bookingId  String?  @unique
   booking    Booking? @relation(fields: [bookingId], references: [id])
-  source     String   @default("bookeasy") // "bookeasy" = recenzie reală de la client, altfel import extern
+  source     String   @default("bookeasy") // "bookeasy" = recenzie reală de la client, "google" = sincronizată din Google Business Profile
+  externalReviewId String? // ID-ul recenziei la sursă (Google etc.) — evită duplicate la resincronizare
   authorName String
   rating     Int
   comment    String?
   reply      String?
   createdAt  DateTime @default(now())
+
+  @@unique([businessId, source, externalReviewId])
 }
 
 model BlockedSlot {

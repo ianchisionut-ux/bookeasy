@@ -47,7 +47,7 @@ export default function AddCustomerForm({ isClinic = false }: { isClinic?: boole
 
   if (!open) {
     return (
-      <Button variant="secondary" onClick={() => setOpen(true)} className="mb-5">
+      <Button variant="secondary" onClick={() => setOpen(true)}>
         + Adaugă {isClinic ? 'pacient' : 'client'}
       </Button>
     )

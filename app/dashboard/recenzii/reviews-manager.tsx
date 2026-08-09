@@ -13,6 +13,7 @@ type Review = {
   reply: string | null
   createdAt: string
   verified: boolean
+  source: string
 }
 
 function ReplyBox({ review }: { review: Review }) {
@@ -83,14 +84,45 @@ export default function ReviewsManager({
   rating,
   reviewCount,
   reviews,
+  googleConnected,
 }: {
   rating: number | null
   reviewCount: number
   reviews: Review[]
+  googleConnected: boolean
 }) {
+  const [syncing, setSyncing] = useState(false)
+  const [syncMessage, setSyncMessage] = useState('')
+
+  async function syncGoogle() {
+    setSyncing(true)
+    setSyncMessage('')
+    try {
+      const res = await fetchWithTimeout('/api/business/reviews/sync-google', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setSyncMessage(data.error ?? 'Sincronizarea a eșuat.')
+        return
+      }
+      setSyncMessage(`${data.synced} recenzii sincronizate. Reîncarcă pagina ca să le vezi.`)
+    } catch {
+      setSyncMessage('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   return (
     <div className="p-4 lg:p-8 max-w-2xl">
-      <h1 className="text-2xl font-semibold mb-1">Recenzii</h1>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <h1 className="text-2xl font-semibold">Recenzii</h1>
+        {googleConnected && (
+          <button onClick={syncGoogle} disabled={syncing} className="btn-secondary text-sm whitespace-nowrap">
+            {syncing ? 'Se sincronizează...' : 'Sincronizează cu Google'}
+          </button>
+        )}
+      </div>
+      {syncMessage && <p className="text-xs text-gray-500 mb-2">{syncMessage}</p>}
       <p className="text-sm text-gray-500 mb-6 flex items-center gap-1">
         {rating ? (
           <>
@@ -110,6 +142,11 @@ export default function ReviewsManager({
                 {r.verified && (
                   <span className="text-xs text-green-700 font-normal flex items-center gap-1">
                     <CheckCircle2 size={12} /> client verificat
+                  </span>
+                )}
+                {r.source === 'google' && (
+                  <span className="text-xs text-gray-500 font-normal px-1.5 py-0.5 rounded-full border border-[var(--border-soft)]">
+                    Google
                   </span>
                 )}
               </p>
