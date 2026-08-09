@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { User, MessageCircle } from 'lucide-react'
 import { SignOutButton } from './sign-out-button'
 import { SupportChatPanel } from './support-chat-button'
@@ -32,9 +31,6 @@ export function SidebarUserBlock({ label, status = 'Activ', showSupport = false 
           <MessageCircle size={15} /> Suport
         </button>
       )}
-      <Link href="/account/password" className="block px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-white hover:shadow-sm transition mb-1">
-        Schimbă parola
-      </Link>
       <SignOutButton className="w-full" />
       {showSupport && <SupportChatPanel open={supportOpen} onClose={() => setSupportOpen(false)} />}
     </div>

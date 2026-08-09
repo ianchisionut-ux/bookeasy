@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import SettingsForm from './settings-form'
 import { PublicPageLinkCard } from './public-page-link-card'
 import { SubscriptionCard } from './subscription-card'
@@ -66,6 +67,14 @@ export default async function SetariPage() {
         />
 
         <BrandColorCard initialColor={business.brandColor} isClinic={business.category === 'CLINICA'} />
+
+        <div className="card p-5 mb-5 break-inside-avoid">
+          <h2 className="font-medium mb-1">Cont</h2>
+          <p className="text-sm text-gray-500 mb-3">Datele de autentificare ale contului tău.</p>
+          <Link href="/account/password" className="btn-secondary inline-block">
+            Schimbă parola
+          </Link>
+        </div>
       </div>
     </div>
   )

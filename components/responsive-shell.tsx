@@ -175,10 +175,7 @@ export function ResponsiveShell({
             </Link>
           )
         })}
-        <Link href={logoHref} className="flex items-center gap-2 px-3 mt-auto pb-1">
-          <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={22} height={22} />
-          <span className="font-medium text-sm text-gray-500">{logoLabel}</span>
-        </Link>
+        <div className="mt-auto" />
         {accountContent}
       </aside>
 
