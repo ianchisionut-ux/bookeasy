@@ -7,7 +7,35 @@ import { rateLimit } from './rate-limit'
 const CANCEL_BOOKING_PATTERN = /^anulez\b/i
 const CONFIRM_BOOKING_PATTERN = /^(da|confirm|confirma[țt])\b/i
 
-export async function processIncomingMessage({
+export async function processIncomingMessage(params: {
+  businessId: string
+  channel: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
+  externalUserId: string
+  text: string
+  channelId: string
+}) {
+  try {
+    await handleIncomingMessage(params)
+  } catch (err: any) {
+    // orice eroare neprevăzută aici altfel ar lăsa clientul complet fără răspuns —
+    // logăm eroarea reală (vizibilă în Vercel Logs) și încercăm să trimitem măcar un
+    // mesaj de rezervă, ca să știe că ceva n-a mers, nu doar tăcere completă
+    console.error('[bot-engine] Eroare neașteptată la procesarea mesajului:', err?.message ?? err, err?.stack)
+    try {
+      await sendMessage({
+        channel: params.channel,
+        channelId: params.channelId,
+        to: params.externalUserId,
+        text: 'Ne pare rău, a apărut o eroare temporară. Te rugăm încearcă din nou peste puțin timp, sau scrie "operator" ca să te ajutăm direct.',
+      })
+    } catch {
+      // dacă eșuează și trimiterea mesajului de rezervă, nu mai avem ce face — deja
+      // e logată eroarea principală mai sus
+    }
+  }
+}
+
+async function handleIncomingMessage({
   businessId,
   channel,
   externalUserId,

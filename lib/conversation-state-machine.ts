@@ -474,7 +474,7 @@ async function proceedToTimeSelection(
     reply: {
       kind: 'choices' as const,
       text: wasJustTaken
-        ? 'Ne pare rău, ora aleasă tocmai a fost ocupată — iată orele actualizate, încă disponibile:'
+        ? 'Ne pare rău, ora aleasă nu mai e disponibilă (fie a fost ocupată între timp, fie a trecut prea mult timp și e prea aproape de acum) — iată orele actualizate, încă disponibile:'
         : 'Alege ora care ți se potrivește:',
       header: 'Ore disponibile',
       buttonLabel: 'Alege ora',
