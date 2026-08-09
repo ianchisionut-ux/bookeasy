@@ -39,13 +39,18 @@ export default async function ClientiPage({
 
   return (
     <div className="p-4 lg:p-8">
-      <div className="flex flex-wrap items-center gap-2 mb-5">
+      <div className="flex flex-wrap items-center gap-2 mb-3">
         <h1 className="text-2xl font-semibold mr-1">{label}</h1>
         <span className="text-sm text-gray-500 mr-1 whitespace-nowrap">{customers.length} {label.toLowerCase()}</span>
-        <form method="get" className="contents">
-          <Input type="text" name="q" defaultValue={query} placeholder="Caută nume, telefon, email..." className="w-52" />
-        </form>
-        <PrintButton />
+        <div className="flex items-center gap-2">
+          <form method="get" className="contents">
+            <Input type="text" name="q" defaultValue={query} placeholder="Caută nume, telefon, email..." className="w-52" />
+          </form>
+          <PrintButton />
+        </div>
+      </div>
+
+      <div className="mb-5">
         <AddCustomerForm isClinic={isClinic} />
       </div>
 
