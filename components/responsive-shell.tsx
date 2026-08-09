@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { User } from 'lucide-react'
+import { SidebarClock } from './sidebar-clock'
 
 // amestecă o culoare hex cu alb, la un procent dat — produce o culoare SOLIDĂ (nu transparentă).
 // esențial pentru header-ul mobil, care e fix (sticky) — dacă am folosi transparență, conținutul
@@ -110,10 +111,11 @@ export function ResponsiveShell({
 
       {/* sidebar fix, doar de la lg in sus */}
       <aside className="hidden lg:flex flex-col gap-1 p-4" style={{ background: softTint }}>
-        <Link href={logoHref} className="flex items-center gap-2 mb-1 px-2">
+        <Link href={logoHref} className="flex items-center gap-2 mb-1 px-3">
           <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={28} height={28} />
           <span className="font-semibold text-lg">{logoLabel}</span>
         </Link>
+        <SidebarClock />
         {navItems.map((item) => {
           const active = item.href === activeHref
           return (

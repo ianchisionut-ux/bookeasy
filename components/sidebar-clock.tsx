@@ -27,7 +27,7 @@ export function SidebarClock({ inline }: { inline?: boolean } = {}) {
   }
 
   return (
-    <div className="px-2 py-3 mb-1">
+    <div className="px-3 py-3 mb-1">
       <p className="text-2xl font-semibold tabular-nums tracking-tight">{time}</p>
       <p className="text-xs text-gray-500 capitalize">{date}</p>
     </div>

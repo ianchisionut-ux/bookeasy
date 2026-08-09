@@ -6,7 +6,7 @@ export function SidebarUserBlock({ label, status = 'Activ' }: { label: string; s
   return (
     <div className="mt-auto pt-2">
       <div className="h-px bg-[var(--border-soft)] mb-3" />
-      <div className="flex items-center gap-2.5 px-2 mb-2">
+      <div className="flex items-center gap-2.5 px-3 mb-2">
         <div className="w-8 h-8 rounded-full bg-[var(--accent-soft)] flex items-center justify-center text-sm">
           <User size={15} />
         </div>
