@@ -19,9 +19,9 @@ type Message = { id: string; direction: 'IN' | 'OUT'; text: string; createdAt: s
 type Template = { id: string; title: string; text: string }
 
 const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', INSTAGRAM: 'Instagram', FACEBOOK: 'Messenger' }
-const OPERATOR_NAME_KEY = 'bookeasy_operator_name'
 
-export default function InboxManager() {
+export default function InboxManager({ businessId }: { businessId: string }) {
+  const operatorNameKey = `bookeasy_operator_name_${businessId}`
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [loadingList, setLoadingList] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -36,7 +36,7 @@ export default function InboxManager() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setOperatorName(localStorage.getItem(OPERATOR_NAME_KEY) ?? '')
+    setOperatorName(localStorage.getItem(operatorNameKey) ?? '')
     fetchWithTimeout('/api/business/message-templates')
       .then((res) => res.json())
       .then((data) => setTemplates(data.templates ?? []))
@@ -45,7 +45,7 @@ export default function InboxManager() {
 
   function updateOperatorName(name: string) {
     setOperatorName(name)
-    localStorage.setItem(OPERATOR_NAME_KEY, name)
+    localStorage.setItem(operatorNameKey, name)
   }
 
   // reîmprospătarea din fundal e SILENȚIOASĂ — nu arătăm "Se încarcă..." decât la

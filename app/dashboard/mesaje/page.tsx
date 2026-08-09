@@ -7,5 +7,5 @@ export default async function MesajePage() {
   const businessId = (session as any)?.businessId
   if (!businessId) redirect('/login')
 
-  return <InboxManager />
+  return <InboxManager businessId={businessId} />
 }
