@@ -217,6 +217,7 @@ model Booking {
   reminder1hSent  Boolean       @default(false) // reminder-ul scurt, trimis cu 2 ore înainte, în ziua programării
   confirmationRequestSent Boolean @default(false) // am cerut deja confirmare activă clientului
   customerConfirmed       Boolean? // null = fără răspuns încă, true = a confirmat (status devine CONFIRMED), false = a anulat (status devine CANCELLED)
+  confirmationSeenByAdmin Boolean  @default(true) // false = clientul tocmai a confirmat, admin-ul n-a văzut încă (notificare în meniu)
   unconfirmedAlertSent    Boolean @default(false) // am anunțat deja proprietarul că rezervarea asta n-a fost confirmată
   createdAt       DateTime      @default(now())
   review          Review?

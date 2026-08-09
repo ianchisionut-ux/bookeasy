@@ -40,6 +40,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let category: string | null = null
   let teamSize = 1
   let needsOperatorCount = 0
+  let unseenConfirmationsCount = 0
   if (businessId) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
@@ -55,6 +56,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     category = business?.category ?? null
     teamSize = business?.teamSize ?? 1
     needsOperatorCount = await prisma.conversation.count({ where: { businessId, needsOperator: true } })
+    unseenConfirmationsCount = await prisma.booking.count({ where: { businessId, confirmationSeenByAdmin: false } })
   }
 
   const navItems = [
@@ -64,7 +66,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ]
     .map((item) => ({
       ...item,
-      badge: item.href === '/dashboard/mesaje' && needsOperatorCount > 0 ? needsOperatorCount : undefined,
+      badge:
+        item.href === '/dashboard/mesaje' && needsOperatorCount > 0
+          ? needsOperatorCount
+          : item.href === '/dashboard/programari' && unseenConfirmationsCount > 0
+            ? unseenConfirmationsCount
+            : undefined,
     }))
     .map((item) => ({
       ...item,

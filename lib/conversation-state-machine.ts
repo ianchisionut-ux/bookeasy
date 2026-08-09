@@ -23,6 +23,7 @@ export type ConversationState = {
     | 'SELECTING_TIME'
     | 'COLLECTING_NAME'
     | 'COLLECTING_PHONE'
+    | 'CONFIRMING_KNOWN_DATA'
     | 'CONFIRMING'
     | 'OPERATOR_SILENCE'
   serviceId?: string
@@ -51,6 +52,11 @@ function getWelcomeOptions(slug: string, botBookingEnabled: boolean): ChoiceOpti
 const CONFIRM_OPTIONS: ChoiceOption[] = [
   { id: 'CONFIRM_BOOKING', title: 'Confirmă programarea' },
   { id: 'CANCEL_BOOKING', title: 'Anulează' },
+]
+
+const KNOWN_DATA_OPTIONS: ChoiceOption[] = [
+  { id: 'DATA_CORRECT', title: 'Da, sunt corecte' },
+  { id: 'DATA_WRONG', title: 'Nu, actualizează' },
 ]
 
 // potrivește răspunsul clientului cu o opțiune — fie direct după ID (a apăsat pe o
@@ -214,18 +220,46 @@ export async function runBotStep({
       })
 
       if (knownCustomer?.name && knownCustomer.phone) {
-        return proceedToConfirmation(business, {
-          ...currentState,
-          startAt: choice,
-          customerName: knownCustomer.name,
-          customerPhone: knownCustomer.phone,
-        })
+        return {
+          reply: {
+            kind: 'buttons',
+            text: `Te-am mai văzut pe-aici! Am notate: *${knownCustomer.name}*, telefon *${knownCustomer.phone}*. Sunt corecte, ca să fac programarea pe aceste date?`,
+            options: KNOWN_DATA_OPTIONS,
+          },
+          newState: {
+            ...currentState,
+            step: 'CONFIRMING_KNOWN_DATA',
+            startAt: choice,
+            customerName: knownCustomer.name,
+            customerPhone: knownCustomer.phone,
+          },
+        }
       }
 
       return {
         reply: { kind: 'text', text: 'Perfect! Cum te numești, ca să confirm rezervarea?' },
         newState: { ...currentState, step: 'COLLECTING_NAME', startAt: choice },
       }
+    }
+
+    case 'CONFIRMING_KNOWN_DATA': {
+      const matched = matchChoice(incomingText, KNOWN_DATA_OPTIONS)
+
+      if (matched === 'DATA_WRONG') {
+        return {
+          reply: { kind: 'text', text: 'Cum te numești, ca să actualizez datele pentru programare?' },
+          newState: { ...currentState, step: 'COLLECTING_NAME', customerName: undefined, customerPhone: undefined },
+        }
+      }
+
+      if (matched !== 'DATA_CORRECT') {
+        return {
+          reply: { kind: 'buttons', text: 'Sunt corecte datele?', options: KNOWN_DATA_OPTIONS },
+          newState: currentState,
+        }
+      }
+
+      return proceedToConfirmation(business, currentState)
     }
 
     case 'COLLECTING_NAME': {

@@ -132,7 +132,7 @@ export function ResponsiveShell({
               {item.label}
               {!!item.badge && (
                 <span
-                  className={`text-xs bg-red-600 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center ${item.href === '/dashboard/mesaje' ? 'animate-pulse' : ''}`}
+                  className={`text-xs bg-red-600 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center ${item.href === '/dashboard/mesaje' || item.href === '/dashboard/programari' ? 'animate-pulse' : ''}`}
                 >
                   {item.badge}
                 </span>

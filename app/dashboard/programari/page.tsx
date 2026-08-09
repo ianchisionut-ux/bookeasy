@@ -14,6 +14,10 @@ export default async function ProgramariPage({
 
   const { status, q } = await searchParams
 
+  // deschiderea paginii marchează automat toate confirmările ca "văzute" —
+  // notificarea din meniu dispare
+  await prisma.booking.updateMany({ where: { businessId, confirmationSeenByAdmin: false }, data: { confirmationSeenByAdmin: true } })
+
   const business = await prisma.business.findUnique({ where: { id: businessId }, select: { category: true, teamSize: true } })
   const isMultiPractitioner = (business?.teamSize ?? 1) > 1
 

@@ -50,7 +50,7 @@ export async function processIncomingMessage({
     const bookingId = trimmed.replace('REMINDER_CONFIRM_', '')
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
     if (booking && booking.businessId === businessId) {
-      await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED', customerConfirmed: true } })
+      await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED', customerConfirmed: true, confirmationSeenByAdmin: false } })
       const confirmText = 'Perfect, programarea ta a fost confirmată! Te așteptăm.'
       await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'OUT', text: confirmText } })
       await sendMessage({ channel, channelId, to: externalUserId, text: confirmText })
@@ -261,7 +261,7 @@ async function handleBookingConfirmation(businessId: string, externalUserId: str
 
   if (!booking) return null
 
-  await prisma.booking.update({ where: { id: booking.id }, data: { customerConfirmed: true } })
+  await prisma.booking.update({ where: { id: booking.id }, data: { customerConfirmed: true, confirmationSeenByAdmin: false } })
   return `Perfect, programarea pentru ${booking.service.name} e confirmată! Te așteptăm.`
 }
 
