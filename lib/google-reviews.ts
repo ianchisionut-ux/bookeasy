@@ -61,33 +61,32 @@ export async function syncGoogleReviews(businessId: string): Promise<{ synced: n
     return { synced: 0, error: data?.error?.message ?? `Google a respins cererea (status ${res.status})` }
   }
 
-  const reviews = data.reviews ?? []
-  let synced = 0
+  const reviews = (data.reviews ?? []).filter((r: any) => !!r.reviewId)
 
-  for (const r of reviews) {
-    const reviewId = r.reviewId as string
-    if (!reviewId) continue
+  // fiecare recenzie e independentă (externalReviewId diferit) — nicio nevoie să
+  // scriem una câte una în bază, mai ales la o afacere cu multe recenzii de sincronizat
+  await Promise.all(
+    reviews.map((r: any) =>
+      prisma.review.upsert({
+        where: { businessId_source_externalReviewId: { businessId, source: 'google', externalReviewId: r.reviewId } },
+        create: {
+          businessId,
+          source: 'google',
+          externalReviewId: r.reviewId,
+          authorName: r.reviewer?.displayName ?? 'Client Google',
+          rating: STAR_RATING_TO_NUMBER[r.starRating] ?? 5,
+          comment: r.comment ?? null,
+          reply: r.reviewReply?.comment ?? null,
+          createdAt: r.createTime ? new Date(r.createTime) : new Date(),
+        },
+        update: {
+          rating: STAR_RATING_TO_NUMBER[r.starRating] ?? 5,
+          comment: r.comment ?? null,
+          reply: r.reviewReply?.comment ?? null,
+        },
+      })
+    )
+  )
 
-    await prisma.review.upsert({
-      where: { businessId_source_externalReviewId: { businessId, source: 'google', externalReviewId: reviewId } },
-      create: {
-        businessId,
-        source: 'google',
-        externalReviewId: reviewId,
-        authorName: r.reviewer?.displayName ?? 'Client Google',
-        rating: STAR_RATING_TO_NUMBER[r.starRating] ?? 5,
-        comment: r.comment ?? null,
-        reply: r.reviewReply?.comment ?? null,
-        createdAt: r.createTime ? new Date(r.createTime) : new Date(),
-      },
-      update: {
-        rating: STAR_RATING_TO_NUMBER[r.starRating] ?? 5,
-        comment: r.comment ?? null,
-        reply: r.reviewReply?.comment ?? null,
-      },
-    })
-    synced++
-  }
-
-  return { synced }
+  return { synced: reviews.length }
 }
