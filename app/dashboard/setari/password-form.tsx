@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
@@ -50,31 +49,26 @@ export default function PasswordForm() {
   }
 
   return (
-    <Card>
-      <h1 className="text-lg font-semibold mb-1">Schimbă parola</h1>
-      <p className="text-sm text-gray-500 mb-4">Pentru contul curent.</p>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <div>
+        <label className="text-sm text-gray-500 block mb-1.5">Parola actuală</label>
+        <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+      </div>
+      <div>
+        <label className="text-sm text-gray-500 block mb-1.5">Parola nouă</label>
+        <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={8} required />
+      </div>
+      <div>
+        <label className="text-sm text-gray-500 block mb-1.5">Confirmă parola nouă</label>
+        <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} minLength={8} required />
+      </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div>
-          <label className="text-sm text-gray-500 block mb-1.5">Parola actuală</label>
-          <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
-        </div>
-        <div>
-          <label className="text-sm text-gray-500 block mb-1.5">Parola nouă</label>
-          <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={8} required />
-        </div>
-        <div>
-          <label className="text-sm text-gray-500 block mb-1.5">Confirmă parola nouă</label>
-          <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} minLength={8} required />
-        </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {success && <p className="text-sm text-green-700">Parola a fost schimbată cu succes.</p>}
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {success && <p className="text-sm text-green-700">Parola a fost schimbată cu succes.</p>}
-
-        <Button type="submit" disabled={saving} className="mt-2">
-          {saving ? 'Se salvează...' : 'Schimbă parola'}
-        </Button>
-      </form>
-    </Card>
+      <Button type="submit" disabled={saving} className="mt-1 self-start">
+        {saving ? 'Se salvează...' : 'Schimbă parola'}
+      </Button>
+    </form>
   )
 }

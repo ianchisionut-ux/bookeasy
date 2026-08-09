@@ -6,12 +6,11 @@ import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
 import { ro } from 'date-fns/locale'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import BookingEditModal, { BookingDetail } from '@/components/booking-edit-modal'
-import { Lock, CheckCircle2 } from 'lucide-react'
+import { Lock, CheckCircle2, X } from 'lucide-react'
 import { PrintButton } from '@/components/print-button'
 
 const locales = { ro }
@@ -85,6 +84,7 @@ export default function CalendarClient({
 
   const visibleEvents = practitioners.length === 0 ? events : events.filter((e) => e.practitionerId === practitionerFilter)
   const [blockMode, setBlockMode] = useState(false)
+  const [showBookingModal, setShowBookingModal] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -258,9 +258,9 @@ export default function CalendarClient({
             aria-label="Sari la o dată"
           />
           <PrintButton />
-          <Link href="/dashboard/programari?add=1" className="btn-primary text-sm whitespace-nowrap">
+          <button onClick={() => setShowBookingModal(true)} className="btn-primary text-sm whitespace-nowrap">
             + Adaugă programare
-          </Link>
+          </button>
           {busy && <span className="text-xs text-gray-400">se actualizează...</span>}
         </div>
         {blockMode && (
@@ -354,6 +354,203 @@ export default function CalendarClient({
           onClose={() => setSelected(null)}
         />
       )}
+
+      {showBookingModal && (
+        <CalendarQuickBookingModal
+          onClose={() => setShowBookingModal(false)}
+          onCreated={() => {
+            setShowBookingModal(false)
+            router.refresh()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function CalendarQuickBookingModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [services, setServices] = useState<{ id: string; name: string; durationMin: number | null }[]>([])
+  const [practitioners, setPractitioners] = useState<{ id: string; name: string }[]>([])
+  const [isMultiPractitioner, setIsMultiPractitioner] = useState(false)
+  const [loadingData, setLoadingData] = useState(true)
+
+  const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
+  const [serviceId, setServiceId] = useState('')
+  const [practitionerId, setPractitionerId] = useState('')
+  const [slotDate, setSlotDate] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
+  const [simpleDateTime, setSimpleDateTime] = useState('')
+  const [daySlots, setDaySlots] = useState<{ time: string; available: boolean }[]>([])
+  const [selectedSlot, setSelectedSlot] = useState('')
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    fetchWithTimeout('/api/business/conversations/quick-booking-data')
+      .then((res) => res.json())
+      .then((data) => {
+        setServices(data.services ?? [])
+        setPractitioners(data.practitioners ?? [])
+        setIsMultiPractitioner(!!data.isMultiPractitioner)
+        if (data.practitioners?.length === 1) setPractitionerId(data.practitioners[0].id)
+      })
+      .catch(() => setError('Nu am putut încărca serviciile.'))
+      .finally(() => setLoadingData(false))
+  }, [])
+
+  useEffect(() => {
+    if (!isMultiPractitioner || !serviceId || !practitionerId || !slotDate) {
+      setDaySlots([])
+      return
+    }
+    setLoadingSlots(true)
+    setSelectedSlot('')
+    fetchWithTimeout(`/api/business/practitioner-availability?serviceId=${serviceId}&practitionerId=${practitionerId}&date=${slotDate}`)
+      .then((res) => res.json())
+      .then((data) => setDaySlots(data.allSlots ?? []))
+      .catch(() => setDaySlots([]))
+      .finally(() => setLoadingSlots(false))
+  }, [isMultiPractitioner, serviceId, practitionerId, slotDate])
+
+  async function submit() {
+    const hasDateInfo = isMultiPractitioner ? !!selectedSlot : !!simpleDateTime
+    if (!customerName.trim() || customerPhone.trim().length < 6 || !serviceId || !hasDateInfo) {
+      setError('Completează numele, telefonul, serviciul și data.')
+      return
+    }
+    if (isMultiPractitioner && !practitionerId) {
+      setError('Alege persoana.')
+      return
+    }
+
+    const service = services.find((s) => s.id === serviceId)
+    const start = isMultiPractitioner ? new Date(selectedSlot) : new Date(simpleDateTime)
+    const end = new Date(start.getTime() + (service?.durationMin ?? 30) * 60000)
+
+    if (start < new Date()) {
+      setError('Nu poți crea o programare într-un interval din trecut.')
+      return
+    }
+
+    setSaving(true)
+    setError('')
+    try {
+      const res = await fetchWithTimeout('/api/business/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          serviceId,
+          practitionerId: isMultiPractitioner ? practitionerId : undefined,
+          startAt: start.toISOString(),
+          endAt: end.toISOString(),
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error ?? 'A apărut o eroare. Verifică datele.')
+        return
+      }
+      onCreated()
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold">Programare nouă</h2>
+          <button onClick={onClose} aria-label="Închide">
+            <X size={18} />
+          </button>
+        </div>
+
+        {loadingData ? (
+          <p className="text-sm text-gray-400">Se încarcă...</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-2">
+              <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nume client" className="input-field" />
+              <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Telefon" className="input-field" />
+            </div>
+
+            <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} className="input-field w-full">
+              <option value="">Alege serviciul</option>
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+
+            {isMultiPractitioner ? (
+              <>
+                {practitioners.length > 1 && (
+                  <select value={practitionerId} onChange={(e) => setPractitionerId(e.target.value)} className="input-field w-full">
+                    <option value="">Alege persoana</option>
+                    {practitioners.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} className="input-field w-full" />
+                {practitionerId && serviceId && (
+                  <div>
+                    {loadingSlots ? (
+                      <p className="text-sm text-gray-400">Se încarcă orele...</p>
+                    ) : daySlots.length === 0 ? (
+                      <p className="text-sm text-gray-500">Niciun program pentru această zi.</p>
+                    ) : (
+                      <div className="grid grid-cols-4 gap-2">
+                        {daySlots.map((slot) => {
+                          const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
+                          if (!slot.available) {
+                            return (
+                              <span key={slot.time} className="py-2 rounded-lg text-center text-sm text-gray-300 border border-[var(--border-soft)] line-through">
+                                {time}
+                              </span>
+                            )
+                          }
+                          const active = selectedSlot === slot.time
+                          return (
+                            <button
+                              key={slot.time}
+                              onClick={() => setSelectedSlot(slot.time)}
+                              className="py-2 rounded-lg text-center text-sm font-medium border transition"
+                              style={active ? { background: 'var(--accent)', color: 'white', borderColor: 'var(--accent)' } : {}}
+                            >
+                              {time}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <input type="datetime-local" value={simpleDateTime} onChange={(e) => setSimpleDateTime(e.target.value)} className="input-field w-full" />
+            )}
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <button onClick={submit} disabled={saving} className="btn-primary w-full">
+              {saving ? 'Se salvează...' : 'Salvează programarea'}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

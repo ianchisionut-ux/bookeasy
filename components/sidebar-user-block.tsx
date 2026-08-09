@@ -28,7 +28,7 @@ export function SidebarUserBlock({ label, status = 'Activ', showSupport = false 
           onClick={() => setSupportOpen(true)}
           className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-white hover:shadow-sm transition mb-1"
         >
-          <MessageCircle size={15} /> Suport
+          <MessageCircle size={15} /> Suport tehnic
         </button>
       )}
       <SignOutButton className="w-full" />
