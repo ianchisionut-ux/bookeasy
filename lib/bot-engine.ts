@@ -28,6 +28,12 @@ export async function processIncomingMessage({
   const business = await prisma.business.findUnique({ where: { id: businessId } })
   if (!business?.accountActive) return // cont suspendat de admin — botul nu răspunde deloc
 
+  // logăm mesajul primit ÎNTOTDEAUNA — indiferent dacă botul răspunde, tace (mod
+  // operator) sau canalul are o problemă — ca istoricul din inbox-ul din dashboard
+  // să fie complet, nu doar ce a "văzut" botul. Traducem ID-urile tehnice de buton
+  // (ex: REMINDER_CONFIRM_xyz) într-un text ușor de citit de un operator uman
+  await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'IN', text: toFriendlyLogText(text) } })
+
   const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
 
   if (!channelRecord || channelRecord.status !== 'ACTIVE' || !channelRecord.enabledByOwner) {
@@ -45,7 +51,9 @@ export async function processIncomingMessage({
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
     if (booking && booking.businessId === businessId) {
       await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED', customerConfirmed: true } })
-      await sendMessage({ channel, channelId, to: externalUserId, text: 'Perfect, programarea ta a fost confirmată! Te așteptăm.' })
+      const confirmText = 'Perfect, programarea ta a fost confirmată! Te așteptăm.'
+      await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'OUT', text: confirmText } })
+      await sendMessage({ channel, channelId, to: externalUserId, text: confirmText })
     }
     return
   }
@@ -69,7 +77,7 @@ export async function processIncomingMessage({
         await prisma.conversation.create({ data: { businessId, channel, externalUserId, state: newState as any } })
       }
 
-      await sendReply({ channel, channelId, to: externalUserId, reply })
+      await sendReply({ businessId, channel, channelId, to: externalUserId, reply })
     }
     return
   }
@@ -79,13 +87,16 @@ export async function processIncomingMessage({
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
     if (booking && booking.businessId === businessId) {
       await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CANCELLED', customerConfirmed: false } })
-      await sendMessage({ channel, channelId, to: externalUserId, text: 'Am anulat programarea. Sper să te vedem altă dată!' })
+      const cancelText = 'Am anulat programarea. Sper să te vedem altă dată!'
+      await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'OUT', text: cancelText } })
+      await sendMessage({ channel, channelId, to: externalUserId, text: cancelText })
     }
     return
   }
 
   if (CANCEL_BOOKING_PATTERN.test(text.trim())) {
     const reply = await handleBookingCancellation(businessId, channel, externalUserId)
+    await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'OUT', text: reply } })
     await sendMessage({ channel, channelId, to: externalUserId, text: reply })
     return
   }
@@ -93,6 +104,7 @@ export async function processIncomingMessage({
   if (CONFIRM_BOOKING_PATTERN.test(text.trim())) {
     const reply = await handleBookingConfirmation(businessId, externalUserId)
     if (reply) {
+      await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'OUT', text: reply } })
       await sendMessage({ channel, channelId, to: externalUserId, text: reply })
       return
     }
@@ -117,26 +129,38 @@ export async function processIncomingMessage({
 
   await prisma.conversation.update({
     where: { id: conversation.id },
-    data: { state: newState as any, updatedAt: new Date() },
+    data: {
+      state: newState as any,
+      updatedAt: new Date(),
+      // marcăm conversația ca având nevoie de operator exact când intră în tăcere —
+      // admin-ul o vede în inbox și o poate rezolva manual de-acolo
+      ...(newState.step === 'OPERATOR_SILENCE' ? { needsOperator: true } : {}),
+    },
   })
 
-  await sendReply({ channel, channelId, to: externalUserId, reply })
+  await sendReply({ businessId, channel, channelId, to: externalUserId, reply })
 }
 
 // alege automat formatul potrivit de trimitere: listă interactivă pe WhatsApp, carousel
 // pe Messenger/Instagram, sau text simplu — în funcție de tipul de răspuns și canal
 async function sendReply({
+  businessId,
   channel,
   channelId,
   to,
   reply,
 }: {
+  businessId: string
   channel: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
   channelId: string
   to: string
   reply: BotReply
 }) {
   if (reply.kind === 'none') return
+
+  await prisma.chatMessage.create({
+    data: { businessId, channel, externalUserId: to, direction: 'OUT', text: replyToLogText(reply) },
+  })
 
   if (reply.kind === 'text') {
     await sendMessage({ channel, channelId, to, text: reply.text })
@@ -261,4 +285,27 @@ async function notifyOwnerOfMissedMessage(businessId: string, channel: string) {
   })
 
   await prisma.missedMessageAlert.create({ data: { businessId, channel, sentAt: new Date() } })
+}
+
+function replyToLogText(reply: BotReply): string {
+  if (reply.kind === 'text') return reply.text
+  if (reply.kind === 'buttons') return `${reply.text}\n[opțiuni: ${reply.options.map((o) => o.title).join(' / ')}]`
+  if (reply.kind === 'choices') {
+    const allTitles = reply.groups.flatMap((g) => g.options.map((o) => o.title))
+    return `${reply.text}\n[opțiuni: ${allTitles.join(', ')}]`
+  }
+  return ''
+}
+
+function toFriendlyLogText(text: string): string {
+  const trimmed = text.trim()
+  if (trimmed.startsWith('REMINDER_CONFIRM_')) return '[a apăsat: Confirmă programarea]'
+  if (trimmed.startsWith('REMINDER_CANCEL_')) return '[a apăsat: Anulează programarea]'
+  if (trimmed.startsWith('REMINDER_RESCHEDULE_')) return '[a apăsat: Programare în altă zi]'
+  if (trimmed === 'OPERATOR') return '[a apăsat: Vorbește cu un operator]'
+  if (trimmed === 'START_PROGRAMARE') return '[a apăsat: Fă o programare]'
+  if (trimmed === 'LINK_REZERVARE') return '[a apăsat: Vezi pagina de rezervare]'
+  if (trimmed === 'CONFIRM_BOOKING') return '[a apăsat: Confirmă programarea]'
+  if (trimmed === 'CANCEL_BOOKING') return '[a apăsat: Anulează]'
+  return text
 }

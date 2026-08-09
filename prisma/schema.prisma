@@ -67,6 +67,7 @@ model Business {
   bookings           Booking[]
   waitlistEntries    WaitlistEntry[]
   supportTickets     SupportTicket[]
+  chatMessages       ChatMessage[]
   channels           Channel[]
   workingHours       WorkingHours[]
   conversations      Conversation[]
@@ -281,7 +282,26 @@ model Conversation {
   channel        ChannelType
   externalUserId String
   state          Json
+  needsOperator  Boolean  @default(false) // clientul a cerut un operator, așteaptă răspuns uman
   updatedAt      DateTime @updatedAt
+}
+
+model ChatMessage {
+  id             String            @id @default(cuid())
+  businessId     String
+  business       Business          @relation(fields: [businessId], references: [id])
+  channel        ChannelType
+  externalUserId String
+  direction      MessageDirection
+  text           String
+  createdAt      DateTime          @default(now())
+
+  @@index([businessId, channel, externalUserId, createdAt])
+}
+
+enum MessageDirection {
+  IN
+  OUT
 }
 
 model BusinessPhoto {

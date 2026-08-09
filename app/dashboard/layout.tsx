@@ -12,6 +12,7 @@ export const revalidate = 0
 
 const NAV_ITEMS = [
   { href: '/dashboard/calendar', label: 'Calendar' },
+  { href: '/dashboard/mesaje', label: 'Mesaje' },
   { href: '/dashboard/programari', label: 'Programări' },
   { href: '/dashboard/clienti', label: 'Clienți' },
   { href: '/dashboard/servicii', label: 'Servicii' },
@@ -39,6 +40,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let brandColor: string | null = null
   let category: string | null = null
   let teamSize = 1
+  let needsOperatorCount = 0
   if (businessId) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
@@ -53,6 +55,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     brandColor = business?.brandColor ?? null
     category = business?.category ?? null
     teamSize = business?.teamSize ?? 1
+    needsOperatorCount = await prisma.conversation.count({ where: { businessId, needsOperator: true } })
   }
 
   const navItems = [
@@ -62,9 +65,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ]
     .map((item) => ({
       ...item,
+      badge: item.href === '/dashboard/mesaje' && needsOperatorCount > 0 ? needsOperatorCount : undefined,
+    }))
+    .map((item) => ({
+      ...item,
       label: category === 'CLINICA' ? CLINIC_NAV_LABEL_OVERRIDES[item.href] ?? item.label : item.label,
     }))
-    .concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin' }] : [])
+    .concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin', badge: undefined }] : [])
 
   return (
     <ResponsiveShell
