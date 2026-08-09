@@ -68,6 +68,7 @@ model Business {
   waitlistEntries    WaitlistEntry[]
   supportTickets     SupportTicket[]
   chatMessages       ChatMessage[]
+  messageTemplates   MessageTemplate[]
   channels           Channel[]
   workingHours       WorkingHours[]
   conversations      Conversation[]
@@ -283,7 +284,17 @@ model Conversation {
   externalUserId String
   state          Json
   needsOperator  Boolean  @default(false) // clientul a cerut un operator, așteaptă răspuns uman
+  operatorRequestedAt DateTime? // momentul exact al ultimei cereri de operator — inbox-ul arată mesajele doar de-atunci încolo, nu tot istoricul cu botul
   updatedAt      DateTime @updatedAt
+}
+
+model MessageTemplate {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  title      String // eticheta scurtă, pentru identificare rapidă în listă
+  text       String
+  createdAt  DateTime @default(now())
 }
 
 model ChatMessage {

@@ -12,7 +12,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!conversation || conversation.businessId !== businessId) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
   const messages = await prisma.chatMessage.findMany({
-    where: { businessId, channel: conversation.channel, externalUserId: conversation.externalUserId },
+    where: {
+      businessId,
+      channel: conversation.channel,
+      externalUserId: conversation.externalUserId,
+      ...(conversation.operatorRequestedAt ? { createdAt: { gte: conversation.operatorRequestedAt } } : {}),
+    },
     orderBy: { createdAt: 'asc' },
     take: 200,
   })

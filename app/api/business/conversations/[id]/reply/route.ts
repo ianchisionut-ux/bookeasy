@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 import { sendMessage } from '@/lib/channel-senders'
 import { z } from 'zod'
 
-const schema = z.object({ text: z.string().min(1).max(2000) })
+const schema = z.object({ text: z.string().min(1).max(2000), operatorName: z.string().max(60).optional() })
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -24,14 +24,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   })
   if (!channelRecord) return NextResponse.json({ error: 'Canalul nu e conectat sau activ.' }, { status: 400 })
 
+  const finalText = parsed.data.operatorName?.trim() ? `*${parsed.data.operatorName.trim()}:* ${parsed.data.text}` : parsed.data.text
+
   try {
-    await sendMessage({ channel: conversation.channel as any, channelId: channelRecord.id, to: conversation.externalUserId, text: parsed.data.text })
+    await sendMessage({ channel: conversation.channel as any, channelId: channelRecord.id, to: conversation.externalUserId, text: finalText })
   } catch (err: any) {
     return NextResponse.json({ error: err.message ?? 'Trimiterea a eșuat.' }, { status: 500 })
   }
 
   await prisma.chatMessage.create({
-    data: { businessId, channel: conversation.channel, externalUserId: conversation.externalUserId, direction: 'OUT', text: parsed.data.text },
+    data: { businessId, channel: conversation.channel, externalUserId: conversation.externalUserId, direction: 'OUT', text: finalText },
   })
 
   // răspunsul manual al operatorului rezolvă implicit cererea — dacă vrea, poate

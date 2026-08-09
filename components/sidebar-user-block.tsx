@@ -1,8 +1,14 @@
-import Link from 'next/link'
-import { User } from 'lucide-react'
-import { SignOutButton } from './sign-out-button'
+'use client'
 
-export function SidebarUserBlock({ label, status = 'Activ' }: { label: string; status?: string }) {
+import { useState } from 'react'
+import Link from 'next/link'
+import { User, MessageCircle } from 'lucide-react'
+import { SignOutButton } from './sign-out-button'
+import { SupportChatPanel } from './support-chat-button'
+
+export function SidebarUserBlock({ label, status = 'Activ', showSupport = false }: { label: string; status?: string; showSupport?: boolean }) {
+  const [supportOpen, setSupportOpen] = useState(false)
+
   return (
     <div className="mt-auto pt-2">
       <div className="h-px bg-[var(--border-soft)] mb-3" />
@@ -18,10 +24,19 @@ export function SidebarUserBlock({ label, status = 'Activ' }: { label: string; s
           </p>
         </div>
       </div>
+      {showSupport && (
+        <button
+          onClick={() => setSupportOpen(true)}
+          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-white hover:shadow-sm transition mb-1"
+        >
+          <MessageCircle size={15} /> Suport
+        </button>
+      )}
       <Link href="/account/password" className="block px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-white hover:shadow-sm transition mb-1">
         Schimbă parola
       </Link>
       <SignOutButton className="w-full" />
+      {showSupport && <SupportChatPanel open={supportOpen} onClose={() => setSupportOpen(false)} />}
     </div>
   )
 }

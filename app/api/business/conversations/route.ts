@@ -8,7 +8,7 @@ export async function GET() {
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const conversations = await prisma.conversation.findMany({
-    where: { businessId },
+    where: { businessId, operatorRequestedAt: { not: null } },
     orderBy: { updatedAt: 'desc' },
     take: 100,
   })
@@ -19,7 +19,12 @@ export async function GET() {
     conversations.map(async (c) => {
       const [lastMessage, customer] = await Promise.all([
         prisma.chatMessage.findFirst({
-          where: { businessId, channel: c.channel, externalUserId: c.externalUserId },
+          where: {
+            businessId,
+            channel: c.channel,
+            externalUserId: c.externalUserId,
+            ...(c.operatorRequestedAt ? { createdAt: { gte: c.operatorRequestedAt } } : {}),
+          },
           orderBy: { createdAt: 'desc' },
         }),
         c.channel === 'WHATSAPP'
