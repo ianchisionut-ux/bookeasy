@@ -175,7 +175,9 @@ export function ResponsiveShell({
             </Link>
           )
         })}
-        <div className="mt-auto" />
+        <div className="mt-auto px-3 pb-2">
+          <Image src="/logo.png" alt="bookeasy.ro" width={800} height={471} className="w-full h-auto opacity-50" />
+        </div>
         {accountContent}
       </aside>
 
