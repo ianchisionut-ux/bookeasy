@@ -10,14 +10,14 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 const NAV_ITEMS = [
-  { href: '/dashboard/calendar', label: 'Calendar' },
-  { href: '/dashboard/mesaje', label: 'Mesaje' },
-  { href: '/dashboard/programari', label: 'Programări' },
-  { href: '/dashboard/clienti', label: 'Clienți' },
-  { href: '/dashboard/servicii', label: 'Servicii' },
-  { href: '/dashboard/recenzii', label: 'Recenzii' },
-  { href: '/dashboard/statistici', label: 'Statistici' },
-  { href: '/dashboard/setari', label: 'Setări' },
+  { href: '/dashboard/calendar', label: 'Calendar', icon: 'calendar' },
+  { href: '/dashboard/mesaje', label: 'Mesaje', icon: 'mesaje' },
+  { href: '/dashboard/programari', label: 'Programări', icon: 'programari' },
+  { href: '/dashboard/clienti', label: 'Clienți', icon: 'clienti' },
+  { href: '/dashboard/servicii', label: 'Servicii', icon: 'servicii' },
+  { href: '/dashboard/recenzii', label: 'Recenzii', icon: 'recenzii' },
+  { href: '/dashboard/statistici', label: 'Statistici', icon: 'statistici' },
+  { href: '/dashboard/setari', label: 'Setări', icon: 'setari' },
 ]
 
 const CLINIC_NAV_LABEL_OVERRIDES: Record<string, string> = {
@@ -63,7 +63,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const navItems = [
     ...NAV_ITEMS.slice(0, 3),
-    ...(teamSize > 1 ? [{ href: '/dashboard/medici', label: category === 'CLINICA' ? 'Medici' : 'Echipă' }] : []),
+    ...(teamSize > 1 ? [{ href: '/dashboard/medici', label: category === 'CLINICA' ? 'Medici' : 'Echipă', icon: 'medici' }] : []),
     ...NAV_ITEMS.slice(3),
   ]
     .map((item) => ({
@@ -79,7 +79,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       ...item,
       label: category === 'CLINICA' ? CLINIC_NAV_LABEL_OVERRIDES[item.href] ?? item.label : item.label,
     }))
-    .concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin', badge: undefined }] : [])
+    .concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin', badge: undefined, icon: 'superadmin' }] : [])
 
   return (
     <ResponsiveShell

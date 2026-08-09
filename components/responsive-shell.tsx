@@ -5,7 +5,39 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { User } from 'lucide-react'
+import {
+  Calendar,
+  MessagesSquare,
+  ClipboardList,
+  Users,
+  Scissors,
+  Star,
+  BarChart3,
+  Settings,
+  Stethoscope,
+  ShieldCheck,
+  Building2,
+  Inbox,
+  LifeBuoy,
+} from 'lucide-react'
 import { SidebarClock } from './sidebar-clock'
+
+const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
+  calendar: Calendar,
+  mesaje: MessagesSquare,
+  programari: ClipboardList,
+  clienti: Users,
+  servicii: Scissors,
+  recenzii: Star,
+  statistici: BarChart3,
+  setari: Settings,
+  medici: Stethoscope,
+  superadmin: ShieldCheck,
+  overview: BarChart3,
+  afaceri: Building2,
+  cereri: Inbox,
+  tichete: LifeBuoy,
+}
 
 // amestecă o culoare hex cu alb, la un procent dat — produce o culoare SOLIDĂ (nu transparentă).
 // esențial pentru header-ul mobil, care e fix (sticky) — dacă am folosi transparență, conținutul
@@ -33,7 +65,7 @@ export function ResponsiveShell({
   logoHref: string
   logoLabel: string
   profileName?: string // numele afacerii/profilului, afișat sus, deasupra ceasului
-  navItems: { href: string; label: string; badge?: number }[]
+  navItems: { href: string; label: string; badge?: number; icon?: string }[]
   accentColor?: string // culoarea aleasă de business în Setări — dacă lipsește, folosim culoarea implicită bookeasy
   accountContent: React.ReactNode // blocul de cont/ieșire — separat, ca să nu intre în carusel
   children: React.ReactNode
@@ -108,6 +140,7 @@ export function ResponsiveShell({
         <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
           {displayNavItems.map((item) => {
             const active = item.href === activeHref
+            const Icon = item.icon ? NAV_ICONS[item.icon] : null
             return (
               <Link
                 key={item.href}
@@ -119,6 +152,7 @@ export function ResponsiveShell({
                     : { background: 'var(--surface-muted)', color: 'var(--foreground)' }
                 }
               >
+                {Icon && <Icon size={14} />}
                 {item.label}
                 {!!item.badge && (
                   <span className="text-xs bg-red-600 text-white rounded-full px-1.5 min-w-[16px] text-center leading-4">
@@ -153,18 +187,20 @@ export function ResponsiveShell({
         <SidebarClock />
         {displayNavItems.map((item) => {
           const active = item.href === activeHref
+          const Icon = item.icon ? NAV_ICONS[item.icon] : null
           return (
             <Link
               key={item.href}
               href={item.href}
-              className="px-3 py-2.5 rounded-xl text-sm font-medium transition flex items-center justify-between border-l-[3px]"
+              className="px-3 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-2.5 border-l-[3px]"
               style={
                 active
                   ? { background: 'white', boxShadow: 'var(--shadow-card)', borderLeftColor: accent, color: accent }
                   : { color: 'var(--foreground-muted, #4b5563)', borderLeftColor: 'transparent' }
               }
             >
-              {item.label}
+              {Icon && <Icon size={16} />}
+              <span className="flex-1">{item.label}</span>
               {!!item.badge && (
                 <span
                   className={`text-xs bg-red-600 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center ${item.href === '/dashboard/mesaje' || item.href === '/dashboard/programari' ? 'animate-pulse' : ''}`}

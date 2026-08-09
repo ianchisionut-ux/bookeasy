@@ -5,10 +5,10 @@ import { SidebarUserBlock } from '@/components/sidebar-user-block'
 import { ResponsiveShell } from '@/components/responsive-shell'
 
 const NAV_ITEMS = [
-  { href: '/superadmin', label: 'Prezentare generală' },
-  { href: '/superadmin/afaceri', label: 'Afaceri' },
-  { href: '/superadmin/cereri', label: 'Cereri de acces' },
-  { href: '/superadmin/tichete', label: 'Tichete suport' },
+  { href: '/superadmin', label: 'Prezentare generală', icon: 'overview' },
+  { href: '/superadmin/afaceri', label: 'Afaceri', icon: 'afaceri' },
+  { href: '/superadmin/cereri', label: 'Cereri de acces', icon: 'cereri' },
+  { href: '/superadmin/tichete', label: 'Tichete suport', icon: 'tichete' },
 ]
 
 export default async function SuperAdminLayout({ children }: { children: React.ReactNode }) {
