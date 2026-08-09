@@ -30,7 +30,7 @@ function CopyableLink({ path, label }: { path: string; label: string }) {
 
 export function PublicPageLinkCard({ slug, isClinic }: { slug: string; isClinic: boolean }) {
   return (
-    <Card>
+    <Card className="mb-5 break-inside-avoid">
       <h2 className="font-medium mb-1">Pagina ta publică</h2>
       <p className="text-sm text-gray-500 mb-3">
         Link-urile pe care le trimiți {isClinic ? 'pacienților' : 'clienților'} sau le pui pe rețele sociale.

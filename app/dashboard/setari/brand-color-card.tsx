@@ -48,7 +48,7 @@ export default function BrandColorCard({ initialColor, isClinic }: { initialColo
   }
 
   return (
-    <Card>
+    <Card className="mb-5 break-inside-avoid">
       <h2 className="font-medium mb-1">Culoarea profilului tău</h2>
       <p className="text-sm text-gray-500 mb-4">
         Se aplică pe pagina publică și pe formularul de {isClinic ? 'programare' : 'rezervare'} — servicii selectate, date, ore, buton de confirmare.

@@ -32,11 +32,11 @@ export default async function SetariPage() {
   })
 
   return (
-    <div className="p-4 lg:p-8 max-w-2xl">
+    <div className="p-4 lg:p-8 max-w-5xl">
       <h1 className="text-2xl font-semibold mb-1">Setări</h1>
       <p className="text-sm text-gray-500 mb-6">Datele profilului, programul de lucru și vizibilitatea publică.</p>
 
-      <div className="flex flex-col gap-5">
+      <div className="columns-1 lg:columns-2 gap-5">
         <PublicPageLinkCard slug={business.slug} isClinic={business.category === 'CLINICA'} />
 
         <SubscriptionCard planName={business.planName} billingStatus={business.billingStatus} />

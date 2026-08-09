@@ -290,29 +290,26 @@ export default function ProgramariManager({
 
   return (
     <div className="p-4 lg:p-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
-        <h1 className="text-2xl font-semibold">Programări</h1>
-        <div className="flex gap-2">
-          <PrintButton />
-          <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : '+ Adaugă programare'}</Button>
-        </div>
+      <div className="flex flex-wrap items-center gap-2 mb-5">
+        <h1 className="text-2xl font-semibold mr-1">Programări</h1>
+        <span className="text-sm text-gray-500 mr-2">{bookings.length} programări</span>
+        <form method="get" className="flex flex-wrap items-center gap-2">
+          <Input name="q" defaultValue={filters.q} placeholder="Caută client (nume/telefon)..." className="w-52" />
+          <select name="status" defaultValue={filters.status} className="input-field">
+            <option value="">Toate statusurile</option>
+            {Object.entries(STATUS_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <button type="submit" className="btn-secondary">
+            Filtrează
+          </button>
+        </form>
+        <PrintButton />
+        <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : '+ Adaugă programare'}</Button>
       </div>
-      <p className="text-sm text-gray-500 mb-6">{bookings.length} programări</p>
-
-      <form method="get" className="flex flex-col sm:flex-row gap-2 mb-5 max-w-lg">
-        <Input name="q" defaultValue={filters.q} placeholder="Caută client (nume/telefon)..." />
-        <select name="status" defaultValue={filters.status} className="input-field">
-          <option value="">Toate statusurile</option>
-          {Object.entries(STATUS_LABEL).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <button type="submit" className="btn-secondary">
-          Filtrează
-        </button>
-      </form>
 
       {adding && (
         <NewBookingForm

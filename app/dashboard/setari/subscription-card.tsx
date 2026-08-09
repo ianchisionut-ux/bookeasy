@@ -17,7 +17,7 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> 
 
 export function SubscriptionCard({ planName, billingStatus }: { planName: string | null; billingStatus: string }) {
   return (
-    <Card>
+    <Card className="mb-5 break-inside-avoid">
       <div className="flex items-center justify-between mb-1">
         <h2 className="font-medium">Abonament</h2>
         <Pill tone={STATUS_TONE[billingStatus] ?? 'neutral'}>{STATUS_LABEL[billingStatus] ?? billingStatus}</Pill>

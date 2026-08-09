@@ -79,8 +79,8 @@ export default function SettingsForm({
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <Card>
+    <>
+      <Card className="mb-5 break-inside-avoid">
         <h2 className="font-medium mb-4">Date profil</h2>
         <div className="flex flex-col gap-3">
           <div>
@@ -104,7 +104,7 @@ export default function SettingsForm({
         </div>
       </Card>
 
-      <Card>
+      <Card className="mb-5 break-inside-avoid">
         <h2 className="font-medium mb-4">Program de lucru</h2>
         <div className="flex flex-col gap-2 mb-5">
           {hours.map((h) => (
@@ -230,7 +230,7 @@ export default function SettingsForm({
         </div>
       </Card>
 
-      <Card>
+      <Card className="mb-5 break-inside-avoid">
         <h2 className="font-medium mb-1">Interval între ore disponibile</h2>
         <p className="text-sm text-gray-500 mb-3">
           Cum se împart orele oferite {isClinic ? 'pacienților' : 'clienților'} la {isClinic ? 'programare' : 'rezervare'}.
@@ -251,7 +251,7 @@ export default function SettingsForm({
         </p>
       </Card>
 
-      <Card>
+      <Card className="mb-5 break-inside-avoid">
         <h2 className="font-medium mb-1">Interval minim pentru {isClinic ? 'programări' : 'rezervări'} din exterior</h2>
         <p className="text-sm text-gray-500 mb-3">
           {isClinic ? 'Programările venite' : 'Rezervările venite'} prin bot (WhatsApp/Instagram/Facebook) sau de pe site nu se pot face
@@ -271,7 +271,7 @@ export default function SettingsForm({
         </select>
       </Card>
 
-      <Card>
+      <Card className="mb-5 break-inside-avoid">
         <h2 className="font-medium mb-1">Reconfirmare programări pe WhatsApp</h2>
         <p className="text-sm text-gray-500">
           Orice programare nouă intră în sistem ca <strong>"În așteptare"</strong> — clientul primește
@@ -281,7 +281,7 @@ export default function SettingsForm({
         </p>
       </Card>
 
-      <Card>
+      <Card className="mb-5 break-inside-avoid">
         <h2 className="font-medium mb-1">Tăcere bot după cerere de operator</h2>
         <p className="text-sm text-gray-500 mb-3">
           Când un client apasă "Operator" în conversația de pe WhatsApp/Messenger, botul nu mai
@@ -301,10 +301,10 @@ export default function SettingsForm({
         </select>
       </Card>
 
-      <Card>
+      <Card className="mb-5 break-inside-avoid">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-medium">Rezervare direct în conversație (bot)</h2>
+            <h2 className="font-medium">Programare direct în conversație (bot)</h2>
             <p className="text-sm text-gray-500 mt-0.5">
               Dacă e oprit, opțiunea "Fă o programare" dispare din meniul de start al botului —
               rămân doar "Vorbește cu un operator" și "Vezi pagina de rezervare". Util dacă vrei ca
@@ -324,7 +324,7 @@ export default function SettingsForm({
         </div>
       </Card>
 
-      <Card>
+      <Card className="mb-5 break-inside-avoid">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-medium">Vizibil pe harta publică</h2>
@@ -345,13 +345,13 @@ export default function SettingsForm({
         </div>
       </Card>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 mb-5 break-inside-avoid">
         <Button onClick={handleSave} disabled={saving}>
           {saving ? 'Se salvează...' : 'Salvează setările'}
         </Button>
         {savedAt && <span className="text-xs text-gray-500">Salvat la {savedAt}</span>}
         {geocoded && <span className="text-xs text-green-700">· locația a fost actualizată pe hartă</span>}
       </div>
-    </div>
+    </>
   )
 }
