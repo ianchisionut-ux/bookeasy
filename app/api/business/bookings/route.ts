@@ -45,7 +45,18 @@ export async function POST(req: NextRequest) {
   // client existent (ales din listă) sau creat/regăsit pe loc, după numărul de telefon —
   // ca administratorul să nu mai trebuiască să treacă prin /Clienti separat
   let customerId = parsed.data.customerId
-  if (!customerId && parsed.data.customerPhone) {
+  if (customerId && (parsed.data.customerName || parsed.data.customerPhone)) {
+    // clientul era deja cunoscut, dar adminul a corectat/actualizat numele sau
+    // telefonul direct din formular (ex: din programarea rapidă în chat) — salvăm
+    // modificarea pe fișa clientului, nu o ignorăm
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: {
+        ...(parsed.data.customerName ? { name: parsed.data.customerName } : {}),
+        ...(parsed.data.customerPhone ? { phone: parsed.data.customerPhone } : {}),
+      },
+    })
+  } else if (!customerId && parsed.data.customerPhone) {
     const existing = await prisma.customer.findFirst({ where: { businessId, phone: parsed.data.customerPhone } })
     if (existing) {
       customerId = existing.id

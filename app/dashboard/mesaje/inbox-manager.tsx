@@ -394,8 +394,8 @@ function QuickBookingModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerId: conversation.customerId ?? undefined,
-          customerName: conversation.customerId ? undefined : customerName.trim(),
-          customerPhone: conversation.customerId ? undefined : customerPhone.trim(),
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
           serviceId,
           practitionerId: isMultiPractitioner ? practitionerId : undefined,
           startAt: start.toISOString(),
@@ -460,14 +460,12 @@ function QuickBookingModal({
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Nume client"
                 className="input-field"
-                disabled={!!conversation.customerId}
               />
               <input
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 placeholder="Telefon"
                 className="input-field"
-                disabled={!!conversation.customerId}
               />
             </div>
 
