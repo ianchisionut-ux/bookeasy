@@ -132,9 +132,13 @@ export async function processIncomingMessage({
     data: {
       state: newState as any,
       updatedAt: new Date(),
-      // marcăm conversația ca având nevoie de operator exact când intră în tăcere —
-      // admin-ul o vede în inbox și o poate rezolva manual de-acolo
-      ...(newState.step === 'OPERATOR_SILENCE' ? { needsOperator: true, operatorRequestedAt: new Date() } : {}),
+      needsOperator: newState.step === 'OPERATOR_SILENCE' ? true : conversation.needsOperator,
+      // setăm operatorRequestedAt DOAR la prima intrare în tăcere — dacă am seta-o la
+      // fiecare mesaj primit cât timp rămâne "OPERATOR_SILENCE", pragul ar sări mereu
+      // înaintea mesajelor deja logate, excluzându-le din inbox (exact bug-ul găsit)
+      ...(newState.step === 'OPERATOR_SILENCE' && !conversation.operatorRequestedAt
+        ? { operatorRequestedAt: new Date() }
+        : {}),
     },
   })
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { MessageCircle, Send, CheckCircle2, FileText } from 'lucide-react'
+import { MessageCircle, Send, CheckCircle2, FileText, X } from 'lucide-react'
 
 type ConversationSummary = {
   id: string
@@ -125,6 +125,21 @@ export default function InboxManager() {
     }
   }
 
+  async function deleteConversation(id: string, e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!confirm('Ștergi definitiv această conversație, cu tot istoricul de mesaje?')) return
+    try {
+      await fetchWithTimeout(`/api/business/conversations/${id}`, { method: 'DELETE' })
+      if (selectedId === id) {
+        setSelectedId(null)
+        setMessages([])
+      }
+      await loadConversations(true)
+    } catch {
+      alert('Conexiune eșuată. Încearcă din nou.')
+    }
+  }
+
   const selected = conversations.find((c) => c.id === selectedId)
   const anyNeedsOperator = conversations.some((c) => c.needsOperator)
 
@@ -155,17 +170,25 @@ export default function InboxManager() {
               <button
                 key={c.id}
                 onClick={() => setSelectedId(c.id)}
-                className="w-full text-left p-4 border-b border-[var(--border-soft)] hover:bg-[var(--surface-muted)] transition"
+                className="w-full text-left p-4 border-b border-[var(--border-soft)] hover:bg-[var(--surface-muted)] transition relative group"
                 style={selectedId === c.id ? { background: 'var(--accent-soft)' } : {}}
               >
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1 pr-5">
                   <p className="text-sm font-medium truncate">{c.customerName ?? c.externalUserId}</p>
                   {c.needsOperator && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 ml-2 animate-pulse" />}
                 </div>
-                <p className="text-xs text-gray-500 truncate">
+                <p className="text-xs text-gray-500 truncate pr-5">
                   {c.lastMessage ? `${c.lastMessage.direction === 'OUT' ? 'Tu: ' : ''}${c.lastMessage.text}` : ''}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">{CHANNEL_LABEL[c.channel]}</p>
+                <span
+                  onClick={(e) => deleteConversation(c.id, e)}
+                  role="button"
+                  aria-label="Șterge conversația"
+                  className="absolute top-3 right-3 text-gray-300 hover:text-red-600 opacity-0 group-hover:opacity-100 transition"
+                >
+                  <X size={16} />
+                </span>
               </button>
             ))
           )}
