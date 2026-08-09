@@ -23,6 +23,7 @@ function blendWithWhite(hex: string, amount: number): string {
 export function ResponsiveShell({
   logoHref,
   logoLabel,
+  profileName,
   navItems,
   accentColor,
   accountContent,
@@ -31,6 +32,7 @@ export function ResponsiveShell({
 }: {
   logoHref: string
   logoLabel: string
+  profileName?: string // numele afacerii/profilului, afișat sus, deasupra ceasului
   navItems: { href: string; label: string; badge?: number }[]
   accentColor?: string // culoarea aleasă de business în Setări — dacă lipsește, folosim culoarea implicită bookeasy
   accountContent: React.ReactNode // blocul de cont/ieșire — separat, ca să nu intre în carusel
@@ -147,10 +149,7 @@ export function ResponsiveShell({
 
       {/* sidebar fix, doar de la lg in sus */}
       <aside className="hidden lg:flex flex-col gap-1 p-4" style={{ background: softTint }}>
-        <Link href={logoHref} className="flex items-center gap-2 mb-1 px-3">
-          <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={28} height={28} />
-          <span className="font-semibold text-lg">{logoLabel}</span>
-        </Link>
+        {profileName && <p className="font-semibold text-lg px-3 mb-1 truncate">{profileName}</p>}
         <SidebarClock />
         {displayNavItems.map((item) => {
           const active = item.href === activeHref
@@ -176,6 +175,10 @@ export function ResponsiveShell({
             </Link>
           )
         })}
+        <Link href={logoHref} className="flex items-center gap-2 px-3 mt-auto pb-1">
+          <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={22} height={22} />
+          <span className="font-medium text-sm text-gray-500">{logoLabel}</span>
+        </Link>
         {accountContent}
       </aside>
 

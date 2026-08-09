@@ -32,7 +32,7 @@ export default async function SuperAdminLayout({ children }: { children: React.R
   }))
 
   return (
-    <ResponsiveShell logoHref="/superadmin" logoLabel="Super Admin" navItems={navItems} accountContent={<SidebarUserBlock label={userEmail} />}>
+    <ResponsiveShell logoHref="/superadmin" logoLabel="bookeasy.ro" profileName="Super Admin" navItems={navItems} accountContent={<SidebarUserBlock label={userEmail} />}>
       {children}
     </ResponsiveShell>
   )

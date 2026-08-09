@@ -37,6 +37,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   let brandColor: string | null = null
+  let businessName: string | null = null
   let category: string | null = null
   let teamSize = 1
   let needsOperatorCount = 0
@@ -44,7 +45,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (businessId) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
-      select: { accountActive: true, onboardingDone: true, onboardingStep: true, brandColor: true, category: true, teamSize: true },
+      select: { name: true, accountActive: true, onboardingDone: true, onboardingStep: true, brandColor: true, category: true, teamSize: true },
     })
     if (business && !business.accountActive) {
       redirect('/cont-suspendat')
@@ -53,6 +54,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       redirect(`/onboarding/step-${business.onboardingStep}`)
     }
     brandColor = business?.brandColor ?? null
+    businessName = business?.name ?? null
     category = business?.category ?? null
     teamSize = business?.teamSize ?? 1
     needsOperatorCount = await prisma.conversation.count({ where: { businessId, needsOperator: true } })
@@ -83,6 +85,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <ResponsiveShell
       logoHref="/dashboard"
       logoLabel="bookeasy.ro"
+      profileName={businessName ?? undefined}
       navItems={navItems}
       accentColor={brandColor ?? undefined}
       accountContent={<SidebarUserBlock label={userEmail || 'Cont'} showSupport />}
