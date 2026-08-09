@@ -111,6 +111,8 @@ model User {
   businessId          String?
   business            Business?             @relation(fields: [businessId], references: [id])
   passwordResetTokens PasswordResetToken[]
+
+  @@index([businessId])
 }
 
 enum Role {
@@ -156,6 +158,8 @@ model Service {
   bookings        Booking[]
   practitioners   ServicePractitioner[]
   waitlistEntries WaitlistEntry[]
+
+  @@index([businessId, active])
 }
 
 enum ServiceType {
@@ -221,6 +225,15 @@ model Booking {
   unconfirmedAlertSent    Boolean @default(false) // am anunțat deja proprietarul că rezervarea asta n-a fost confirmată
   createdAt       DateTime      @default(now())
   review          Review?
+
+  // interogările reale (calendar, disponibilitate, reminder-e, statistici) filtrează
+  // aproape mereu după businessId + un al doilea criteriu — fără aceste indexuri,
+  // Postgres scanează tabelul întreg de fiecare dată, la orice volum mai mare
+  @@index([businessId, startAt])
+  @@index([businessId, status])
+  @@index([businessId, confirmationSeenByAdmin])
+  @@index([customerId])
+  @@index([practitionerId])
 }
 
 enum BookingStatus {
@@ -238,6 +251,8 @@ model WorkingHours {
   weekday    Int
   startTime  String
   endTime    String
+
+  @@index([businessId, weekday])
 }
 
 // ─────────────────────────────────────────────
@@ -259,6 +274,7 @@ model Channel {
   connectedAt    DateTime      @default(now())
 
   @@unique([type, externalId])
+  @@index([businessId, type])
 }
 
 enum ChannelType {
@@ -287,6 +303,9 @@ model Conversation {
   needsOperator  Boolean  @default(false) // clientul a cerut un operator, așteaptă răspuns uman
   operatorRequestedAt DateTime? // momentul exact al ultimei cereri de operator — inbox-ul arată mesajele doar de-atunci încolo, nu tot istoricul cu botul
   updatedAt      DateTime @updatedAt
+
+  @@index([businessId, needsOperator])
+  @@index([businessId, channel, externalUserId])
 }
 
 model MessageTemplate {
@@ -296,6 +315,8 @@ model MessageTemplate {
   title      String // eticheta scurtă, pentru identificare rapidă în listă
   text       String
   createdAt  DateTime @default(now())
+
+  @@index([businessId])
 }
 
 model ChatMessage {
@@ -322,6 +343,8 @@ model BusinessPhoto {
   business   Business @relation(fields: [businessId], references: [id])
   url        String
   createdAt  DateTime @default(now())
+
+  @@index([businessId])
 }
 
 model Review {
@@ -339,6 +362,7 @@ model Review {
   createdAt  DateTime @default(now())
 
   @@unique([businessId, source, externalReviewId])
+  @@index([businessId])
 }
 
 model BlockedSlot {
@@ -349,6 +373,8 @@ model BlockedSlot {
   endAt      DateTime
   reason     String?
   createdAt  DateTime @default(now())
+
+  @@index([businessId, startAt])
 }
 
 model PasswordResetToken {
@@ -382,6 +408,8 @@ model Practitioner {
   workingHours   PractitionerWorkingHours[]
   services       ServicePractitioner[]
   bookings       Booking[]
+
+  @@index([businessId, active])
 }
 
 model PractitionerWorkingHours {
@@ -471,6 +499,8 @@ model PatientDocument {
   url        String
   filename   String
   uploadedAt DateTime @default(now())
+
+  @@index([customerId])
 }
 
 model MedicalLetter {
@@ -524,6 +554,8 @@ model MedicalLetter {
 
   createdAt           DateTime @default(now())
   updatedAt            DateTime @updatedAt
+
+  @@index([customerId])
 }
 
 model AccessRequest {
@@ -548,6 +580,8 @@ model SupportTicket {
   reply      String? // răspunsul tău, vizibil apoi și adminului afacerii
   repliedAt  DateTime?
   createdAt  DateTime           @default(now())
+
+  @@index([businessId])
 }
 
 enum SupportTicketStatus {
@@ -593,6 +627,8 @@ model MissedMessageAlert {
   business   Business @relation(fields: [businessId], references: [id])
   channel    String
   sentAt     DateTime @default(now())
+
+  @@index([businessId])
 }
 
 // Meta livrează webhook-urile cel puțin o dată — poate trimite ACELAȘI mesaj de mai

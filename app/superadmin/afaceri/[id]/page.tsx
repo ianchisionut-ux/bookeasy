@@ -5,22 +5,26 @@ import BusinessAdminPanel from './business-admin-panel'
 
 export default async function SuperAdminBusinessDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const business = await prisma.business.findUnique({
-    where: { id },
-    include: {
-      channels: true,
-      users: { where: { role: 'OWNER' } },
-      _count: { select: { bookings: true } },
-    },
-  })
+  const [business, revenueAgg] = await Promise.all([
+    prisma.business.findUnique({
+      where: { id },
+      include: {
+        channels: true,
+        users: { where: { role: 'OWNER' } },
+        _count: { select: { bookings: true } },
+      },
+    }),
+    // venit estimat brut (aproximativ — sumă preț servicii pentru rezervările CONFIRMED/COMPLETED)
+    // — independentă de "business", rulează în paralel; dacă afacerea nu există, pur și
+    // simplu ignorăm rezultatul mai jos (cost mic, câștig real în cazul normal, frecvent)
+    prisma.booking.findMany({
+      where: { businessId: id, status: { in: ['CONFIRMED', 'COMPLETED'] } },
+      include: { service: true },
+    }),
+  ])
 
   if (!business) notFound()
 
-  // venit estimat brut (aproximativ — sumă preț servicii pentru rezervările CONFIRMED/COMPLETED)
-  const revenueAgg = await prisma.booking.findMany({
-    where: { businessId: id, status: { in: ['CONFIRMED', 'COMPLETED'] } },
-    include: { service: true },
-  })
   const totalRevenue = revenueAgg.reduce((sum, b) => sum + Number(b.service.price ?? 0), 0)
 
   return (

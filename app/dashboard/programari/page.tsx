@@ -16,16 +16,20 @@ export default async function ProgramariPage({
 
   // prindem ID-urile ÎNAINTE să le marcăm "văzute" — altfel highlight-ul n-ar apărea
   // niciodată, nici la prima afișare. La următoarea vizită a paginii, nemaifiind
-  // "nevăzute", highlight-ul dispare automat — exact comportamentul dorit
-  const newlyConfirmed = await prisma.booking.findMany({
-    where: { businessId, confirmationSeenByAdmin: false },
-    select: { id: true },
-  })
+  // "nevăzute", highlight-ul dispare automat — exact comportamentul dorit.
+  // business.findUnique nu depinde de nimic aici, deci rulează în paralel — dar
+  // updateMany trebuie să rămână STRICT după citire, altfel stricăm exact logica de mai sus
+  const [newlyConfirmed, business] = await Promise.all([
+    prisma.booking.findMany({
+      where: { businessId, confirmationSeenByAdmin: false },
+      select: { id: true },
+    }),
+    prisma.business.findUnique({ where: { id: businessId }, select: { category: true, teamSize: true } }),
+  ])
   const newlyConfirmedIds = newlyConfirmed.map((b) => b.id)
 
   await prisma.booking.updateMany({ where: { businessId, confirmationSeenByAdmin: false }, data: { confirmationSeenByAdmin: true } })
 
-  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { category: true, teamSize: true } })
   const isMultiPractitioner = (business?.teamSize ?? 1) > 1
 
   const [bookings, customers, services, blockedSlots, practitioners] = await Promise.all([

@@ -57,8 +57,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
     businessName = business?.name ?? null
     category = business?.category ?? null
     teamSize = business?.teamSize ?? 1
-    needsOperatorCount = await prisma.conversation.count({ where: { businessId, needsOperator: true } })
-    unseenConfirmationsCount = await prisma.booking.count({ where: { businessId, confirmationSeenByAdmin: false } })
+    // cele două interogări de mai jos sunt independente — rulează la fiecare navigare
+    // din dashboard, deci paralelizarea contează real aici, nu doar teoretic
+    ;[needsOperatorCount, unseenConfirmationsCount] = await Promise.all([
+      prisma.conversation.count({ where: { businessId, needsOperator: true } }),
+      prisma.booking.count({ where: { businessId, confirmationSeenByAdmin: false } }),
+    ])
   }
 
   const navItems = [
