@@ -127,11 +127,15 @@ export async function POST(req: NextRequest) {
   }
 
   // rezervarea pornește "În așteptare" — trimitem și un mesaj pe WhatsApp cu detaliile,
-  // dacă businessul are canalul conectat. Best-effort: nu blocăm niciodată răspunsul
-  // către client dacă trimiterea eșuează, dar logăm eroarea reală, ca să fie vizibilă
-  sendWebBookingConfirmation(booking.id).catch((err) => {
+  // dacă businessul are canalul conectat. AȘTEPTĂM explicit trimiterea (nu fire-and-forget):
+  // pe Vercel serverless, o promisiune neasteptată poate fi întreruptă înainte să se termine,
+  // chiar dacă răspunsul a fost deja trimis către client — mesajul n-ar mai pleca niciodată.
+  // Nu blocăm însă rezervarea dacă trimiterea eșuează — doar logăm eroarea.
+  try {
+    await sendWebBookingConfirmation(booking.id)
+  } catch (err: any) {
     console.error('Eroare la trimiterea confirmării pe WhatsApp pentru rezervarea de pe site:', err?.message ?? err)
-  })
+  }
 
   return NextResponse.json({ bookingId: booking.id, checkoutUrl: null })
 }

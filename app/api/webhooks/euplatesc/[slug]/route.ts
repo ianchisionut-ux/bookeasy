@@ -60,10 +60,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     return new NextResponse(null, { status: 400 })
   }
 
-  // răspundem imediat, procesăm în fundal (aceeași practică ca la Stripe/Netopia)
-  processEuplatescResult(result.response === 'complete', fields.invoiceId!, business.id).catch((err) =>
+  // procesăm ÎNAINTE de a răspunde — vezi motivul identic la webhook-ul Netopia
+  try {
+    await processEuplatescResult(result.response === 'complete', fields.invoiceId!, business.id)
+  } catch (err: any) {
     console.error(`[EuPlatesc:${slug}] Eroare procesare notificare:`, err)
-  )
+  }
 
   return new NextResponse(null, { status: 200 })
 }

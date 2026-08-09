@@ -55,10 +55,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     return new NextResponse(null, { status: 400 })
   }
 
-  // răspundem imediat, procesăm în fundal (aceeași practică ca la Stripe/Meta)
-  processNetopiaResult(rawBody, result.status, business.id).catch((err) =>
+  // procesăm ÎNAINTE de a răspunde — dacă am răspunde imediat și am procesa în fundal,
+  // pe Vercel serverless procesarea (marcarea plății + confirmarea rezervării) ar putea
+  // fi întreruptă înainte să se termine, lăsând o plată reușită neconfirmată în sistem
+  try {
+    await processNetopiaResult(rawBody, result.status, business.id)
+  } catch (err: any) {
     console.error(`[Netopia:${slug}] Eroare procesare notificare:`, err)
-  )
+  }
 
   return new NextResponse(null, { status: 200 })
 }
