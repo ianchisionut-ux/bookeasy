@@ -54,6 +54,7 @@ export default async function SetariPage() {
             minLeadTimeMinutes: business.minLeadTimeMinutes,
             reminderMinutesBefore: business.reminderMinutesBefore,
             operatorSilenceMinutes: business.operatorSilenceMinutes,
+            botBookingEnabled: business.botBookingEnabled,
             break1Start: business.break1Start,
             break1End: business.break1End,
             break2Start: business.break2Start,

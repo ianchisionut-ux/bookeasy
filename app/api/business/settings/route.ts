@@ -15,6 +15,7 @@ const schema = z.object({
   minLeadTimeMinutes: z.number().min(30).max(1440).optional(),
   reminderMinutesBefore: z.number().min(15).max(2880).optional(),
   operatorSilenceMinutes: z.number().min(5).max(240).optional(),
+  botBookingEnabled: z.boolean().optional(),
   break1Start: z.string().nullable().optional(),
   break1End: z.string().nullable().optional(),
   break2Start: z.string().nullable().optional(),

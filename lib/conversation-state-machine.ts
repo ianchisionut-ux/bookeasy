@@ -40,9 +40,9 @@ export type ConversationState = {
 
 const CANCEL_PATTERNS = /^(nu|stop|anuleaz[ăa]|renun[țt]|las[ăa]|gata)\b/i
 const RESTART_PATTERNS = /^(reia|de la [îi]nceput|resetez[ăa]?|programare|nou[ăa])\b/i
-function getWelcomeOptions(slug: string): ChoiceOption[] {
+function getWelcomeOptions(slug: string, botBookingEnabled: boolean): ChoiceOption[] {
   return [
-    { id: 'START_PROGRAMARE', title: 'Programare aici' },
+    ...(botBookingEnabled ? [{ id: 'START_PROGRAMARE', title: 'Programare aici' }] : []),
     { id: 'OPERATOR', title: 'Operator' },
     { id: 'LINK_REZERVARE', title: 'Programare pe site', url: `${process.env.APP_URL}/${slug}/rezerva` },
   ]
@@ -117,7 +117,7 @@ export async function runBotStep({
 
   switch (currentState.step) {
     case 'IDLE': {
-      return showWelcome(business.name, business.slug)
+      return showWelcome(business.name, business.slug, business.botBookingEnabled)
     }
 
     default:
@@ -129,7 +129,7 @@ export async function runBotStep({
       // dacă încă n-am arătat lista reală de servicii, suntem la meniul de start —
       // potrivim răspunsul (tap sau număr scris) cu cele 3 opțiuni inițiale
       if (!currentState.serviceOptions) {
-        const welcomeChoice = matchChoice(incomingText, getWelcomeOptions(business.slug))
+        const welcomeChoice = matchChoice(incomingText, getWelcomeOptions(business.slug, business.botBookingEnabled))
 
         if (welcomeChoice === 'OPERATOR') {
           await notifyOwnerOperatorRequest(businessId, channel, externalUserId)
@@ -148,16 +148,16 @@ export async function runBotStep({
             newState: { step: 'IDLE' },
           }
         }
-        if (welcomeChoice === 'START_PROGRAMARE') {
+        if (welcomeChoice === 'START_PROGRAMARE' && business.botBookingEnabled) {
           return showServiceMenu(business.services)
         }
 
-        return showWelcome(business.name, business.slug)
+        return showWelcome(business.name, business.slug, business.botBookingEnabled)
       }
 
       const options = currentState.serviceOptions
       const choice = matchChoice(incomingText, options)
-      if (!choice) return showWelcome(business.name, business.slug)
+      if (!choice) return showWelcome(business.name, business.slug, business.botBookingEnabled)
 
       if (isMultiPractitioner) {
         return proceedToPractitionerSelection(businessId, { ...currentState, serviceId: choice }, business.category === 'CLINICA')
@@ -259,7 +259,7 @@ export async function runBotStep({
       const cancelled = matched === 'CANCEL_BOOKING'
 
       if (cancelled) {
-        return showWelcome(business.name, business.slug)
+        return showWelcome(business.name, business.slug, business.botBookingEnabled)
       }
 
       if (!confirmed) {
@@ -291,15 +291,19 @@ export async function runBotStep({
     }
 
     default:
-      return showWelcome(business.name, business.slug)
+      return showWelcome(business.name, business.slug, business.botBookingEnabled)
   }
 }
 
 // primul mesaj — salut + 3 opțiuni: fă o programare, vorbește cu un operator, sau
 // linkul direct către pagina publică de rezervare
-function showWelcome(businessName: string, slug: string) {
+function showWelcome(businessName: string, slug: string, botBookingEnabled: boolean) {
   return {
-    reply: { kind: 'buttons' as const, text: `Salut! Bine ai venit la ${businessName}. Cu ce te putem ajuta?`, options: getWelcomeOptions(slug) },
+    reply: {
+      kind: 'buttons' as const,
+      text: `Salut! Bine ai venit la ${businessName}. Cu ce te putem ajuta?`,
+      options: getWelcomeOptions(slug, botBookingEnabled),
+    },
     newState: { step: 'SELECTING_SERVICE' as const },
   }
 }

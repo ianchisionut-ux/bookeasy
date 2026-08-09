@@ -126,10 +126,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // rezervarea e deja CONFIRMED (fără plată online) — trimitem și o confirmare pe
-  // WhatsApp, dacă businessul are canalul conectat. Best-effort: nu blocăm niciodată
-  // răspunsul către client dacă trimiterea eșuează sau WhatsApp nu e conectat
-  sendWebBookingConfirmation(booking.id).catch(() => {})
+  // rezervarea pornește "În așteptare" — trimitem și un mesaj pe WhatsApp cu detaliile,
+  // dacă businessul are canalul conectat. Best-effort: nu blocăm niciodată răspunsul
+  // către client dacă trimiterea eșuează, dar logăm eroarea reală, ca să fie vizibilă
+  sendWebBookingConfirmation(booking.id).catch((err) => {
+    console.error('Eroare la trimiterea confirmării pe WhatsApp pentru rezervarea de pe site:', err?.message ?? err)
+  })
 
   return NextResponse.json({ bookingId: booking.id, checkoutUrl: null })
 }
@@ -153,7 +155,9 @@ async function sendWebBookingConfirmation(bookingId: string) {
     timeZone: 'Europe/Bucharest',
   })
 
-  const text = `Rezervarea ta la ${booking.business.name} a fost confirmată! ${booking.service.name}, pe ${dateTime}. Te așteptăm!`
+  // rezervarea e "În așteptare" până la reconfirmarea din ziua precedentă — mesajul
+  // reflectă asta exact, nu mai spune "confirmată" ca să nu inducă în eroare clientul
+  const text = `Am înregistrat programarea ta la ${booking.business.name}: ${booking.service.name}, pe ${dateTime}. Îți trimitem o cerere de confirmare cu o zi înainte.`
 
   await sendMessage({ channel: 'WHATSAPP', channelId: whatsappChannel.id, to: booking.customer.phone, text })
 }

@@ -25,6 +25,7 @@ export default function SettingsForm({
     minLeadTimeMinutes: number
     reminderMinutesBefore: number
     operatorSilenceMinutes: number
+    botBookingEnabled: boolean
     break1Start: string | null
     break1End: string | null
     break2Start: string | null
@@ -298,6 +299,29 @@ export default function SettingsForm({
           <option value="120">2 ore</option>
           <option value="240">4 ore</option>
         </select>
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-medium">Rezervare direct în conversație (bot)</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Dacă e oprit, opțiunea "Fă o programare" dispare din meniul de start al botului —
+              rămân doar "Vorbește cu un operator" și "Vezi pagina de rezervare". Util dacă vrei ca
+              toate programările din WhatsApp/Messenger să treacă prin pagina publică, nu prin bot.
+            </p>
+          </div>
+          <button
+            onClick={() => setForm({ ...form, botBookingEnabled: !form.botBookingEnabled })}
+            className="pill w-11 h-6 flex items-center px-0.5 transition shrink-0 ml-4"
+            style={{ background: form.botBookingEnabled ? 'var(--accent)' : '#e5e5ea' }}
+          >
+            <span
+              className="pill w-5 h-5 bg-white transition-transform"
+              style={{ transform: form.botBookingEnabled ? 'translateX(20px)' : 'translateX(0)' }}
+            />
+          </button>
+        </div>
       </Card>
 
       <Card>
