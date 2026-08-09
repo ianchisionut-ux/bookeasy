@@ -34,8 +34,13 @@ export default async function SetariPage() {
 
   return (
     <div className="p-4 lg:p-8 max-w-5xl">
-      <h1 className="text-2xl font-semibold mb-1">Setări</h1>
-      <p className="text-sm text-gray-500 mb-6">Datele profilului, programul de lucru și vizibilitatea publică.</p>
+      <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold mb-1">Setări</h1>
+          <p className="text-sm text-gray-500">Datele profilului, programul de lucru și vizibilitatea publică.</p>
+        </div>
+        <div id="settings-save-slot" className="flex items-center gap-3 shrink-0" />
+      </div>
 
       <div className="columns-1 lg:columns-2 gap-5">
         <PublicPageLinkCard slug={business.slug} isClinic={business.category === 'CLINICA'} />

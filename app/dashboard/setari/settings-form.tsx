@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -38,6 +39,11 @@ export default function SettingsForm({
   isClinic: boolean
 }) {
   const [form, setForm] = useState(business)
+  const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null)
+
+  useEffect(() => {
+    setSaveSlot(document.getElementById('settings-save-slot'))
+  }, [])
   const [hours, setHours] = useState(workingHours)
   const [break1Enabled, setBreak1Enabled] = useState(!!business.break1Start)
   const [break2Enabled, setBreak2Enabled] = useState(!!business.break2Start)
@@ -345,13 +351,17 @@ export default function SettingsForm({
         </div>
       </Card>
 
-      <div className="flex items-center gap-3 mb-5 break-inside-avoid">
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? 'Se salvează...' : 'Salvează setările'}
-        </Button>
-        {savedAt && <span className="text-xs text-gray-500">Salvat la {savedAt}</span>}
-        {geocoded && <span className="text-xs text-green-700">· locația a fost actualizată pe hartă</span>}
-      </div>
+      {saveSlot &&
+        createPortal(
+          <>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Se salvează...' : 'Salvează setările'}
+            </Button>
+            {savedAt && <span className="text-xs text-gray-500 whitespace-nowrap">Salvat la {savedAt}</span>}
+            {geocoded && <span className="text-xs text-green-700 whitespace-nowrap">· locația a fost actualizată pe hartă</span>}
+          </>,
+          saveSlot
+        )}
     </>
   )
 }
