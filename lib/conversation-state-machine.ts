@@ -373,7 +373,7 @@ async function proceedToPractitionerSelection(businessId: string, state: Convers
 
 // zilele afișate sunt STRICT cele cu cel puțin o oră liberă — nu apar deloc zile fără
 // nimic disponibil, ca să nu ducă clientul într-o fundătură
-async function proceedToDaySelection(businessId: string, state: ConversationState, practitionerId: string | null) {
+export async function proceedToDaySelection(businessId: string, state: ConversationState, practitionerId: string | null) {
   const dayOptions: ChoiceOption[] = []
 
   for (let i = 0; i < 14 && dayOptions.length < 10; i++) {

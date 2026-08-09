@@ -214,33 +214,23 @@ export default function CalendarClient({
 
   return (
     <div className="h-[calc(100vh-56px)] lg:h-[calc(100vh-40px)] p-4 lg:p-8 flex flex-col">
-      <div className="mb-4 screen-only">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl lg:text-2xl font-semibold">{isClinic ? 'Calendar programări' : 'Calendar rezervări'}</h1>
-            {practitioners.length > 0 && (
-              <select
-                value={practitionerFilter}
-                onChange={(e) => setPractitionerFilter(e.target.value)}
-                className="input-field text-sm py-1.5"
-                aria-label="Filtrează după persoană"
-              >
-                {practitioners.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        </div>
-        <p className="text-xs text-gray-500 mb-3">
-          {blockMode
-            ? 'Selectează cu mouse-ul un interval ca să-l blochezi — click pe o zonă blocată pentru a o debloca'
-            : `Click pe o ${isClinic ? 'programare' : 'rezervare'} pentru detalii/editare`}
-          {busy && <span className="text-gray-400"> · se actualizează...</span>}
-        </p>
+      <div className="mb-3 screen-only">
         <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl lg:text-2xl font-semibold mr-1">{isClinic ? 'Calendar programări' : 'Calendar rezervări'}</h1>
+          {practitioners.length > 0 && (
+            <select
+              value={practitionerFilter}
+              onChange={(e) => setPractitionerFilter(e.target.value)}
+              className="input-field text-sm py-1.5"
+              aria-label="Filtrează după persoană"
+            >
+              {practitioners.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
           <button
             onClick={() => setBlockMode((v) => !v)}
             className="btn-secondary text-sm whitespace-nowrap flex items-center gap-1.5"
@@ -248,7 +238,7 @@ export default function CalendarClient({
           >
             {blockMode ? (
               <>
-                <CheckCircle2 size={15} /> Blocare activă — apasă ca să ieși
+                <CheckCircle2 size={15} /> Blocare activă
               </>
             ) : (
               <>
@@ -271,7 +261,13 @@ export default function CalendarClient({
           <Link href="/dashboard/programari?add=1" className="btn-primary text-sm whitespace-nowrap">
             + Adaugă programare
           </Link>
+          {busy && <span className="text-xs text-gray-400">se actualizează...</span>}
         </div>
+        {blockMode && (
+          <p className="text-xs text-gray-500 mt-2">
+            Selectează cu mouse-ul un interval ca să-l blochezi — click pe o zonă blocată pentru a o debloca
+          </p>
+        )}
       </div>
       <div className="card printable p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
         <DnDCalendar

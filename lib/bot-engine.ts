@@ -1,5 +1,5 @@
 import { prisma } from './prisma'
-import { runBotStep, ConversationState, BotReply } from './conversation-state-machine'
+import { runBotStep, ConversationState, BotReply, proceedToDaySelection } from './conversation-state-machine'
 import { sendMessage, sendWhatsAppList, sendMessengerCarousel, sendWhatsAppButtons, sendMessengerButtons } from './channel-senders'
 import { sendAlertEmail } from './email'
 import { rateLimit } from './rate-limit'
@@ -46,6 +46,30 @@ export async function processIncomingMessage({
     if (booking && booking.businessId === businessId) {
       await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED', customerConfirmed: true } })
       await sendMessage({ channel, channelId, to: externalUserId, text: 'Perfect, programarea ta a fost confirmată! Te așteptăm.' })
+    }
+    return
+  }
+
+  if (trimmed.startsWith('REMINDER_RESCHEDULE_')) {
+    const bookingId = trimmed.replace('REMINDER_RESCHEDULE_', '')
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
+    if (booking && booking.businessId === businessId) {
+      // anulăm programarea veche și pornim direct de la alegerea unei zile noi, pentru
+      // același serviciu (și aceeași persoană, dacă era cazul) — clientul nu mai trebuie
+      // să aleagă din nou serviciul, doar ziua/ora noi
+      await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CANCELLED', customerConfirmed: false } })
+
+      const conversation = await prisma.conversation.findFirst({ where: { businessId, channel, externalUserId } })
+      const baseState: ConversationState = { step: 'SELECTING_DAY', serviceId: booking.serviceId, practitionerId: booking.practitionerId ?? undefined }
+      const { reply, newState } = await proceedToDaySelection(businessId, baseState, booking.practitionerId)
+
+      if (conversation) {
+        await prisma.conversation.update({ where: { id: conversation.id }, data: { state: newState as any, updatedAt: new Date() } })
+      } else {
+        await prisma.conversation.create({ data: { businessId, channel, externalUserId, state: newState as any } })
+      }
+
+      await sendReply({ channel, channelId, to: externalUserId, reply })
     }
     return
   }
