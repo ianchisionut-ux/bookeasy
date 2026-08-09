@@ -65,7 +65,7 @@ export default function InboxManager() {
 
   useEffect(() => {
     loadConversations(false)
-    const timer = setInterval(() => loadConversations(true), 15000)
+    const timer = setInterval(() => loadConversations(true), 5000)
     return () => clearInterval(timer)
   }, [loadConversations])
 
@@ -85,9 +85,10 @@ export default function InboxManager() {
   useEffect(() => {
     if (!selectedId) return
     loadMessages(selectedId, false)
-    const timer = setInterval(() => loadMessages(selectedId, true), 8000)
+    loadConversations(true) // aducem starea proaspătă a lui needsOperator, nu una posibil învechită din ultimul polling
+    const timer = setInterval(() => loadMessages(selectedId, true), 4000)
     return () => clearInterval(timer)
-  }, [selectedId, loadMessages])
+  }, [selectedId, loadMessages, loadConversations])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -406,6 +407,31 @@ function QuickBookingModal({
         setError(data.error ?? 'A apărut o eroare. Verifică datele.')
         return
       }
+
+      // trimitem și detaliile programării direct pe canalul clientului (WhatsApp/
+      // Messenger/Instagram) — ca să știe exact ce s-a stabilit, fără să mai aștepte
+      const practitioner = practitioners.find((p) => p.id === practitionerId)
+      const dateTime = start.toLocaleString('ro-RO', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/Bucharest',
+      })
+      const detailsText = [
+        'Programarea ta a fost înregistrată!',
+        `Serviciu: ${service?.name ?? ''}`,
+        ...(practitioner ? [`Persoana: ${practitioner.name}`] : []),
+        `Data: ${dateTime}`,
+      ].join('\n')
+
+      await fetchWithTimeout(`/api/business/conversations/${conversation.id}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: detailsText }),
+      }).catch(() => {})
+
       onCreated()
     } catch {
       setError('Conexiune eșuată. Încearcă din nou.')

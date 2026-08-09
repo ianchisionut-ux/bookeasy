@@ -14,8 +14,15 @@ export default async function ProgramariPage({
 
   const { status, q } = await searchParams
 
-  // deschiderea paginii marchează automat toate confirmările ca "văzute" —
-  // notificarea din meniu dispare
+  // prindem ID-urile ÎNAINTE să le marcăm "văzute" — altfel highlight-ul n-ar apărea
+  // niciodată, nici la prima afișare. La următoarea vizită a paginii, nemaifiind
+  // "nevăzute", highlight-ul dispare automat — exact comportamentul dorit
+  const newlyConfirmed = await prisma.booking.findMany({
+    where: { businessId, confirmationSeenByAdmin: false },
+    select: { id: true },
+  })
+  const newlyConfirmedIds = newlyConfirmed.map((b) => b.id)
+
   await prisma.booking.updateMany({ where: { businessId, confirmationSeenByAdmin: false }, data: { confirmationSeenByAdmin: true } })
 
   const business = await prisma.business.findUnique({ where: { id: businessId }, select: { category: true, teamSize: true } })
@@ -44,6 +51,7 @@ export default async function ProgramariPage({
 
   return (
     <ProgramariManager
+      newlyConfirmedIds={newlyConfirmedIds}
       category={business?.category ?? 'SALON'}
       isMultiPractitioner={isMultiPractitioner}
       bookings={bookings.map((b) => ({

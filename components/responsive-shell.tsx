@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -27,6 +27,7 @@ export function ResponsiveShell({
   accentColor,
   accountContent,
   children,
+  enableLiveBadges = false,
 }: {
   logoHref: string
   logoLabel: string
@@ -34,11 +35,46 @@ export function ResponsiveShell({
   accentColor?: string // culoarea aleasă de business în Setări — dacă lipsește, folosim culoarea implicită bookeasy
   accountContent: React.ReactNode // blocul de cont/ieșire — separat, ca să nu intre în carusel
   children: React.ReactNode
+  enableLiveBadges?: boolean // interoghează periodic numărul de notificări, ca badge-urile să se actualizeze fără reîncărcare de pagină
 }) {
   const [accountOpen, setAccountOpen] = useState(false)
   const pathname = usePathname()
   const accent = accentColor || 'var(--accent)'
   const softTint = accentColor ? blendWithWhite(accentColor, 0.15) : 'var(--surface-muted)' // culoare solidă, opacă
+
+  // pornim cu valorile venite din server (randare inițială corectă, fără flash), apoi
+  // le suprascriem periodic — altfel notificările rămân "înghețate" până la un refresh manual
+  const initialCounts = Object.fromEntries(navItems.map((i) => [i.href, i.badge])) as Record<string, number | undefined>
+  const [liveBadges, setLiveBadges] = useState<Record<string, number | undefined>>(initialCounts)
+
+  useEffect(() => {
+    if (!enableLiveBadges) return
+    let cancelled = false
+    async function poll() {
+      try {
+        const res = await fetch('/api/business/notification-counts')
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled) return
+        setLiveBadges({
+          '/dashboard/mesaje': data.needsOperatorCount > 0 ? data.needsOperatorCount : undefined,
+          '/dashboard/programari': data.unseenConfirmationsCount > 0 ? data.unseenConfirmationsCount : undefined,
+        })
+      } catch {
+        // eșec silențios — reîncercăm la următorul interval
+      }
+    }
+    poll()
+    const timer = setInterval(poll, 8000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [enableLiveBadges])
+
+  const displayNavItems = enableLiveBadges
+    ? navItems.map((item) => ({ ...item, badge: item.href in liveBadges ? liveBadges[item.href] : item.badge }))
+    : navItems
 
   // când mai multe href-uri se potrivesc (ex: '/superadmin' e prefix pentru
   // '/superadmin/afaceri'), câștigă mereu cel mai specific (cel mai lung) — altfel
@@ -68,7 +104,7 @@ export function ResponsiveShell({
 
         {/* carusel orizontal de navigare — scroll cu degetul, fără dropdown */}
         <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
-          {navItems.map((item) => {
+          {displayNavItems.map((item) => {
             const active = item.href === activeHref
             return (
               <Link
@@ -116,7 +152,7 @@ export function ResponsiveShell({
           <span className="font-semibold text-lg">{logoLabel}</span>
         </Link>
         <SidebarClock />
-        {navItems.map((item) => {
+        {displayNavItems.map((item) => {
           const active = item.href === activeHref
           return (
             <Link

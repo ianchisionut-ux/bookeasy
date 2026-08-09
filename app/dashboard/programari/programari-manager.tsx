@@ -100,6 +100,7 @@ export default function ProgramariManager({
   blockedSlots,
   practitioners,
   filters,
+  newlyConfirmedIds,
 }: {
   category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
   isMultiPractitioner: boolean
@@ -109,6 +110,7 @@ export default function ProgramariManager({
   blockedSlots: { startAt: string; endAt: string }[]
   practitioners: { id: string; name: string }[]
   filters: { status: string; q: string }
+  newlyConfirmedIds: string[]
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -209,8 +211,13 @@ export default function ProgramariManager({
   }
 
   function renderRow(b: Booking) {
+    const isNewlyConfirmed = newlyConfirmedIds.includes(b.id)
     return (
-      <tr key={b.id} className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--surface-muted)]">
+      <tr
+        key={b.id}
+        className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--surface-muted)]"
+        style={isNewlyConfirmed ? { background: 'rgba(34, 197, 94, 0.07)' } : {}}
+      >
         <td className="py-3 px-5 text-gray-400 font-mono text-xs">
           {b.sequenceNumber ? `#${String(b.sequenceNumber).padStart(3, '0')}` : '—'}
         </td>

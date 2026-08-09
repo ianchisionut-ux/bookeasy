@@ -86,6 +86,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       navItems={navItems}
       accentColor={brandColor ?? undefined}
       accountContent={<SidebarUserBlock label={userEmail || 'Cont'} showSupport />}
+      enableLiveBadges
     >
       {children}
     </ResponsiveShell>
