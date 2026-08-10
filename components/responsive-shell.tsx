@@ -182,8 +182,8 @@ export function ResponsiveShell({
       )}
 
       {/* sidebar fix, doar de la lg in sus */}
-      <aside className="hidden lg:flex flex-col items-center gap-1 p-4 text-center" style={{ background: softTint }}>
-        {profileName && <p className="w-full font-semibold text-lg px-3 mb-1 truncate text-center">{profileName}</p>}
+      <aside className="hidden lg:flex flex-col gap-1 p-4" style={{ background: softTint }}>
+        {profileName && <p className="font-semibold text-lg px-3 mb-1 truncate">{profileName}</p>}
         <SidebarClock />
         {displayNavItems.map((item) => {
           const active = item.href === activeHref
@@ -192,7 +192,7 @@ export function ResponsiveShell({
             <Link
               key={item.href}
               href={item.href}
-              className="w-full px-3 py-2.5 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2.5 border-l-[3px] text-center"
+              className="px-3 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-2.5 border-l-[3px]"
               style={
                 active
                   ? { background: 'white', boxShadow: 'var(--shadow-card)', borderLeftColor: accent, color: accent }
@@ -200,7 +200,7 @@ export function ResponsiveShell({
               }
             >
               {Icon && <Icon size={16} />}
-              <span>{item.label}</span>
+              <span className="flex-1">{item.label}</span>
               {!!item.badge && (
                 <span
                   className={`text-xs bg-red-600 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center ${item.href === '/dashboard/mesaje' || item.href === '/dashboard/programari' ? 'animate-pulse' : ''}`}
@@ -211,10 +211,10 @@ export function ResponsiveShell({
             </Link>
           )
         })}
-        <div className="w-full mt-auto px-3 pb-2">
+        <div className="mt-auto px-3 pb-2">
           <Image src="/logo.png" alt="bookeasy.ro" width={800} height={471} className="w-full h-auto opacity-50" />
         </div>
-        <div className="w-full">{accountContent}</div>
+        {accountContent}
       </aside>
 
       <main className="min-w-0">{children}</main>
