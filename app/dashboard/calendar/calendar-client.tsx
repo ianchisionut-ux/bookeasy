@@ -91,7 +91,6 @@ export default function CalendarClient({
   }), [events, practitionerFilter, practitioners.length, search])
   const [blockMode, setBlockMode] = useState(false)
   const [showBookingModal, setShowBookingModal] = useState(false)
-  const [bookingSeed, setBookingSeed] = useState<{ start: Date; practitionerId?: string } | null>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -168,11 +167,9 @@ export default function CalendarClient({
 
   const handleSelectSlot = useCallback(
     (slotInfo: { start: Date; end: Date }) => {
-      if (blockMode) return blockRange(slotInfo.start, slotInfo.end)
-      setBookingSeed({ start: slotInfo.start, practitionerId: practitionerFilter !== 'all' ? practitionerFilter : undefined })
-      setShowBookingModal(true)
+      if (blockMode) blockRange(slotInfo.start, slotInfo.end)
     },
-    [blockRange, blockMode, practitionerFilter]
+    [blockRange, blockMode]
   )
 
   const handleSelectEvent = useCallback(
@@ -325,8 +322,7 @@ export default function CalendarClient({
           onSelectSlot={handleSelectSlot}
           onSelectEvent={handleSelectEvent}
           onEventDrop={moveOrResize}
-          onEventResize={moveOrResize}
-          resizable
+          resizable={false}
           draggableAccessor={(event: any) => !event.isBlocked}
           eventPropGetter={(event: any) => {
             if (event.isBlocked) {
@@ -379,8 +375,6 @@ export default function CalendarClient({
 
       {showBookingModal && (
         <CalendarQuickBookingModal
-          initialStart={bookingSeed?.start}
-          initialPractitionerId={bookingSeed?.practitionerId}
           onClose={() => setShowBookingModal(false)}
           onCreated={() => {
             setShowBookingModal(false)
@@ -396,7 +390,7 @@ function CalendarEventCard({ event }: { event: Event }) {
   const duration = Math.max(1, Math.round((event.end.getTime() - event.start.getTime()) / 60000))
   const compact = duration <= 30
   return <div className="calendar-event-card" title={`${event.customerName} · ${event.serviceName} · ${event.customerPhone}`}>
-    <div className="calendar-event-top"><strong>{format(event.start, 'HH:mm')}</strong><span className={`status-dot status-${event.status.toLowerCase()}`}/></div>
+    <span className={`status-dot status-${event.status.toLowerCase()}`}/>
     <div className="calendar-event-name">{event.customerName}</div>
     {!compact && <><div className="calendar-event-service">{event.serviceName}</div><div className="calendar-event-meta">{duration} min{event.practitionerName ? ` · ${event.practitionerName}` : ''}</div></>}
   </div>
