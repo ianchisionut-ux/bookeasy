@@ -184,7 +184,7 @@ export function ResponsiveShell({
 
       {/* sidebar fix, doar de la lg in sus */}
       <aside className="hidden lg:flex flex-col gap-1 p-3" style={{ background: softTint }}>
-        <button onClick={() => setSidebarCollapsed(v => !v)} className="self-end w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/70" aria-label={sidebarCollapsed ? 'Extinde meniul' : 'Restrânge meniul'}>{sidebarCollapsed ? <PanelLeftOpen size={17}/> : <PanelLeftClose size={17}/>}</button>
+        <button onClick={() => setSidebarCollapsed(v => !v)} className="self-start ml-1 w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/70" aria-label={sidebarCollapsed ? 'Extinde meniul' : 'Restrânge meniul'}>{sidebarCollapsed ? <PanelLeftOpen size={17}/> : <PanelLeftClose size={17}/>}</button>
         {!sidebarCollapsed && profileName && <p className="font-semibold text-base px-3 mb-1 truncate">{profileName}</p>}
         {!sidebarCollapsed && <SidebarClock />}
         {displayNavItems.map((item) => {

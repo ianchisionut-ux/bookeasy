@@ -412,7 +412,18 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
     const d = initialStart ?? new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
-  const [simpleDateTime, setSimpleDateTime] = useState(() => initialStart ? `${initialStart.getFullYear()}-${String(initialStart.getMonth()+1).padStart(2,'0')}-${String(initialStart.getDate()).padStart(2,'0')}T${String(initialStart.getHours()).padStart(2,'0')}:${String(initialStart.getMinutes()).padStart(2,'0')}` : '')
+  const [simpleDateTime, setSimpleDateTime] = useState(() => {
+    const value = initialStart ? new Date(initialStart) : new Date()
+    value.setMinutes(Math.ceil(value.getMinutes() / 10) * 10, 0, 0)
+    return `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,'0')}-${String(value.getDate()).padStart(2,'0')}T${String(value.getHours()).padStart(2,'0')}:${String(value.getMinutes()).padStart(2,'0')}`
+  })
+  const simpleDate = simpleDateTime.split('T')[0] ?? ''
+  const simpleTime = simpleDateTime.split('T')[1] ?? ''
+  const tenMinuteTimes = Array.from({ length: 24 * 6 }, (_, index) => {
+    const hour = Math.floor(index / 6)
+    const minute = (index % 6) * 10
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+  })
   const [daySlots, setDaySlots] = useState<{ time: string; available: boolean }[]>([])
   const [selectedSlot, setSelectedSlot] = useState('')
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -570,7 +581,24 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
                 )}
               </>
             ) : (
-              <input type="datetime-local" value={simpleDateTime} onChange={(e) => setSimpleDateTime(e.target.value)} className="input-field w-full" />
+              <div className="grid grid-cols-[1fr_120px] gap-2">
+                <input
+                  type="date"
+                  value={simpleDate}
+                  onChange={(e) => setSimpleDateTime(e.target.value && simpleTime ? `${e.target.value}T${simpleTime}` : e.target.value)}
+                  className="input-field w-full"
+                  aria-label="Data programării"
+                />
+                <select
+                  value={simpleTime}
+                  onChange={(e) => setSimpleDateTime(simpleDate ? `${simpleDate}T${e.target.value}` : '')}
+                  className="input-field w-full"
+                  aria-label="Ora programării în format 24 de ore"
+                >
+                  <option value="">Ora</option>
+                  {tenMinuteTimes.map((time) => <option key={time} value={time}>{time}</option>)}
+                </select>
+              </div>
             )}
 
             {error && <p className="text-sm text-red-600">{error}</p>}
