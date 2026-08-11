@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
@@ -10,7 +10,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import BookingEditModal, { BookingDetail } from '@/components/booking-edit-modal'
-import { Lock, CheckCircle2, X } from 'lucide-react'
+import { Lock, CheckCircle2, X, Search, Users, AlertTriangle, Clock3 } from 'lucide-react'
 import { PrintButton } from '@/components/print-button'
 
 const locales = { ro }
@@ -80,11 +80,18 @@ export default function CalendarClient({
   const [view, setView] = useState<any>(Views.WEEK)
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
   const [busy, setBusy] = useState(false)
-  const [practitionerFilter, setPractitionerFilter] = useState<string>(practitioners[0]?.id ?? '')
+  const [practitionerFilter, setPractitionerFilter] = useState<string>(practitioners.length > 1 ? 'all' : practitioners[0]?.id ?? '')
+  const [search, setSearch] = useState('')
 
-  const visibleEvents = practitioners.length === 0 ? events : events.filter((e) => e.practitionerId === practitionerFilter)
+  const visibleEvents = useMemo(() => events.filter((e) => {
+    const practitionerMatch = practitioners.length === 0 || practitionerFilter === 'all' || e.practitionerId === practitionerFilter
+    const query = search.trim().toLocaleLowerCase('ro')
+    const searchMatch = !query || `${e.customerName} ${e.customerPhone} ${e.serviceName} ${e.practitionerName ?? ''}`.toLocaleLowerCase('ro').includes(query)
+    return practitionerMatch && searchMatch
+  }), [events, practitionerFilter, practitioners.length, search])
   const [blockMode, setBlockMode] = useState(false)
   const [showBookingModal, setShowBookingModal] = useState(false)
+  const [bookingSeed, setBookingSeed] = useState<{ start: Date; practitionerId?: string } | null>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -161,10 +168,11 @@ export default function CalendarClient({
 
   const handleSelectSlot = useCallback(
     (slotInfo: { start: Date; end: Date }) => {
-      if (!blockMode) return
-      blockRange(slotInfo.start, slotInfo.end)
+      if (blockMode) return blockRange(slotInfo.start, slotInfo.end)
+      setBookingSeed({ start: slotInfo.start, practitionerId: practitionerFilter !== 'all' ? practitionerFilter : undefined })
+      setShowBookingModal(true)
     },
-    [blockRange, blockMode]
+    [blockRange, blockMode, practitionerFilter]
   )
 
   const handleSelectEvent = useCallback(
@@ -181,6 +189,12 @@ export default function CalendarClient({
   const moveOrResize = useCallback(
     async ({ event, start, end }: any) => {
       if (event.isBlocked) return
+
+      const conflict = events.some((candidate) => candidate.id !== event.id && candidate.practitionerId === event.practitionerId && new Date(start) < candidate.end && new Date(end) > candidate.start)
+      if (conflict) {
+        alert('Conflict detectat: medicul are deja o programare în acest interval.')
+        return
+      }
 
       const oldTime = new Date(event.start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })
       const newTime = new Date(start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })
@@ -209,14 +223,16 @@ export default function CalendarClient({
         alert('Conexiune eșuată. Încearcă din nou.')
       }
     },
-    [router]
+    [router, events, isClinic]
   )
 
   return (
-    <div className="h-[calc(100vh-56px)] lg:h-[calc(100vh-40px)] p-4 lg:p-8 flex flex-col">
-      <div className="mb-3 screen-only">
+    <div className="h-[calc(100vh-56px)] lg:h-screen p-3 lg:p-5 flex flex-col">
+      <div className="mb-3 screen-only calendar-commandbar">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-xl lg:text-2xl font-semibold mr-1">{isClinic ? 'Calendar programări' : 'Calendar rezervări'}</h1>
+          <span className="calendar-kpi"><Clock3 size={14}/>{visibleEvents.length} programări</span>
+          <span className="calendar-kpi"><Users size={14}/>{new Set(visibleEvents.map(e => e.customerId)).size} pacienți</span>
           {practitioners.length > 0 && (
             <select
               value={practitionerFilter}
@@ -224,6 +240,7 @@ export default function CalendarClient({
               className="input-field text-sm py-1.5"
               aria-label="Filtrează după persoană"
             >
+              {practitioners.length > 1 && <option value="all">Toți medicii</option>}
               {practitioners.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -231,6 +248,7 @@ export default function CalendarClient({
               ))}
             </select>
           )}
+          <label className="calendar-search"><Search size={15}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Caută pacient, telefon..." aria-label="Caută pacient"/></label>
           <button
             onClick={() => setBlockMode((v) => !v)}
             className="btn-secondary text-sm whitespace-nowrap flex items-center gap-1.5"
@@ -269,6 +287,7 @@ export default function CalendarClient({
           </p>
         )}
       </div>
+      {search && visibleEvents.length === 0 && <div className="mb-2 text-sm text-amber-700 flex items-center gap-2"><AlertTriangle size={15}/> Nu există programări care corespund căutării.</div>}
       <div className="card printable p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
         <DnDCalendar
           key={practitionerFilter}
@@ -306,7 +325,8 @@ export default function CalendarClient({
           onSelectSlot={handleSelectSlot}
           onSelectEvent={handleSelectEvent}
           onEventDrop={moveOrResize}
-          resizable={false}
+          onEventResize={moveOrResize}
+          resizable
           draggableAccessor={(event: any) => !event.isBlocked}
           eventPropGetter={(event: any) => {
             if (event.isBlocked) {
@@ -321,14 +341,16 @@ export default function CalendarClient({
             }
             return {
               style: {
-                backgroundColor:
-                  event.status === 'CONFIRMED' ? '#16a34a' : event.status === 'PENDING' ? '#eab308' : '#ef4444',
-                borderRadius: '8px',
-                border: 'none',
+                backgroundColor: event.status === 'CONFIRMED' ? '#f0fdf4' : event.status === 'PENDING' ? '#fffbeb' : event.status === 'COMPLETED' ? '#f3f4f6' : '#fef2f2',
+                color: '#14142b',
+                borderRadius: '10px',
+                border: '1px solid #eceef1',
+                borderLeft: `4px solid ${event.status === 'CONFIRMED' ? '#16a34a' : event.status === 'PENDING' ? '#eab308' : event.status === 'COMPLETED' ? '#6b7280' : '#ef4444'}`,
                 cursor: 'pointer',
               },
             }
           }}
+          components={{ event: CalendarEventCard }}
           style={{ height: '100%' }}
         />
       </div>
@@ -357,6 +379,8 @@ export default function CalendarClient({
 
       {showBookingModal && (
         <CalendarQuickBookingModal
+          initialStart={bookingSeed?.start}
+          initialPractitionerId={bookingSeed?.practitionerId}
           onClose={() => setShowBookingModal(false)}
           onCreated={() => {
             setShowBookingModal(false)
@@ -368,7 +392,17 @@ export default function CalendarClient({
   )
 }
 
-function CalendarQuickBookingModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function CalendarEventCard({ event }: { event: Event }) {
+  const duration = Math.max(1, Math.round((event.end.getTime() - event.start.getTime()) / 60000))
+  const compact = duration <= 30
+  return <div className="calendar-event-card" title={`${event.customerName} · ${event.serviceName} · ${event.customerPhone}`}>
+    <div className="calendar-event-top"><strong>{format(event.start, 'HH:mm')}</strong><span className={`status-dot status-${event.status.toLowerCase()}`}/></div>
+    <div className="calendar-event-name">{event.customerName}</div>
+    {!compact && <><div className="calendar-event-service">{event.serviceName}</div><div className="calendar-event-meta">{duration} min{event.practitionerName ? ` · ${event.practitionerName}` : ''}</div></>}
+  </div>
+}
+
+function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPractitionerId }: { onClose: () => void; onCreated: () => void; initialStart?: Date; initialPractitionerId?: string }) {
   const [services, setServices] = useState<{ id: string; name: string; durationMin: number | null }[]>([])
   const [practitioners, setPractitioners] = useState<{ id: string; name: string }[]>([])
   const [isMultiPractitioner, setIsMultiPractitioner] = useState(false)
@@ -377,12 +411,12 @@ function CalendarQuickBookingModal({ onClose, onCreated }: { onClose: () => void
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [serviceId, setServiceId] = useState('')
-  const [practitionerId, setPractitionerId] = useState('')
+  const [practitionerId, setPractitionerId] = useState(initialPractitionerId ?? '')
   const [slotDate, setSlotDate] = useState(() => {
-    const d = new Date()
+    const d = initialStart ?? new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
-  const [simpleDateTime, setSimpleDateTime] = useState('')
+  const [simpleDateTime, setSimpleDateTime] = useState(() => initialStart ? `${initialStart.getFullYear()}-${String(initialStart.getMonth()+1).padStart(2,'0')}-${String(initialStart.getDate()).padStart(2,'0')}T${String(initialStart.getHours()).padStart(2,'0')}:${String(initialStart.getMinutes()).padStart(2,'0')}` : '')
   const [daySlots, setDaySlots] = useState<{ time: string; available: boolean }[]>([])
   const [selectedSlot, setSelectedSlot] = useState('')
   const [loadingSlots, setLoadingSlots] = useState(false)

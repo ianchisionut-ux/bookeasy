@@ -6,7 +6,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
-import { Phone, Stethoscope, CheckCircle2, Clock } from 'lucide-react'
+import { Phone, Stethoscope, CheckCircle2, Clock, X } from 'lucide-react'
 
 export type BookingDetail = {
   id: string
@@ -134,13 +134,14 @@ export default function BookingEditModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 px-4" onClick={onClose}>
-      <Card className="w-full max-w-sm max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-medium">{booking.serviceName}</h2>
-          <Pill tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Pill>
+    <div className="fixed inset-0 bg-black/25 flex justify-end z-50" onClick={onClose}>
+      <Card className="calendar-drawer w-full max-w-md h-full max-h-none overflow-y-auto rounded-none p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-6">
+          <div><p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Detalii programare</p><h2 className="text-xl font-semibold">{booking.serviceName}</h2></div>
+          <button onClick={onClose} className="w-9 h-9 rounded-full border border-[var(--border-soft)] flex items-center justify-center" aria-label="Închide"><X size={18}/></button>
         </div>
-        <div className="mb-4">
+        <div className="mb-5 rounded-2xl bg-[var(--surface-muted)] p-4">
+          <div className="flex justify-end mb-2"><Pill tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Pill></div>
           {editingPatient ? (
             <div className="flex flex-col gap-2">
               <input type="text" value={patientName} onChange={(e) => setPatientName(e.target.value)} placeholder="Nume" className="input-field w-full text-sm" />

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { User } from 'lucide-react'
+import { User, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import {
   Calendar,
   MessagesSquare,
@@ -72,6 +72,7 @@ export function ResponsiveShell({
   enableLiveBadges?: boolean // interoghează periodic numărul de notificări, ca badge-urile să se actualizeze fără reîncărcare de pagină
 }) {
   const [accountOpen, setAccountOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const pathname = usePathname()
   const accent = accentColor || 'var(--accent)'
   const softTint = accentColor ? blendWithWhite(accentColor, 0.15) : 'var(--surface-muted)' // culoare solidă, opacă
@@ -118,7 +119,7 @@ export function ResponsiveShell({
     .sort((a, b) => b.href.length - a.href.length)[0]?.href
 
   return (
-    <div className="min-h-screen bg-[var(--surface-muted)] lg:grid lg:grid-cols-[220px_1fr]">
+    <div className={`min-h-screen bg-[var(--surface-muted)] lg:grid transition-[grid-template-columns] ${sidebarCollapsed ? 'lg:grid-cols-[76px_1fr]' : 'lg:grid-cols-[188px_1fr]'}`}>
       {/* header mobil, doar sub lg */}
       <div className="lg:hidden sticky top-0 z-40 border-b border-[var(--border-soft)] screen-only" style={{ background: accentColor ? softTint : 'white' }}>
         <div className="flex items-center justify-between px-4 py-3">
@@ -182,9 +183,10 @@ export function ResponsiveShell({
       )}
 
       {/* sidebar fix, doar de la lg in sus */}
-      <aside className="hidden lg:flex flex-col gap-1 p-4" style={{ background: softTint }}>
-        {profileName && <p className="font-semibold text-lg px-3 mb-1 truncate">{profileName}</p>}
-        <SidebarClock />
+      <aside className="hidden lg:flex flex-col gap-1 p-3" style={{ background: softTint }}>
+        <button onClick={() => setSidebarCollapsed(v => !v)} className="self-end w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/70" aria-label={sidebarCollapsed ? 'Extinde meniul' : 'Restrânge meniul'}>{sidebarCollapsed ? <PanelLeftOpen size={17}/> : <PanelLeftClose size={17}/>}</button>
+        {!sidebarCollapsed && profileName && <p className="font-semibold text-base px-3 mb-1 truncate">{profileName}</p>}
+        {!sidebarCollapsed && <SidebarClock />}
         {displayNavItems.map((item) => {
           const active = item.href === activeHref
           const Icon = item.icon ? NAV_ICONS[item.icon] : null
@@ -200,7 +202,7 @@ export function ResponsiveShell({
               }
             >
               {Icon && <Icon size={16} />}
-              <span className="flex-1">{item.label}</span>
+              {!sidebarCollapsed && <span className="flex-1">{item.label}</span>}
               {!!item.badge && (
                 <span
                   className={`text-xs bg-red-600 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center ${item.href === '/dashboard/mesaje' || item.href === '/dashboard/programari' ? 'animate-pulse' : ''}`}
@@ -211,10 +213,10 @@ export function ResponsiveShell({
             </Link>
           )
         })}
-        <div className="mt-auto px-3 pb-2">
+        {!sidebarCollapsed && <div className="mt-auto px-3 pb-2">
           <Image src="/logo.png" alt="bookeasy.ro" width={800} height={471} className="w-full h-auto opacity-50" />
-        </div>
-        {accountContent}
+        </div>}
+        {!sidebarCollapsed && accountContent}
       </aside>
 
       <main className="min-w-0">{children}</main>
