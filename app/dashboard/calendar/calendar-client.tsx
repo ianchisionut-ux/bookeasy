@@ -425,12 +425,13 @@ export default function CalendarClient({
 function CalendarEventCard({ event }: { event: Event | BreakEvent | BlockedEvent }) {
   if ('isBreak' in event && event.isBreak) return <div className="calendar-break-card">☕ {event.title}<span>{format(event.start, 'HH:mm')}–{format(event.end, 'HH:mm')}</span></div>
   if ('isBlocked' in event && event.isBlocked) return <div>{event.title}</div>
-  const duration = Math.max(1, Math.round((event.end.getTime() - event.start.getTime()) / 60000))
+  const bookingEvent = event as Event
+  const duration = Math.max(1, Math.round((bookingEvent.end.getTime() - bookingEvent.start.getTime()) / 60000))
   const compact = duration <= 30
-  return <div className="calendar-event-card" title={`${event.customerName} · ${event.serviceName} · ${event.customerPhone}`}>
-    <span className={`status-dot status-${event.status.toLowerCase()}`}/>
-    <div className="calendar-event-name">{event.customerName}</div>
-    {!compact && <><div className="calendar-event-service">{event.serviceName}</div><div className="calendar-event-meta">{duration} min{event.practitionerName ? ` · ${event.practitionerName}` : ''}</div></>}
+  return <div className="calendar-event-card" title={`${bookingEvent.customerName} · ${bookingEvent.serviceName} · ${bookingEvent.customerPhone}`}>
+    <span className={`status-dot status-${bookingEvent.status.toLowerCase()}`}/>
+    <div className="calendar-event-name">{bookingEvent.customerName}</div>
+    {!compact && <><div className="calendar-event-service">{bookingEvent.serviceName}</div><div className="calendar-event-meta">{duration} min{bookingEvent.practitionerName ? ` · ${bookingEvent.practitionerName}` : ''}</div></>}
   </div>
 }
 
