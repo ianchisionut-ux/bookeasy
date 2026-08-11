@@ -47,7 +47,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const blob = await put(filename, file, {
       access: 'private',
-      token: process.env.BLOB_READ_WRITE_TOKEN,
       storeId: process.env.DOCMED_STORE_ID,
       addRandomSuffix: true,
       contentType: file.type,

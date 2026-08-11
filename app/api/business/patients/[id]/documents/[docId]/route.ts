@@ -21,14 +21,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     let contentType = 'application/octet-stream'
 
     if (doc.url.includes('.private.blob.vercel-storage.com')) {
-      const storeIds = [...new Set([process.env.DOCMED_STORE_ID, process.env.BOOKBLOB_STORE_ID].filter(Boolean))] as string[]
+      const stores = [
+        process.env.DOCMED_STORE_ID ? { storeId: process.env.DOCMED_STORE_ID, token: undefined } : null,
+        process.env.BOOKBLOB_STORE_ID
+          ? { storeId: process.env.BOOKBLOB_STORE_ID, token: process.env.BLOB_READ_WRITE_TOKEN }
+          : null,
+      ].filter(Boolean) as { storeId: string; token: string | undefined }[]
       let result: Awaited<ReturnType<typeof get>> | null = null
-      for (const storeId of storeIds) {
+      for (const store of stores) {
         try {
           const candidate = await get(doc.url, {
             access: 'private',
-            token: process.env.BLOB_READ_WRITE_TOKEN,
-            storeId,
+            ...(store.token ? { token: store.token } : {}),
+            storeId: store.storeId,
           })
           if (candidate?.statusCode === 200 && candidate.stream) {
             result = candidate
@@ -77,12 +82,20 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const doc = await getOwnedDocument(docId, id, businessId)
   if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  const storeIds = doc.url.includes('.private.blob.vercel-storage.com')
-    ? [...new Set([process.env.DOCMED_STORE_ID, process.env.BOOKBLOB_STORE_ID].filter(Boolean))]
-    : [process.env.BOOKBLOB_STORE_ID]
-  for (const storeId of storeIds) {
+  const stores = doc.url.includes('.private.blob.vercel-storage.com')
+    ? [
+        process.env.DOCMED_STORE_ID ? { storeId: process.env.DOCMED_STORE_ID, token: undefined } : null,
+        process.env.BOOKBLOB_STORE_ID
+          ? { storeId: process.env.BOOKBLOB_STORE_ID, token: process.env.BLOB_READ_WRITE_TOKEN }
+          : null,
+      ].filter(Boolean) as { storeId: string; token: string | undefined }[]
+    : [{ storeId: process.env.BOOKBLOB_STORE_ID as string, token: process.env.BLOB_READ_WRITE_TOKEN }]
+  for (const store of stores) {
     try {
-      await del(doc.url, { token: process.env.BLOB_READ_WRITE_TOKEN, storeId: storeId as string })
+      await del(doc.url, {
+        ...(store.token ? { token: store.token } : {}),
+        storeId: store.storeId,
+      })
       break
     } catch {
       // Documentele vechi pot aparține celuilalt store; încercăm toate variantele cunoscute.
