@@ -57,7 +57,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
         )}
 
         <Link href={`/${business.slug}/rezerva`} className="btn-primary inline-block mb-6">
-          Rezervă acum
+          {business.category === 'CLINICA' ? 'Programează-te acum' : 'Rezervă acum'}
         </Link>
 
         <h2 className="text-lg font-medium mb-3">Servicii</h2>

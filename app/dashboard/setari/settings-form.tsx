@@ -97,7 +97,7 @@ export default function SettingsForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
-          slotIntervalMinutes: form.slotIntervalMinutes ?? 10,
+          slotIntervalMinutes: form.slotIntervalMinutes,
           workingHours: hours,
           break1Start: break1Enabled ? form.break1Start : null,
           break1End: break1Enabled ? form.break1End : null,
@@ -245,20 +245,21 @@ export default function SettingsForm({
           Cum se împart orele oferite {isClinic ? 'pacienților' : 'clienților'} la {usesAppointments ? 'programare' : 'rezervare'}.
         </p>
         <select
-          value={form.slotIntervalMinutes ?? 10}
-          onChange={(e) => setForm({ ...form, slotIntervalMinutes: Number(e.target.value) })}
+          value={form.slotIntervalMinutes ?? ''}
+          onChange={(e) => setForm({ ...form, slotIntervalMinutes: e.target.value ? Number(e.target.value) : null })}
           className="input-field w-full"
         >
-          <option value="5">Din 5 în 5 minute</option>
-          <option value="10">Fix, din 10 în 10 minute</option>
+          <option value="">Automat, după durata serviciilor (recomandat)</option>
+          <option value="5">Minimum 5 minute</option>
+          <option value="10">Minimum 10 minute</option>
           <option value="15">Din 15 în 15 minute</option>
           <option value="20">Din 20 în 20 minute</option>
           <option value="30">Din 30 în 30 minute</option>
           <option value="60">Din oră în oră</option>
         </select>
         <p className="text-xs text-gray-400 mt-2">
-          Adminul alege pasul dintre orele oferite. Durata reală a serviciului este păstrată, iar două
-          {usesAppointments ? ' programări' : ' rezervări'} nu se pot suprapune.
+          Automat, BookEasy combină duratele serviciilor profilului pentru a reduce golurile. O valoare manuală
+          poate face orele mai rare, dar sistemul nu va fragmenta programul sub pasul util al serviciilor.
         </p>
       </Card>
 

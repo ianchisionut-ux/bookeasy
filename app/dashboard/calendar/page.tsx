@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import CalendarClient from './calendar-client'
+import { calculateAdaptiveSlotStep } from '@/lib/availability'
 
 function computeMinMax(hours: { startTime: string; endTime: string }[], fallbackMin = '08:00', fallbackMax = '20:00') {
   if (hours.length === 0) return { minTime: fallbackMin, maxTime: fallbackMax }
@@ -16,7 +17,10 @@ export default async function CalendarPage() {
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    include: { workingHours: true },
+    include: {
+      workingHours: true,
+      services: { where: { active: true, type: 'APPOINTMENT' }, select: { durationMin: true } },
+    },
   })
 
   const isMultiPractitioner = (business?.teamSize ?? 1) > 1
@@ -69,7 +73,14 @@ export default async function CalendarPage() {
         ...(business?.break2Start && business.break2End ? [{ label: 'Pauză 2', startTime: business.break2Start, endTime: business.break2End }] : []),
         ...(business?.break3Start && business.break3End ? [{ label: 'Pauză 3', startTime: business.break3Start, endTime: business.break3End }] : []),
       ]}
-      slotIntervalMinutes={business?.slotIntervalMinutes ?? 10}
+      slotIntervalMinutes={
+        business?.category === 'EVENT_VENUE'
+          ? 60
+          : calculateAdaptiveSlotStep(
+              business?.services.map((service) => service.durationMin) ?? [],
+              business?.slotIntervalMinutes
+            )
+      }
       practitioners={practitioners.map((p) => {
         const range = computeMinMax(p.workingHours, minTime, maxTime)
         return {

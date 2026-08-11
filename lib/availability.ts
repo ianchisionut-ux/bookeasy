@@ -1,6 +1,23 @@
 import { prisma } from './prisma'
 import { addMinutes } from 'date-fns'
 
+function gcd(a: number, b: number): number {
+  let x = Math.abs(a)
+  let y = Math.abs(b)
+  while (y) [x, y] = [y, x % y]
+  return x
+}
+
+// Grila automată folosește cel mai mare divizor comun al duratelor active.
+// 30/60/90 => 30, doar 60 => 60, 45/60 => 15. O setare manuală poate
+// face grila mai rară, dar nu o poate fragmenta sub pasul util calculat.
+export function calculateAdaptiveSlotStep(durations: (number | null)[], configuredStep?: number | null): number {
+  const valid = durations.filter((value): value is number => Number.isInteger(value) && value > 0)
+  const automatic = valid.length > 0 ? valid.reduce((current, value) => gcd(current, value)) : 30
+  const safeAutomatic = Math.max(5, Math.min(automatic, 180))
+  return configuredStep ? Math.max(configuredStep, safeAutomatic) : safeAutomatic
+}
+
 // bookeasy.ro funcționează cu o singură gestiune per salon (fără angajați multipli) —
 // un slot ocupat blochează acea oră pentru toți clienții, nu doar pentru "cineva anume"
 export async function getAvailableSlots(businessId: string, serviceId: string, date: Date) {
@@ -160,12 +177,21 @@ export async function getPractitionerDaySlotsWithStatus(
   if (!service || service.type !== 'APPOINTMENT') return []
 
   const weekday = date.getUTCDay() // neambiguu, indiferent de fusul serverului
-  const [business, practitioner, workingHours, existingBookings, blockedSlots] = await Promise.all([
+  const [business, practitioner, workingHours, existingBookings, blockedSlots, profileServices] = await Promise.all([
     prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
     prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
     prisma.practitionerWorkingHours.findMany({ where: { practitionerId, weekday } }),
     prisma.booking.findMany({ where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
     getBlockedSlotsForDay(businessId, date),
+    prisma.service.findMany({
+      where: {
+        businessId,
+        active: true,
+        type: 'APPOINTMENT',
+        OR: [{ practitioners: { none: {} } }, { practitioners: { some: { practitionerId } } }],
+      },
+      select: { durationMin: true },
+    }),
   ])
 
   // pauzele medicului (masă etc.) — aceleași ore, în fiecare zi lucrătoare
@@ -181,7 +207,10 @@ export async function getPractitionerDaySlotsWithStatus(
   }
 
   const duration = service.durationMin ?? 30
-  const step = stepOverride ?? business?.slotIntervalMinutes ?? duration
+  const step = stepOverride ?? calculateAdaptiveSlotStep(
+    profileServices.length > 0 ? profileServices.map((item) => item.durationMin) : [duration],
+    business?.slotIntervalMinutes
+  )
   const minLeadMs = ignoreLeadTime ? 0 : (business?.minLeadTimeMinutes ?? 120) * 60 * 1000
   const earliestAllowed = new Date(Date.now() + minLeadMs)
   const result: { time: string; available: boolean }[] = []
@@ -252,7 +281,7 @@ export async function getDaySlotsWithStatus(
   if (!service || service.type !== 'APPOINTMENT') return []
 
   const weekday = date.getUTCDay() // neambiguu, indiferent de fusul serverului
-  const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
+  const [business, workingHours, existingBookings, blockedSlots, activeServices] = await Promise.all([
     prisma.business.findUnique({
       where: { id: businessId },
       select: { slotIntervalMinutes: true, minLeadTimeMinutes: true, break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true },
@@ -260,12 +289,13 @@ export async function getDaySlotsWithStatus(
     prisma.workingHours.findMany({ where: { businessId, weekday } }),
     prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
     getBlockedSlotsForDay(businessId, date),
+    prisma.service.findMany({ where: { businessId, active: true, type: 'APPOINTMENT' }, select: { durationMin: true } }),
   ])
 
   const breaks = getBusinessBreaks(business, date)
 
   const duration = service.durationMin ?? 30
-  const step = business?.slotIntervalMinutes ?? duration
+  const step = calculateAdaptiveSlotStep(activeServices.map((item) => item.durationMin), business?.slotIntervalMinutes)
   const minLeadMs = (business?.minLeadTimeMinutes ?? 120) * 60 * 1000
   const earliestAllowed = new Date(Date.now() + minLeadMs)
   const result: { time: string; available: boolean }[] = []
@@ -342,7 +372,7 @@ export async function getVenueDaySlotsWithStatus(
 
 async function getSingleSlotAvailability(businessId: string, service: { id: string; durationMin: number | null }, date: Date) {
   const weekday = date.getUTCDay() // neambiguu, indiferent de fusul serverului
-  const [business, workingHours, existingBookings, blockedSlots] = await Promise.all([
+  const [business, workingHours, existingBookings, blockedSlots, activeServices] = await Promise.all([
     prisma.business.findUnique({
       where: { id: businessId },
       select: { slotIntervalMinutes: true, minLeadTimeMinutes: true, break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true },
@@ -350,15 +380,15 @@ async function getSingleSlotAvailability(businessId: string, service: { id: stri
     prisma.workingHours.findMany({ where: { businessId, weekday } }),
     prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
     getBlockedSlotsForDay(businessId, date),
+    prisma.service.findMany({ where: { businessId, active: true, type: 'APPOINTMENT' }, select: { durationMin: true } }),
   ])
 
   const breaks = getBusinessBreaks(business, date)
 
   const duration = service.durationMin ?? 30
-  // implicit, pasul dintre sloturi = durata serviciului ales — se "autogestionează",
-  // sloturile consecutive nu se pot suprapune niciodată din construcție. Dacă businessul
-  // a ales explicit un interval fix (ex: 10 min), îl folosim pe acela în loc
-  const step = business?.slotIntervalMinutes ?? duration
+  // Pasul este calculat din toate serviciile active, astfel încât un serviciu scurt
+  // să poată umple natural spațiul rămas lângă unul mai lung.
+  const step = calculateAdaptiveSlotStep(activeServices.map((item) => item.durationMin), business?.slotIntervalMinutes)
   // sloturile prea apropiate de acum nu sunt oferite deloc clienților din exterior —
   // funcția asta e folosită DOAR de bot și de pagina publică de rezervare, niciodată
   // de dashboard-ul admin, deci e sigur să aplicăm limita mereu, aici

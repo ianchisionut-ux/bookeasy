@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import ProgramariManager from './programari-manager'
+import { calculateAdaptiveSlotStep } from '@/lib/availability'
 
 export default async function ProgramariPage({
   searchParams,
@@ -80,7 +81,11 @@ export default async function ProgramariPage({
       blockedSlots={blockedSlots.map((b) => ({ startAt: b.startAt.toISOString(), endAt: b.endAt.toISOString() }))}
       practitioners={practitioners.map((p) => ({ id: p.id, name: p.name }))}
       workingHours={(business?.workingHours ?? []).map((range) => ({ weekday: range.weekday, startTime: range.startTime, endTime: range.endTime }))}
-      slotIntervalMinutes={business?.slotIntervalMinutes ?? 10}
+      slotIntervalMinutes={
+        business?.category === 'EVENT_VENUE'
+          ? 60
+          : calculateAdaptiveSlotStep(services.map((service) => service.durationMin), business?.slotIntervalMinutes)
+      }
       filters={{ status: status ?? '', q: q ?? '' }}
     />
   )

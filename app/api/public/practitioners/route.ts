@@ -6,13 +6,16 @@ export async function GET(req: NextRequest) {
   const serviceId = req.nextUrl.searchParams.get('serviceId')
   if (!businessId || !serviceId) return NextResponse.json({ error: 'Parametri lipsă' }, { status: 400 })
 
+  const service = await prisma.service.findFirst({ where: { id: serviceId, businessId, active: true }, select: { id: true } })
+  if (!service) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
   const associations = await prisma.servicePractitioner.findMany({
-    where: { serviceId },
+    where: { serviceId, practitioner: { businessId, active: true } },
     include: { practitioner: true },
   })
 
   const eligible = associations.length > 0
-    ? associations.map((a) => a.practitioner).filter((p) => p.active)
+    ? associations.map((a) => a.practitioner)
     : await prisma.practitioner.findMany({ where: { businessId, active: true } })
 
   return NextResponse.json({

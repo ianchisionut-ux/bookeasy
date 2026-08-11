@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { isSlotStillAvailable, isIntervalBlocked, isWithinLeadTime, isPractitionerSlotStillAvailable, isWithinWorkingHours } from '@/lib/availability'
+import {
+  getDaySlotsWithStatus,
+  getPractitionerDaySlotsWithStatus,
+  getVenueDaySlotsWithStatus,
+  isSlotStillAvailable,
+  isIntervalBlocked,
+  isWithinLeadTime,
+  isPractitionerSlotStillAvailable,
+  isWithinWorkingHours,
+} from '@/lib/availability'
 import { venueServiceId } from '@/lib/venue-services'
 import { getNextSequenceNumber } from '@/lib/booking-number'
 import { createDepositCheckoutLink } from '@/lib/payments/create-checkout'
@@ -60,6 +69,10 @@ export async function POST(req: NextRequest) {
   }
   const durationMinutes = service.type === 'VENUE_RENTAL' ? venueDuration : (service.durationMin ?? 30)
   const endAt = new Date(startAt.getTime() + durationMinutes * 60000)
+  const localDateParam = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(startAt)
+  const bookingDay = new Date(`${localDateParam}T00:00:00Z`)
 
   // verificare finală "ultima clipă" — cineva ar fi putut ocupa slotul chiar acum
   if (await isIntervalBlocked(businessId, startAt, endAt)) {
@@ -76,6 +89,14 @@ export async function POST(req: NextRequest) {
         { error: `Rezervările online se fac cu minim ${hours} ${hours === 1 ? 'oră' : 'ore'} înainte. Sună direct pentru intervale mai apropiate.` },
         { status: 400 }
       )
+    }
+
+    const offeredSlots = practitionerId
+      ? await getPractitionerDaySlotsWithStatus(businessId, serviceId, practitionerId, bookingDay)
+      : await getDaySlotsWithStatus(businessId, serviceId, bookingDay)
+    const wasOffered = offeredSlots.some((slot) => slot.available && new Date(slot.time).getTime() === startAt.getTime())
+    if (!wasOffered) {
+      return NextResponse.json({ error: 'Ora aleasă nu face parte din intervalele disponibile. Alege una dintre orele afișate.' }, { status: 409 })
     }
 
     const stillFree = practitionerId
@@ -97,6 +118,11 @@ export async function POST(req: NextRequest) {
     })
     if (!resource) {
       return NextResponse.json({ error: 'Ne pare rău, data tocmai a fost ocupată. Alege altă zi.' }, { status: 409 })
+    }
+    const offeredSlots = await getVenueDaySlotsWithStatus(businessId, requestedResourceId, bookingDay, venueDuration)
+    const wasOffered = offeredSlots.some((slot) => slot.available && new Date(slot.time).getTime() === startAt.getTime())
+    if (!wasOffered) {
+      return NextResponse.json({ error: 'Ora aleasă nu face parte din intervalele disponibile. Alege una dintre orele afișate.' }, { status: 409 })
     }
     if (await isWithinLeadTime(businessId, startAt)) {
       return NextResponse.json({ error: 'Rezervarea este prea apropiată de ora curentă. Alege un interval ulterior.' }, { status: 400 })
