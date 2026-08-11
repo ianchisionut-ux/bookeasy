@@ -30,6 +30,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
+  const [staff, resource] = await Promise.all([
+    parsed.data.staffId ? prisma.staff.findFirst({ where: { id: parsed.data.staffId, businessId, active: true } }) : null,
+    parsed.data.resourceId ? prisma.resource.findFirst({ where: { id: parsed.data.resourceId, businessId } }) : null,
+  ])
+  if (parsed.data.staffId && !staff) return NextResponse.json({ error: 'Membrul selectat nu este disponibil.' }, { status: 404 })
+  if (parsed.data.resourceId && !resource) return NextResponse.json({ error: 'Resursa selectată nu este disponibilă.' }, { status: 404 })
+
   if (parsed.data.endAt && !parsed.data.startAt) {
     return NextResponse.json({ error: 'Durata programării nu poate fi modificată.' }, { status: 400 })
   }

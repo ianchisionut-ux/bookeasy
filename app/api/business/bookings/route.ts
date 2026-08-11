@@ -38,16 +38,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Intervalul programării nu este valid.' }, { status: 400 })
   }
 
-  const [service, customer, practitioner] = await Promise.all([
+  const [service, customer, practitioner, staff, resource] = await Promise.all([
     prisma.service.findFirst({ where: { id: parsed.data.serviceId, businessId, active: true } }),
     parsed.data.customerId ? prisma.customer.findFirst({ where: { id: parsed.data.customerId, businessId } }) : null,
     parsed.data.practitionerId
       ? prisma.practitioner.findFirst({ where: { id: parsed.data.practitionerId, businessId, active: true } })
       : null,
+    parsed.data.staffId ? prisma.staff.findFirst({ where: { id: parsed.data.staffId, businessId, active: true } }) : null,
+    parsed.data.resourceId ? prisma.resource.findFirst({ where: { id: parsed.data.resourceId, businessId } }) : null,
   ])
   if (!service) return NextResponse.json({ error: 'Serviciul selectat nu este disponibil.' }, { status: 404 })
   if (parsed.data.customerId && !customer) return NextResponse.json({ error: 'Clientul selectat nu a fost găsit.' }, { status: 404 })
   if (parsed.data.practitionerId && !practitioner) return NextResponse.json({ error: 'Profilul selectat nu este disponibil.' }, { status: 404 })
+  if (parsed.data.staffId && !staff) return NextResponse.json({ error: 'Membrul selectat nu este disponibil.' }, { status: 404 })
+  if (parsed.data.resourceId && !resource) return NextResponse.json({ error: 'Resursa selectată nu este disponibilă.' }, { status: 404 })
 
   const expectedEnd = new Date(startDate.getTime() + (service.durationMin ?? 30) * 60000)
   if (endDate.getTime() !== expectedEnd.getTime()) {

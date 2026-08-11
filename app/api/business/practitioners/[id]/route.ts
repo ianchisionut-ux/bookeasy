@@ -40,6 +40,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { workingHours, serviceIds, ...fields } = parsed.data
 
+  if (serviceIds) {
+    const uniqueServiceIds = [...new Set(serviceIds)]
+    const ownedServices = await prisma.service.count({
+      where: { id: { in: uniqueServiceIds }, businessId },
+    })
+    if (ownedServices !== uniqueServiceIds.length) {
+      return NextResponse.json({ error: 'Unul sau mai multe servicii nu aparțin acestei afaceri.' }, { status: 400 })
+    }
+  }
+
   await prisma.$transaction(async (tx) => {
     if (Object.keys(fields).length > 0) {
       await tx.practitioner.update({ where: { id }, data: fields })

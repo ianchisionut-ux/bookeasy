@@ -12,18 +12,25 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   const session = await auth()
   const businessId = (session as any)?.businessId
 
-  const [customer, business, medicalRecord, documents, letters] = await Promise.all([
-    prisma.customer.findUnique({
-      where: { id },
+  if (!businessId) notFound()
+
+  // Filtrăm clientul direct după businessId. Verificarea doar a autentificării nu este
+  // suficientă: un ID cunoscut nu trebuie să poată expune datele altui business.
+  const [customer, business] = await Promise.all([
+    prisma.customer.findFirst({
+      where: { id, businessId },
       include: { bookings: { include: { service: true, practitioner: true }, orderBy: { startAt: 'desc' } } },
     }),
     prisma.business.findUnique({ where: { id: businessId }, select: { category: true } }),
-    prisma.patientMedicalRecord.findUnique({ where: { customerId: id } }),
-    prisma.patientDocument.findMany({ where: { customerId: id }, orderBy: { uploadedAt: 'desc' } }),
-    prisma.medicalLetter.findMany({ where: { customerId: id }, orderBy: { createdAt: 'desc' } }),
   ])
 
   if (!customer) notFound()
+
+  const [medicalRecord, documents, letters] = await Promise.all([
+    prisma.patientMedicalRecord.findUnique({ where: { customerId: customer.id } }),
+    prisma.patientDocument.findMany({ where: { customerId: customer.id, businessId }, orderBy: { uploadedAt: 'desc' } }),
+    prisma.medicalLetter.findMany({ where: { customerId: customer.id, businessId }, orderBy: { createdAt: 'desc' } }),
+  ])
   const isClinic = business?.category === 'CLINICA'
   const patientName = customer.name ?? customer.phone ?? 'Fără nume'
 
