@@ -61,7 +61,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         />
       ) : (
         <Card className="mb-8">
-          <h2 className="font-medium mb-4">Date client</h2>
+          <h2 className="font-medium mb-4">Date {isClinic ? 'pacient' : 'client'}</h2>
           <CustomerEditForm customerId={customer.id} isClinic={false} initial={simpleInitial} />
         </Card>
       )}

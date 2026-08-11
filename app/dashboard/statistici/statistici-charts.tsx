@@ -63,7 +63,8 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
   const data = analytics.periods[period]
   const isClinic = category === 'CLINICA'
   const isVenue = category === 'EVENT_VENUE'
-  const bookingLabel = isClinic ? 'Programări' : 'Rezervări'
+  const isAppointmentBased = category === 'SALON' || category === 'CLINICA'
+  const bookingLabel = isAppointmentBased ? 'Programări' : 'Rezervări'
   const operatorLabel = isVenue ? 'Performanță pe sală' : isClinic ? 'Performanță pe medic' : 'Performanță pe membru'
   const statusData = data.byStatus.filter((item) => item.count > 0)
 
@@ -93,7 +94,7 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl lg:text-2xl font-semibold mb-1">Statistici</h1>
-          <p className="text-sm text-gray-500">Performanță, clienți și grad de ocupare într-o singură vedere.</p>
+          <p className="text-sm text-gray-500">Performanță, {isClinic ? 'pacienți' : 'clienți'} și grad de ocupare într-o singură vedere.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-xl border border-[var(--border-soft)] bg-white p-1">
@@ -108,10 +109,10 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
         <KpiCard label={bookingLabel} value={String(data.totalBookings)} delta={data.bookingChange} hint="față de perioada anterioară" icon={<CalendarDays size={17} />} />
         <KpiCard label="Venit estimat" value={money(data.revenue)} delta={data.revenueChange} hint="față de perioada anterioară" />
-        <KpiCard label="Valoare medie" value={money(data.avgBookingValue)} hint={`per ${isClinic ? 'programare' : 'rezervare'}`} />
+        <KpiCard label="Valoare medie" value={money(data.avgBookingValue)} hint={`per ${isAppointmentBased ? 'programare' : 'rezervare'}`} />
         <KpiCard label="Grad de ocupare" value={`${(data.utilizationRate * 100).toFixed(0)}%`} hint="din capacitatea disponibilă" icon={<Gauge size={17} />} />
         <KpiCard label={isClinic ? 'Pacienți unici' : 'Clienți unici'} value={String(data.uniqueCustomers)} hint={`${data.newCustomers} noi`} icon={<Users size={17} />} />
-        <KpiCard label="Clienți reveniți" value={String(data.returningCustomers)} hint={data.uniqueCustomers ? `${((data.returningCustomers / data.uniqueCustomers) * 100).toFixed(0)}% din total` : 'fără date'} icon={<RefreshCw size={16} />} />
+        <KpiCard label={isClinic ? 'Pacienți reveniți' : 'Clienți reveniți'} value={String(data.returningCustomers)} hint={data.uniqueCustomers ? `${((data.returningCustomers / data.uniqueCustomers) * 100).toFixed(0)}% din total` : 'fără date'} icon={<RefreshCw size={16} />} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)] gap-4 mb-5">
@@ -138,7 +139,7 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
         </Card>
 
         <Card>
-          <h2 className="font-medium">Starea rezervărilor</h2>
+          <h2 className="font-medium">Starea {bookingLabel.toLowerCase()}</h2>
           <p className="text-xs text-gray-500 mb-2">Distribuția tuturor solicitărilor din perioadă.</p>
           <div className="h-52">
             {statusData.length ? <ResponsiveContainer><PieChart><Pie data={statusData} dataKey="count" nameKey="status" innerRadius={55} outerRadius={82} paddingAngle={2}>{statusData.map((item) => <Cell key={item.status} fill={STATUS_COLOR[item.status]} />)}</Pie><Tooltip formatter={(value, _name, item) => [Number(value), STATUS_LABEL[item.payload.status]]} /></PieChart></ResponsiveContainer> : <div className="h-full flex items-center justify-center text-sm text-gray-400">Fără date încă</div>}

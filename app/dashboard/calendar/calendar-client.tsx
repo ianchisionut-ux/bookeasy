@@ -83,6 +83,11 @@ export default function CalendarClient({
   practitioners: { id: string; name: string; minTime: string; maxTime: string; workingHours: { weekday: number; startTime: string; endTime: string }[]; breaks: BreakRange[] }[]
 }) {
   const isClinic = category === 'CLINICA'
+  const isAppointmentBased = category === 'SALON' || category === 'CLINICA'
+  const bookingPlural = isAppointmentBased ? 'programări' : 'rezervări'
+  const bookingSingular = isAppointmentBased ? 'programare' : 'rezervare'
+  const customerPlural = isClinic ? 'pacienți' : 'clienți'
+  const customerSingular = isClinic ? 'pacient' : 'client'
   const router = useRouter()
   const [selected, setSelected] = useState<Event | null>(null)
   const [view, setView] = useState<any>(Views.WEEK)
@@ -226,14 +231,14 @@ export default function CalendarClient({
         return new Date(start) < pauseEnd && new Date(end) > pauseStart
       })
       if (overlapsBreak) {
-        alert('Programarea nu poate fi mutată peste o pauză.')
+        alert(`${isAppointmentBased ? 'Programarea' : 'Rezervarea'} nu poate fi mutată peste o pauză.`)
         resetPosition()
         return
       }
 
       const conflict = events.some((candidate) => candidate.id !== event.id && candidate.practitionerId === event.practitionerId && new Date(start) < candidate.end && new Date(end) > candidate.start)
       if (conflict) {
-        alert('Conflict detectat: medicul are deja o programare în acest interval.')
+        alert(`Conflict detectat: ${isClinic ? 'medicul' : category === 'EVENT_VENUE' ? 'sala' : 'profilul'} are deja o ${bookingSingular} în acest interval.`)
         resetPosition()
         return
       }
@@ -241,7 +246,7 @@ export default function CalendarClient({
       const oldTime = new Date(event.start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', hour12: false, timeZone: 'Europe/Bucharest' })
       const newTime = new Date(start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', hour12: false, timeZone: 'Europe/Bucharest' })
       const confirmed = confirm(
-        `Muți programarea "${event.customerName} — ${event.serviceName}" din ${oldTime} în ${newTime}?`
+        `Muți ${bookingSingular}a "${event.customerName} — ${event.serviceName}" din ${oldTime} în ${newTime}?`
       )
       if (!confirmed) {
         resetPosition()
@@ -260,7 +265,7 @@ export default function CalendarClient({
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))
-          alert(data.error ?? `Nu am putut muta ${isClinic ? 'programarea' : 'rezervarea'}.`)
+          alert(data.error ?? `Nu am putut muta ${bookingSingular}a.`)
           resetPosition()
           return
         }
@@ -270,16 +275,16 @@ export default function CalendarClient({
         resetPosition()
       }
     },
-    [router, events, isClinic, practitioners, activeBreaks]
+    [router, events, isClinic, isAppointmentBased, bookingSingular, practitioners, activeBreaks]
   )
 
   return (
     <div className="h-[calc(100vh-56px)] lg:h-screen p-3 lg:p-5 flex flex-col">
       <div className="mb-3 screen-only calendar-commandbar">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl lg:text-2xl font-semibold mr-1">{isClinic ? 'Calendar programări' : 'Calendar rezervări'}</h1>
-          <span className="calendar-kpi"><Clock3 size={14}/>{visibleEvents.length} programări</span>
-          <span className="calendar-kpi"><Users size={14}/>{new Set(visibleEvents.map(e => e.customerId)).size} pacienți</span>
+          <h1 className="text-xl lg:text-2xl font-semibold mr-1">Calendar {bookingPlural}</h1>
+          <span className="calendar-kpi"><Clock3 size={14}/>{visibleEvents.length} {bookingPlural}</span>
+          <span className="calendar-kpi"><Users size={14}/>{new Set(visibleEvents.map(e => e.customerId)).size} {customerPlural}</span>
           {practitioners.length > 0 && (
             <select
               value={practitionerFilter}
@@ -295,7 +300,7 @@ export default function CalendarClient({
               ))}
             </select>
           )}
-          <label className="calendar-search"><Search size={15}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Caută pacient, telefon..." aria-label="Caută pacient"/></label>
+          <label className="calendar-search"><Search size={15}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Caută ${customerSingular}, telefon...`} aria-label={`Caută ${customerSingular}`}/></label>
           <button
             onClick={() => setBlockMode((v) => !v)}
             className="btn-secondary text-sm whitespace-nowrap flex items-center gap-1.5"
@@ -324,7 +329,7 @@ export default function CalendarClient({
           />
           <PrintButton />
           <button onClick={() => setShowBookingModal(true)} className="btn-primary text-sm whitespace-nowrap">
-            + Adaugă programare
+            + Adaugă {bookingSingular}
           </button>
           {busy && <span className="text-xs text-gray-400">se actualizează...</span>}
         </div>
@@ -334,7 +339,7 @@ export default function CalendarClient({
           </p>
         )}
       </div>
-      {search && visibleEvents.length === 0 && <div className="mb-2 text-sm text-amber-700 flex items-center gap-2"><AlertTriangle size={15}/> Nu există programări care corespund căutării.</div>}
+      {search && visibleEvents.length === 0 && <div className="mb-2 text-sm text-amber-700 flex items-center gap-2"><AlertTriangle size={15}/> Nu există {bookingPlural} care corespund căutării.</div>}
       <div className="card printable p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
         <DnDCalendar
           key={`${practitionerFilter}-${calendarRevision}`}
@@ -364,7 +369,7 @@ export default function CalendarClient({
             date: 'Dată',
             time: 'Oră',
             event: 'Eveniment',
-            noEventsInRange: isClinic ? 'Nicio programare în acest interval.' : 'Nicio rezervare în acest interval.',
+            noEventsInRange: `Nicio ${bookingSingular} în acest interval.`,
             showMore: (count: number) => `+${count} mai multe`,
           }}
           formats={{
@@ -409,7 +414,7 @@ export default function CalendarClient({
 
       {selected && (
         <BookingEditModal
-          isClinic={isClinic}
+          isAppointmentBased={isAppointmentBased}
           booking={
             {
               id: selected.id,
@@ -433,6 +438,8 @@ export default function CalendarClient({
 
       {showBookingModal && (
         <CalendarQuickBookingModal
+          isAppointmentBased={isAppointmentBased}
+          isClinic={isClinic}
           businessWorkingHours={businessWorkingHours}
           stepMinutes={slotIntervalMinutes}
           onClose={() => setShowBookingModal(false)}
@@ -478,7 +485,7 @@ function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: num
   return [...new Set(options)]
 }
 
-function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPractitionerId, businessWorkingHours, stepMinutes }: { onClose: () => void; onCreated: () => void; initialStart?: Date; initialPractitionerId?: string; businessWorkingHours: { weekday: number; startTime: string; endTime: string }[]; stepMinutes: number }) {
+function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPractitionerId, businessWorkingHours, stepMinutes, isAppointmentBased, isClinic }: { onClose: () => void; onCreated: () => void; initialStart?: Date; initialPractitionerId?: string; businessWorkingHours: { weekday: number; startTime: string; endTime: string }[]; stepMinutes: number; isAppointmentBased: boolean; isClinic: boolean }) {
   const [services, setServices] = useState<{ id: string; name: string; durationMin: number | null }[]>([])
   const [practitioners, setPractitioners] = useState<{ id: string; name: string }[]>([])
   const [isMultiPractitioner, setIsMultiPractitioner] = useState(false)
@@ -554,7 +561,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
     const end = new Date(start.getTime() + (service?.durationMin ?? 30) * 60000)
 
     if (start < new Date()) {
-      setError('Nu poți crea o programare într-un interval din trecut.')
+      setError(`Nu poți crea o ${isAppointmentBased ? 'programare' : 'rezervare'} într-un interval din trecut.`)
       return
     }
 
@@ -590,7 +597,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold">Programare nouă</h2>
+          <h2 className="font-semibold">{isAppointmentBased ? 'Programare nouă' : 'Rezervare nouă'}</h2>
           <button onClick={onClose} aria-label="Închide">
             <X size={18} />
           </button>
@@ -601,7 +608,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
         ) : (
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-2">
-              <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nume client" className="input-field" />
+              <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={isClinic ? 'Nume pacient' : 'Nume client'} className="input-field" />
               <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Telefon" className="input-field" />
             </div>
 
@@ -668,13 +675,13 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
                   value={simpleDate}
                   onChange={(e) => setSimpleDateTime(e.target.value && simpleTime ? `${e.target.value}T${simpleTime}` : e.target.value)}
                   className="input-field w-full"
-                  aria-label="Data programării"
+                  aria-label={`Data ${isAppointmentBased ? 'programării' : 'rezervării'}`}
                 />
                 <select
                   value={simpleTime}
                   onChange={(e) => setSimpleDateTime(simpleDate ? `${simpleDate}T${e.target.value}` : '')}
                   className="input-field w-full"
-                  aria-label="Ora programării în format 24 de ore"
+                  aria-label={`Ora ${isAppointmentBased ? 'programării' : 'rezervării'} în format 24 de ore`}
                 >
                   <option value="">Ora</option>
                   {tenMinuteTimes.map((time) => <option key={time} value={time}>{time}</option>)}
@@ -685,7 +692,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <button onClick={submit} disabled={saving} className="btn-primary w-full">
-              {saving ? 'Se salvează...' : 'Salvează programarea'}
+              {saving ? 'Se salvează...' : `Salvează ${isAppointmentBased ? 'programarea' : 'rezervarea'}`}
             </button>
           </div>
         )}

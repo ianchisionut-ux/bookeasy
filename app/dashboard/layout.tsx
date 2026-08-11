@@ -81,7 +81,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }))
     .map((item) => ({
       ...item,
-      label: category === 'CLINICA' ? CLINIC_NAV_LABEL_OVERRIDES[item.href] ?? item.label : item.label,
+      label:
+        category === 'CLINICA'
+          ? CLINIC_NAV_LABEL_OVERRIDES[item.href] ?? item.label
+          : category === 'EVENT_VENUE' && item.href === '/dashboard/programari'
+            ? 'Rezervări'
+            : category === 'EVENT_VENUE' && item.href === '/dashboard/servicii'
+              ? 'Săli'
+              : item.label,
     }))
     .concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin', badge: undefined, icon: 'superadmin' }] : [])
 

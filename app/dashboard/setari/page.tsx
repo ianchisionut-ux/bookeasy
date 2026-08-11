@@ -43,7 +43,7 @@ export default async function SetariPage() {
       </div>
 
       <div className="columns-1 lg:columns-2 gap-5">
-        <PublicPageLinkCard slug={business.slug} isClinic={business.category === 'CLINICA'} />
+        <PublicPageLinkCard slug={business.slug} isClinic={business.category === 'CLINICA'} usesAppointments={business.category === 'SALON' || business.category === 'CLINICA'} />
 
         <SubscriptionCard planName={business.planName} billingStatus={business.billingStatus} />
 
@@ -72,7 +72,7 @@ export default async function SetariPage() {
           workingHours={workingHours}
         />
 
-        <BrandColorCard initialColor={business.brandColor} isClinic={business.category === 'CLINICA'} />
+        <BrandColorCard initialColor={business.brandColor} usesAppointments={business.category === 'SALON' || business.category === 'CLINICA'} />
 
         <div className="card p-5 mb-5 break-inside-avoid">
           <h2 className="font-medium mb-1">Cont</h2>

@@ -28,7 +28,7 @@ function CopyableLink({ path, label }: { path: string; label: string }) {
   )
 }
 
-export function PublicPageLinkCard({ slug, isClinic }: { slug: string; isClinic: boolean }) {
+export function PublicPageLinkCard({ slug, isClinic, usesAppointments }: { slug: string; isClinic: boolean; usesAppointments: boolean }) {
   return (
     <Card className="mb-5 break-inside-avoid">
       <h2 className="font-medium mb-1">Pagina ta publică</h2>
@@ -37,7 +37,7 @@ export function PublicPageLinkCard({ slug, isClinic }: { slug: string; isClinic:
       </p>
       <div className="flex flex-col gap-3">
         <CopyableLink path={`/${slug}`} label="Profil public" />
-        <CopyableLink path={`/${slug}/rezerva`} label={isClinic ? 'Programare directă' : 'Rezervare directă'} />
+        <CopyableLink path={`/${slug}/rezerva`} label={usesAppointments ? 'Programare directă' : 'Rezervare directă'} />
       </div>
     </Card>
   )

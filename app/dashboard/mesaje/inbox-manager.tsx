@@ -21,7 +21,7 @@ type Template = { id: string; title: string; text: string }
 
 const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', INSTAGRAM: 'Instagram', FACEBOOK: 'Messenger' }
 
-export default function InboxManager({ businessId }: { businessId: string }) {
+export default function InboxManager({ businessId, isClinic, isAppointmentBased }: { businessId: string; isClinic: boolean; isAppointmentBased: boolean }) {
   const operatorNameKey = `bookeasy_operator_name_${businessId}`
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [loadingList, setLoadingList] = useState(true)
@@ -159,7 +159,7 @@ export default function InboxManager({ businessId }: { businessId: string }) {
           <input
             value={operatorName}
             onChange={(e) => updateOperatorName(e.target.value)}
-            placeholder="Numele tău (apare la client)"
+            placeholder={`Numele tău (apare la ${isClinic ? 'pacient' : 'client'})`}
             className="input-field text-sm w-full"
           />
         </div>
@@ -216,7 +216,7 @@ export default function InboxManager({ businessId }: { businessId: string }) {
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => setShowBookingModal(true)} className="btn-secondary text-xs whitespace-nowrap">
-                  + Adaugă programare
+                  + Adaugă {isAppointmentBased ? 'programare' : 'rezervare'}
                 </button>
                 {selected.needsOperator && (
                   <button onClick={markResolved} className="btn-secondary text-xs flex items-center gap-1.5 whitespace-nowrap">
@@ -296,6 +296,8 @@ export default function InboxManager({ businessId }: { businessId: string }) {
 
             {showBookingModal && (
               <QuickBookingModal
+                isClinic={isClinic}
+                isAppointmentBased={isAppointmentBased}
                 conversation={selected}
                 onClose={() => setShowBookingModal(false)}
                 onCreated={() => {
@@ -313,10 +315,14 @@ export default function InboxManager({ businessId }: { businessId: string }) {
 
 function QuickBookingModal({
   conversation,
+  isClinic,
+  isAppointmentBased,
   onClose,
   onCreated,
 }: {
   conversation: ConversationSummary
+  isClinic: boolean
+  isAppointmentBased: boolean
   onClose: () => void
   onCreated: () => void
 }) {
@@ -387,7 +393,7 @@ function QuickBookingModal({
     const end = new Date(start.getTime() + (service?.durationMin ?? 30) * 60000)
 
     if (start < new Date()) {
-      setError('Nu poți crea o programare într-un interval din trecut.')
+      setError(`Nu poți crea o ${isAppointmentBased ? 'programare' : 'rezervare'} într-un interval din trecut.`)
       return
     }
 
@@ -426,7 +432,7 @@ function QuickBookingModal({
         timeZone: 'Europe/Bucharest',
       })
       const detailsText = [
-        'Programarea ta a fost înregistrată!',
+        `${isAppointmentBased ? 'Programarea' : 'Rezervarea'} ta a fost înregistrată!`,
         `Serviciu: ${service?.name ?? ''}`,
         ...(practitioner ? [`Persoana: ${practitioner.name}`] : []),
         `Data: ${dateTime}`,
@@ -450,7 +456,7 @@ function QuickBookingModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold">Programare nouă</h2>
+          <h2 className="font-semibold">{isAppointmentBased ? 'Programare nouă' : 'Rezervare nouă'}</h2>
           <button onClick={onClose} aria-label="Închide">
             <X size={18} />
           </button>
@@ -464,7 +470,7 @@ function QuickBookingModal({
               <input
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Nume client"
+                placeholder={isClinic ? 'Nume pacient' : 'Nume client'}
                 className="input-field"
               />
               <input
@@ -544,7 +550,7 @@ function QuickBookingModal({
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <button onClick={submit} disabled={saving} className="btn-primary w-full">
-              {saving ? 'Se salvează...' : 'Salvează programarea'}
+              {saving ? 'Se salvează...' : `Salvează ${isAppointmentBased ? 'programarea' : 'rezervarea'}`}
             </button>
           </div>
         )}

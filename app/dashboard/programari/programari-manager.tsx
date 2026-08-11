@@ -135,6 +135,9 @@ export default function ProgramariManager({
   }
   const isClinic = category === 'CLINICA'
   const appointmentBased = isAppointmentBased(category)
+  const bookingPlural = appointmentBased ? 'programări' : 'rezervări'
+  const bookingSingular = appointmentBased ? 'programare' : 'rezervare'
+  const customerSingular = isClinic ? 'pacient' : 'client'
   // 8 coloane (fără Sală/Medic) sau 9 (cu Sală sau Medic)
   const colCount = appointmentBased && !isMultiPractitioner ? 8 : 9
 
@@ -157,7 +160,7 @@ export default function ProgramariManager({
   }
 
   async function cancelBooking(id: string) {
-    if (!confirm(`Anulezi această ${isClinic ? 'programare' : 'rezervare'}?`)) return
+    if (!confirm(`Anulezi această ${bookingSingular}?`)) return
     try {
       await fetchWithTimeout(`/api/business/bookings/${id}`, { method: 'DELETE' })
       router.refresh()
@@ -167,7 +170,7 @@ export default function ProgramariManager({
   }
 
   async function deletePermanently(id: string) {
-    if (!confirm(`Ștergi definitiv această ${isClinic ? 'programare' : 'rezervare'}? Nu se mai poate anula acțiunea — dispare complet, inclusiv din istoric.`)) return
+    if (!confirm(`Ștergi definitiv această ${bookingSingular}? Nu se mai poate anula acțiunea — dispare complet, inclusiv din istoric.`)) return
     try {
       const res = await fetchWithTimeout(`/api/business/bookings/${id}/delete-permanently`, { method: 'DELETE' })
       if (!res.ok) {
@@ -303,10 +306,10 @@ export default function ProgramariManager({
   return (
     <div className="p-4 lg:p-8">
       <div className="flex flex-wrap items-center gap-2 mb-5">
-        <h1 className="text-2xl font-semibold mr-1">Programări</h1>
-        <span className="text-sm text-gray-500 mr-1 whitespace-nowrap">{bookings.length} programări</span>
+        <h1 className="text-2xl font-semibold mr-1">{appointmentBased ? 'Programări' : 'Rezervări'}</h1>
+        <span className="text-sm text-gray-500 mr-1 whitespace-nowrap">{bookings.length} {bookingPlural}</span>
         <form method="get" className="contents">
-          <Input name="q" defaultValue={filters.q} placeholder="Caută client..." className="w-40" />
+          <Input name="q" defaultValue={filters.q} placeholder={`Caută ${customerSingular}...`} className="w-40" />
           <select name="status" defaultValue={filters.status} className="input-field">
             <option value="">Toate statusurile</option>
             {Object.entries(STATUS_LABEL).map(([value, label]) => (
@@ -320,7 +323,7 @@ export default function ProgramariManager({
           </button>
         </form>
         <PrintButton />
-        <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : '+ Adaugă programare'}</Button>
+        <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : `+ Adaugă ${bookingSingular}`}</Button>
       </div>
 
       {adding && (
@@ -374,7 +377,7 @@ export default function ProgramariManager({
                   <Fragment key={`week-${group.year}-${group.week}`}>
                     <tr key={`week-${group.week}-${group.year}`} className="bg-[var(--surface-muted)]">
                       <td colSpan={colCount} className="px-5 py-2 text-xs font-semibold text-gray-500">
-                        Săptămâna {group.week} · {group.rangeLabel} ({group.bookings.length} programări)
+                        Săptămâna {group.week} · {group.rangeLabel} ({group.bookings.length} {bookingPlural})
                       </td>
                     </tr>
                     {group.bookings.map((b) => renderRow(b))}
@@ -383,7 +386,7 @@ export default function ProgramariManager({
             {bookings.length === 0 && (
               <tr>
                 <td colSpan={colCount} className="text-center text-gray-500 py-8">
-                  Nicio programare găsită.
+                  Nicio {bookingSingular} găsită.
                 </td>
               </tr>
             )}
@@ -474,6 +477,9 @@ function NewBookingForm({
   onDone: () => void
 }) {
   const isClinic = category === 'CLINICA'
+  const appointmentBased = isAppointmentBased(category)
+  const bookingSingular = appointmentBased ? 'programare' : 'rezervare'
+  const bookingPlural = appointmentBased ? 'programări' : 'rezervări'
   const [customerId, setCustomerId] = useState('')
   const [newCustomerMode, setNewCustomerMode] = useState(false)
   const [newCustomerName, setNewCustomerName] = useState('')
@@ -531,14 +537,14 @@ function NewBookingForm({
     const end = new Date(start.getTime() + (service?.durationMin ?? 30) * 60000)
 
     if (start < new Date()) {
-      setError(`Nu poți crea o ${isClinic ? 'programare' : 'rezervare'} într-un interval din trecut.`)
+      setError(`Nu poți crea o ${bookingSingular} într-un interval din trecut.`)
       return
     }
 
     if (!isMultiPractitioner) {
       const overlapsBlocked = blockedSlots.some((b) => start < new Date(b.endAt) && new Date(b.startAt) < end)
       if (overlapsBlocked) {
-        setError(`Intervalul ales e blocat pentru ${isClinic ? 'programări' : 'rezervări'} — modifică-l direct din calendar dacă e nevoie.`)
+        setError(`Intervalul ales e blocat pentru ${bookingPlural} — modifică-l direct din calendar dacă e nevoie.`)
         return
       }
     }
@@ -721,7 +727,7 @@ function NewBookingForm({
       {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
 
       <Button variant="secondary" onClick={submit} disabled={saving}>
-        {saving ? 'Se salvează...' : 'Salvează programarea'}
+        {saving ? 'Se salvează...' : `Salvează ${bookingSingular}a`}
       </Button>
     </Card>
   )

@@ -57,13 +57,13 @@ function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: num
 
 export default function BookingEditModal({
   booking,
-  isClinic,
+  isAppointmentBased,
   onClose,
   workingHours,
   stepMinutes,
 }: {
   booking: BookingDetail
-  isClinic: boolean
+  isAppointmentBased: boolean
   onClose: () => void
   workingHours: { weekday: number; startTime: string; endTime: string }[]
   stepMinutes: number
@@ -151,7 +151,7 @@ export default function BookingEditModal({
   }
 
   async function cancelBooking() {
-    if (!confirm(`Anulezi această ${isClinic ? 'programare' : 'rezervare'}?`)) return
+    if (!confirm(`Anulezi această ${isAppointmentBased ? 'programare' : 'rezervare'}?`)) return
     setSaving(true)
     try {
       await fetchWithTimeout(`/api/business/bookings/${booking.id}`, { method: 'DELETE' })
@@ -168,7 +168,7 @@ export default function BookingEditModal({
     <div className="fixed inset-0 bg-black/25 flex justify-end z-50" onClick={onClose}>
       <Card className="calendar-drawer w-full max-w-md h-full max-h-none overflow-y-auto rounded-none p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-6">
-          <div><p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Detalii programare</p><h2 className="text-xl font-semibold">{booking.serviceName}</h2></div>
+          <div><p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Detalii {isAppointmentBased ? 'programare' : 'rezervare'}</p><h2 className="text-xl font-semibold">{booking.serviceName}</h2></div>
           <button onClick={onClose} className="w-9 h-9 rounded-full border border-[var(--border-soft)] flex items-center justify-center" aria-label="Închide"><X size={18}/></button>
         </div>
         <div className="mb-5 rounded-2xl bg-[var(--surface-muted)] p-4">
@@ -234,13 +234,13 @@ export default function BookingEditModal({
                   setStartAt(e.target.value && nextTimes[0] ? `${e.target.value}T${nextTimes[0]}` : e.target.value)
                 }}
                 className="input-field w-full"
-                aria-label="Data programării"
+                aria-label={`Data ${isAppointmentBased ? 'programării' : 'rezervării'}`}
               />
               <select
                 value={selectedTime}
                 onChange={(e) => setStartAt(selectedDate ? `${selectedDate}T${e.target.value}` : '')}
                 className="input-field w-full"
-                aria-label="Ora programării în format 24 de ore"
+                aria-label={`Ora ${isAppointmentBased ? 'programării' : 'rezervării'} în format 24 de ore`}
               >
                 <option value="">Ora</option>
                 {availableTimes.map((time) => <option key={time} value={time}>{time}</option>)}
@@ -265,7 +265,7 @@ export default function BookingEditModal({
 
         <div className="flex justify-between mt-5">
           <button onClick={cancelBooking} disabled={saving} className="text-sm text-red-600 font-medium">
-            {isClinic ? 'Anulează programarea' : 'Anulează rezervarea'}
+            {isAppointmentBased ? 'Anulează programarea' : 'Anulează rezervarea'}
           </button>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose}>

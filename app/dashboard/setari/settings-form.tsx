@@ -42,6 +42,7 @@ export default function SettingsForm({
   isEventVenue: boolean
 }) {
   const [form, setForm] = useState(business)
+  const usesAppointments = !isEventVenue
   const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null)
 
   useEffect(() => {
@@ -190,7 +191,7 @@ export default function SettingsForm({
             <>
               <h3 className="text-sm font-medium mb-1">Pauze</h3>
               <p className="text-xs text-gray-500 mb-3">
-                Aceleași ore în fiecare zi lucrătoare — nu se pot face programări în aceste intervale.
+                Aceleași ore în fiecare zi lucrătoare — nu se pot face {usesAppointments ? 'programări' : 'rezervări'} în aceste intervale.
               </p>
               <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -241,7 +242,7 @@ export default function SettingsForm({
       <Card className="mb-5 break-inside-avoid">
         <h2 className="font-medium mb-1">Interval între ore disponibile</h2>
         <p className="text-sm text-gray-500 mb-3">
-          Cum se împart orele oferite {isClinic ? 'pacienților' : 'clienților'} la {isClinic ? 'programare' : 'rezervare'}.
+          Cum se împart orele oferite {isClinic ? 'pacienților' : 'clienților'} la {usesAppointments ? 'programare' : 'rezervare'}.
         </p>
         <select
           value={form.slotIntervalMinutes ?? 10}
@@ -257,16 +258,16 @@ export default function SettingsForm({
         </select>
         <p className="text-xs text-gray-400 mt-2">
           Adminul alege pasul dintre orele oferite. Durata reală a serviciului este păstrată, iar două
-          {isClinic ? ' programări' : ' rezervări'} nu se pot suprapune.
+          {usesAppointments ? ' programări' : ' rezervări'} nu se pot suprapune.
         </p>
       </Card>
 
       <Card className="mb-5 break-inside-avoid">
-        <h2 className="font-medium mb-1">Interval minim pentru {isClinic ? 'programări' : 'rezervări'} din exterior</h2>
+        <h2 className="font-medium mb-1">Interval minim pentru {usesAppointments ? 'programări' : 'rezervări'} din exterior</h2>
         <p className="text-sm text-gray-500 mb-3">
-          {isClinic ? 'Programările venite' : 'Rezervările venite'} prin bot (WhatsApp/Instagram/Facebook) sau de pe site nu se pot face
-          mai aproape de acest interval — ca să ai timp să vezi programările. La fel și anulările
-          făcute de {isClinic ? 'pacienți' : 'clienți'}. {isClinic ? 'Programările create' : 'Rezervările create'} manual de tine din dashboard nu sunt afectate — le
+          {usesAppointments ? 'Programările venite' : 'Rezervările venite'} prin bot (WhatsApp/Instagram/Facebook) sau de pe site nu se pot face
+          mai aproape de acest interval — ca să ai timp să vezi {usesAppointments ? 'programările' : 'rezervările'}. La fel și anulările
+          făcute de {isClinic ? 'pacienți' : 'clienți'}. {usesAppointments ? 'Programările create' : 'Rezervările create'} manual de tine din dashboard nu sunt afectate — le
           poți face oricând, chiar cu 30 de minute înainte.
         </p>
         <select
@@ -282,12 +283,12 @@ export default function SettingsForm({
       </Card>
 
       <Card className="mb-5 break-inside-avoid">
-        <h2 className="font-medium mb-1">Reconfirmare programări pe WhatsApp</h2>
+        <h2 className="font-medium mb-1">Reconfirmare {usesAppointments ? 'programări' : 'rezervări'} pe WhatsApp</h2>
         <p className="text-sm text-gray-500">
-          Orice programare nouă intră în sistem ca <strong>"În așteptare"</strong> — clientul primește
-          automat, cu o zi înainte, la ora <strong>16:00</strong>, un mesaj cu detaliile programării și
+          Orice {usesAppointments ? 'programare' : 'rezervare'} nouă intră în sistem ca <strong>"În așteptare"</strong> — {isClinic ? 'pacientul' : 'clientul'} primește
+          automat, cu o zi înainte, la ora <strong>16:00</strong>, un mesaj cu detaliile {usesAppointments ? 'programării' : 'rezervării'} și
           butoane de confirmare/anulare. Devine "Confirmată" abia după ce apasă. Mai primește și un
-          reminder scurt, cu 1 oră înainte de programare, în ziua respectivă. Fix, nu e configurabil.
+          reminder scurt, cu 1 oră înainte de {usesAppointments ? 'programare' : 'rezervare'}, în ziua respectivă. Fix, nu e configurabil.
         </p>
       </Card>
 
@@ -314,11 +315,11 @@ export default function SettingsForm({
       <Card className="mb-5 break-inside-avoid">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-medium">Programare direct în conversație (bot)</h2>
+            <h2 className="font-medium">{usesAppointments ? 'Programare' : 'Rezervare'} direct în conversație (bot)</h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              Dacă e oprit, opțiunea "Fă o programare" dispare din meniul de start al botului —
+              Dacă e oprit, opțiunea "{usesAppointments ? 'Fă o programare' : 'Fă o rezervare'}" dispare din meniul de start al botului —
               rămân doar "Vorbește cu un operator" și "Vezi pagina de rezervare". Util dacă vrei ca
-              toate programările din WhatsApp/Messenger să treacă prin pagina publică, nu prin bot.
+              toate {usesAppointments ? 'programările' : 'rezervările'} din WhatsApp/Messenger să treacă prin pagina publică, nu prin bot.
             </p>
           </div>
           <button
