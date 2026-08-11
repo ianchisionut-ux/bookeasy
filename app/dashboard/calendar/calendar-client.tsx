@@ -88,6 +88,7 @@ export default function CalendarClient({
   const [view, setView] = useState<any>(Views.WEEK)
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
   const [busy, setBusy] = useState(false)
+  const [calendarRevision, setCalendarRevision] = useState(0)
   const [practitionerFilter, setPractitionerFilter] = useState<string>(practitioners.length > 1 ? 'all' : practitioners[0]?.id ?? '')
   const [search, setSearch] = useState('')
 
@@ -212,11 +213,28 @@ export default function CalendarClient({
 
   const moveOrResize = useCallback(
     async ({ event, start, end }: any) => {
-      if (event.isBlocked) return
+      if (event.isBlocked || event.isBreak) return
+
+      const resetPosition = () => setCalendarRevision((value) => value + 1)
+      const eventPractitioner = practitioners.find((practitioner) => practitioner.id === event.practitionerId)
+      const relevantBreaks = eventPractitioner?.breaks ?? activeBreaks
+      const overlapsBreak = relevantBreaks.some((pause) => {
+        const [startHour, startMinute] = pause.startTime.split(':').map(Number)
+        const [endHour, endMinute] = pause.endTime.split(':').map(Number)
+        const pauseStart = new Date(start); pauseStart.setHours(startHour, startMinute, 0, 0)
+        const pauseEnd = new Date(start); pauseEnd.setHours(endHour, endMinute, 0, 0)
+        return new Date(start) < pauseEnd && new Date(end) > pauseStart
+      })
+      if (overlapsBreak) {
+        alert('Programarea nu poate fi mutată peste o pauză.')
+        resetPosition()
+        return
+      }
 
       const conflict = events.some((candidate) => candidate.id !== event.id && candidate.practitionerId === event.practitionerId && new Date(start) < candidate.end && new Date(end) > candidate.start)
       if (conflict) {
         alert('Conflict detectat: medicul are deja o programare în acest interval.')
+        resetPosition()
         return
       }
 
@@ -225,7 +243,10 @@ export default function CalendarClient({
       const confirmed = confirm(
         `Muți programarea "${event.customerName} — ${event.serviceName}" din ${oldTime} în ${newTime}?`
       )
-      if (!confirmed) return
+      if (!confirmed) {
+        resetPosition()
+        return
+      }
 
       try {
         const res = await fetchWithTimeout(`/api/business/bookings/${event.id}`, {
@@ -240,14 +261,16 @@ export default function CalendarClient({
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))
           alert(data.error ?? `Nu am putut muta ${isClinic ? 'programarea' : 'rezervarea'}.`)
+          resetPosition()
           return
         }
         router.refresh()
       } catch {
         alert('Conexiune eșuată. Încearcă din nou.')
+        resetPosition()
       }
     },
-    [router, events, isClinic]
+    [router, events, isClinic, practitioners, activeBreaks]
   )
 
   return (
@@ -314,7 +337,7 @@ export default function CalendarClient({
       {search && visibleEvents.length === 0 && <div className="mb-2 text-sm text-amber-700 flex items-center gap-2"><AlertTriangle size={15}/> Nu există programări care corespund căutării.</div>}
       <div className="card printable p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
         <DnDCalendar
-          key={practitionerFilter}
+          key={`${practitionerFilter}-${calendarRevision}`}
           localizer={localizer}
           events={allEvents}
           backgroundEvents={breakEvents}
