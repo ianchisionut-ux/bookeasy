@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { MessageCircle, Send, CheckCircle2, FileText, X } from 'lucide-react'
+import { WorkingDateTimePicker, WorkingRange } from '@/components/working-date-time-picker'
 
 type ConversationSummary = {
   id: string
@@ -244,7 +245,7 @@ export default function InboxManager({ businessId }: { businessId: string }) {
                       {m.text}
                     </div>
                     <p className="text-[10px] text-gray-400 mt-0.5 px-1">
-                      {new Date(m.createdAt).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })}
+                      {new Date(m.createdAt).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })}
                     </p>
                   </div>
                 ))
@@ -322,6 +323,7 @@ function QuickBookingModal({
   const [services, setServices] = useState<{ id: string; name: string; durationMin: number | null }[]>([])
   const [practitioners, setPractitioners] = useState<{ id: string; name: string }[]>([])
   const [isMultiPractitioner, setIsMultiPractitioner] = useState(false)
+  const [workingHours, setWorkingHours] = useState<WorkingRange[]>([])
   const [loadingData, setLoadingData] = useState(true)
 
   const [customerName, setCustomerName] = useState(conversation.customerName ?? '')
@@ -346,6 +348,7 @@ function QuickBookingModal({
         setServices(data.services ?? [])
         setPractitioners(data.practitioners ?? [])
         setIsMultiPractitioner(!!data.isMultiPractitioner)
+        setWorkingHours(data.workingHours ?? [])
         if (data.practitioners?.length === 1) setPractitionerId(data.practitioners[0].id)
       })
       .catch(() => setError('Nu am putut încărca serviciile.'))
@@ -417,6 +420,7 @@ function QuickBookingModal({
         month: 'long',
         hour: '2-digit',
         minute: '2-digit',
+        hour12: false,
         timeZone: 'Europe/Bucharest',
       })
       const detailsText = [
@@ -500,7 +504,7 @@ function QuickBookingModal({
                     ) : (
                       <div className="grid grid-cols-4 gap-2">
                         {daySlots.map((slot) => {
-                          const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
+                          const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
                           if (!slot.available) {
                             return (
                               <span key={slot.time} className="py-2 rounded-lg text-center text-sm text-gray-300 border border-[var(--border-soft)] line-through">
@@ -526,7 +530,12 @@ function QuickBookingModal({
                 )}
               </>
             ) : (
-              <input type="datetime-local" value={simpleDateTime} onChange={(e) => setSimpleDateTime(e.target.value)} className="input-field w-full" />
+              <WorkingDateTimePicker
+                value={simpleDateTime}
+                onChange={setSimpleDateTime}
+                workingHours={workingHours}
+                durationMinutes={services.find((service) => service.id === serviceId)?.durationMin ?? 30}
+              />
             )}
 
             {error && <p className="text-sm text-red-600">{error}</p>}

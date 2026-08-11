@@ -6,6 +6,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { OnboardingProgress } from '@/components/onboarding-progress'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Time10Select } from '@/components/working-date-time-picker'
 
 const WEEKDAY_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
 
@@ -65,19 +66,9 @@ export default function OnboardingStep2() {
             </label>
             {!h.closed && (
               <div className="flex items-center gap-2 shrink-0">
-                <input
-                  type="time"
-                  value={h.startTime}
-                  onChange={(e) => updateHour(h.weekday, { startTime: e.target.value })}
-                  className="input-field"
-                />
+                <Time10Select value={h.startTime} onChange={(value) => updateHour(h.weekday, { startTime: value })} />
                 <span className="text-gray-400">–</span>
-                <input
-                  type="time"
-                  value={h.endTime}
-                  onChange={(e) => updateHour(h.weekday, { endTime: e.target.value })}
-                  className="input-field"
-                />
+                <Time10Select value={h.endTime} onChange={(value) => updateHour(h.weekday, { endTime: value })} />
               </div>
             )}
           </div>

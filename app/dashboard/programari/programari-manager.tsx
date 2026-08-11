@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
 import { PrintButton } from '@/components/print-button'
 import { CheckCircle2, Clock } from 'lucide-react'
+import { WorkingDateTimePicker, WorkingRange } from '@/components/working-date-time-picker'
 
 type Booking = {
   id: string
@@ -99,6 +100,7 @@ export default function ProgramariManager({
   services,
   blockedSlots,
   practitioners,
+  workingHours,
   filters,
   newlyConfirmedIds,
 }: {
@@ -109,6 +111,7 @@ export default function ProgramariManager({
   services: { id: string; name: string; durationMin: number | null }[]
   blockedSlots: { startAt: string; endAt: string }[]
   practitioners: { id: string; name: string }[]
+  workingHours: WorkingRange[]
   filters: { status: string; q: string }
   newlyConfirmedIds: string[]
 }) {
@@ -227,7 +230,7 @@ export default function ProgramariManager({
           </a>
         </td>
         <td>{b.serviceName}</td>
-        <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })}</td>
+        <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', hour12: false, timeZone: 'Europe/Bucharest' })}</td>
         {isMultiPractitioner ? (
           <>
             <td className="text-gray-500">{b.practitionerName ?? '—'}</td>
@@ -326,6 +329,7 @@ export default function ProgramariManager({
           services={services}
           blockedSlots={blockedSlots}
           practitioners={practitioners}
+          workingHours={workingHours}
           onDone={() => {
             setAdding(false)
             router.refresh()
@@ -452,6 +456,7 @@ function NewBookingForm({
   services,
   blockedSlots,
   practitioners,
+  workingHours,
   onDone,
 }: {
   category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
@@ -460,6 +465,7 @@ function NewBookingForm({
   services: { id: string; name: string; durationMin: number | null }[]
   blockedSlots: { startAt: string; endAt: string }[]
   practitioners: { id: string; name: string }[]
+  workingHours: WorkingRange[]
   onDone: () => void
 }) {
   const isClinic = category === 'CLINICA'
@@ -497,13 +503,13 @@ function NewBookingForm({
   }, [isMultiPractitioner, serviceId, practitionerId, slotDate])
 
   async function submit() {
-    const hasCustomer = newCustomerMode ? newCustomerName.trim() && newCustomerPhone.trim().length >= 6 : !!customerId
+    const hasCustomer = newCustomerMode ? !!newCustomerName.trim() && (!newCustomerPhone.trim() || newCustomerPhone.trim().length >= 6) : !!customerId
     const hasDateInfo = isMultiPractitioner ? !!selectedSlot : !!date
 
     if (!hasCustomer || !serviceId || !hasDateInfo) {
       setError(
         newCustomerMode
-          ? 'Completează numele, telefonul, serviciul și data.'
+          ? 'Completează numele, serviciul și data. Telefonul este opțional.'
           : isMultiPractitioner
             ? `Completează ${isClinic ? 'pacient' : 'client'}, serviciu, persoană și oră.`
             : `Completează ${isClinic ? 'pacient' : 'client'}, serviciu și dată.`
@@ -541,7 +547,7 @@ function NewBookingForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...(newCustomerMode
-            ? { customerName: newCustomerName.trim(), customerPhone: newCustomerPhone.trim() }
+            ? { customerName: newCustomerName.trim(), customerPhone: newCustomerPhone.trim() || undefined }
             : { customerId }),
           serviceId,
           practitionerId: isMultiPractitioner ? practitionerId : undefined,
@@ -582,7 +588,7 @@ function NewBookingForm({
             <div className="flex flex-col gap-2">
               <Input placeholder={isClinic ? 'Nume pacient' : 'Nume client'} value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} />
               <Input
-                placeholder="Telefon"
+                placeholder="Telefon (opțional)"
                 type="tel"
                 inputMode="tel"
                 value={newCustomerPhone}
@@ -665,7 +671,7 @@ function NewBookingForm({
               ) : (
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                   {daySlots.map((slot) => {
-                    const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
+                    const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
                     if (!slot.available) {
                       return (
                         <span key={slot.time} className="py-2 rounded-lg text-center text-sm text-gray-300 border border-[var(--border-soft)] line-through select-none">
@@ -695,12 +701,12 @@ function NewBookingForm({
         <div className="mb-3 max-w-xs">
           <div>
             <label className="text-sm text-gray-500 block mb-1.5">Data și ora</label>
-            <input
-              type="datetime-local"
+            <WorkingDateTimePicker
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
-              className="input-field w-full"
+              onChange={setDate}
+              workingHours={workingHours}
+              durationMinutes={services.find((service) => service.id === serviceId)?.durationMin ?? 30}
+              minDate={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)}
             />
           </div>
         </div>

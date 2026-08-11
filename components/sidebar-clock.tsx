@@ -14,7 +14,7 @@ export function SidebarClock({ inline }: { inline?: boolean } = {}) {
   // evităm mismatch de hidratare — pe server nu randăm nimic, doar după montare pe client
   if (!now) return null
 
-  const time = now.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/Bucharest' })
+  const time = now.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
   const date = now.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Bucharest' })
 
   if (inline) {

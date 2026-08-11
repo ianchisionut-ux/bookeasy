@@ -195,8 +195,8 @@ export default function CalendarClient({
         return
       }
 
-      const oldTime = new Date(event.start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })
-      const newTime = new Date(start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Bucharest' })
+      const oldTime = new Date(event.start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', hour12: false, timeZone: 'Europe/Bucharest' })
+      const newTime = new Date(start).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', hour12: false, timeZone: 'Europe/Bucharest' })
       const confirmed = confirm(
         `Muți programarea "${event.customerName} — ${event.serviceName}" din ${oldTime} în ${newTime}?`
       )
@@ -479,8 +479,8 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
 
   async function submit() {
     const hasDateInfo = isMultiPractitioner ? !!selectedSlot : !!simpleDateTime
-    if (!customerName.trim() || customerPhone.trim().length < 6 || !serviceId || !hasDateInfo) {
-      setError('Completează numele, telefonul, serviciul și data.')
+    if (!customerName.trim() || (customerPhone.trim() && customerPhone.trim().length < 6) || !serviceId || !hasDateInfo) {
+      setError('Completează numele, serviciul și data. Telefonul este opțional.')
       return
     }
     if (isMultiPractitioner && !practitionerId) {
@@ -509,7 +509,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerName: customerName.trim(),
-          customerPhone: customerPhone.trim(),
+          customerPhone: customerPhone.trim() || undefined,
           serviceId,
           practitionerId: isMultiPractitioner ? practitionerId : undefined,
           startAt: start.toISOString(),
@@ -545,7 +545,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-2">
               <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nume client" className="input-field" />
-              <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Telefon" className="input-field" />
+              <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Telefon (opțional)" className="input-field" />
             </div>
 
             <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} className="input-field w-full">
@@ -579,7 +579,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
                     ) : (
                       <div className="grid grid-cols-4 gap-2">
                         {daySlots.map((slot) => {
-                          const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
+                          const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
                           if (!slot.available) {
                             return (
                               <span key={slot.time} className="py-2 rounded-lg text-center text-sm text-gray-300 border border-[var(--border-soft)] line-through">

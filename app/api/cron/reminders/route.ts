@@ -92,6 +92,7 @@ async function sendTwoHourReminders(now: Date, results: { twoHourSent: number; f
     const text = `Programarea ta pentru ${booking.service.name} e peste 1 oră (${formatTime(booking.startAt)}). Te așteptăm!`
     try {
       const { sendMessage } = await import('@/lib/channel-senders')
+      if (!booking.customer.phone) continue
       await sendMessage({ channel: 'WHATSAPP', channelId: channel.id, to: booking.customer.phone, text })
       await prisma.booking.update({ where: { id: booking.id }, data: { reminder1hSent: true } })
       results.twoHourSent++
@@ -124,8 +125,8 @@ async function sendUnconfirmedAlerts(now: Date, results: { unconfirmedAlerts: nu
     await sendUnconfirmedBookingAlert({
       to: ownerEmail,
       businessName: booking.business.name,
-      customerName: booking.customer.name ?? booking.customer.phone,
-      customerPhone: booking.customer.phone,
+      customerName: booking.customer.name ?? booking.customer.phone ?? 'Fără nume',
+      customerPhone: booking.customer.phone ?? 'Nespecificat',
       serviceName: booking.service.name,
       startAt: booking.startAt,
     }).catch((err) => console.error('Eroare la alerta de neconfirmare:', err))
@@ -136,5 +137,5 @@ async function sendUnconfirmedAlerts(now: Date, results: { unconfirmedAlerts: nu
 }
 
 function formatTime(date: Date) {
-  return new Date(date).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
+  return new Date(date).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
 }

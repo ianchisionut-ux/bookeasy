@@ -6,6 +6,7 @@ import { Card, CardInteractive } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { Time10Select } from '@/components/working-date-time-picker'
 
 type WorkingHour = { weekday: number; startTime: string; endTime: string }
 type Practitioner = {
@@ -230,19 +231,9 @@ function PractitionerDetail({
                 </label>
                 {h && (
                   <div className="flex items-center gap-2 shrink-0">
-                    <input
-                      type="time"
-                      value={h.startTime}
-                      onChange={(e) => updateHour(weekday, { startTime: e.target.value })}
-                      className="input-field"
-                    />
+                    <Time10Select value={h.startTime} onChange={(value) => updateHour(weekday, { startTime: value })} />
                     <span className="text-gray-400">–</span>
-                    <input
-                      type="time"
-                      value={h.endTime}
-                      onChange={(e) => updateHour(weekday, { endTime: e.target.value })}
-                      className="input-field"
-                    />
+                    <Time10Select value={h.endTime} onChange={(value) => updateHour(weekday, { endTime: value })} />
                   </div>
                 )}
               </div>
@@ -261,9 +252,9 @@ function PractitionerDetail({
             </label>
             {break1Enabled && (
               <div className="flex items-center gap-2">
-                <input type="time" value={break1Start} onChange={(e) => setBreak1Start(e.target.value)} className="input-field" />
+                <Time10Select value={break1Start} onChange={setBreak1Start} />
                 <span className="text-gray-400">–</span>
-                <input type="time" value={break1End} onChange={(e) => setBreak1End(e.target.value)} className="input-field" />
+                <Time10Select value={break1End} onChange={setBreak1End} />
               </div>
             )}
           </div>
@@ -274,9 +265,9 @@ function PractitionerDetail({
             </label>
             {break2Enabled && (
               <div className="flex items-center gap-2">
-                <input type="time" value={break2Start} onChange={(e) => setBreak2Start(e.target.value)} className="input-field" />
+                <Time10Select value={break2Start} onChange={setBreak2Start} />
                 <span className="text-gray-400">–</span>
-                <input type="time" value={break2End} onChange={(e) => setBreak2End(e.target.value)} className="input-field" />
+                <Time10Select value={break2End} onChange={setBreak2End} />
               </div>
             )}
           </div>
@@ -287,9 +278,9 @@ function PractitionerDetail({
             </label>
             {break3Enabled && (
               <div className="flex items-center gap-2">
-                <input type="time" value={break3Start} onChange={(e) => setBreak3Start(e.target.value)} className="input-field" />
+                <Time10Select value={break3Start} onChange={setBreak3Start} />
                 <span className="text-gray-400">–</span>
-                <input type="time" value={break3End} onChange={(e) => setBreak3End(e.target.value)} className="input-field" />
+                <Time10Select value={break3End} onChange={setBreak3End} />
               </div>
             )}
           </div>

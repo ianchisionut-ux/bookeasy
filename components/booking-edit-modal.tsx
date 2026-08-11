@@ -189,7 +189,7 @@ export default function BookingEditModal({
               <div>
                 <p className="text-sm text-gray-700 font-medium">{booking.customerName}</p>
                 <p className="text-xs text-gray-500 flex items-center gap-1">
-                  <Phone size={12} /> {booking.customerPhone}
+                  <Phone size={12} /> {booking.customerPhone || 'Telefon necompletat'}
                   {booking.practitionerName && (
                     <>
                       {' '}· <Stethoscope size={12} className="inline" /> {booking.practitionerName}

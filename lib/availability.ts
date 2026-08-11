@@ -138,7 +138,7 @@ export async function getPractitionerDaySlotsWithStatus(
   }
 
   const duration = service.durationMin ?? 30
-  const step = stepOverride ?? business?.slotIntervalMinutes ?? duration
+  const step = stepOverride ?? 10
   const minLeadMs = ignoreLeadTime ? 0 : (business?.minLeadTimeMinutes ?? 120) * 60 * 1000
   const earliestAllowed = new Date(Date.now() + minLeadMs)
   const result: { time: string; available: boolean }[] = []
@@ -222,7 +222,7 @@ export async function getDaySlotsWithStatus(
   const breaks = getBusinessBreaks(business, date)
 
   const duration = service.durationMin ?? 30
-  const step = business?.slotIntervalMinutes ?? duration
+  const step = 10
   const minLeadMs = (business?.minLeadTimeMinutes ?? 120) * 60 * 1000
   const earliestAllowed = new Date(Date.now() + minLeadMs)
   const result: { time: string; available: boolean }[] = []
@@ -265,7 +265,7 @@ async function getSingleSlotAvailability(businessId: string, service: { id: stri
   // implicit, pasul dintre sloturi = durata serviciului ales — se "autogestionează",
   // sloturile consecutive nu se pot suprapune niciodată din construcție. Dacă businessul
   // a ales explicit un interval fix (ex: 10 min), îl folosim pe acela în loc
-  const step = business?.slotIntervalMinutes ?? duration
+  const step = 10
   // sloturile prea apropiate de acum nu sunt oferite deloc clienților din exterior —
   // funcția asta e folosită DOAR de bot și de pagina publică de rezervare, niciodată
   // de dashboard-ul admin, deci e sigur să aplicăm limita mereu, aici

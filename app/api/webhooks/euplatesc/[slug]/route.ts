@@ -92,7 +92,7 @@ async function processEuplatescResult(isComplete: boolean, bookingId: string, bu
     await sendMessage({
       channel: booking.channel as 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK',
       channelId: channel.id,
-      to: booking.customer.phone,
+      to: booking.customer.phone ?? '',
       text: `Plata a fost confirmată! Avansul pentru ${booking.service.name} a fost înregistrat. Îți mulțumim!`,
     })
   } catch (err: any) {

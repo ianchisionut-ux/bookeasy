@@ -24,7 +24,7 @@ export default async function ProgramariPage({
       where: { businessId, confirmationSeenByAdmin: false },
       select: { id: true },
     }),
-    prisma.business.findUnique({ where: { id: businessId }, select: { category: true, teamSize: true } }),
+    prisma.business.findUnique({ where: { id: businessId }, select: { category: true, teamSize: true, workingHours: true } }),
   ])
   const newlyConfirmedIds = newlyConfirmed.map((b) => b.id)
 
@@ -61,8 +61,8 @@ export default async function ProgramariPage({
       bookings={bookings.map((b) => ({
         id: b.id,
         sequenceNumber: b.sequenceNumber,
-        customerName: b.customer.name ?? b.customer.phone,
-        customerPhone: b.customer.phone,
+        customerName: b.customer.name ?? b.customer.phone ?? 'Fără nume',
+        customerPhone: b.customer.phone ?? '',
         customerId: b.customerId,
         serviceName: b.service.name,
         serviceId: b.serviceId,
@@ -75,10 +75,11 @@ export default async function ProgramariPage({
         confirmationRequestSent: b.confirmationRequestSent,
         customerConfirmed: b.customerConfirmed,
       }))}
-      customers={customers.map((c) => ({ id: c.id, name: c.name ?? c.phone }))}
+      customers={customers.map((c) => ({ id: c.id, name: c.name ?? c.phone ?? 'Fără nume' }))}
       services={services.map((s) => ({ id: s.id, name: s.name, durationMin: s.durationMin }))}
       blockedSlots={blockedSlots.map((b) => ({ startAt: b.startAt.toISOString(), endAt: b.endAt.toISOString() }))}
       practitioners={practitioners.map((p) => ({ id: p.id, name: p.name }))}
+      workingHours={(business?.workingHours ?? []).map((range) => ({ weekday: range.weekday, startTime: range.startTime, endTime: range.endTime }))}
       filters={{ status: status ?? '', q: q ?? '' }}
     />
   )

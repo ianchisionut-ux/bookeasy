@@ -156,6 +156,7 @@ async function sendWebBookingConfirmation(bookingId: string) {
     month: 'long',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
     timeZone: 'Europe/Bucharest',
   })
 

@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Time10Select } from '@/components/working-date-time-picker'
 
 const WEEKDAY_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
 
@@ -76,7 +77,7 @@ export default function SettingsForm({
       })
       if (res.ok) {
         const data = await res.json()
-        setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' }))
+        setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' }))
         setGeocoded(!!data.geocoded)
       }
     } finally {
@@ -126,19 +127,9 @@ export default function SettingsForm({
               </label>
               {!h.closed && (
                 <div className="flex items-center gap-2 shrink-0">
-                  <input
-                    type="time"
-                    value={h.startTime}
-                    onChange={(e) => updateHour(h.weekday, { startTime: e.target.value })}
-                    className="input-field"
-                  />
+                  <Time10Select value={h.startTime} onChange={(value) => updateHour(h.weekday, { startTime: value })} />
                   <span className="text-gray-400">–</span>
-                  <input
-                    type="time"
-                    value={h.endTime}
-                    onChange={(e) => updateHour(h.weekday, { endTime: e.target.value })}
-                    className="input-field"
-                  />
+                  <Time10Select value={h.endTime} onChange={(value) => updateHour(h.weekday, { endTime: value })} />
                 </div>
               )}
             </div>
@@ -168,19 +159,9 @@ export default function SettingsForm({
                   </label>
                   {break1Enabled && (
                     <div className="flex items-center gap-2">
-                      <input
-                        type="time"
-                        value={form.break1Start ?? '13:00'}
-                        onChange={(e) => setForm({ ...form, break1Start: e.target.value })}
-                        className="input-field"
-                      />
+                      <Time10Select value={form.break1Start ?? '13:00'} onChange={(value) => setForm({ ...form, break1Start: value })} />
                       <span className="text-gray-400">–</span>
-                      <input
-                        type="time"
-                        value={form.break1End ?? '14:00'}
-                        onChange={(e) => setForm({ ...form, break1End: e.target.value })}
-                        className="input-field"
-                      />
+                      <Time10Select value={form.break1End ?? '14:00'} onChange={(value) => setForm({ ...form, break1End: value })} />
                     </div>
                   )}
                 </div>
@@ -191,19 +172,9 @@ export default function SettingsForm({
                   </label>
                   {break2Enabled && (
                     <div className="flex items-center gap-2">
-                      <input
-                        type="time"
-                        value={form.break2Start ?? '16:00'}
-                        onChange={(e) => setForm({ ...form, break2Start: e.target.value })}
-                        className="input-field"
-                      />
+                      <Time10Select value={form.break2Start ?? '16:00'} onChange={(value) => setForm({ ...form, break2Start: value })} />
                       <span className="text-gray-400">–</span>
-                      <input
-                        type="time"
-                        value={form.break2End ?? '16:15'}
-                        onChange={(e) => setForm({ ...form, break2End: e.target.value })}
-                        className="input-field"
-                      />
+                      <Time10Select value={form.break2End ?? '16:20'} onChange={(value) => setForm({ ...form, break2End: value })} />
                     </div>
                   )}
                 </div>
@@ -214,19 +185,9 @@ export default function SettingsForm({
                   </label>
                   {break3Enabled && (
                     <div className="flex items-center gap-2">
-                      <input
-                        type="time"
-                        value={form.break3Start ?? '18:00'}
-                        onChange={(e) => setForm({ ...form, break3Start: e.target.value })}
-                        className="input-field"
-                      />
+                      <Time10Select value={form.break3Start ?? '18:00'} onChange={(value) => setForm({ ...form, break3Start: value })} />
                       <span className="text-gray-400">–</span>
-                      <input
-                        type="time"
-                        value={form.break3End ?? '18:15'}
-                        onChange={(e) => setForm({ ...form, break3End: e.target.value })}
-                        className="input-field"
-                      />
+                      <Time10Select value={form.break3End ?? '18:20'} onChange={(value) => setForm({ ...form, break3End: value })} />
                     </div>
                   )}
                 </div>
@@ -242,18 +203,16 @@ export default function SettingsForm({
           Cum se împart orele oferite {isClinic ? 'pacienților' : 'clienților'} la {isClinic ? 'programare' : 'rezervare'}.
         </p>
         <select
-          value={form.slotIntervalMinutes ?? 'auto'}
-          onChange={(e) => setForm({ ...form, slotIntervalMinutes: e.target.value === 'auto' ? null : Number(e.target.value) })}
+          value="10"
+          onChange={() => setForm({ ...form, slotIntervalMinutes: 10 })}
           className="input-field w-full"
+          disabled
         >
-          <option value="auto">Automat — după durata fiecărui serviciu (recomandat)</option>
           <option value="10">Fix, din 10 în 10 minute</option>
-          <option value="15">Fix, din 15 în 15 minute</option>
-          <option value="30">Fix, din 30 în 30 minute</option>
         </select>
         <p className="text-xs text-gray-400 mt-2">
-          Indiferent de setare, două {isClinic ? 'programări' : 'rezervări'} nu se pot suprapune niciodată — verificarea se face
-          mereu pe durata reală a fiecărui serviciu.
+          Orele sunt oferite uniform din 10 în 10 minute. Durata reală a serviciului este păstrată, iar două
+          {isClinic ? ' programări' : ' rezervări'} nu se pot suprapune.
         </p>
       </Card>
 

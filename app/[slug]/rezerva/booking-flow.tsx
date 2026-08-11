@@ -312,7 +312,7 @@ export default function BookingFlow({
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {daySlots.map((slot) => {
-                const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })
+                const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
                 const active = selectedSlot === slot.time
                 if (!slot.available) {
                   return (

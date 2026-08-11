@@ -45,7 +45,7 @@ export default function CustomerEditForm({
         setError(data.error ?? 'A apărut o eroare.')
         return
       }
-      setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' }))
+      setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' }))
       router.refresh()
     } catch {
       setError('Conexiune eșuată. Încearcă din nou.')

@@ -18,8 +18,8 @@ const schema = z
     endAt: z.string(),
     status: z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW']).optional(),
   })
-  .refine((data) => data.customerId || (data.customerName && data.customerPhone), {
-    message: 'Alege un client existent sau completează nume și telefon pentru unul nou.',
+  .refine((data) => data.customerId || data.customerName, {
+    message: 'Alege un client existent sau completează numele pentru unul nou.',
   })
 
 export async function POST(req: NextRequest) {
@@ -60,8 +60,10 @@ export async function POST(req: NextRequest) {
         ...(parsed.data.customerPhone ? { phone: parsed.data.customerPhone } : {}),
       },
     })
-  } else if (!customerId && parsed.data.customerPhone) {
-    const existing = await prisma.customer.findFirst({ where: { businessId, phone: parsed.data.customerPhone } })
+  } else if (!customerId) {
+    const existing = parsed.data.customerPhone
+      ? await prisma.customer.findFirst({ where: { businessId, phone: parsed.data.customerPhone } })
+      : null
     if (existing) {
       customerId = existing.id
       if (parsed.data.customerName && !existing.name) {
@@ -69,7 +71,7 @@ export async function POST(req: NextRequest) {
       }
     } else {
       const created = await prisma.customer.create({
-        data: { businessId, name: parsed.data.customerName, phone: parsed.data.customerPhone },
+        data: { businessId, name: parsed.data.customerName, phone: parsed.data.customerPhone ?? null },
       })
       customerId = created.id
     }

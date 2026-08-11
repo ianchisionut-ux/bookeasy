@@ -25,11 +25,11 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
   if (!customer) notFound()
   const isClinic = business?.category === 'CLINICA'
-  const patientName = customer.name ?? customer.phone
+  const patientName = customer.name ?? customer.phone ?? 'Fără nume'
 
   const simpleInitial = {
     name: customer.name ?? '',
-    phone: customer.phone,
+    phone: customer.phone ?? '',
     email: customer.email ?? '',
     notes: customer.notes ?? '',
     dateOfBirth: customer.dateOfBirth ? customer.dateOfBirth.toISOString().slice(0, 10) : '',
@@ -75,7 +75,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                 {b.service.name}
                 {b.practitioner ? ` · ${b.practitioner.name}` : ''}
               </span>
-              <span className="text-gray-500 text-sm">{b.startAt.toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' })}</span>
+              <span className="text-gray-500 text-sm">{b.startAt.toLocaleString('ro-RO', { hour12: false, timeZone: 'Europe/Bucharest' })}</span>
               <Pill tone={b.status === 'CONFIRMED' ? 'success' : b.status === 'CANCELLED' ? 'danger' : 'neutral'}>
                 {b.status}
               </Pill>
