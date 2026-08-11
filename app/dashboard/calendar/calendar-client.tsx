@@ -58,6 +58,8 @@ type BlockedEvent = {
 }
 
 type BlockedSlot = { id: string; startAt: string; endAt: string; reason: string | null }
+type BreakEvent = { id: string; title: string; start: Date; end: Date; isBreak: true }
+type BreakRange = { label: string; startTime: string; endTime: string }
 
 export default function CalendarClient({
   category,
@@ -66,6 +68,7 @@ export default function CalendarClient({
   minTime,
   maxTime,
   businessWorkingHours,
+  businessBreaks,
   slotIntervalMinutes,
   practitioners,
 }: {
@@ -75,8 +78,9 @@ export default function CalendarClient({
   minTime: string
   maxTime: string
   businessWorkingHours: { weekday: number; startTime: string; endTime: string }[]
+  businessBreaks: BreakRange[]
   slotIntervalMinutes: number
-  practitioners: { id: string; name: string; minTime: string; maxTime: string; workingHours: { weekday: number; startTime: string; endTime: string }[] }[]
+  practitioners: { id: string; name: string; minTime: string; maxTime: string; workingHours: { weekday: number; startTime: string; endTime: string }[]; breaks: BreakRange[] }[]
 }) {
   const isClinic = category === 'CLINICA'
   const router = useRouter()
@@ -110,8 +114,6 @@ export default function CalendarClient({
     isBlocked: true,
   }))
 
-  const allEvents = [...visibleEvents, ...blockedEvents]
-
   function timeToDate(time: string) {
     const [h, m] = time.split(':').map(Number)
     const d = new Date()
@@ -120,6 +122,26 @@ export default function CalendarClient({
   }
 
   const selectedPractitioner = practitioners.find((p) => p.id === practitionerFilter) ?? null
+  const activeWorkingHours = selectedPractitioner?.workingHours ?? (practitioners.length === 0 ? businessWorkingHours : [])
+  const activeBreaks = selectedPractitioner?.breaks ?? (practitioners.length === 0 ? businessBreaks : [])
+  const breakEvents = useMemo<BreakEvent[]>(() => {
+    if (activeBreaks.length === 0) return []
+    const result: BreakEvent[] = []
+    for (let offset = -45; offset <= 45; offset++) {
+      const day = new Date(currentDate)
+      day.setDate(day.getDate() + offset)
+      if (!activeWorkingHours.some((range) => range.weekday === day.getDay())) continue
+      for (const [index, pause] of activeBreaks.entries()) {
+        const [startHour, startMinute] = pause.startTime.split(':').map(Number)
+        const [endHour, endMinute] = pause.endTime.split(':').map(Number)
+        const start = new Date(day); start.setHours(startHour, startMinute, 0, 0)
+        const end = new Date(day); end.setHours(endHour, endMinute, 0, 0)
+        result.push({ id: `break-${day.toISOString().slice(0, 10)}-${index}`, title: pause.label, start, end, isBreak: true })
+      }
+    }
+    return result
+  }, [activeBreaks, activeWorkingHours, currentDate])
+  const allEvents = [...visibleEvents, ...blockedEvents, ...breakEvents]
   const effectiveMinTime = selectedPractitioner?.minTime ?? minTime
   const effectiveMaxTime = selectedPractitioner?.maxTime ?? maxTime
   const calendarMin = timeToDate(effectiveMinTime)
@@ -177,7 +199,8 @@ export default function CalendarClient({
   )
 
   const handleSelectEvent = useCallback(
-    (event: Event | BlockedEvent) => {
+    (event: Event | BlockedEvent | BreakEvent) => {
+      if ('isBreak' in event && event.isBreak) return
       if ('isBlocked' in event && event.isBlocked) {
         if (blockMode) unblockSlot(event.id)
         return
@@ -329,8 +352,11 @@ export default function CalendarClient({
           onSelectEvent={handleSelectEvent}
           onEventDrop={moveOrResize}
           resizable={false}
-          draggableAccessor={(event: any) => !event.isBlocked}
+          draggableAccessor={(event: any) => !event.isBlocked && !event.isBreak}
           eventPropGetter={(event: any) => {
+            if (event.isBreak) {
+              return { style: { background: '#f3f4f6', color: '#6b7280', border: '1px dashed #c7cbd1', borderRadius: '8px', cursor: 'default', opacity: 0.92 } }
+            }
             if (event.isBlocked) {
               return {
                 style: {
@@ -396,7 +422,9 @@ export default function CalendarClient({
   )
 }
 
-function CalendarEventCard({ event }: { event: Event }) {
+function CalendarEventCard({ event }: { event: Event | BreakEvent | BlockedEvent }) {
+  if ('isBreak' in event && event.isBreak) return <div className="calendar-break-card">☕ {event.title}<span>{format(event.start, 'HH:mm')}–{format(event.end, 'HH:mm')}</span></div>
+  if ('isBlocked' in event && event.isBlocked) return <div>{event.title}</div>
   const duration = Math.max(1, Math.round((event.end.getTime() - event.start.getTime()) / 60000))
   const compact = duration <= 30
   return <div className="calendar-event-card" title={`${event.customerName} · ${event.serviceName} · ${event.customerPhone}`}>

@@ -64,10 +64,23 @@ export default async function CalendarPage() {
       minTime={minTime}
       maxTime={maxTime}
       businessWorkingHours={(business?.workingHours ?? []).map((h) => ({ weekday: h.weekday, startTime: h.startTime, endTime: h.endTime }))}
+      businessBreaks={[
+        ...(business?.break1Start && business.break1End ? [{ label: 'Pauză', startTime: business.break1Start, endTime: business.break1End }] : []),
+        ...(business?.break2Start && business.break2End ? [{ label: 'Pauză 2', startTime: business.break2Start, endTime: business.break2End }] : []),
+        ...(business?.break3Start && business.break3End ? [{ label: 'Pauză 3', startTime: business.break3Start, endTime: business.break3End }] : []),
+      ]}
       slotIntervalMinutes={business?.slotIntervalMinutes ?? 10}
       practitioners={practitioners.map((p) => {
         const range = computeMinMax(p.workingHours, minTime, maxTime)
-        return { id: p.id, name: p.name, minTime: range.minTime, maxTime: range.maxTime, workingHours: p.workingHours.map((h) => ({ weekday: h.weekday, startTime: h.startTime, endTime: h.endTime })) }
+        return {
+          id: p.id, name: p.name, minTime: range.minTime, maxTime: range.maxTime,
+          workingHours: p.workingHours.map((h) => ({ weekday: h.weekday, startTime: h.startTime, endTime: h.endTime })),
+          breaks: [
+            ...(p.break1Start && p.break1End ? [{ label: 'Pauză', startTime: p.break1Start, endTime: p.break1End }] : []),
+            ...(p.break2Start && p.break2End ? [{ label: 'Pauză 2', startTime: p.break2Start, endTime: p.break2End }] : []),
+            ...(p.break3Start && p.break3End ? [{ label: 'Pauză 3', startTime: p.break3Start, endTime: p.break3End }] : []),
+          ],
+        }
       })}
     />
   )
