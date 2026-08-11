@@ -57,6 +57,19 @@ export default function SettingsForm({
     setHours((prev) => prev.map((h) => (h.weekday === weekday ? { ...h, ...patch } : h)))
   }
 
+  function toggleBreak(index: 1 | 2 | 3, enabled: boolean) {
+    if (index === 1) setBreak1Enabled(enabled)
+    if (index === 2) setBreak2Enabled(enabled)
+    if (index === 3) setBreak3Enabled(enabled)
+    if (!enabled) return
+
+    setForm((current) => {
+      if (index === 1) return { ...current, break1Start: current.break1Start ?? '13:00', break1End: current.break1End ?? '14:00' }
+      if (index === 2) return { ...current, break2Start: current.break2Start ?? '16:00', break2End: current.break2End ?? '16:20' }
+      return { ...current, break3Start: current.break3Start ?? '18:00', break3End: current.break3End ?? '18:20' }
+    })
+  }
+
   async function handleSave() {
     setSaving(true)
     setGeocoded(false)
@@ -154,7 +167,7 @@ export default function SettingsForm({
               <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
-                    <input type="checkbox" checked={break1Enabled} onChange={(e) => setBreak1Enabled(e.target.checked)} />
+                    <input type="checkbox" checked={break1Enabled} onChange={(e) => toggleBreak(1, e.target.checked)} />
                     Pauza 1
                   </label>
                   {break1Enabled && (
@@ -167,7 +180,7 @@ export default function SettingsForm({
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
-                    <input type="checkbox" checked={break2Enabled} onChange={(e) => setBreak2Enabled(e.target.checked)} />
+                    <input type="checkbox" checked={break2Enabled} onChange={(e) => toggleBreak(2, e.target.checked)} />
                     Pauza 2
                   </label>
                   {break2Enabled && (
@@ -180,7 +193,7 @@ export default function SettingsForm({
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <label className="flex items-center gap-1.5 text-gray-500 w-24 shrink-0">
-                    <input type="checkbox" checked={break3Enabled} onChange={(e) => setBreak3Enabled(e.target.checked)} />
+                    <input type="checkbox" checked={break3Enabled} onChange={(e) => toggleBreak(3, e.target.checked)} />
                     Pauza 3
                   </label>
                   {break3Enabled && (
