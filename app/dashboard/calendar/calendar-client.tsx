@@ -300,8 +300,8 @@ export default function CalendarClient({
           views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
           min={calendarMin}
           max={calendarMax}
-          step={15}
-          timeslots={4}
+          step={10}
+          timeslots={6}
           messages={{
             today: 'Azi',
             previous: '<',
