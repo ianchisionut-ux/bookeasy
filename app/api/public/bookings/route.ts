@@ -12,6 +12,7 @@ import {
 } from '@/lib/availability'
 import { venueServiceId } from '@/lib/venue-services'
 import { getNextSequenceNumber } from '@/lib/booking-number'
+import { syncBookingToGoogle } from '@/lib/google-calendar'
 import { createDepositCheckoutLink } from '@/lib/payments/create-checkout'
 import { sendMessage } from '@/lib/channel-senders'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
@@ -163,6 +164,7 @@ export async function POST(req: NextRequest) {
       sequenceNumber,
     },
   })
+  await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync public booking:', error))
 
   if (wantsOnlinePayment) {
     try {

@@ -1,6 +1,7 @@
 import { prisma } from './prisma'
 import { getAvailableSlots, isSlotStillAvailable, getPractitionerDaySlotsWithStatus, isPractitionerSlotStillAvailable } from './availability'
 import { getNextSequenceNumber } from './booking-number'
+import { syncBookingToGoogle } from './google-calendar'
 
 // fluxul botului folosește opțiuni interactive tappable (listă pe WhatsApp, carousel pe
 // Messenger/Instagram) — clientul apasă direct pe alegere. Rămâne și un fallback pe
@@ -577,7 +578,7 @@ async function createBooking({
 
   const sequenceNumber = await getNextSequenceNumber(businessId, startDate)
 
-  await prisma.booking.create({
+  const booking = await prisma.booking.create({
     data: {
       businessId,
       customerId: customer.id,
@@ -590,6 +591,7 @@ async function createBooking({
       sequenceNumber,
     },
   })
+  await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync bot booking:', error))
 
   return { success: true }
 }

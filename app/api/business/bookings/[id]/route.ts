@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { hasActiveBookingConflict, isIntervalBlocked, isWithinWorkingHours } from '@/lib/availability'
 import { z } from 'zod'
+import { syncBookingToGoogle } from '@/lib/google-calendar'
 
 const schema = z.object({
   startAt: z.string().optional(),
@@ -94,6 +95,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (data.endAt) data.endAt = new Date(data.endAt)
 
   await prisma.booking.update({ where: { id }, data })
+  await syncBookingToGoogle(id).catch((error) => console.error('[google-calendar] sync update:', error))
   return NextResponse.json({ success: true })
 }
 
@@ -108,5 +110,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   // nu ștergem definitiv — anulăm, ca istoricul/statisticile să rămână corecte
   await prisma.booking.update({ where: { id }, data: { status: 'CANCELLED' } })
+  await syncBookingToGoogle(id).catch((error) => console.error('[google-calendar] sync cancel:', error))
   return NextResponse.json({ success: true })
 }

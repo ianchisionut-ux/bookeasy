@@ -16,7 +16,7 @@ export default async function MediciPage() {
   const [practitioners, services] = await Promise.all([
     prisma.practitioner.findMany({
       where: { businessId },
-      include: { workingHours: true, services: { include: { service: true } } },
+      include: { workingHours: true, services: { include: { service: true } }, googleCalendar: true },
       orderBy: { createdAt: 'asc' },
     }),
     prisma.service.findMany({ where: { businessId, active: true }, orderBy: { name: 'asc' } }),
@@ -39,6 +39,14 @@ export default async function MediciPage() {
         break2End: p.break2End,
         break3Start: p.break3Start,
         break3End: p.break3End,
+        googleCalendar: p.googleCalendar ? {
+          googleEmail: p.googleCalendar.googleEmail,
+          calendarName: p.googleCalendar.calendarName,
+          syncEnabled: p.googleCalendar.syncEnabled,
+          includeCustomerDetails: p.googleCalendar.includeCustomerDetails,
+          lastSyncAt: p.googleCalendar.lastSyncAt?.toISOString() ?? null,
+          lastError: p.googleCalendar.lastError,
+        } : null,
       }))}
       services={services.map((s) => ({ id: s.id, name: s.name }))}
     />

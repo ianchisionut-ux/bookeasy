@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { hasActiveBookingConflict, isIntervalBlocked, isWithinWorkingHours } from '@/lib/availability'
 import { getNextSequenceNumber } from '@/lib/booking-number'
 import { z } from 'zod'
+import { syncBookingToGoogle } from '@/lib/google-calendar'
 
 const schema = z
   .object({
@@ -120,6 +121,8 @@ export async function POST(req: NextRequest) {
       sequenceNumber,
     },
   })
+
+  await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync create:', error))
 
   return NextResponse.json({ booking })
 }

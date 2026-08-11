@@ -3,6 +3,7 @@ import { runBotStep, ConversationState, BotReply, proceedToDaySelection } from '
 import { sendMessage, sendWhatsAppList, sendMessengerCarousel, sendWhatsAppButtons, sendMessengerButtons } from './channel-senders'
 import { sendAlertEmail } from './email'
 import { rateLimit } from './rate-limit'
+import { syncBookingToGoogle } from './google-calendar'
 
 const CANCEL_BOOKING_PATTERN = /^anulez\b/i
 const CONFIRM_BOOKING_PATTERN = /^(da|confirm|confirma[țt])\b/i
@@ -79,6 +80,7 @@ async function handleIncomingMessage({
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
     if (booking && booking.businessId === businessId) {
       await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED', customerConfirmed: true, confirmationSeenByAdmin: false } })
+      await syncBookingToGoogle(bookingId).catch((error) => console.error('[google-calendar] sync confirmation:', error))
       const confirmText = 'Perfect, programarea ta a fost confirmată! Te așteptăm.'
       await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'OUT', text: confirmText } })
       await sendMessage({ channel, channelId, to: externalUserId, text: confirmText })
@@ -94,6 +96,7 @@ async function handleIncomingMessage({
       // același serviciu (și aceeași persoană, dacă era cazul) — clientul nu mai trebuie
       // să aleagă din nou serviciul, doar ziua/ora noi
       await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CANCELLED', customerConfirmed: false } })
+      await syncBookingToGoogle(bookingId).catch((error) => console.error('[google-calendar] sync reschedule:', error))
 
       const conversation = await prisma.conversation.findFirst({ where: { businessId, channel, externalUserId } })
       const baseState: ConversationState = { step: 'SELECTING_DAY', serviceId: booking.serviceId, practitionerId: booking.practitionerId ?? undefined }
@@ -115,6 +118,7 @@ async function handleIncomingMessage({
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
     if (booking && booking.businessId === businessId) {
       await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CANCELLED', customerConfirmed: false } })
+      await syncBookingToGoogle(bookingId).catch((error) => console.error('[google-calendar] sync cancellation:', error))
       const cancelText = 'Am anulat programarea. Sper să te vedem altă dată!'
       await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'OUT', text: cancelText } })
       await sendMessage({ channel, channelId, to: externalUserId, text: cancelText })

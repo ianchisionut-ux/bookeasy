@@ -65,6 +65,7 @@ model Business {
   services           Service[]
   customers          Customer[]
   bookings           Booking[]
+  googleCalendarConnections GoogleCalendarConnection[]
   waitlistEntries    WaitlistEntry[]
   supportTickets     SupportTicket[]
   chatMessages       ChatMessage[]
@@ -224,6 +225,9 @@ model Booking {
   confirmationSeenByAdmin Boolean  @default(true) // false = clientul tocmai a confirmat, admin-ul n-a văzut încă (notificare în meniu)
   unconfirmedAlertSent    Boolean @default(false) // am anunțat deja proprietarul că rezervarea asta n-a fost confirmată
   createdAt       DateTime      @default(now())
+  googleCalendarEventId String?
+  googleCalendarSyncedAt DateTime?
+  googleCalendarSyncError String?
   review          Review?
 
   // interogările reale (calendar, disponibilitate, reminder-e, statistici) filtrează
@@ -408,8 +412,31 @@ model Practitioner {
   workingHours   PractitionerWorkingHours[]
   services       ServicePractitioner[]
   bookings       Booking[]
+  googleCalendar GoogleCalendarConnection?
 
   @@index([businessId, active])
+}
+
+model GoogleCalendarConnection {
+  id                    String       @id @default(cuid())
+  businessId            String
+  business              Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  practitionerId        String       @unique
+  practitioner          Practitioner @relation(fields: [practitionerId], references: [id], onDelete: Cascade)
+  googleEmail            String?
+  calendarId             String
+  calendarName           String
+  accessToken            String
+  refreshToken           String?
+  expiresAt              DateTime?
+  syncEnabled            Boolean      @default(true)
+  includeCustomerDetails Boolean      @default(false)
+  lastSyncAt              DateTime?
+  lastError               String?
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  @@index([businessId])
 }
 
 model PractitionerWorkingHours {

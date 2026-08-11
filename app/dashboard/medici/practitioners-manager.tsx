@@ -23,6 +23,14 @@ type Practitioner = {
   break2End: string | null
   break3Start: string | null
   break3End: string | null
+  googleCalendar: {
+    googleEmail: string | null
+    calendarName: string
+    syncEnabled: boolean
+    includeCustomerDetails: boolean
+    lastSyncAt: string | null
+    lastError: string | null
+  } | null
 }
 
 const WEEKDAY_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
@@ -164,6 +172,36 @@ function PractitionerDetail({
   const [break3Start, setBreak3Start] = useState(practitioner.break3Start ?? '18:00')
   const [break3End, setBreak3End] = useState(practitioner.break3End ?? '18:15')
   const [saving, setSaving] = useState(false)
+  const [calendarBusy, setCalendarBusy] = useState(false)
+  const [syncEnabled, setSyncEnabled] = useState(practitioner.googleCalendar?.syncEnabled ?? true)
+  const [includeCustomerDetails, setIncludeCustomerDetails] = useState(practitioner.googleCalendar?.includeCustomerDetails ?? false)
+
+  async function updateCalendarSettings() {
+    setCalendarBusy(true)
+    try {
+      const response = await fetchWithTimeout('/api/google-calendar/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ practitionerId: practitioner.id, syncEnabled, includeCustomerDetails }) })
+      if (!response.ok) throw new Error()
+      onSaved()
+    } catch { alert('Setările Google Calendar nu au putut fi salvate.') } finally { setCalendarBusy(false) }
+  }
+
+  async function syncCalendar() {
+    setCalendarBusy(true)
+    try {
+      const response = await fetchWithTimeout('/api/google-calendar/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ practitionerId: practitioner.id }) })
+      if (!response.ok) throw new Error()
+      const data = await response.json(); alert(`${data.count} programări au fost verificate și sincronizate.`); onSaved()
+    } catch { alert('Sincronizarea Google Calendar a eșuat.') } finally { setCalendarBusy(false) }
+  }
+
+  async function disconnectCalendar() {
+    if (!confirm('Deconectezi Google Calendar? Evenimentele deja create vor rămâne în calendar.')) return
+    setCalendarBusy(true)
+    try {
+      const response = await fetchWithTimeout(`/api/google-calendar/settings?practitionerId=${encodeURIComponent(practitioner.id)}`, { method: 'DELETE' })
+      if (!response.ok) throw new Error(); onSaved()
+    } catch { alert('Deconectarea a eșuat.') } finally { setCalendarBusy(false) }
+  }
 
   function hourFor(weekday: number) {
     return hours.find((h) => h.weekday === weekday)
@@ -309,6 +347,29 @@ function PractitionerDetail({
           </div>
         </div>
       )}
+
+      <div className="rounded-xl border border-[var(--border-soft)] p-4">
+        <p className="text-sm font-medium mb-1">Google Calendar</p>
+        {!practitioner.googleCalendar ? (
+          <>
+            <p className="text-xs text-gray-500 mb-3">Programările vor apărea automat într-un calendar separat, numai pentru vizualizare. BookEasy rămâne sursa oficială.</p>
+            <a href={`/api/google-calendar/connect?practitionerId=${encodeURIComponent(practitioner.id)}`} className="btn-primary inline-flex text-sm">Conectează contul Google</a>
+          </>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="text-xs text-gray-500"><span className="font-medium text-gray-700">{practitioner.googleCalendar.calendarName}</span>{practitioner.googleCalendar.googleEmail ? ` · ${practitioner.googleCalendar.googleEmail}` : ''}</div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={syncEnabled} onChange={(e) => setSyncEnabled(e.target.checked)} /> Sincronizare automată activă</label>
+            <label className="flex items-start gap-2 text-sm"><input className="mt-0.5" type="checkbox" checked={includeCustomerDetails} onChange={(e) => setIncludeCustomerDetails(e.target.checked)} /><span>Include numele, telefonul și serviciul clientului <span className="block text-xs text-gray-400">Pentru clinici recomandăm să rămână dezactivat.</span></span></label>
+            {practitioner.googleCalendar.lastError && <p className="text-xs text-red-600">Necesită atenție: {practitioner.googleCalendar.lastError}</p>}
+            {practitioner.googleCalendar.lastSyncAt && !practitioner.googleCalendar.lastError && <p className="text-xs text-emerald-600">Sincronizat: {new Date(practitioner.googleCalendar.lastSyncAt).toLocaleString('ro-RO')}</p>}
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={updateCalendarSettings} disabled={calendarBusy}>Salvează setările</Button>
+              <button className="text-sm px-3" onClick={syncCalendar} disabled={calendarBusy}>Sincronizează programările existente</button>
+              <button className="text-sm px-3 text-red-600" onClick={disconnectCalendar} disabled={calendarBusy}>Deconectează</button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <Button onClick={save} disabled={saving} className="self-start">
         {saving ? 'Se salvează...' : 'Salvează modificările'}
