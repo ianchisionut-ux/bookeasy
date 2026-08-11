@@ -65,7 +65,14 @@ export default function PatientDocuments({
         <div className="flex items-center gap-2">
           <label className="btn-secondary text-sm cursor-pointer">
             {uploading ? 'Se încarcă...' : '+ Adaugă document'}
-            <input ref={fileInputRef} type="file" onChange={handleUpload} disabled={uploading} className="hidden" />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+              onChange={handleUpload}
+              disabled={uploading}
+              className="hidden"
+            />
           </label>
         </div>
       </div>
@@ -79,7 +86,7 @@ export default function PatientDocuments({
         <div className="flex flex-col gap-2">
           {documents.map((doc) => (
             <div key={doc.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-[var(--surface-muted)]">
-              <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--accent)] font-medium truncate">
+              <a href={doc.url} className="text-sm text-[var(--accent)] font-medium truncate">
                 <FileText size={14} className="inline mr-1" style={{ verticalAlign: '-2px' }} /> {doc.filename}
               </a>
               <div className="flex items-center gap-3 shrink-0">

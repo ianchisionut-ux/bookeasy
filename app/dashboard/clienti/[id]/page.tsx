@@ -60,7 +60,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           medicalRecordInitial={medicalRecord}
           documents={documents.map((d) => ({
             id: d.id,
-            url: d.url,
+            url: `/api/business/patients/${customer.id}/documents/${d.id}`,
             filename: d.filename,
             uploadedAt: d.uploadedAt.toISOString(),
           }))}
