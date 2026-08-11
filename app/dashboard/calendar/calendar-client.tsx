@@ -141,7 +141,7 @@ export default function CalendarClient({
     }
     return result
   }, [activeBreaks, activeWorkingHours, currentDate])
-  const allEvents = [...visibleEvents, ...blockedEvents, ...breakEvents]
+  const allEvents = [...visibleEvents, ...blockedEvents]
   const effectiveMinTime = selectedPractitioner?.minTime ?? minTime
   const effectiveMaxTime = selectedPractitioner?.maxTime ?? maxTime
   const calendarMin = timeToDate(effectiveMinTime)
@@ -317,6 +317,7 @@ export default function CalendarClient({
           key={practitionerFilter}
           localizer={localizer}
           events={allEvents}
+          backgroundEvents={breakEvents}
           startAccessor="start"
           endAccessor="end"
           culture="ro"
@@ -423,7 +424,7 @@ export default function CalendarClient({
 }
 
 function CalendarEventCard({ event }: { event: Event | BreakEvent | BlockedEvent }) {
-  if ('isBreak' in event && event.isBreak) return <div className="calendar-break-card">☕ {event.title}<span>{format(event.start, 'HH:mm')}–{format(event.end, 'HH:mm')}</span></div>
+  if ('isBreak' in event && event.isBreak) return <div className="calendar-break-card">{event.title}<span>{format(event.start, 'HH:mm')}–{format(event.end, 'HH:mm')}</span></div>
   if ('isBlocked' in event && event.isBlocked) return <div>{event.title}</div>
   const bookingEvent = event as Event
   const duration = Math.max(1, Math.round((bookingEvent.end.getTime() - bookingEvent.start.getTime()) / 60000))
