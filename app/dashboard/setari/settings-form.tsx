@@ -79,6 +79,7 @@ export default function SettingsForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          slotIntervalMinutes: form.slotIntervalMinutes ?? 10,
           workingHours: hours,
           break1Start: break1Enabled ? form.break1Start : null,
           break1End: break1Enabled ? form.break1End : null,
@@ -216,15 +217,19 @@ export default function SettingsForm({
           Cum se împart orele oferite {isClinic ? 'pacienților' : 'clienților'} la {isClinic ? 'programare' : 'rezervare'}.
         </p>
         <select
-          value="10"
-          onChange={() => setForm({ ...form, slotIntervalMinutes: 10 })}
+          value={form.slotIntervalMinutes ?? 10}
+          onChange={(e) => setForm({ ...form, slotIntervalMinutes: Number(e.target.value) })}
           className="input-field w-full"
-          disabled
         >
+          <option value="5">Din 5 în 5 minute</option>
           <option value="10">Fix, din 10 în 10 minute</option>
+          <option value="15">Din 15 în 15 minute</option>
+          <option value="20">Din 20 în 20 minute</option>
+          <option value="30">Din 30 în 30 minute</option>
+          <option value="60">Din oră în oră</option>
         </select>
         <p className="text-xs text-gray-400 mt-2">
-          Orele sunt oferite uniform din 10 în 10 minute. Durata reală a serviciului este păstrată, iar două
+          Adminul alege pasul dintre orele oferite. Durata reală a serviciului este păstrată, iar două
           {isClinic ? ' programări' : ' rezervări'} nu se pot suprapune.
         </p>
       </Card>

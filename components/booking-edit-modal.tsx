@@ -38,18 +38,18 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> 
   NO_SHOW: 'danger',
 }
 
-function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: number; startTime: string; endTime: string }[], durationMinutes: number) {
+function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: number; startTime: string; endTime: string }[], durationMinutes: number, stepMinutes: number) {
   if (!dateValue) return []
   const weekday = new Date(`${dateValue}T12:00:00`).getDay()
   const options: string[] = []
   for (const range of workingHours.filter((item) => item.weekday === weekday)) {
     const [startHour, startMinute] = range.startTime.split(':').map(Number)
     const [endHour, endMinute] = range.endTime.split(':').map(Number)
-    let cursor = Math.ceil((startHour * 60 + startMinute) / 10) * 10
+    let cursor = Math.ceil((startHour * 60 + startMinute) / stepMinutes) * stepMinutes
     const end = endHour * 60 + endMinute
     while (cursor + durationMinutes <= end) {
       options.push(`${String(Math.floor(cursor / 60)).padStart(2, '0')}:${String(cursor % 60).padStart(2, '0')}`)
-      cursor += 10
+      cursor += stepMinutes
     }
   }
   return [...new Set(options)]
@@ -60,11 +60,13 @@ export default function BookingEditModal({
   isClinic,
   onClose,
   workingHours,
+  stepMinutes,
 }: {
   booking: BookingDetail
   isClinic: boolean
   onClose: () => void
   workingHours: { weekday: number; startTime: string; endTime: string }[]
+  stepMinutes: number
 }) {
   const router = useRouter()
   const [status, setStatus] = useState(booking.status)
@@ -107,7 +109,7 @@ export default function BookingEditModal({
   const selectedDate = startAt.split('T')[0] ?? ''
   const selectedTime = startAt.split('T')[1] ?? ''
   const durationMinutes = Math.max(1, Math.round((new Date(booking.endAt).getTime() - new Date(booking.startAt).getTime()) / 60000))
-  const availableTimes = buildWorkingTimeOptions(selectedDate, workingHours, durationMinutes)
+  const availableTimes = buildWorkingTimeOptions(selectedDate, workingHours, durationMinutes, stepMinutes)
 
   async function save() {
     setSaving(true)
@@ -228,7 +230,7 @@ export default function BookingEditModal({
                 type="date"
                 value={selectedDate}
                 onChange={(e) => {
-                  const nextTimes = buildWorkingTimeOptions(e.target.value, workingHours, durationMinutes)
+                  const nextTimes = buildWorkingTimeOptions(e.target.value, workingHours, durationMinutes, stepMinutes)
                   setStartAt(e.target.value && nextTimes[0] ? `${e.target.value}T${nextTimes[0]}` : e.target.value)
                 }}
                 className="input-field w-full"

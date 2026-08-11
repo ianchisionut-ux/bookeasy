@@ -48,7 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     if (startAtActuallyChanged && !(await isWithinWorkingHours(businessId, owned.practitionerId, newStart, newEnd))) {
-      return NextResponse.json({ error: 'Programarea trebuie să fie integral în programul de lucru setat.' }, { status: 409 })
+      return NextResponse.json({ error: 'Intervalul este în afara programului de lucru sau se suprapune peste o pauză.' }, { status: 409 })
     }
   }
 

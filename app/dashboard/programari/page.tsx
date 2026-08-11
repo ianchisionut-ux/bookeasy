@@ -24,7 +24,7 @@ export default async function ProgramariPage({
       where: { businessId, confirmationSeenByAdmin: false },
       select: { id: true },
     }),
-    prisma.business.findUnique({ where: { id: businessId }, select: { category: true, teamSize: true, workingHours: true } }),
+    prisma.business.findUnique({ where: { id: businessId }, select: { category: true, teamSize: true, workingHours: true, slotIntervalMinutes: true } }),
   ])
   const newlyConfirmedIds = newlyConfirmed.map((b) => b.id)
 
@@ -80,6 +80,7 @@ export default async function ProgramariPage({
       blockedSlots={blockedSlots.map((b) => ({ startAt: b.startAt.toISOString(), endAt: b.endAt.toISOString() }))}
       practitioners={practitioners.map((p) => ({ id: p.id, name: p.name }))}
       workingHours={(business?.workingHours ?? []).map((range) => ({ weekday: range.weekday, startTime: range.startTime, endTime: range.endTime }))}
+      slotIntervalMinutes={business?.slotIntervalMinutes ?? 10}
       filters={{ status: status ?? '', q: q ?? '' }}
     />
   )

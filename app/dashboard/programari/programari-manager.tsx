@@ -101,6 +101,7 @@ export default function ProgramariManager({
   blockedSlots,
   practitioners,
   workingHours,
+  slotIntervalMinutes,
   filters,
   newlyConfirmedIds,
 }: {
@@ -112,6 +113,7 @@ export default function ProgramariManager({
   blockedSlots: { startAt: string; endAt: string }[]
   practitioners: { id: string; name: string }[]
   workingHours: WorkingRange[]
+  slotIntervalMinutes: number
   filters: { status: string; q: string }
   newlyConfirmedIds: string[]
 }) {
@@ -330,6 +332,7 @@ export default function ProgramariManager({
           blockedSlots={blockedSlots}
           practitioners={practitioners}
           workingHours={workingHours}
+          slotIntervalMinutes={slotIntervalMinutes}
           onDone={() => {
             setAdding(false)
             router.refresh()
@@ -457,6 +460,7 @@ function NewBookingForm({
   blockedSlots,
   practitioners,
   workingHours,
+  slotIntervalMinutes,
   onDone,
 }: {
   category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
@@ -466,6 +470,7 @@ function NewBookingForm({
   blockedSlots: { startAt: string; endAt: string }[]
   practitioners: { id: string; name: string }[]
   workingHours: WorkingRange[]
+  slotIntervalMinutes: number
   onDone: () => void
 }) {
   const isClinic = category === 'CLINICA'
@@ -706,6 +711,7 @@ function NewBookingForm({
               onChange={setDate}
               workingHours={workingHours}
               durationMinutes={services.find((service) => service.id === serviceId)?.durationMin ?? 30}
+              stepMinutes={slotIntervalMinutes}
               minDate={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)}
             />
           </div>

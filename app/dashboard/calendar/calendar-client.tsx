@@ -66,6 +66,7 @@ export default function CalendarClient({
   minTime,
   maxTime,
   businessWorkingHours,
+  slotIntervalMinutes,
   practitioners,
 }: {
   category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
@@ -74,6 +75,7 @@ export default function CalendarClient({
   minTime: string
   maxTime: string
   businessWorkingHours: { weekday: number; startTime: string; endTime: string }[]
+  slotIntervalMinutes: number
   practitioners: { id: string; name: string; minTime: string; maxTime: string; workingHours: { weekday: number; startTime: string; endTime: string }[] }[]
 }) {
   const isClinic = category === 'CLINICA'
@@ -302,8 +304,8 @@ export default function CalendarClient({
           views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
           min={calendarMin}
           max={calendarMax}
-          step={10}
-          timeslots={6}
+          step={slotIntervalMinutes}
+          timeslots={Math.max(1, Math.floor(60 / slotIntervalMinutes))}
           messages={{
             today: 'Azi',
             previous: '<',
@@ -375,12 +377,14 @@ export default function CalendarClient({
           }
           onClose={() => setSelected(null)}
           workingHours={(practitioners.find((p) => p.id === selected.practitionerId)?.workingHours ?? businessWorkingHours)}
+          stepMinutes={slotIntervalMinutes}
         />
       )}
 
       {showBookingModal && (
         <CalendarQuickBookingModal
           businessWorkingHours={businessWorkingHours}
+          stepMinutes={slotIntervalMinutes}
           onClose={() => setShowBookingModal(false)}
           onCreated={() => {
             setShowBookingModal(false)
@@ -402,7 +406,7 @@ function CalendarEventCard({ event }: { event: Event }) {
   </div>
 }
 
-function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: number; startTime: string; endTime: string }[], durationMinutes: number) {
+function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: number; startTime: string; endTime: string }[], durationMinutes: number, stepMinutes = 10) {
   if (!dateValue) return []
   const weekday = new Date(`${dateValue}T12:00:00`).getDay()
   const ranges = workingHours.filter((range) => range.weekday === weekday)
@@ -412,16 +416,16 @@ function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: num
     const [endHour, endMinute] = range.endTime.split(':').map(Number)
     let cursor = startHour * 60 + startMinute
     const end = endHour * 60 + endMinute
-    cursor = Math.ceil(cursor / 10) * 10
+    cursor = Math.ceil(cursor / stepMinutes) * stepMinutes
     while (cursor + durationMinutes <= end) {
       options.push(`${String(Math.floor(cursor / 60)).padStart(2, '0')}:${String(cursor % 60).padStart(2, '0')}`)
-      cursor += 10
+      cursor += stepMinutes
     }
   }
   return [...new Set(options)]
 }
 
-function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPractitionerId, businessWorkingHours }: { onClose: () => void; onCreated: () => void; initialStart?: Date; initialPractitionerId?: string; businessWorkingHours: { weekday: number; startTime: string; endTime: string }[] }) {
+function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPractitionerId, businessWorkingHours, stepMinutes }: { onClose: () => void; onCreated: () => void; initialStart?: Date; initialPractitionerId?: string; businessWorkingHours: { weekday: number; startTime: string; endTime: string }[]; stepMinutes: number }) {
   const [services, setServices] = useState<{ id: string; name: string; durationMin: number | null }[]>([])
   const [practitioners, setPractitioners] = useState<{ id: string; name: string }[]>([])
   const [isMultiPractitioner, setIsMultiPractitioner] = useState(false)
@@ -437,13 +441,13 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
   })
   const [simpleDateTime, setSimpleDateTime] = useState(() => {
     const value = initialStart ? new Date(initialStart) : new Date()
-    value.setMinutes(Math.ceil(value.getMinutes() / 10) * 10, 0, 0)
+    value.setMinutes(Math.ceil(value.getMinutes() / stepMinutes) * stepMinutes, 0, 0)
     return `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,'0')}-${String(value.getDate()).padStart(2,'0')}T${String(value.getHours()).padStart(2,'0')}:${String(value.getMinutes()).padStart(2,'0')}`
   })
   const simpleDate = simpleDateTime.split('T')[0] ?? ''
   const simpleTime = simpleDateTime.split('T')[1] ?? ''
   const selectedServiceDuration = services.find((service) => service.id === serviceId)?.durationMin ?? 30
-  const tenMinuteTimes = buildWorkingTimeOptions(simpleDate, businessWorkingHours, selectedServiceDuration)
+  const tenMinuteTimes = buildWorkingTimeOptions(simpleDate, businessWorkingHours, selectedServiceDuration, stepMinutes)
   const [daySlots, setDaySlots] = useState<{ time: string; available: boolean }[]>([])
   const [selectedSlot, setSelectedSlot] = useState('')
   const [loadingSlots, setLoadingSlots] = useState(false)

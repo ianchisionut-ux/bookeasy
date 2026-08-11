@@ -324,6 +324,7 @@ function QuickBookingModal({
   const [practitioners, setPractitioners] = useState<{ id: string; name: string }[]>([])
   const [isMultiPractitioner, setIsMultiPractitioner] = useState(false)
   const [workingHours, setWorkingHours] = useState<WorkingRange[]>([])
+  const [slotIntervalMinutes, setSlotIntervalMinutes] = useState(10)
   const [loadingData, setLoadingData] = useState(true)
 
   const [customerName, setCustomerName] = useState(conversation.customerName ?? '')
@@ -349,6 +350,7 @@ function QuickBookingModal({
         setPractitioners(data.practitioners ?? [])
         setIsMultiPractitioner(!!data.isMultiPractitioner)
         setWorkingHours(data.workingHours ?? [])
+        setSlotIntervalMinutes(data.slotIntervalMinutes ?? 10)
         if (data.practitioners?.length === 1) setPractitionerId(data.practitioners[0].id)
       })
       .catch(() => setError('Nu am putut încărca serviciile.'))
@@ -535,6 +537,7 @@ function QuickBookingModal({
                 onChange={setSimpleDateTime}
                 workingHours={workingHours}
                 durationMinutes={services.find((service) => service.id === serviceId)?.durationMin ?? 30}
+                stepMinutes={slotIntervalMinutes}
               />
             )}
 

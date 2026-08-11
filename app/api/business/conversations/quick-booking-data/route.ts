@@ -7,7 +7,7 @@ export async function GET() {
   const businessId = (session as any)?.businessId
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { teamSize: true, workingHours: true } })
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { teamSize: true, workingHours: true, slotIntervalMinutes: true } })
   const isMultiPractitioner = (business?.teamSize ?? 1) > 1
 
   const [services, practitioners] = await Promise.all([
@@ -22,5 +22,6 @@ export async function GET() {
     services: services.map((s) => ({ id: s.id, name: s.name, durationMin: s.durationMin })),
     practitioners: practitioners.map((p) => ({ id: p.id, name: p.name })),
     workingHours: (business?.workingHours ?? []).map((range) => ({ weekday: range.weekday, startTime: range.startTime, endTime: range.endTime })),
+    slotIntervalMinutes: business?.slotIntervalMinutes ?? 10,
   })
 }

@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   }
 
   const date = new Date(`${dateParam}T00:00:00Z`)
-  const allSlots = await getPractitionerDaySlotsWithStatus(businessId, serviceId, practitionerId, date, true, 10)
+  const allSlots = await getPractitionerDaySlotsWithStatus(businessId, serviceId, practitionerId, date, true)
 
   return NextResponse.json({ allSlots })
 }

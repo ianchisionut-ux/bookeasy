@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!(await isWithinWorkingHours(businessId, parsed.data.practitionerId, startDate, endDate))) {
-    return NextResponse.json({ error: 'Programarea trebuie să fie integral în programul de lucru setat.' }, { status: 409 })
+    return NextResponse.json({ error: 'Intervalul este în afara programului de lucru sau se suprapune peste o pauză.' }, { status: 409 })
   }
 
   // client existent (ales din listă) sau creat/regăsit pe loc, după numărul de telefon —
