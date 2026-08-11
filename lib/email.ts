@@ -84,7 +84,7 @@ export async function sendUnconfirmedBookingAlert({
     return
   }
 
-  const time = startAt.toLocaleString('ro-RO', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Bucharest' })
+  const time = startAt.toLocaleString('ro-RO', { dateStyle: 'medium', timeStyle: 'short', hour12: false, timeZone: 'Europe/Bucharest' })
 
   await getResend().emails.send({
     from: 'Notificări <alerte@bookeasy.ro>',

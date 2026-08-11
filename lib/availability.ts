@@ -65,6 +65,30 @@ export async function isIntervalBlocked(businessId: string, start: Date, end: Da
   return isRangeBlocked(businessId, start, end)
 }
 
+// Ultima barieră comună pentru operațiile făcute din dashboard. Interfața avertizează
+// imediat, dar serverul trebuie să respingă suprapunerile chiar și când două cereri
+// ajung aproape simultan sau când ruta este apelată direct.
+export async function hasActiveBookingConflict(
+  businessId: string,
+  practitionerId: string | null | undefined,
+  start: Date,
+  end: Date,
+  ignoreBookingId?: string
+): Promise<boolean> {
+  const conflict = await prisma.booking.findFirst({
+    where: {
+      businessId,
+      ...(practitionerId ? { practitionerId } : {}),
+      ...(ignoreBookingId ? { id: { not: ignoreBookingId } } : {}),
+      status: { in: ['CONFIRMED', 'PENDING'] },
+      startAt: { lt: end },
+      endAt: { gt: start },
+    },
+    select: { id: true },
+  })
+  return !!conflict
+}
+
 // Validare comună pentru programările manuale și mutările din dashboard.
 // Intervalul trebuie să încapă integral în programul zilei profilului selectat.
 export async function isWithinWorkingHours(

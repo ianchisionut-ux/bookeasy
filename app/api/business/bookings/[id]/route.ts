@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import { isIntervalBlocked, isWithinWorkingHours } from '@/lib/availability'
+import { hasActiveBookingConflict, isIntervalBlocked, isWithinWorkingHours } from '@/lib/availability'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -30,9 +30,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
+  if (parsed.data.endAt && !parsed.data.startAt) {
+    return NextResponse.json({ error: 'Durata programării nu poate fi modificată.' }, { status: 400 })
+  }
+
   if (parsed.data.startAt) {
     const newStart = new Date(parsed.data.startAt)
-    const newEnd = parsed.data.endAt ? new Date(parsed.data.endAt) : new Date(newStart.getTime() + (owned.endAt.getTime() - owned.startAt.getTime()))
+    const duration = owned.endAt.getTime() - owned.startAt.getTime()
+    const newEnd = new Date(newStart.getTime() + duration)
+
+    if (!Number.isFinite(newStart.getTime()) || duration <= 0) {
+      return NextResponse.json({ error: 'Intervalul programării nu este valid.' }, { status: 400 })
+    }
+    if (parsed.data.endAt && new Date(parsed.data.endAt).getTime() !== newEnd.getTime()) {
+      return NextResponse.json({ error: 'Durata programării nu poate fi modificată.' }, { status: 400 })
+    }
 
     // verificăm "mutare în trecut" doar dacă ora CHIAR se schimbă — editarea statusului
     // (ex: marcare "Finalizată") pe o rezervare deja trecută retrimite același startAt
@@ -49,6 +61,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (startAtActuallyChanged && !(await isWithinWorkingHours(businessId, owned.practitionerId, newStart, newEnd))) {
       return NextResponse.json({ error: 'Intervalul este în afara programului de lucru sau se suprapune peste o pauză.' }, { status: 409 })
+    }
+
+    if (startAtActuallyChanged && await hasActiveBookingConflict(businessId, owned.practitionerId, newStart, newEnd, id)) {
+      return NextResponse.json({ error: 'Intervalul se suprapune cu o altă programare.' }, { status: 409 })
+    }
+
+    parsed.data.endAt = newEnd.toISOString()
+  }
+
+  const becomesActive = parsed.data.status && ['PENDING', 'CONFIRMED'].includes(parsed.data.status) && !['PENDING', 'CONFIRMED'].includes(owned.status)
+  if (becomesActive) {
+    const activeStart = parsed.data.startAt ? new Date(parsed.data.startAt) : owned.startAt
+    const activeEnd = parsed.data.endAt ? new Date(parsed.data.endAt) : owned.endAt
+    if (await hasActiveBookingConflict(businessId, owned.practitionerId, activeStart, activeEnd, id)) {
+      return NextResponse.json({ error: 'Programarea nu poate fi reactivată: intervalul este deja ocupat.' }, { status: 409 })
+    }
+    if (await isIntervalBlocked(businessId, activeStart, activeEnd) || !(await isWithinWorkingHours(businessId, owned.practitionerId, activeStart, activeEnd))) {
+      return NextResponse.json({ error: 'Programarea nu poate fi reactivată în afara programului, într-o pauză sau într-un interval blocat.' }, { status: 409 })
     }
   }
 
