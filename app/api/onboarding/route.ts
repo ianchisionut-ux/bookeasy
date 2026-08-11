@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { geocodeAddress } from '@/lib/geocode'
+import { ensureVenueService } from '@/lib/venue-services'
 import { z } from 'zod'
 
 const stepSchemas = {
@@ -94,6 +95,8 @@ async function saveOnboardingStep(businessId: string, step: number, data: any) {
       await prisma.resource.createMany({
         data: data.services.map((s: any) => ({ businessId, name: s.name, capacity: s.capacity ?? null, basePrice: s.price ?? null })),
       })
+      const resources = await prisma.resource.findMany({ where: { businessId } })
+      await Promise.all(resources.map((resource) => ensureVenueService(resource)))
     } else {
       await prisma.service.createMany({
         data: data.services.map((s: any) => ({

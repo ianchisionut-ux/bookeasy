@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
+import { ensureVenueService } from '@/lib/venue-services'
 
 const schema = z.object({
   name: z.string().min(1),
@@ -19,5 +20,6 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
   const resource = await prisma.resource.create({ data: { businessId, ...parsed.data } })
+  await ensureVenueService(resource)
   return NextResponse.json({ resource })
 }

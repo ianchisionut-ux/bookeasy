@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
+import { ensureVenueService, venueServiceId } from '@/lib/venue-services'
 
 const schema = z.object({
   name: z.string().min(1).optional(),
@@ -27,7 +28,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  await prisma.resource.update({ where: { id }, data: parsed.data })
+  const resource = await prisma.resource.update({ where: { id }, data: parsed.data })
+  await ensureVenueService(resource)
   return NextResponse.json({ success: true })
 }
 
@@ -40,6 +42,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const owned = await assertOwnership(id, businessId)
   if (!owned) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  await prisma.resource.delete({ where: { id } })
+  await prisma.$transaction([
+    prisma.service.updateMany({ where: { id: venueServiceId(id), businessId }, data: { active: false } }),
+    prisma.resource.delete({ where: { id } }),
+  ])
   return NextResponse.json({ success: true })
 }

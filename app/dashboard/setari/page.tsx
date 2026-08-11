@@ -49,6 +49,7 @@ export default async function SetariPage() {
 
         <SettingsForm
           isClinic={business.category === 'CLINICA'}
+          isEventVenue={business.category === 'EVENT_VENUE'}
           isMultiPractitioner={business.teamSize > 1}
           business={{
             name: business.name,

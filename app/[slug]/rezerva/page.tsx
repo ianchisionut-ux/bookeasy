@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { PublicHeader } from '@/components/ui/public-header'
 import { BackLink } from '@/components/ui/back-link'
 import BookingFlow from './booking-flow'
+import { ensureVenueService } from '@/lib/venue-services'
 
 const CATEGORY_LABEL: Record<string, string> = {
   SALON: 'Salon',
@@ -32,12 +33,17 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
     where: { slug },
     include: {
       services: { where: { active: true }, orderBy: { name: 'asc' } },
+      resources: { orderBy: { name: 'asc' } },
       workingHours: true,
     },
   })
 
   if (!business || !business.publicListed || !business.accountActive) notFound()
   if (business.category === 'HOTEL' || business.category === 'PENSIUNE') notFound() // în dezvoltare
+
+  const venueServices = business.category === 'EVENT_VENUE'
+    ? await Promise.all(business.resources.map(async (resource) => ({ resource, service: await ensureVenueService(resource) })))
+    : []
 
   const initials = business.name
     .split(' ')
@@ -82,14 +88,23 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
           isMultiPractitioner={business.teamSize > 1}
           accentColor={accent}
           accentSoftColor={accentSoft}
-          services={business.services.map((s) => ({
+          services={(business.category === 'EVENT_VENUE' ? venueServices.map(({ resource, service }) => ({
+            id: service.id,
+            resourceId: resource.id,
+            name: resource.name,
+            durationMin: 60,
+            price: resource.basePrice ? Number(resource.basePrice) : null,
+            requiresDeposit: service.requiresDeposit,
+            depositAmount: service.depositAmount ? Number(service.depositAmount) : null,
+          })) : business.services.map((s) => ({
             id: s.id,
+            resourceId: null,
             name: s.name,
             durationMin: s.durationMin,
             price: s.price ? Number(s.price) : null,
             requiresDeposit: s.requiresDeposit,
             depositAmount: s.depositAmount ? Number(s.depositAmount) : null,
-          }))}
+          })))}
           canPayOnline={!!business.paymentProcessor}
         />
       </main>

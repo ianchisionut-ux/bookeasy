@@ -115,8 +115,18 @@ export async function isWithinWorkingHours(
         prisma.business.findUnique({ where: { id: businessId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
       ])
 
-  const breaks = getBusinessBreaks(profile, localDate)
+  const nonStop = !practitionerId && ranges.some((range) => range.startTime === '00:00' && range.endTime === '23:59')
+  const breakDates = nonStop
+    ? Array.from({ length: 8 }, (_, index) => {
+        const day = new Date(localDate)
+        day.setUTCDate(day.getUTCDate() + index)
+        return day
+      })
+    : [localDate]
+  const breaks = breakDates.flatMap((day) => getBusinessBreaks(profile, day))
   if (breaks.some((item) => overlaps(start, end, item.startAt, item.endAt))) return false
+
+  if (nonStop) return true
 
   return ranges.some((range) => {
     const rangeStart = combineDateAndTime(localDate, range.startTime)
@@ -277,6 +287,56 @@ export async function getDaySlotsWithStatus(
     }
   }
 
+  return result
+}
+
+export async function getVenueDaySlotsWithStatus(
+  businessId: string,
+  resourceId: string,
+  date: Date,
+  durationMinutes: number
+): Promise<{ time: string; available: boolean }[]> {
+  if (durationMinutes < 60 || durationMinutes > 720 || durationMinutes % 60 !== 0) return []
+
+  const weekday = date.getUTCDay()
+  const windowStart = combineDateAndTime(date, '00:00')
+  const searchEnd = addMinutes(windowStart, 36 * 60)
+  const [business, resource, workingHours, existingBookings, blockedSlots] = await Promise.all([
+    prisma.business.findUnique({
+      where: { id: businessId },
+      select: { minLeadTimeMinutes: true, break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true },
+    }),
+    prisma.resource.findFirst({ where: { id: resourceId, businessId }, select: { id: true } }),
+    prisma.workingHours.findMany({ where: { businessId, weekday } }),
+    prisma.booking.findMany({
+      where: { resourceId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: searchEnd }, endAt: { gt: windowStart } },
+    }),
+    prisma.blockedSlot.findMany({ where: { businessId, startAt: { lt: searchEnd }, endAt: { gt: windowStart } } }),
+  ])
+  if (!business || !resource) return []
+
+  const nextDate = new Date(date)
+  nextDate.setUTCDate(nextDate.getUTCDate() + 1)
+  const breaks = [...getBusinessBreaks(business, date), ...getBusinessBreaks(business, nextDate)]
+  const earliestAllowed = new Date(Date.now() + (business.minLeadTimeMinutes ?? 120) * 60000)
+  const result: { time: string; available: boolean }[] = []
+
+  for (const range of workingHours) {
+    let cursor = combineDateAndTime(date, range.startTime)
+    const rangeEnd = combineDateAndTime(date, range.endTime)
+    const nonStop = range.startTime === '00:00' && range.endTime === '23:59'
+    const lastStart = nonStop ? combineDateAndTime(nextDate, '00:00') : rangeEnd
+    while (cursor < lastStart && (nonStop || addMinutes(cursor, durationMinutes) <= rangeEnd)) {
+      const slotEnd = addMinutes(cursor, durationMinutes)
+      const unavailable =
+        cursor < earliestAllowed ||
+        blockedSlots.some((item) => overlaps(cursor, slotEnd, item.startAt, item.endAt)) ||
+        existingBookings.some((item) => overlaps(cursor, slotEnd, item.startAt, item.endAt)) ||
+        breaks.some((item) => overlaps(cursor, slotEnd, item.startAt, item.endAt))
+      result.push({ time: cursor.toISOString(), available: !unavailable })
+      cursor = addMinutes(cursor, 60)
+    }
+  }
   return result
 }
 

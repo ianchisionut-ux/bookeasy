@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,7 @@ export default function SettingsForm({
   workingHours,
   isMultiPractitioner,
   isClinic,
+  isEventVenue,
 }: {
   business: {
     name: string
@@ -38,6 +39,7 @@ export default function SettingsForm({
   workingHours: WorkingHour[]
   isMultiPractitioner: boolean
   isClinic: boolean
+  isEventVenue: boolean
 }) {
   const [form, setForm] = useState(business)
   const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null)
@@ -46,6 +48,11 @@ export default function SettingsForm({
     setSaveSlot(document.getElementById('settings-save-slot'))
   }, [])
   const [hours, setHours] = useState(workingHours)
+  const initialNonStop = workingHours.every((hour) => !hour.closed && hour.startTime === '00:00' && hour.endTime === '23:59')
+  const [nonStop, setNonStop] = useState(initialNonStop)
+  const previousHours = useRef<WorkingHour[]>(initialNonStop
+    ? workingHours.map((hour) => ({ ...hour, startTime: '09:00', endTime: '18:00', closed: hour.weekday === 0 || hour.weekday === 6 }))
+    : workingHours)
   const [break1Enabled, setBreak1Enabled] = useState(!!business.break1Start)
   const [break2Enabled, setBreak2Enabled] = useState(!!business.break2Start)
   const [break3Enabled, setBreak3Enabled] = useState(!!business.break3Start)
@@ -55,6 +62,16 @@ export default function SettingsForm({
 
   function updateHour(weekday: number, patch: Partial<WorkingHour>) {
     setHours((prev) => prev.map((h) => (h.weekday === weekday ? { ...h, ...patch } : h)))
+  }
+
+  function toggleNonStop(enabled: boolean) {
+    setNonStop(enabled)
+    if (enabled) {
+      previousHours.current = hours
+      setHours(hours.map((hour) => ({ ...hour, startTime: '00:00', endTime: '23:59', closed: false })))
+    } else {
+      setHours(previousHours.current)
+    }
   }
 
   function toggleBreak(index: 1 | 2 | 3, enabled: boolean) {
@@ -127,6 +144,15 @@ export default function SettingsForm({
 
       <Card className="mb-5 break-inside-avoid">
         <h2 className="font-medium mb-4">Program de lucru</h2>
+        {isEventVenue && (
+          <label className="mb-4 flex items-start gap-3 rounded-2xl border border-[var(--border-soft)] p-3 cursor-pointer">
+            <input type="checkbox" checked={nonStop} onChange={(event) => toggleNonStop(event.target.checked)} className="mt-1" />
+            <span>
+              <strong className="text-sm block">Non-stop</strong>
+              <span className="text-xs text-gray-500">Sala poate fi rezervată la orice oră, iar evenimentul poate continua după miezul nopții.</span>
+            </span>
+          </label>
+        )}
         <div className="flex flex-col gap-2 mb-5">
           {hours.map((h) => (
             <div key={h.weekday} className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm py-1">
@@ -135,11 +161,12 @@ export default function SettingsForm({
                 <input
                   type="checkbox"
                   checked={!h.closed}
+                  disabled={nonStop}
                   onChange={(e) => updateHour(h.weekday, { closed: !e.target.checked })}
                 />
                 deschis
               </label>
-              {!h.closed && (
+              {!h.closed && !nonStop && (
                 <div className="flex items-center gap-2 shrink-0">
                   <Time10Select value={h.startTime} onChange={(value) => updateHour(h.weekday, { startTime: value })} />
                   <span className="text-gray-400">–</span>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { isSlotStillAvailable, isIntervalBlocked, isWithinLeadTime, isPractitionerSlotStillAvailable } from '@/lib/availability'
+import { isSlotStillAvailable, isIntervalBlocked, isWithinLeadTime, isPractitionerSlotStillAvailable, isWithinWorkingHours } from '@/lib/availability'
+import { venueServiceId } from '@/lib/venue-services'
 import { getNextSequenceNumber } from '@/lib/booking-number'
 import { createDepositCheckoutLink } from '@/lib/payments/create-checkout'
 import { sendMessage } from '@/lib/channel-senders'
@@ -11,6 +12,8 @@ const schema = z.object({
   businessId: z.string(),
   serviceId: z.string(),
   practitionerId: z.string().optional(),
+  resourceId: z.string().optional(),
+  durationMinutes: z.number().int().min(60).max(720).optional(),
   startAt: z.string(),
   customerName: z.string().min(1),
   customerPhone: z.string().min(6),
@@ -28,7 +31,7 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Date invalide, verifică formularul.' }, { status: 400 })
 
-  const { businessId, serviceId, practitionerId, customerName, customerPhone, paymentMethod } = parsed.data
+  const { businessId, serviceId, practitionerId, resourceId: requestedResourceId, customerName, customerPhone, paymentMethod } = parsed.data
 
   const business = await prisma.business.findUnique({ where: { id: businessId } })
   if (!business || !business.publicListed || !business.accountActive) {
@@ -48,10 +51,15 @@ export async function POST(req: NextRequest) {
   }
 
   const startAt = new Date(parsed.data.startAt)
-  if (startAt < new Date()) {
+  if (!Number.isFinite(startAt.getTime()) || startAt < new Date()) {
     return NextResponse.json({ error: 'Nu poți rezerva un interval din trecut.' }, { status: 400 })
   }
-  const endAt = new Date(startAt.getTime() + (service.durationMin ?? 30) * 60000)
+  const venueDuration = parsed.data.durationMinutes ?? 60
+  if (service.type === 'VENUE_RENTAL' && venueDuration % 60 !== 0) {
+    return NextResponse.json({ error: 'Durata închirierii trebuie selectată în ore întregi.' }, { status: 400 })
+  }
+  const durationMinutes = service.type === 'VENUE_RENTAL' ? venueDuration : (service.durationMin ?? 30)
+  const endAt = new Date(startAt.getTime() + durationMinutes * 60000)
 
   // verificare finală "ultima clipă" — cineva ar fi putut ocupa slotul chiar acum
   if (await isIntervalBlocked(businessId, startAt, endAt)) {
@@ -78,15 +86,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Ne pare rău, intervalul tocmai a fost ocupat. Alege altă oră.' }, { status: 409 })
     }
   } else {
+    if (!requestedResourceId || serviceId !== venueServiceId(requestedResourceId)) {
+      return NextResponse.json({ error: 'Alege sala pe care vrei să o rezervi.' }, { status: 400 })
+    }
     const resource = await prisma.resource.findFirst({
       where: {
+        id: requestedResourceId,
         businessId,
-        bookings: { none: { status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lte: endAt }, endAt: { gte: startAt } } },
       },
     })
     if (!resource) {
       return NextResponse.json({ error: 'Ne pare rău, data tocmai a fost ocupată. Alege altă zi.' }, { status: 409 })
     }
+    if (await isWithinLeadTime(businessId, startAt)) {
+      return NextResponse.json({ error: 'Rezervarea este prea apropiată de ora curentă. Alege un interval ulterior.' }, { status: 400 })
+    }
+    if (!(await isWithinWorkingHours(businessId, null, startAt, endAt))) {
+      return NextResponse.json({ error: 'Intervalul este în afara programului de lucru sau se suprapune peste o pauză.' }, { status: 409 })
+    }
+    const conflict = await prisma.booking.findFirst({
+      where: { resourceId: requestedResourceId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: endAt }, endAt: { gt: startAt } },
+      select: { id: true },
+    })
+    if (conflict) return NextResponse.json({ error: 'Sala este deja rezervată în acest interval. Alege altă oră.' }, { status: 409 })
     resourceId = resource.id
   }
 

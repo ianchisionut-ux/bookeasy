@@ -8,6 +8,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 type Service = {
   id: string
+  resourceId?: string | null
   name: string
   durationMin: number | null
   price: number | null
@@ -59,6 +60,7 @@ export default function BookingFlow({
   accentSoftColor: string
 }) {
   const isAppointment = category === 'SALON' || category === 'CLINICA'
+  const isVenue = category === 'EVENT_VENUE'
   const days = useMemo(() => buildNextDays(30), [])
 
   const [service, setService] = useState<Service | null>(services[0] ?? null)
@@ -68,6 +70,7 @@ export default function BookingFlow({
   const [selectedDate, setSelectedDate] = useState<Date>(days[0])
   const [daySlots, setDaySlots] = useState<DaySlot[]>([])
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
+  const [venueDurationHours, setVenueDurationHours] = useState(1)
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -112,21 +115,22 @@ export default function BookingFlow({
   }, [service, isMultiPractitioner, businessId])
 
   useEffect(() => {
-    if (!isAppointment || !service) return
+    if ((!isAppointment && !isVenue) || !service) return
     // așteptăm explicit ca lista de persoane să se termine de încărcat, altfel cererea
     // de ore ar cădea greșit pe programul general, nu pe cel al persoanei alese
-    if (isMultiPractitioner && (!practitionersLoaded || (practitioners.length > 0 && !practitionerId))) return
+    if (isAppointment && isMultiPractitioner && (!practitionersLoaded || (practitioners.length > 0 && !practitionerId))) return
     setLoadingSlots(true)
     setSelectedSlot(null)
     setError('')
 
-    const practitionerParam = isMultiPractitioner && practitionerId ? `&practitionerId=${practitionerId}` : ''
-    fetchWithTimeout(`/api/public/availability?businessId=${businessId}&serviceId=${service.id}&date=${toDateParam(selectedDate)}${practitionerParam}`)
+    const practitionerParam = isAppointment && isMultiPractitioner && practitionerId ? `&practitionerId=${practitionerId}` : ''
+    const venueParam = isVenue && service.resourceId ? `&resourceId=${service.resourceId}&durationMinutes=${venueDurationHours * 60}` : ''
+    fetchWithTimeout(`/api/public/availability?businessId=${businessId}&serviceId=${service.id}&date=${toDateParam(selectedDate)}${practitionerParam}${venueParam}`)
       .then((res) => res.json())
       .then((data) => setDaySlots(data.allSlots ?? []))
       .catch(() => setDaySlots([]))
       .finally(() => setLoadingSlots(false))
-  }, [service, selectedDate, businessId, isAppointment, isMultiPractitioner, practitionerId, practitionersLoaded])
+  }, [service, selectedDate, businessId, isAppointment, isVenue, isMultiPractitioner, practitionerId, practitionersLoaded, venueDurationHours])
 
   function selectService(s: Service) {
     setService(s)
@@ -137,7 +141,7 @@ export default function BookingFlow({
       setError('Alege un serviciu.')
       return
     }
-    if (isAppointment && !selectedSlot) {
+    if ((isAppointment || isVenue) && !selectedSlot) {
       setError('Alege o oră disponibilă.')
       return
     }
@@ -155,7 +159,7 @@ export default function BookingFlow({
       // ignorăm dacă localStorage nu e disponibil
     }
 
-    const startAt = isAppointment ? selectedSlot! : new Date(`${toDateParam(selectedDate)}T00:00:00`).toISOString()
+    const startAt = isAppointment || isVenue ? selectedSlot! : new Date(`${toDateParam(selectedDate)}T00:00:00`).toISOString()
 
     try {
       const res = await fetchWithTimeout('/api/public/bookings', {
@@ -165,6 +169,8 @@ export default function BookingFlow({
           businessId,
           serviceId: service.id,
           practitionerId: isMultiPractitioner ? practitionerId : undefined,
+          resourceId: isVenue ? service.resourceId : undefined,
+          durationMinutes: isVenue ? venueDurationHours * 60 : undefined,
           startAt,
           customerName: name,
           customerPhone: phone,
@@ -301,8 +307,23 @@ export default function BookingFlow({
         </div>
       </div>
 
+      {isVenue && (
+        <div>
+          <h2 className="font-semibold mb-3">Durata închirierii</h2>
+          <select
+            value={venueDurationHours}
+            onChange={(event) => setVenueDurationHours(Number(event.target.value))}
+            className="input-field w-full"
+          >
+            {Array.from({ length: 12 }, (_, index) => index + 1).map((hours) => (
+              <option key={hours} value={hours}>{hours} {hours === 1 ? 'oră' : 'ore'}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Alege ora */}
-      {isAppointment && (
+      {(isAppointment || isVenue) && (
         <div>
           <h2 className="font-semibold mb-3">Alege ora</h2>
           {loadingSlots ? (

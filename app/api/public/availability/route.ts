@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getAvailableSlots, getDaySlotsWithStatus, getPractitionerDaySlotsWithStatus } from '@/lib/availability'
+import { getAvailableSlots, getDaySlotsWithStatus, getPractitionerDaySlotsWithStatus, getVenueDaySlotsWithStatus } from '@/lib/availability'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
@@ -14,6 +14,9 @@ export async function GET(req: NextRequest) {
   const serviceId = req.nextUrl.searchParams.get('serviceId')
   const dateParam = req.nextUrl.searchParams.get('date') // 'YYYY-MM-DD'
   const practitionerId = req.nextUrl.searchParams.get('practitionerId') // opțional — doar pentru clinici
+
+  const resourceId = req.nextUrl.searchParams.get('resourceId')
+  const durationMinutes = Number(req.nextUrl.searchParams.get('durationMinutes') ?? 60)
 
   if (!businessId || !serviceId || !dateParam) {
     return NextResponse.json({ error: 'Parametri lipsă' }, { status: 400 })
@@ -31,6 +34,11 @@ export async function GET(req: NextRequest) {
   todayStart.setHours(0, 0, 0, 0)
   if (date < todayStart) {
     return NextResponse.json({ slots: [], allSlots: [] })
+  }
+
+  if (resourceId) {
+    const allSlots = await getVenueDaySlotsWithStatus(businessId, resourceId, date, durationMinutes)
+    return NextResponse.json({ slots: allSlots.filter((slot) => slot.available).map((slot) => slot.time), allSlots })
   }
 
   if (practitionerId) {
