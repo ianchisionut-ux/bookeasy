@@ -176,7 +176,7 @@ model Customer {
   businessId       String
   business         Business @relation(fields: [businessId], references: [id])
   name             String?
-  phone            String?
+  phone            String
   email            String?
   instagramUserId  String?
   facebookUserId   String?

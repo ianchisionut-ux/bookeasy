@@ -479,8 +479,8 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
 
   async function submit() {
     const hasDateInfo = isMultiPractitioner ? !!selectedSlot : !!simpleDateTime
-    if (!customerName.trim() || (customerPhone.trim() && customerPhone.trim().length < 6) || !serviceId || !hasDateInfo) {
-      setError('Completează numele, serviciul și data. Telefonul este opțional.')
+    if (!customerName.trim() || customerPhone.trim().length < 6 || !serviceId || !hasDateInfo) {
+      setError('Completează numele, telefonul, serviciul și data.')
       return
     }
     if (isMultiPractitioner && !practitionerId) {
@@ -509,7 +509,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerName: customerName.trim(),
-          customerPhone: customerPhone.trim() || undefined,
+          customerPhone: customerPhone.trim(),
           serviceId,
           practitionerId: isMultiPractitioner ? practitionerId : undefined,
           startAt: start.toISOString(),
@@ -545,7 +545,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-2">
               <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nume client" className="input-field" />
-              <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Telefon (opțional)" className="input-field" />
+              <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Telefon" className="input-field" />
             </div>
 
             <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} className="input-field w-full">

@@ -18,6 +18,7 @@ export async function createDepositCheckoutLink(bookingId: string): Promise<stri
 
   switch (business.paymentProcessor) {
     case 'NETOPIA':
+      if (!customer.phone) throw new Error('Completează numărul de telefon înainte de generarea linkului de plată Netopia')
       return createNetopiaCheckoutLink({
         bookingId: booking.id,
         amount,
@@ -28,6 +29,7 @@ export async function createDepositCheckoutLink(bookingId: string): Promise<stri
       })
 
     case 'EUPLATESC':
+      if (!customer.phone) throw new Error('Completează numărul de telefon înainte de generarea linkului de plată EuPlătesc')
       return createEuplatescCheckoutLink({
         bookingId: booking.id,
         amount,

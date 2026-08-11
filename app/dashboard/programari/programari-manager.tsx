@@ -503,13 +503,13 @@ function NewBookingForm({
   }, [isMultiPractitioner, serviceId, practitionerId, slotDate])
 
   async function submit() {
-    const hasCustomer = newCustomerMode ? !!newCustomerName.trim() && (!newCustomerPhone.trim() || newCustomerPhone.trim().length >= 6) : !!customerId
+    const hasCustomer = newCustomerMode ? !!newCustomerName.trim() && newCustomerPhone.trim().length >= 6 : !!customerId
     const hasDateInfo = isMultiPractitioner ? !!selectedSlot : !!date
 
     if (!hasCustomer || !serviceId || !hasDateInfo) {
       setError(
         newCustomerMode
-          ? 'Completează numele, serviciul și data. Telefonul este opțional.'
+          ? 'Completează numele, telefonul, serviciul și data.'
           : isMultiPractitioner
             ? `Completează ${isClinic ? 'pacient' : 'client'}, serviciu, persoană și oră.`
             : `Completează ${isClinic ? 'pacient' : 'client'}, serviciu și dată.`
@@ -547,7 +547,7 @@ function NewBookingForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...(newCustomerMode
-            ? { customerName: newCustomerName.trim(), customerPhone: newCustomerPhone.trim() || undefined }
+            ? { customerName: newCustomerName.trim(), customerPhone: newCustomerPhone.trim() }
             : { customerId }),
           serviceId,
           practitionerId: isMultiPractitioner ? practitionerId : undefined,
@@ -588,7 +588,7 @@ function NewBookingForm({
             <div className="flex flex-col gap-2">
               <Input placeholder={isClinic ? 'Nume pacient' : 'Nume client'} value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} />
               <Input
-                placeholder="Telefon (opțional)"
+                placeholder="Telefon"
                 type="tel"
                 inputMode="tel"
                 value={newCustomerPhone}

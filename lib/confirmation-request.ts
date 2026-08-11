@@ -1,6 +1,7 @@
 import { sendWhatsAppButtons } from './channel-senders'
 
 export async function sendConfirmationRequest(booking: any): Promise<{ success: boolean; error?: string }> {
+  if (!booking.customer?.phone) return { success: false, error: 'Pacientul nu are un număr de telefon salvat.' }
   // reminder-ul merge mereu pe WhatsApp, indiferent pe ce canal a fost făcută
   // programarea inițial (bot, site sau introdusă manual de admin) — dacă avem telefon,
   // avem cum să trimitem
@@ -13,6 +14,7 @@ export async function sendConfirmationRequest(booking: any): Promise<{ success: 
     month: 'long',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
     timeZone: 'Europe/Bucharest',
   })
 
