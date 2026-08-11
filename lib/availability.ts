@@ -12,7 +12,9 @@ function gcd(a: number, b: number): number {
 // 30/60/90 => 30, doar 60 => 60, 45/60 => 15. O setare manuală poate
 // face grila mai rară, dar nu o poate fragmenta sub pasul util calculat.
 export function calculateAdaptiveSlotStep(durations: (number | null)[], configuredStep?: number | null): number {
-  const valid = durations.filter((value): value is number => Number.isInteger(value) && value > 0)
+  const valid = durations.filter(
+    (value): value is number => typeof value === 'number' && Number.isInteger(value) && value > 0
+  )
   const automatic = valid.length > 0 ? valid.reduce((current, value) => gcd(current, value)) : 30
   const safeAutomatic = Math.max(5, Math.min(automatic, 180))
   return configuredStep ? Math.max(configuredStep, safeAutomatic) : safeAutomatic
