@@ -38,14 +38,33 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> 
   NO_SHOW: 'danger',
 }
 
+function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: number; startTime: string; endTime: string }[], durationMinutes: number) {
+  if (!dateValue) return []
+  const weekday = new Date(`${dateValue}T12:00:00`).getDay()
+  const options: string[] = []
+  for (const range of workingHours.filter((item) => item.weekday === weekday)) {
+    const [startHour, startMinute] = range.startTime.split(':').map(Number)
+    const [endHour, endMinute] = range.endTime.split(':').map(Number)
+    let cursor = Math.ceil((startHour * 60 + startMinute) / 10) * 10
+    const end = endHour * 60 + endMinute
+    while (cursor + durationMinutes <= end) {
+      options.push(`${String(Math.floor(cursor / 60)).padStart(2, '0')}:${String(cursor % 60).padStart(2, '0')}`)
+      cursor += 10
+    }
+  }
+  return [...new Set(options)]
+}
+
 export default function BookingEditModal({
   booking,
   isClinic,
   onClose,
+  workingHours,
 }: {
   booking: BookingDetail
   isClinic: boolean
   onClose: () => void
+  workingHours: { weekday: number; startTime: string; endTime: string }[]
 }) {
   const router = useRouter()
   const [status, setStatus] = useState(booking.status)
@@ -85,6 +104,10 @@ export default function BookingEditModal({
   }
 
   const [startAt, setStartAt] = useState(formatDateInput(booking.startAt))
+  const selectedDate = startAt.split('T')[0] ?? ''
+  const selectedTime = startAt.split('T')[1] ?? ''
+  const durationMinutes = Math.max(1, Math.round((new Date(booking.endAt).getTime() - new Date(booking.startAt).getTime()) / 60000))
+  const availableTimes = buildWorkingTimeOptions(selectedDate, workingHours, durationMinutes)
 
   async function save() {
     setSaving(true)
@@ -92,6 +115,12 @@ export default function BookingEditModal({
     const durationMs = new Date(booking.endAt).getTime() - new Date(booking.startAt).getTime()
     const newStart = new Date(startAt)
     const newEnd = new Date(newStart.getTime() + durationMs)
+
+    if (!availableTimes.includes(selectedTime)) {
+      setError('Alege o oră din programul de lucru setat pentru această zi.')
+      setSaving(false)
+      return
+    }
 
     try {
       const res = await fetchWithTimeout(`/api/business/bookings/${booking.id}`, {
@@ -194,12 +223,28 @@ export default function BookingEditModal({
         <div className="flex flex-col gap-3">
           <div>
             <label className="text-sm text-gray-500 block mb-1.5">Data și ora</label>
-            <input
-              type="datetime-local"
-              value={startAt}
-              onChange={(e) => setStartAt(e.target.value)}
-              className="input-field w-full"
-            />
+            <div className="grid grid-cols-[1fr_120px] gap-2">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  const nextTimes = buildWorkingTimeOptions(e.target.value, workingHours, durationMinutes)
+                  setStartAt(e.target.value && nextTimes[0] ? `${e.target.value}T${nextTimes[0]}` : e.target.value)
+                }}
+                className="input-field w-full"
+                aria-label="Data programării"
+              />
+              <select
+                value={selectedTime}
+                onChange={(e) => setStartAt(selectedDate ? `${selectedDate}T${e.target.value}` : '')}
+                className="input-field w-full"
+                aria-label="Ora programării în format 24 de ore"
+              >
+                <option value="">Ora</option>
+                {availableTimes.map((time) => <option key={time} value={time}>{time}</option>)}
+              </select>
+            </div>
+            {availableTimes.length === 0 && <p className="text-xs text-amber-700 mt-1.5">Profilul nu are program de lucru în această zi.</p>}
           </div>
 
           <div>

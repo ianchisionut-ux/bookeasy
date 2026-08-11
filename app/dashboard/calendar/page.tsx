@@ -63,9 +63,10 @@ export default async function CalendarPage() {
       }))}
       minTime={minTime}
       maxTime={maxTime}
+      businessWorkingHours={(business?.workingHours ?? []).map((h) => ({ weekday: h.weekday, startTime: h.startTime, endTime: h.endTime }))}
       practitioners={practitioners.map((p) => {
         const range = computeMinMax(p.workingHours, minTime, maxTime)
-        return { id: p.id, name: p.name, minTime: range.minTime, maxTime: range.maxTime }
+        return { id: p.id, name: p.name, minTime: range.minTime, maxTime: range.maxTime, workingHours: p.workingHours.map((h) => ({ weekday: h.weekday, startTime: h.startTime, endTime: h.endTime })) }
       })}
     />
   )

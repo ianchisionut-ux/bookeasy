@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import { isIntervalBlocked } from '@/lib/availability'
+import { isIntervalBlocked, isWithinWorkingHours } from '@/lib/availability'
 import { getNextSequenceNumber } from '@/lib/booking-number'
 import { z } from 'zod'
 
@@ -40,6 +40,10 @@ export async function POST(req: NextRequest) {
 
   if (await isIntervalBlocked(businessId, startDate, endDate)) {
     return NextResponse.json({ error: 'Intervalul selectat este blocat pentru rezervări.' }, { status: 409 })
+  }
+
+  if (!(await isWithinWorkingHours(businessId, parsed.data.practitionerId, startDate, endDate))) {
+    return NextResponse.json({ error: 'Programarea trebuie să fie integral în programul de lucru setat.' }, { status: 409 })
   }
 
   // client existent (ales din listă) sau creat/regăsit pe loc, după numărul de telefon —

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import { isIntervalBlocked } from '@/lib/availability'
+import { isIntervalBlocked, isWithinWorkingHours } from '@/lib/availability'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -45,6 +45,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (await isIntervalBlocked(businessId, newStart, newEnd)) {
       return NextResponse.json({ error: 'Intervalul selectat este blocat pentru rezervări.' }, { status: 409 })
+    }
+
+    if (startAtActuallyChanged && !(await isWithinWorkingHours(businessId, owned.practitionerId, newStart, newEnd))) {
+      return NextResponse.json({ error: 'Programarea trebuie să fie integral în programul de lucru setat.' }, { status: 409 })
     }
   }
 

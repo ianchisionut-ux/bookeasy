@@ -65,6 +65,7 @@ export default function CalendarClient({
   blockedSlots,
   minTime,
   maxTime,
+  businessWorkingHours,
   practitioners,
 }: {
   category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
@@ -72,7 +73,8 @@ export default function CalendarClient({
   blockedSlots: BlockedSlot[]
   minTime: string
   maxTime: string
-  practitioners: { id: string; name: string; minTime: string; maxTime: string }[]
+  businessWorkingHours: { weekday: number; startTime: string; endTime: string }[]
+  practitioners: { id: string; name: string; minTime: string; maxTime: string; workingHours: { weekday: number; startTime: string; endTime: string }[] }[]
 }) {
   const isClinic = category === 'CLINICA'
   const router = useRouter()
@@ -372,11 +374,13 @@ export default function CalendarClient({
             } as BookingDetail
           }
           onClose={() => setSelected(null)}
+          workingHours={(practitioners.find((p) => p.id === selected.practitionerId)?.workingHours ?? businessWorkingHours)}
         />
       )}
 
       {showBookingModal && (
         <CalendarQuickBookingModal
+          businessWorkingHours={businessWorkingHours}
           onClose={() => setShowBookingModal(false)}
           onCreated={() => {
             setShowBookingModal(false)
@@ -398,7 +402,26 @@ function CalendarEventCard({ event }: { event: Event }) {
   </div>
 }
 
-function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPractitionerId }: { onClose: () => void; onCreated: () => void; initialStart?: Date; initialPractitionerId?: string }) {
+function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: number; startTime: string; endTime: string }[], durationMinutes: number) {
+  if (!dateValue) return []
+  const weekday = new Date(`${dateValue}T12:00:00`).getDay()
+  const ranges = workingHours.filter((range) => range.weekday === weekday)
+  const options: string[] = []
+  for (const range of ranges) {
+    const [startHour, startMinute] = range.startTime.split(':').map(Number)
+    const [endHour, endMinute] = range.endTime.split(':').map(Number)
+    let cursor = startHour * 60 + startMinute
+    const end = endHour * 60 + endMinute
+    cursor = Math.ceil(cursor / 10) * 10
+    while (cursor + durationMinutes <= end) {
+      options.push(`${String(Math.floor(cursor / 60)).padStart(2, '0')}:${String(cursor % 60).padStart(2, '0')}`)
+      cursor += 10
+    }
+  }
+  return [...new Set(options)]
+}
+
+function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPractitionerId, businessWorkingHours }: { onClose: () => void; onCreated: () => void; initialStart?: Date; initialPractitionerId?: string; businessWorkingHours: { weekday: number; startTime: string; endTime: string }[] }) {
   const [services, setServices] = useState<{ id: string; name: string; durationMin: number | null }[]>([])
   const [practitioners, setPractitioners] = useState<{ id: string; name: string }[]>([])
   const [isMultiPractitioner, setIsMultiPractitioner] = useState(false)
@@ -419,11 +442,8 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
   })
   const simpleDate = simpleDateTime.split('T')[0] ?? ''
   const simpleTime = simpleDateTime.split('T')[1] ?? ''
-  const tenMinuteTimes = Array.from({ length: 24 * 6 }, (_, index) => {
-    const hour = Math.floor(index / 6)
-    const minute = (index % 6) * 10
-    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-  })
+  const selectedServiceDuration = services.find((service) => service.id === serviceId)?.durationMin ?? 30
+  const tenMinuteTimes = buildWorkingTimeOptions(simpleDate, businessWorkingHours, selectedServiceDuration)
   const [daySlots, setDaySlots] = useState<{ time: string; available: boolean }[]>([])
   const [selectedSlot, setSelectedSlot] = useState('')
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -465,6 +485,10 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
     }
     if (isMultiPractitioner && !practitionerId) {
       setError('Alege persoana.')
+      return
+    }
+    if (!isMultiPractitioner && !tenMinuteTimes.includes(simpleTime)) {
+      setError('Alege o oră din programul de lucru setat pentru această zi.')
       return
     }
 

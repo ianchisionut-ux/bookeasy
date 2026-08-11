@@ -65,6 +65,33 @@ export async function isIntervalBlocked(businessId: string, start: Date, end: Da
   return isRangeBlocked(businessId, start, end)
 }
 
+// Validare comună pentru programările manuale și mutările din dashboard.
+// Intervalul trebuie să încapă integral în programul zilei profilului selectat.
+export async function isWithinWorkingHours(
+  businessId: string,
+  practitionerId: string | null | undefined,
+  start: Date,
+  end: Date
+): Promise<boolean> {
+  const dateParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short',
+  }).formatToParts(start)
+  const part = (type: string) => dateParts.find((item) => item.type === type)?.value ?? ''
+  const weekdayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+  const weekday = weekdayMap[part('weekday')]
+  const localDate = new Date(`${part('year')}-${part('month')}-${part('day')}T00:00:00Z`)
+
+  const ranges = practitionerId
+    ? await prisma.practitionerWorkingHours.findMany({ where: { practitionerId, weekday } })
+    : await prisma.workingHours.findMany({ where: { businessId, weekday } })
+
+  return ranges.some((range) => {
+    const rangeStart = combineDateAndTime(localDate, range.startTime)
+    const rangeEnd = combineDateAndTime(localDate, range.endTime)
+    return start >= rangeStart && end <= rangeEnd
+  })
+}
+
 // verifică dacă un moment e prea aproape de acum, față de limita minimă a business-ului —
 // folosită la crearea și la anularea rezervărilor venite din exterior (bot, site public).
 // Rezervările făcute manual de admin din dashboard NU folosesc această funcție — el știe
@@ -83,7 +110,8 @@ export async function getPractitionerDaySlotsWithStatus(
   serviceId: string,
   practitionerId: string,
   date: Date,
-  ignoreLeadTime = false
+  ignoreLeadTime = false,
+  stepOverride?: number
 ): Promise<{ time: string; available: boolean }[]> {
   const service = await prisma.service.findUnique({ where: { id: serviceId } })
   if (!service || service.type !== 'APPOINTMENT') return []
@@ -110,7 +138,7 @@ export async function getPractitionerDaySlotsWithStatus(
   }
 
   const duration = service.durationMin ?? 30
-  const step = business?.slotIntervalMinutes ?? duration
+  const step = stepOverride ?? business?.slotIntervalMinutes ?? duration
   const minLeadMs = ignoreLeadTime ? 0 : (business?.minLeadTimeMinutes ?? 120) * 60 * 1000
   const earliestAllowed = new Date(Date.now() + minLeadMs)
   const result: { time: string; available: boolean }[] = []
