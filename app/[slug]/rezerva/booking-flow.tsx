@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { CalendarDays, Check, Clock3, ShieldCheck, UserRound } from 'lucide-react'
 
 type Service = {
   id: string
@@ -199,36 +199,48 @@ export default function BookingFlow({
 
   if (done) {
     return (
-      <Card>
-        <h2 className="text-lg font-semibold mb-1">{category === 'CLINICA' ? 'Programare confirmată! 🎉' : 'Rezervare confirmată! 🎉'}</h2>
-        <p className="text-sm text-gray-600">Te așteptăm — vei primi confirmarea și pe telefonul indicat.</p>
-      </Card>
+      <div className="py-10 text-center">
+        <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full text-white shadow-lg" style={{ background: accentColor }}><Check size={28} /></div>
+        <h2 className="text-2xl font-semibold">{category === 'CLINICA' ? 'Programare confirmată!' : 'Rezervare confirmată!'}</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">Te așteptăm — vei primi confirmarea și pe telefonul indicat.</p>
+        <a href={`/${businessSlug}`} className="btn-secondary mt-6 inline-flex">Înapoi la pagina afacerii</a>
+      </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="min-w-0 max-w-full overflow-hidden flex flex-col gap-6 sm:gap-7">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: accentColor }}>Rezervare rapidă</p>
+        <h2 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">Alege detaliile programării</h2>
+        <div className="mt-4 grid min-w-0 grid-cols-3 gap-1.5 sm:mt-5 sm:gap-2">
+          <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[10px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: service ? accentSoftColor : 'var(--surface-muted)', color: service ? accentColor : '#8b91a0' }}><CalendarDays size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">Serviciu</span></div>
+          <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[10px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: selectedSlot ? accentSoftColor : 'var(--surface-muted)', color: selectedSlot ? accentColor : '#8b91a0' }}><Clock3 size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">Data și ora</span></div>
+          <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[10px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: name.trim() && phone.trim().length >= 6 ? accentSoftColor : 'var(--surface-muted)', color: name.trim() && phone.trim().length >= 6 ? accentColor : '#8b91a0' }}><UserRound size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">Datele tale</span></div>
+        </div>
+      </div>
       {/* Alege serviciul */}
       <div>
         <h2 className="font-semibold mb-3">{isAppointment ? 'Alege serviciul' : 'Alege sala/pachetul'}</h2>
-        <div className="flex flex-col gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
           {services.map((s) => {
             const active = service?.id === s.id
             return (
               <button
                 key={s.id}
                 onClick={() => selectService(s)}
-                className="text-left p-3.5 rounded-2xl border transition"
+                className="relative min-w-0 max-w-full rounded-xl border p-3 pr-10 text-left transition hover:-translate-y-0.5 hover:shadow-md sm:min-h-[82px] sm:rounded-2xl sm:p-4 sm:pr-10"
                 style={{
                   borderColor: active ? accentColor : 'var(--border-soft)',
                   background: active ? accentSoftColor : 'white',
                 }}
               >
-                <p className="font-medium">{s.name}</p>
+                <p className="break-words text-sm font-medium sm:text-base">{s.name}</p>
                 <p className="text-sm text-gray-500 mt-0.5">
                   {isAppointment && s.durationMin ? `${s.durationMin} min · ` : ''}
                   {s.price ? `${s.price} lei` : ''}
                 </p>
+                {active && <span className="absolute right-3 top-3 grid h-5 w-5 place-items-center rounded-full text-white" style={{ background: accentColor }}><Check size={12} /></span>}
               </button>
             )
           })}
@@ -273,7 +285,7 @@ export default function BookingFlow({
           >
             ‹
           </button>
-          <div ref={daysScrollRef} className="flex gap-2 overflow-x-auto no-scrollbar pb-1 scroll-smooth">
+          <div ref={daysScrollRef} className="min-w-0 flex-1 flex gap-2 overflow-x-auto no-scrollbar pb-1 scroll-smooth">
             {days.map((d) => {
               const active = toDateParam(d) === toDateParam(selectedDate)
               const dayName = d.toLocaleDateString('ro-RO', { weekday: 'short', timeZone: 'Europe/Bucharest' })
@@ -368,10 +380,11 @@ export default function BookingFlow({
       {/* Detaliile tale */}
       <div>
         <h2 className="font-semibold mb-3">Detaliile tale</h2>
-        <div className="flex flex-col gap-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           <Input placeholder="Numele tău" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="Telefon" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
+        <p className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-400"><ShieldCheck size={13} /> Primești confirmarea la numărul introdus.</p>
       </div>
 
       {/* Plată, dacă e cazul */}
@@ -400,14 +413,17 @@ export default function BookingFlow({
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <Button
-        onClick={submitBooking}
-        disabled={submitting}
-        className="w-full py-3.5 text-base"
-        style={{ background: accentColor, borderColor: accentColor }}
-      >
-        {submitting ? 'Se trimite...' : category === 'CLINICA' ? 'Confirmă programarea' : 'Confirmă rezervarea'}
-      </Button>
+      <div className="sticky bottom-3 z-10 rounded-2xl border border-white/80 bg-white/90 p-2.5 shadow-xl backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+        {service && selectedSlot && <p className="mb-2 text-center text-xs text-gray-500">{service.name} · {new Date(selectedSlot).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })}</p>}
+        <Button
+          onClick={submitBooking}
+          disabled={submitting}
+          className="mx-auto block w-auto min-w-[220px] px-6 py-2.5 text-sm sm:w-full sm:py-3.5 sm:text-base"
+          style={{ background: '#14142b', borderColor: '#14142b' }}
+        >
+          {submitting ? 'Se trimite...' : category === 'CLINICA' ? 'Confirmă programarea' : 'Confirmă rezervarea'}
+        </Button>
+      </div>
     </div>
   )
 }

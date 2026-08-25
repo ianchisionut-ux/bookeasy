@@ -5,7 +5,7 @@ import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
 import { ro } from 'date-fns/locale'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
@@ -89,13 +89,30 @@ export default function CalendarClient({
   const customerPlural = isClinic ? 'pacienți' : 'clienți'
   const customerSingular = isClinic ? 'pacient' : 'client'
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [selected, setSelected] = useState<Event | null>(null)
   const [view, setView] = useState<any>(Views.WEEK)
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
   const [busy, setBusy] = useState(false)
   const [calendarRevision, setCalendarRevision] = useState(0)
-  const [practitionerFilter, setPractitionerFilter] = useState<string>(practitioners.length > 1 ? 'all' : practitioners[0]?.id ?? '')
+  const [practitionerFilter, setPractitionerFilter] = useState<string>(() => {
+    const requestedPractitioner = searchParams.get('medic')
+    if (requestedPractitioner && practitioners.some((practitioner) => practitioner.id === requestedPractitioner)) {
+      return requestedPractitioner
+    }
+    return practitioners.length > 1 ? 'all' : practitioners[0]?.id ?? ''
+  })
   const [search, setSearch] = useState('')
+
+  function changePractitionerFilter(value: string) {
+    setPractitionerFilter(value)
+    const params = new URLSearchParams(searchParams.toString())
+    if (value && value !== 'all') params.set('medic', value)
+    else params.delete('medic')
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }
 
   const visibleEvents = useMemo(() => events.filter((e) => {
     const practitionerMatch = practitioners.length === 0 || practitionerFilter === 'all' || e.practitionerId === practitionerFilter
@@ -288,7 +305,7 @@ export default function CalendarClient({
           {practitioners.length > 0 && (
             <select
               value={practitionerFilter}
-              onChange={(e) => setPractitionerFilter(e.target.value)}
+              onChange={(e) => changePractitionerFilter(e.target.value)}
               className="input-field text-sm py-1.5"
               aria-label="Filtrează după persoană"
             >

@@ -58,6 +58,8 @@ export default function SettingsForm({
   const [break2Enabled, setBreak2Enabled] = useState(!!business.break2Start)
   const [break3Enabled, setBreak3Enabled] = useState(!!business.break3Start)
   const [saving, setSaving] = useState(false)
+  const [savingBotBooking, setSavingBotBooking] = useState(false)
+  const [botBookingError, setBotBookingError] = useState('')
   const [savedAt, setSavedAt] = useState<string | null>(null)
   const [geocoded, setGeocoded] = useState(false)
 
@@ -114,6 +116,32 @@ export default function SettingsForm({
       }
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function toggleBotBooking() {
+    if (savingBotBooking) return
+    const previous = form.botBookingEnabled
+    const enabled = !previous
+    setForm((current) => ({ ...current, botBookingEnabled: enabled }))
+    setSavingBotBooking(true)
+    setBotBookingError('')
+
+    try {
+      const response = await fetch('/api/business/settings/bot-booking', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      })
+      if (!response.ok) throw new Error('save_failed')
+      const data = await response.json()
+      setForm((current) => ({ ...current, botBookingEnabled: data.enabled }))
+      setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' }))
+    } catch {
+      setForm((current) => ({ ...current, botBookingEnabled: previous }))
+      setBotBookingError('Setarea nu a putut fi salvată. Încearcă din nou.')
+    } finally {
+      setSavingBotBooking(false)
     }
   }
 
@@ -258,8 +286,8 @@ export default function SettingsForm({
           <option value="60">Din oră în oră</option>
         </select>
         <p className="text-xs text-gray-400 mt-2">
-          Automat, BookEasy combină duratele serviciilor profilului pentru a reduce golurile. O valoare manuală
-          poate face orele mai rare, dar sistemul nu va fragmenta programul sub pasul util al serviciilor.
+          Automat, BookEasy folosește durata celui mai scurt serviciu activ. O valoare manuală se aplică exact
+          așa cum este aleasă, în calendarul individual, modul echipă și programările online.
         </p>
       </Card>
 
@@ -286,17 +314,14 @@ export default function SettingsForm({
       <Card className="mb-5 break-inside-avoid">
         <h2 className="font-medium mb-1">Reconfirmare {usesAppointments ? 'programări' : 'rezervări'} pe WhatsApp</h2>
         <p className="text-sm text-gray-500">
-          Orice {usesAppointments ? 'programare' : 'rezervare'} nouă intră în sistem ca <strong>"În așteptare"</strong> — {isClinic ? 'pacientul' : 'clientul'} primește
-          automat, cu o zi înainte, la ora <strong>16:00</strong>, un mesaj cu detaliile {usesAppointments ? 'programării' : 'rezervării'} și
-          butoane de confirmare/anulare. Devine "Confirmată" abia după ce apasă. Mai primește și un
-          reminder scurt, cu 1 oră înainte de {usesAppointments ? 'programare' : 'rezervare'}, în ziua respectivă. Fix, nu e configurabil.
+          WhatsApp este folosit numai când apeși manual <strong>„Cere reconfirmare”</strong> din lista de {usesAppointments ? 'programări' : 'rezervări'}. {isClinic ? 'Pacientul' : 'Clientul'} primește un singur mesaj cu butoanele Confirmă și Anulează. Botul conversațional și reminder-ele automate WhatsApp sunt dezactivate.
         </p>
       </Card>
 
       <Card className="mb-5 break-inside-avoid">
-        <h2 className="font-medium mb-1">Tăcere bot după cerere de operator</h2>
+        <h2 className="font-medium mb-1">Tăcere bot Instagram/Facebook după cerere de operator</h2>
         <p className="text-sm text-gray-500 mb-3">
-          Când un client apasă "Operator" în conversația de pe WhatsApp/Messenger, botul nu mai
+          Când un client apasă "Operator" în conversația de pe Instagram/Messenger, botul nu mai
           răspunde deloc pentru acest interval — ca să poți prelua tu conversația fără suprapuneri.
           După ce trece timpul, botul revine automat la răspunsuri normale.
         </p>
@@ -316,17 +341,21 @@ export default function SettingsForm({
       <Card className="mb-5 break-inside-avoid">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-medium">{usesAppointments ? 'Programare' : 'Rezervare'} direct în conversație (bot)</h2>
+            <h2 className="font-medium">{usesAppointments ? 'Programare' : 'Rezervare'} direct în Instagram/Facebook (bot)</h2>
             <p className="text-sm text-gray-500 mt-0.5">
               Dacă e oprit, opțiunea "{usesAppointments ? 'Fă o programare' : 'Fă o rezervare'}" dispare din meniul de start al botului —
               rămân doar "Vorbește cu un operator" și "Vezi pagina de rezervare". Util dacă vrei ca
-              toate {usesAppointments ? 'programările' : 'rezervările'} din WhatsApp/Messenger să treacă prin pagina publică, nu prin bot.
+              toate {usesAppointments ? 'programările' : 'rezervările'} din Instagram/Messenger să treacă prin pagina publică, nu prin bot.
             </p>
           </div>
           <button
-            onClick={() => setForm({ ...form, botBookingEnabled: !form.botBookingEnabled })}
+            type="button"
+            onClick={toggleBotBooking}
+            disabled={savingBotBooking}
+            aria-pressed={form.botBookingEnabled}
+            aria-label="Programare directă în conversație"
             className="pill w-11 h-6 flex items-center px-0.5 transition shrink-0 ml-4"
-            style={{ background: form.botBookingEnabled ? 'var(--accent)' : '#e5e5ea' }}
+            style={{ background: form.botBookingEnabled ? 'var(--accent)' : '#e5e5ea', opacity: savingBotBooking ? 0.65 : 1 }}
           >
             <span
               className="pill w-5 h-5 bg-white transition-transform"
@@ -334,6 +363,9 @@ export default function SettingsForm({
             />
           </button>
         </div>
+        <p className={`mt-2 text-xs ${botBookingError ? 'text-red-600' : 'text-green-600'}`}>
+          {botBookingError || (savingBotBooking ? 'Se salvează...' : `Setarea este ${form.botBookingEnabled ? 'activă' : 'dezactivată'}.`)}
+        </p>
       </Card>
 
       <Card className="mb-5 break-inside-avoid">

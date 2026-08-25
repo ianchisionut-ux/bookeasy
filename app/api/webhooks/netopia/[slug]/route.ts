@@ -91,6 +91,9 @@ async function processNetopiaResult(rawBody: string, status: number, businessId:
     data: { depositPaid: true, status: booking.status === 'PENDING' ? 'CONFIRMED' : booking.status },
   })
 
+  // WhatsApp rămâne rezervat exclusiv cererii manuale de reconfirmare.
+  if (booking.channel === 'WHATSAPP') return
+
   const channel = booking.business.channels.find((c) => c.type === booking.channel && c.status === 'ACTIVE')
   if (!channel) return
 

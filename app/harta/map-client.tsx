@@ -70,8 +70,8 @@ export default function MapClient() {
   useEffect(() => {
     if (!loaded || !mapRef.current || mapInstance.current) return
     mapInstance.current = new window.google.maps.Map(mapRef.current, {
-      center: { lat: 46.1667, lng: 21.3167 }, // centru aprox. Cluj-Napoca
-      zoom: 7,
+      center: { lat: 45.9432, lng: 24.9668 }, // fallback: centrul României, până vin afacerile
+      zoom: 6,
       // fără mapId — folosim randarea clasică raster, cea mai compatibilă,
       // fără să depindă de un Map ID creat separat în Google Cloud Console
     })
@@ -84,11 +84,11 @@ export default function MapClient() {
   useEffect(() => {
     if (!loaded || !mapRef.current) return
 
-    const center = { lat: 46.1667, lng: 21.3167 }
     const observer = new ResizeObserver(() => {
       if (!mapInstance.current) return
+      const currentCenter = mapInstance.current.getCenter()
       window.google.maps.event.trigger(mapInstance.current, 'resize')
-      mapInstance.current.setCenter(center)
+      if (currentCenter) mapInstance.current.setCenter(currentCenter)
     })
     observer.observe(mapRef.current)
 
@@ -114,7 +114,11 @@ export default function MapClient() {
 
     const infoWindow = new window.google.maps.InfoWindow()
 
-    businesses.forEach((b) => {
+    const validBusinesses = businesses.filter(
+      (b) => Number.isFinite(b.latitude) && Number.isFinite(b.longitude) && Math.abs(b.latitude) <= 90 && Math.abs(b.longitude) <= 180,
+    )
+
+    validBusinesses.forEach((b) => {
       const marker = new window.google.maps.Marker({
         position: { lat: b.latitude, lng: b.longitude },
         map: mapInstance.current,
@@ -144,6 +148,23 @@ export default function MapClient() {
 
       markersRef.current.push(marker)
     })
+
+    // Vizualizarea implicită este derivată exclusiv din afacerile afișate.
+    // Un singur punct primește zoom local; mai multe puncte sunt încadrate împreună.
+    if (validBusinesses.length === 1) {
+      mapInstance.current.setCenter({ lat: validBusinesses[0].latitude, lng: validBusinesses[0].longitude })
+      mapInstance.current.setZoom(13)
+    } else if (validBusinesses.length > 1) {
+      const bounds = new window.google.maps.LatLngBounds()
+      validBusinesses.forEach((b) => bounds.extend({ lat: b.latitude, lng: b.longitude }))
+      mapInstance.current.fitBounds(bounds, 64)
+      window.google.maps.event.addListenerOnce(mapInstance.current, 'idle', () => {
+        if ((mapInstance.current?.getZoom() ?? 0) > 13) mapInstance.current.setZoom(13)
+      })
+    } else {
+      mapInstance.current.setCenter({ lat: 45.9432, lng: 24.9668 })
+      mapInstance.current.setZoom(6)
+    }
   }, [businesses, loaded])
 
   return (

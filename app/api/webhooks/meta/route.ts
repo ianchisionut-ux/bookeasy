@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { processIncomingMessage } from '@/lib/bot-engine'
+import { syncBookingToGoogle } from '@/lib/google-calendar'
 
 export async function GET(req: NextRequest) {
   const mode = req.nextUrl.searchParams.get('hub.mode')
@@ -45,27 +46,49 @@ async function handleWhatsAppEntry(entry: any) {
   const message = value?.messages?.[0]
   if (!message) return
 
-  // Meta poate livra același eveniment de mai multe ori — dacă am mai procesat deja
-  // acest ID de mesaj, ignorăm complet, ca botul să nu avanseze conversația de 2 ori
+  // Botul conversațional WhatsApp este dezactivat. Procesăm exclusiv răspunsurile
+  // la cererile de reconfirmare trimise manual din BookEasy.
+  const action = message.interactive?.button_reply?.id ?? ''
+  const match = /^(REMINDER_CONFIRM|REMINDER_CANCEL)_(.+)$/.exec(action)
+  if (!match) return
   if (message.id && !(await markMessageProcessed(message.id))) return
 
-  const phoneNumberId = value.metadata.phone_number_id
+  const phoneNumberId = value.metadata?.phone_number_id
+  if (!phoneNumberId) return
   const channel = await prisma.channel.findUnique({
     where: { type_externalId: { type: 'WHATSAPP', externalId: phoneNumberId } },
   })
   if (!channel) return
 
-  await processIncomingMessage({
-    businessId: channel.businessId,
-    channel: 'WHATSAPP',
-    externalUserId: message.from,
-    // dacă a apăsat pe o opțiune din listă, folosim ID-ul acelei opțiuni direct —
-    // altfel, textul scris de mână
-    text: message.interactive?.list_reply?.id ?? message.interactive?.button_reply?.id ?? message.text?.body ?? extractNonTextContent(message),
-    channelId: channel.id,
+  const bookingId = match[2]
+  const booking = await prisma.booking.findFirst({
+    where: { id: bookingId, businessId: channel.businessId },
   })
-}
+  if (!booking) return
 
+  if (match[1] === 'REMINDER_CONFIRM') {
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { status: 'CONFIRMED', customerConfirmed: true, confirmationSeenByAdmin: false },
+    })
+  } else {
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { status: 'CANCELLED', customerConfirmed: false, confirmationSeenByAdmin: false },
+    })
+  }
+
+  await prisma.chatMessage.create({
+    data: {
+      businessId: channel.businessId,
+      channel: 'WHATSAPP',
+      externalUserId: message.from,
+      direction: 'IN',
+      text: match[1] === 'REMINDER_CONFIRM' ? 'A confirmat programarea' : 'A anulat programarea',
+    },
+  })
+  await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync WhatsApp reconfirmation:', error))
+}
 async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') {
   const messaging = entry.messaging?.[0]
   // apăsarea pe un buton de carousel vine ca "postback", nu ca "message" — trebuie

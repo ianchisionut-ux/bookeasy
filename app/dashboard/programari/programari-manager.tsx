@@ -120,7 +120,6 @@ export default function ProgramariManager({
   const router = useRouter()
   const searchParams = useSearchParams()
   const [adding, setAdding] = useState(searchParams.get('add') === '1')
-  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null)
   const [sendingConfirmId, setSendingConfirmId] = useState<string | null>(null)
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortAsc, setSortAsc] = useState(true)
@@ -184,23 +183,6 @@ export default function ProgramariManager({
     }
   }
 
-  async function sendReminder(id: string) {
-    setSendingReminderId(id)
-    try {
-      const res = await fetchWithTimeout(`/api/business/bookings/${id}/send-reminder`, { method: 'POST' })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert(data.error ?? 'Nu am putut trimite reminder-ul.')
-        return
-      }
-      alert('Reminder trimis pe WhatsApp!')
-    } catch {
-      alert('Conexiune eșuată. Încearcă din nou.')
-    } finally {
-      setSendingReminderId(null)
-    }
-  }
-
   async function sendConfirmationRequest(id: string) {
     setSendingConfirmId(id)
     try {
@@ -210,7 +192,8 @@ export default function ProgramariManager({
         alert(data.error ?? 'Nu am putut trimite cererea de confirmare.')
         return
       }
-      alert('Cerere de confirmare trimisă — clientul poate confirma sau anula direct din WhatsApp.')
+      alert('Cerere de reconfirmare trimisă — clientul poate confirma sau anula direct din WhatsApp.')
+      router.refresh()
     } catch {
       alert('Conexiune eșuată. Încearcă din nou.')
     } finally {
@@ -272,22 +255,13 @@ export default function ProgramariManager({
           </div>
         </td>
         <td className="pr-5 text-right whitespace-nowrap">
-          {b.status === 'PENDING' && (
+          {b.status === 'PENDING' && !b.confirmationRequestSent && (
             <button
               onClick={() => sendConfirmationRequest(b.id)}
               disabled={sendingConfirmId === b.id}
               className="text-xs text-[var(--accent)] font-medium mr-3"
             >
               {sendingConfirmId === b.id ? 'Se trimite...' : 'Cere reconfirmare'}
-            </button>
-          )}
-          {b.status === 'CONFIRMED' && (
-            <button
-              onClick={() => sendReminder(b.id)}
-              disabled={sendingReminderId === b.id}
-              className="text-xs text-[var(--accent)] font-medium mr-3"
-            >
-              {sendingReminderId === b.id ? 'Se trimite...' : 'Reminder'}
             </button>
           )}
           {b.status !== 'CANCELLED' && (

@@ -1,23 +1,18 @@
 import { prisma } from './prisma'
 import { addMinutes } from 'date-fns'
 
-function gcd(a: number, b: number): number {
-  let x = Math.abs(a)
-  let y = Math.abs(b)
-  while (y) [x, y] = [y, x % y]
-  return x
-}
-
-// Grila automată folosește cel mai mare divizor comun al duratelor active.
-// 30/60/90 => 30, doar 60 => 60, 45/60 => 15. O setare manuală poate
-// face grila mai rară, dar nu o poate fragmenta sub pasul util calculat.
+// Regula globală pentru grila automată este durata celui mai scurt serviciu
+// activ. Nu folosim CMMDC-ul duratelor: 45 și 50 de minute ar produce un pas
+// artificial de 5 minute, deși niciun serviciu nu este atât de scurt.
+// Dacă administratorul alege o valoare manuală, aceasta este un override exact
+// și se aplică identic în calendar, echipă, pagina publică și mesaje.
 export function calculateAdaptiveSlotStep(durations: (number | null)[], configuredStep?: number | null): number {
   const valid = durations.filter(
     (value): value is number => typeof value === 'number' && Number.isInteger(value) && value > 0
   )
-  const automatic = valid.length > 0 ? valid.reduce((current, value) => gcd(current, value)) : 30
+  const automatic = valid.length > 0 ? Math.min(...valid) : 30
   const safeAutomatic = Math.max(5, Math.min(automatic, 180))
-  return configuredStep ? Math.max(configuredStep, safeAutomatic) : safeAutomatic
+  return configuredStep ?? safeAutomatic
 }
 
 // bookeasy.ro funcționează cu o singură gestiune per salon (fără angajați multipli) —

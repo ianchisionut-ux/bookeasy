@@ -15,6 +15,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const conversation = await prisma.conversation.findUnique({ where: { id } })
   if (!conversation || conversation.businessId !== businessId) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
+  if (conversation.channel === 'WHATSAPP') {
+    return NextResponse.json({ error: 'Mesajele WhatsApp sunt dezactivate; este disponibilă numai reconfirmarea programărilor.' }, { status: 410 })
+  }
+
   const body = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Scrie un mesaj.' }, { status: 400 })

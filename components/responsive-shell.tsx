@@ -119,9 +119,9 @@ export function ResponsiveShell({
     .sort((a, b) => b.href.length - a.href.length)[0]?.href
 
   return (
-    <div className={`min-h-screen bg-[var(--surface-muted)] lg:grid transition-[grid-template-columns] ${sidebarCollapsed ? 'lg:grid-cols-[76px_1fr]' : 'lg:grid-cols-[188px_1fr]'}`}>
+    <div className={`app-shell-theme min-h-screen lg:grid transition-[grid-template-columns] ${sidebarCollapsed ? 'lg:grid-cols-[76px_1fr]' : 'lg:grid-cols-[188px_1fr]'}`}>
       {/* header mobil, doar sub lg */}
-      <div className="lg:hidden sticky top-0 z-40 border-b border-[var(--border-soft)] screen-only" style={{ background: accentColor ? softTint : 'white' }}>
+      <div className="lg:hidden sticky top-0 z-40 border-b border-white/70 bg-white/90 backdrop-blur-xl screen-only">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href={logoHref} className="flex items-center gap-2">
             <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={24} height={24} />
@@ -149,7 +149,7 @@ export function ResponsiveShell({
                 className="shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition flex items-center gap-1.5"
                 style={
                   active
-                    ? { background: accent, color: 'white' }
+                    ? { background: '#14142b', color: 'white', boxShadow: '0 8px 18px -10px rgba(20,20,43,.65)' }
                     : { background: 'var(--surface-muted)', color: 'var(--foreground)' }
                 }
               >
@@ -183,7 +183,7 @@ export function ResponsiveShell({
       )}
 
       {/* sidebar fix, doar de la lg in sus */}
-      <aside className="hidden lg:flex flex-col gap-1 p-3" style={{ background: softTint }}>
+      <aside className="app-shell-sidebar hidden lg:flex flex-col gap-1 p-3" style={{ '--sidebar-tint': softTint } as React.CSSProperties}>
         <button onClick={() => setSidebarCollapsed(v => !v)} className="self-start ml-1 w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/70" aria-label={sidebarCollapsed ? 'Extinde meniul' : 'Restrânge meniul'}>{sidebarCollapsed ? <PanelLeftOpen size={17}/> : <PanelLeftClose size={17}/>}</button>
         {!sidebarCollapsed && profileName && <p className="font-semibold text-base px-3 mb-1 truncate">{profileName}</p>}
         {!sidebarCollapsed && <SidebarClock />}
@@ -194,10 +194,10 @@ export function ResponsiveShell({
             <Link
               key={item.href}
               href={item.href}
-              className="px-3 py-2.5 rounded-xl text-sm font-medium transition flex items-center gap-2.5 border-l-[3px]"
+              className="flex items-center gap-2.5 rounded-xl border-l-[3px] px-3 py-2.5 text-sm font-medium transition"
               style={
                 active
-                  ? { background: 'white', boxShadow: 'var(--shadow-card)', borderLeftColor: accent, color: accent }
+                  ? { background: '#14142b', color: 'white', borderLeftColor: accent, boxShadow: '0 9px 22px -12px rgba(20,20,43,.7)' }
                   : { color: 'var(--foreground-muted, #4b5563)', borderLeftColor: 'transparent' }
               }
             >
@@ -219,7 +219,7 @@ export function ResponsiveShell({
         {!sidebarCollapsed && accountContent}
       </aside>
 
-      <main className="min-w-0">{children}</main>
+      <main className="app-shell-content min-w-0">{children}</main>
     </div>
   )
 }

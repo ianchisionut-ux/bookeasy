@@ -89,7 +89,7 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[var(--surface-muted)] px-6">
+    <main className="themed-static-bg min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
         <Link href="/">
           <Image src="/logo.png" alt="bookeasy.ro" width={200} height={133} priority className="w-[160px] h-auto" />

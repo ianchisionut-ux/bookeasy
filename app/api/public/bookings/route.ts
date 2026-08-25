@@ -14,7 +14,6 @@ import { venueServiceId } from '@/lib/venue-services'
 import { getNextSequenceNumber } from '@/lib/booking-number'
 import { syncBookingToGoogle } from '@/lib/google-calendar'
 import { createDepositCheckoutLink } from '@/lib/payments/create-checkout'
-import { sendMessage } from '@/lib/channel-senders'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { z } from 'zod'
 
@@ -176,43 +175,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // rezervarea pornește "În așteptare" — trimitem și un mesaj pe WhatsApp cu detaliile,
-  // dacă businessul are canalul conectat. AȘTEPTĂM explicit trimiterea (nu fire-and-forget):
-  // pe Vercel serverless, o promisiune neasteptată poate fi întreruptă înainte să se termine,
-  // chiar dacă răspunsul a fost deja trimis către client — mesajul n-ar mai pleca niciodată.
-  // Nu blocăm însă rezervarea dacă trimiterea eșuează — doar logăm eroarea.
-  try {
-    await sendWebBookingConfirmation(booking.id)
-  } catch (err: any) {
-    console.error('Eroare la trimiterea confirmării pe WhatsApp pentru rezervarea de pe site:', err?.message ?? err)
-  }
 
   return NextResponse.json({ bookingId: booking.id, checkoutUrl: null })
 }
 
-async function sendWebBookingConfirmation(bookingId: string) {
-  const booking = await prisma.booking.findUnique({
-    where: { id: bookingId },
-    include: { customer: true, service: true, business: { include: { channels: true } } },
-  })
-  if (!booking || !booking.customer.phone) return
-
-  const whatsappChannel = booking.business.channels.find((c) => c.type === 'WHATSAPP' && c.status === 'ACTIVE' && c.enabledByOwner)
-  if (!whatsappChannel) return
-
-  const dateTime = booking.startAt.toLocaleString('ro-RO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'Europe/Bucharest',
-  })
-
-  // rezervarea e "În așteptare" până la reconfirmarea din ziua precedentă — mesajul
-  // reflectă asta exact, nu mai spune "confirmată" ca să nu inducă în eroare clientul
-  const text = `Am înregistrat programarea ta la ${booking.business.name}: ${booking.service.name}, pe ${dateTime}. Îți trimitem o cerere de confirmare cu o zi înainte.`
-
-  await sendMessage({ channel: 'WHATSAPP', channelId: whatsappChannel.id, to: booking.customer.phone, text })
-}

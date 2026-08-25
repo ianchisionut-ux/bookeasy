@@ -14,7 +14,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
   if (business?.onboardingDone) redirect('/dashboard')
 
   return (
-    <main className="min-h-screen bg-[var(--surface-muted)] flex flex-col items-center px-6 py-10">
+    <main className="themed-static-bg min-h-screen flex flex-col items-center px-6 py-10">
       <Link href="/" className="flex items-center gap-2 mb-8">
         <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={28} height={28} />
         <span className="font-semibold">bookeasy.ro</span>

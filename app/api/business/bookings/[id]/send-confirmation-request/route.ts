@@ -16,6 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!booking || booking.businessId !== businessId) return NextResponse.json({ error: 'not found' }, { status: 404 })
   if (!booking.customer.phone) return NextResponse.json({ error: 'Pacientul nu are un număr de telefon salvat.' }, { status: 400 })
+  if (booking.confirmationRequestSent) return NextResponse.json({ error: 'Reconfirmarea a fost deja trimisă pentru această programare.' }, { status: 409 })
 
   const result = await sendConfirmationRequest(booking)
   if (!result.success) {

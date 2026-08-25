@@ -46,7 +46,7 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[var(--surface-muted)] px-6">
+    <main className="themed-static-bg min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
         <Link href="/" className="flex items-center gap-2">
           <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={32} height={32} />

@@ -21,6 +21,11 @@ type Template = { id: string; title: string; text: string }
 
 const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', INSTAGRAM: 'Instagram', FACEBOOK: 'Messenger' }
 
+function splitOperatorPrefix(text: string) {
+  const match = text.match(/^\*([^*:\n]{1,60}):\*\s*/)
+  return match ? { operator: match[1].trim(), text: text.slice(match[0].length) } : { operator: null, text }
+}
+
 export default function InboxManager({ businessId, isClinic, isAppointmentBased }: { businessId: string; isClinic: boolean; isAppointmentBased: boolean }) {
   const operatorNameKey = `bookeasy_operator_name_${businessId}`
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
@@ -97,6 +102,10 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
 
   async function sendReply() {
     if (!selectedId || !draft.trim()) return
+    if (!operatorName.trim()) {
+      alert('Completează numele operatorului înainte să trimiți răspunsul.')
+      return
+    }
     setSending(true)
     try {
       const res = await fetchWithTimeout(`/api/business/conversations/${selectedId}/reply`, {
@@ -159,9 +168,10 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
           <input
             value={operatorName}
             onChange={(e) => updateOperatorName(e.target.value)}
-            placeholder={`Numele tău (apare la ${isClinic ? 'pacient' : 'client'})`}
+            placeholder="Numele operatorului"
             className="input-field text-sm w-full"
           />
+          <p className="mt-1 text-[10px] text-gray-400">Apare înaintea mesajelor trimise către {isClinic ? 'pacient' : 'client'}.</p>
         </div>
         <div className="flex-1 overflow-y-auto">
           {loadingList ? (
@@ -181,7 +191,10 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
                   {c.needsOperator && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 ml-2 animate-pulse" />}
                 </div>
                 <p className="text-xs text-gray-500 truncate pr-5">
-                  {c.lastMessage ? `${c.lastMessage.direction === 'OUT' ? 'Tu: ' : ''}${c.lastMessage.text}` : ''}
+                  {c.lastMessage ? (() => {
+                    const parsed = splitOperatorPrefix(c.lastMessage.text)
+                    return `${c.lastMessage.direction === 'OUT' ? `${parsed.operator ?? 'BookEasy'}: ` : ''}${parsed.text}`
+                  })() : ''}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">{CHANNEL_LABEL[c.channel]}</p>
                 <span
@@ -232,8 +245,16 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
               ) : messages.length === 0 ? (
                 <p className="text-sm text-gray-400">Nimic de-arătat încă — conversația a pornit de la cererea de operator.</p>
               ) : (
-                messages.map((m) => (
+                messages.map((m) => {
+                  const parsed = splitOperatorPrefix(m.text)
+                  const sender = m.direction === 'IN'
+                    ? `${isClinic ? 'Pacient' : 'Client'}: ${selected.customerName ?? selected.externalUserId}`
+                    : parsed.operator
+                      ? `Operator: ${parsed.operator}`
+                      : 'BookEasy · mesaj automat'
+                  return (
                   <div key={m.id} className={`max-w-[75%] ${m.direction === 'OUT' ? 'self-end' : 'self-start'}`}>
+                    <p className={`mb-1 px-1 text-[10px] font-semibold ${m.direction === 'OUT' ? 'text-right text-[var(--accent-hover)]' : 'text-gray-500'}`}>{sender}</p>
                     <div
                       className="rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap"
                       style={
@@ -242,13 +263,14 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
                           : { background: 'var(--surface-muted)' }
                       }
                     >
-                      {m.text}
+                      {parsed.text}
                     </div>
                     <p className="text-[10px] text-gray-400 mt-0.5 px-1">
                       {new Date(m.createdAt).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })}
                     </p>
                   </div>
-                ))
+                  )
+                })
               )}
               <div ref={bottomRef} />
             </div>
@@ -299,6 +321,7 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
                 isClinic={isClinic}
                 isAppointmentBased={isAppointmentBased}
                 conversation={selected}
+                operatorName={operatorName}
                 onClose={() => setShowBookingModal(false)}
                 onCreated={() => {
                   setShowBookingModal(false)
@@ -315,12 +338,14 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
 
 function QuickBookingModal({
   conversation,
+  operatorName,
   isClinic,
   isAppointmentBased,
   onClose,
   onCreated,
 }: {
   conversation: ConversationSummary
+  operatorName: string
   isClinic: boolean
   isAppointmentBased: boolean
   onClose: () => void
@@ -441,7 +466,7 @@ function QuickBookingModal({
       await fetchWithTimeout(`/api/business/conversations/${conversation.id}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: detailsText }),
+        body: JSON.stringify({ text: detailsText, operatorName: operatorName.trim() || undefined }),
       }).catch(() => {})
 
       onCreated()

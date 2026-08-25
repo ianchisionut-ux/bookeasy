@@ -122,6 +122,19 @@ export async function runBotStep({
 
   const isMultiPractitioner = business.teamSize > 1
 
+  // Setarea este o regulă globală, inclusiv pentru conversațiile care erau deja
+  // în mijlocul unei programări când administratorul a dezactivat opțiunea.
+  // SELECTING_SERVICE fără serviceOptions reprezintă meniul principal și rămâne
+  // activ pentru opțiunile Operator și Programare pe site.
+  const isActiveBotBooking =
+    currentState.step !== 'IDLE' &&
+    currentState.step !== 'OPERATOR_SILENCE' &&
+    !(currentState.step === 'SELECTING_SERVICE' && !currentState.serviceOptions)
+
+  if (!business.botBookingEnabled && isActiveBotBooking) {
+    return showWelcome(business.name, business.slug, false)
+  }
+
   switch (currentState.step) {
     case 'IDLE': {
       return showWelcome(business.name, business.slug, business.botBookingEnabled)

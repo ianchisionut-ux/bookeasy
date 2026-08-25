@@ -15,6 +15,9 @@ export async function processIncomingMessage(params: {
   text: string
   channelId: string
 }) {
+  // Protecție definitivă: webhook-ul WhatsApp nu poate porni botul conversațional.
+  if (params.channel === 'WHATSAPP') return
+
   try {
     await handleIncomingMessage(params)
   } catch (err: any) {

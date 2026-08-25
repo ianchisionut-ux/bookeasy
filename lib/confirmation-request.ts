@@ -28,7 +28,6 @@ export async function sendConfirmationRequest(booking: any): Promise<{ success: 
 
   const options = [
     { id: `REMINDER_CONFIRM_${booking.id}`, title: 'Confirmă programarea' },
-    { id: `REMINDER_RESCHEDULE_${booking.id}`, title: 'Programare în altă zi' },
     { id: `REMINDER_CANCEL_${booking.id}`, title: 'Anulează programarea' },
   ]
 

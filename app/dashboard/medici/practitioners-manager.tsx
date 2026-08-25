@@ -118,7 +118,14 @@ export default function PractitionersManager({
           <CardInteractive key={p.id} onClick={() => setExpandedId(expandedId === p.id ? null : p.id)} className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">{p.name}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium">{p.name}</p>
+                  {p.googleCalendar && (
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.googleCalendar.lastError ? 'bg-red-50 text-red-600' : p.googleCalendar.syncEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {p.googleCalendar.lastError ? 'Google necesită atenție' : p.googleCalendar.syncEnabled ? 'Google conectat' : 'Google oprit'}
+                    </span>
+                  )}
+                </div>
                 {p.specialization && <p className="text-sm text-gray-500">{p.specialization}</p>}
               </div>
               <div className="flex items-center gap-3">
@@ -348,8 +355,18 @@ function PractitionerDetail({
         </div>
       )}
 
-      <div className="rounded-xl border border-[var(--border-soft)] p-4">
-        <p className="text-sm font-medium mb-1">Google Calendar</p>
+      <section className="border-t border-[var(--border-soft)] pt-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold">Google Calendar</p>
+            <p className="text-xs text-gray-400">Sincronizarea acestui {practitioner.name ? 'profil' : 'medic'} cu propriul calendar</p>
+          </div>
+          {practitioner.googleCalendar && (
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${practitioner.googleCalendar.lastError ? 'bg-red-50 text-red-600' : syncEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+              {practitioner.googleCalendar.lastError ? 'Necesită atenție' : syncEnabled ? 'Activ' : 'Oprit'}
+            </span>
+          )}
+        </div>
         {!practitioner.googleCalendar ? (
           <>
             <p className="text-xs text-gray-500 mb-3">Programările vor apărea automat într-un calendar separat, numai pentru vizualizare. BookEasy rămâne sursa oficială.</p>
@@ -364,12 +381,12 @@ function PractitionerDetail({
             {practitioner.googleCalendar.lastSyncAt && !practitioner.googleCalendar.lastError && <p className="text-xs text-emerald-600">Sincronizat: {new Date(practitioner.googleCalendar.lastSyncAt).toLocaleString('ro-RO')}</p>}
             <div className="flex flex-wrap gap-2">
               <Button onClick={updateCalendarSettings} disabled={calendarBusy}>Salvează setările</Button>
-              <button className="text-sm px-3" onClick={syncCalendar} disabled={calendarBusy}>Sincronizează programările existente</button>
+              <Button variant="secondary" onClick={syncCalendar} disabled={calendarBusy}>Sincronizează acum</Button>
               <button className="text-sm px-3 text-red-600" onClick={disconnectCalendar} disabled={calendarBusy}>Deconectează</button>
             </div>
           </div>
         )}
-      </div>
+      </section>
 
       <Button onClick={save} disabled={saving} className="self-start">
         {saving ? 'Se salvează...' : 'Salvează modificările'}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { MessageCircle, X, CheckCircle2, Clock } from 'lucide-react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
@@ -74,11 +75,14 @@ export function SupportChatPanel({ open, onClose }: { open: boolean; onClose: ()
 
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end bg-black/20 sm:bg-transparent" onClick={close}>
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/25 p-0 sm:items-center sm:justify-end sm:bg-black/10 sm:p-5" onClick={close}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:w-96 sm:mr-5 sm:mb-5 p-5 max-h-[80vh] flex flex-col"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Suport tehnic BookEasy"
+        className="flex max-h-[85dvh] w-full min-w-0 flex-col rounded-t-2xl bg-white p-4 shadow-2xl sm:max-h-[80vh] sm:w-96 sm:max-w-[calc(100vw-2.5rem)] sm:rounded-2xl sm:p-5"
       >
         <div className="flex items-center justify-between mb-3 shrink-0">
           <h2 className="font-semibold">Suport bookeasy</h2>
@@ -154,7 +158,8 @@ export function SupportChatPanel({ open, onClose }: { open: boolean; onClose: ()
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
