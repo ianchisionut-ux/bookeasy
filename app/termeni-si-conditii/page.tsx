@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LegalPage } from '@/components/ui/legal-page'
+import { company } from '@/lib/company'
 
 export const metadata: Metadata = {
   title: 'Termeni și condiții | BookEasy',
@@ -9,12 +10,18 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Termeni și condiții" updatedAt="11 august 2026">
+    <LegalPage title="Termeni și condiții" updatedAt="25 august 2026">
       <p>
         Acești termeni reglementează accesul și utilizarea platformei BookEasy. Prin crearea unui cont, conectarea
         unei integrări sau efectuarea unei programări, confirmi că ai citit și accepți condițiile aplicabile.
       </p>
 
+      <h2>Furnizorul platformei</h2>
+      <p>
+        BookEasy este furnizat de <strong>{company.legalName}</strong>, cu sediul social în{' '}
+        {company.registeredAddress}, CUI {company.cui}, nr. Registrul Comerțului {company.tradeRegistryNumber},
+        având ca activitate principală {company.mainActivity} (CAEN {company.caen}).
+      </p>
       <h2>1. Serviciul BookEasy</h2>
       <p>
         BookEasy oferă instrumente pentru administrarea programărilor, disponibilității, clienților, mesajelor,

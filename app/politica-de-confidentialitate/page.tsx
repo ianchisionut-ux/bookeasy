@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LegalPage } from '@/components/ui/legal-page'
+import { company } from '@/lib/company'
 
 export const metadata: Metadata = {
   title: 'Politica de confidențialitate | BookEasy',
@@ -9,12 +10,18 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Politica de confidențialitate" updatedAt="11 august 2026">
+    <LegalPage title="Politica de confidențialitate" updatedAt="25 august 2026">
       <p>
         Această politică explică modul în care platforma BookEasy („BookEasy”, „noi”) prelucrează datele
         persoanelor care folosesc site-ul, solicită acces, administrează o afacere sau efectuează o programare.
       </p>
 
+      <h2>Operatorul platformei</h2>
+      <p>
+        Platforma BookEasy este operată de <strong>{company.legalName}</strong>, cu sediul social în{' '}
+        {company.registeredAddress}, CUI {company.cui}, înregistrată la Registrul Comerțului sub nr.{' '}
+        {company.tradeRegistryNumber}. Activitatea principală: {company.mainActivity}, CAEN {company.caen}.
+      </p>
       <h2>1. Rolurile privind datele</h2>
       <p>
         Pentru datele necesare administrării platformei, securității și relației contractuale, BookEasy acționează
