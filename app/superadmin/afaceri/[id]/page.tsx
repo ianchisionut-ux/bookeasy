@@ -49,6 +49,8 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
           billingStatus: business.billingStatus,
           billingNote: business.billingNote,
         }}
+        metaAppId={process.env.META_APP_ID ?? ''}
+        metaWhatsappConfigId={process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ?? ''}
         channels={business.channels.map((c) => ({
           id: c.id,
           type: c.type,

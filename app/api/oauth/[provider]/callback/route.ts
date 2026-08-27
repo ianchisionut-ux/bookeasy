@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { encrypt } from '@/lib/crypto'
+import { auth } from '@/lib/auth'
+import { verifyOAuthState } from '@/lib/oauth-state'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { provider: providerRaw } = await params
@@ -8,13 +10,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     return NextResponse.json({ error: 'invalid provider' }, { status: 400 })
   }
   const provider = providerRaw as 'google' | 'meta'
+  const session = await auth()
+  if (!session) return NextResponse.redirect(new URL('/login', req.url))
+
   const code = req.nextUrl.searchParams.get('code')
   const stateRaw = req.nextUrl.searchParams.get('state')
   if (!code || !stateRaw) {
     return NextResponse.redirect(`${process.env.APP_URL}/dashboard/canale?error=missing_code`)
   }
 
-  const { businessId, redirectTo } = JSON.parse(Buffer.from(stateRaw, 'base64url').toString())
+  const state = verifyOAuthState(stateRaw, provider)
+  if (!state) return NextResponse.redirect(process.env.APP_URL + '/dashboard/canale?error=invalid_state')
+  const { businessId, redirectTo } = state
+  if (!(session as any).isSuperAdmin && (session as any).businessId !== businessId) {
+    return NextResponse.redirect(process.env.APP_URL + '/dashboard/canale?error=forbidden_business')
+  }
   const redirectUri = `${process.env.APP_URL}/api/oauth/${provider}/callback`
 
   const tokenRes = await fetch(
@@ -34,17 +44,33 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     }
   )
   const tokenData = await tokenRes.json()
+  if (!tokenRes.ok || !tokenData.access_token) {
+    const message = tokenData.error?.message ?? 'Meta nu a returnat tokenul de acces.'
+    return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
+  }
 
   if (provider === 'meta') {
     const longLived = await fetch(
       `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.META_APP_ID}&client_secret=${process.env.META_APP_SECRET}&fb_exchange_token=${tokenData.access_token}`
     ).then((r) => r.json())
 
-    const pages = await fetch(`https://graph.facebook.com/v21.0/me/accounts?access_token=${longLived.access_token}`).then((r) =>
+    const pages = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&access_token=${longLived.access_token}`).then((r) =>
       r.json()
     )
 
+    if (longLived.error || pages.error || !pages.data?.length) {
+      const message = longLived.error?.message ?? pages.error?.message ?? 'Nu a fost selectată nicio Pagină Facebook.'
+      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
+    }
+
     for (const page of pages.data ?? []) {
+      const subscription = await fetch(`https://graph.facebook.com/v21.0/${page.id}/subscribed_apps?subscribed_fields=messages,messaging_postbacks,message_deliveries,message_reads&access_token=${page.access_token}`, { method: 'POST' })
+      const subscriptionData = await subscription.json()
+      if (!subscription.ok || subscriptionData.error) {
+        const message = subscriptionData.error?.message ?? 'Abonarea paginii la webhook a eșuat.'
+        return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
+      }
+
       await prisma.channel.upsert({
         where: { type_externalId: { type: 'FACEBOOK', externalId: page.id } },
         create: {
@@ -54,8 +80,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
           accessToken: encrypt(page.access_token),
           expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
         },
-        update: { accessToken: encrypt(page.access_token), status: 'ACTIVE' },
+        update: { businessId, accessToken: encrypt(page.access_token), status: 'ACTIVE', enabledByOwner: true },
       })
+
+      if (page.instagram_business_account?.id) {
+        await prisma.channel.upsert({
+          where: { type_externalId: { type: 'INSTAGRAM', externalId: page.instagram_business_account.id } },
+          create: {
+            businessId, type: 'INSTAGRAM', externalId: page.instagram_business_account.id,
+            accessToken: encrypt(page.access_token), expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+          },
+          update: { businessId, accessToken: encrypt(page.access_token), status: 'ACTIVE', enabledByOwner: true },
+        })
+      }
     }
   }
 

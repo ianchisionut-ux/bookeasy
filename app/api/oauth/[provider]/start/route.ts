@@ -1,6 +1,8 @@
 import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { signOAuthState } from '@/lib/oauth-state'
 
 const OAUTH_CONFIG = {
   google: {
@@ -12,8 +14,8 @@ const OAUTH_CONFIG = {
   meta: {
     authUrl: 'https://www.facebook.com/v21.0/dialog/oauth',
     clientId: process.env.META_APP_ID!,
-    scope: 'whatsapp_business_messaging,pages_messaging,instagram_manage_messages,pages_show_list',
-    extraParams: {},
+    scope: 'pages_show_list,pages_read_engagement,pages_manage_metadata,pages_messaging,instagram_basic,instagram_manage_messages',
+    extraParams: { auth_type: 'rerequest' },
   },
 } as const
 
@@ -32,15 +34,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   const targetBusinessId = req.nextUrl.searchParams.get('businessId')
   const isSuperAdmin = (session as any).isSuperAdmin
   const businessId = isSuperAdmin && targetBusinessId ? targetBusinessId : (session as any).businessId
+  if (!businessId || !(await prisma.business.findUnique({ where: { id: businessId }, select: { id: true } }))) {
+    return NextResponse.json({ error: 'Afacerea nu există.' }, { status: 404 })
+  }
 
   const config = OAUTH_CONFIG[provider]
   const redirectUri = `${process.env.APP_URL}/api/oauth/${provider}/callback`
 
   const redirectTo = isSuperAdmin && targetBusinessId ? `/superadmin/afaceri/${businessId}` : '/dashboard/canale'
 
-  const state = Buffer.from(
-    JSON.stringify({ businessId, redirectTo, nonce: crypto.randomUUID() })
-  ).toString('base64url')
+  const state = signOAuthState({ provider, businessId, redirectTo, nonce: crypto.randomUUID(), issuedAt: Date.now() })
 
   const url = new URL(config.authUrl)
   url.searchParams.set('client_id', config.clientId)
