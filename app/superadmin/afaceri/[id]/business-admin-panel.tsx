@@ -266,8 +266,8 @@ function IntegrationsCard({ businessId, channels, metaAppId, metaWhatsappConfigI
       <h2 className="text-xs font-semibold text-gray-500 tracking-wide mb-3">INTEGRĂRI</h2>
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 mb-4">
         <p className="text-sm font-medium text-blue-950">Înrolare asistată Meta</p>
-        <p className="text-xs text-blue-800 mt-1 mb-3">Clientul se conectează cu propriul cont Meta și selectează numai pagina afacerii sale. Messenger și Instagram se salvează automat.</p>
-        <a href={'/api/oauth/meta/start?businessId=' + businessId} className="btn-secondary inline-flex text-sm">Autorizează Messenger + Instagram</a>
+        <p className="text-xs text-blue-800 mt-1 mb-3">Clientul se conectează cu propriul cont Meta și selectează numai pagina afacerii sale. Messenger se configurează și se abonează automat.</p>
+        <a href={'/api/oauth/meta/start?businessId=' + businessId} className="btn-secondary inline-flex text-sm">Autorizează Messenger</a>
       </div>
       <div className="flex gap-1.5 mb-4 flex-wrap">
         {tabs.map((t) => {

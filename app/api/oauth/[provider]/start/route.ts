@@ -14,7 +14,7 @@ const OAUTH_CONFIG = {
   meta: {
     authUrl: 'https://www.facebook.com/v21.0/dialog/oauth',
     clientId: process.env.META_APP_ID!,
-    scope: 'pages_show_list,pages_read_engagement,pages_manage_metadata,pages_messaging,instagram_basic,instagram_manage_messages',
+    scope: 'pages_show_list,pages_manage_metadata,pages_messaging',
     extraParams: { auth_type: 'rerequest' },
   },
 } as const

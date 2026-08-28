@@ -54,7 +54,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
       `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.META_APP_ID}&client_secret=${process.env.META_APP_SECRET}&fb_exchange_token=${tokenData.access_token}`
     ).then((r) => r.json())
 
-    const pages = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&access_token=${longLived.access_token}`).then((r) =>
+    const pages = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token&access_token=${longLived.access_token}`).then((r) =>
       r.json()
     )
 
@@ -83,16 +83,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
         update: { businessId, accessToken: encrypt(page.access_token), status: 'ACTIVE', enabledByOwner: true },
       })
 
-      if (page.instagram_business_account?.id) {
-        await prisma.channel.upsert({
-          where: { type_externalId: { type: 'INSTAGRAM', externalId: page.instagram_business_account.id } },
-          create: {
-            businessId, type: 'INSTAGRAM', externalId: page.instagram_business_account.id,
-            accessToken: encrypt(page.access_token), expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-          },
-          update: { businessId, accessToken: encrypt(page.access_token), status: 'ACTIVE', enabledByOwner: true },
-        })
-      }
     }
   }
 
