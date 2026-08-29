@@ -245,7 +245,7 @@ export default function BusinessAdminPanel({ business, channels, metaAppId, meta
       {/* Coloana dreaptă — integrări unificate, plată */}
       <div className="flex flex-col gap-5">
         <IntegrationsCard businessId={business.id} channels={channels} metaAppId={metaAppId} metaWhatsappConfigId={metaWhatsappConfigId} />
-        <PaymentSection businessId={business.id} />
+        <PaymentSection businessId={business.id} businessSlug={business.slug} />
       </div>
     </div>
   )
@@ -532,7 +532,7 @@ function WhatsAppFields({ businessId, channel, metaAppId, configId }: { business
   )
 }
 
-function PaymentSection({ businessId }: { businessId: string }) {
+function PaymentSection({ businessId, businessSlug }: { businessId: string; businessSlug: string }) {
   const [processor, setProcessor] = useState<'STRIPE' | 'NETOPIA' | 'EUPLATESC' | ''>('')
   const [fields, setFields] = useState({
     stripeSecretKey: '',
@@ -616,7 +616,9 @@ function PaymentSection({ businessId }: { businessId: string }) {
             />
           </div>
           <p className="col-span-2 text-xs text-gray-400">
-            Cheile se iau din Stripe Dashboard → Developers → API keys.
+            Cheile se iau din Stripe Dashboard → Developers → API keys. Configurează evenimentul
+            <code className="mx-1">checkout.session.completed</code> către
+            <code className="ml-1 break-all">{`https://bookeasy.ro/api/webhooks/stripe/${businessSlug}`}</code>.
           </p>
         </div>
       )}
