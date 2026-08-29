@@ -24,10 +24,15 @@ export default async function CalendarPage() {
   })
 
   const isMultiPractitioner = (business?.teamSize ?? 1) > 1
+  const now = new Date()
+  const initialFrom = new Date(now)
+  initialFrom.setDate(initialFrom.getDate() - 45)
+  const initialTo = new Date(now)
+  initialTo.setDate(initialTo.getDate() + 75)
 
   const [bookings, blockedSlots, practitioners] = await Promise.all([
     prisma.booking.findMany({
-      where: { businessId, status: { not: 'CANCELLED' } },
+      where: { businessId, status: { not: 'CANCELLED' }, startAt: { gte: initialFrom, lte: initialTo } },
       include: { customer: true, service: true, practitioner: true },
       orderBy: { startAt: 'asc' },
     }),

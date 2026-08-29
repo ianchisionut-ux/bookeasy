@@ -194,6 +194,18 @@ export async function getAdvancedStats(businessId: string) {
 
   const periods = [7, 30, 90, 365] as const
   const result = {} as Record<AnalyticsPeriod, AdvancedPeriodStats & { bookingChange: number; revenueChange: number }>
+  const hourFormatter = new Intl.DateTimeFormat('ro-RO', { hour: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
+  const weekdayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'Europe/Bucharest' })
+  const weekdayIndex = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 } as Record<string, number>
+  // Calculul fusului orar este relativ costisitor. Îl facem o singură dată per
+  // rezervare, nu din nou pentru fiecare perioadă (7/30/90/365 zile).
+  const localTimeByBooking = new Map(bookings.map((booking) => [
+    booking.id,
+    {
+      hour: Number(hourFormatter.format(booking.startAt)) % 24,
+      weekday: weekdayIndex[weekdayFormatter.format(booking.startAt)] ?? 0,
+    },
+  ]))
 
   for (const days of periods) {
     const from = startOfLocalDay(new Date(now.getTime() - (days - 1) * 86400000))
@@ -242,11 +254,9 @@ export async function getAdvancedStats(businessId: string) {
         const operator = operatorMap.get(operatorName) ?? { count: 0, revenue: 0 }
         operator.count += 1; operator.revenue += value; operatorMap.set(operatorName, operator)
       }
-      const hour = Number(new Intl.DateTimeFormat('ro-RO', { hour: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' }).format(booking.startAt)) % 24
-      byHour[hour].count += 1
-      const weekdayLabel = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'Europe/Bucharest' }).format(booking.startAt)
-      const weekday = ({ Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 } as Record<string, number>)[weekdayLabel] ?? 0
-      byDayOfWeek[weekday].count += 1
+      const localTime = localTimeByBooking.get(booking.id)!
+      byHour[localTime.hour].count += 1
+      byDayOfWeek[localTime.weekday].count += 1
     })
 
     const customers = new Set(active.map((booking) => booking.customerId))
