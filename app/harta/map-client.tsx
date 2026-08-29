@@ -34,6 +34,7 @@ const CATEGORY_COLOR: Record<string, string> = {
 }
 
 export default function MapClient() {
+  const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<any>(null)
   const markersRef = useRef<any[]>([])
@@ -41,9 +42,28 @@ export default function MapClient() {
   const [category, setCategory] = useState<'ALL' | 'SALON' | 'EVENT_VENUE' | 'CLINICA'>('ALL')
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState(false)
+  const [shouldLoad, setShouldLoad] = useState(false)
+
+  // Google Maps este una dintre cele mai grele resurse ale paginii. O încărcăm doar
+  // când utilizatorul se apropie de hartă, nu la primul paint al landing page-ului.
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return
+        setShouldLoad(true)
+        observer.disconnect()
+      },
+      { rootMargin: '300px' },
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
 
   // încarcă scriptul Google Maps o singură dată
   useEffect(() => {
+    if (!shouldLoad) return
     if (window.google?.maps) {
       setLoaded(true)
       return
@@ -64,7 +84,7 @@ export default function MapClient() {
     return () => {
       delete window.gm_authFailure
     }
-  }, [])
+  }, [shouldLoad])
 
   // inițializează harta după ce s-a încărcat scriptul
   useEffect(() => {
@@ -97,13 +117,14 @@ export default function MapClient() {
 
   // fetch businesses ori de câte ori se schimbă filtrul
   useEffect(() => {
+    if (!shouldLoad) return
     const params = new URLSearchParams()
     if (category !== 'ALL') params.set('category', category)
 
     fetch(`/api/businesses/map?${params}`)
       .then((r) => r.json())
       .then((data) => setBusinesses(data.businesses ?? []))
-  }, [category])
+  }, [category, shouldLoad])
 
   // reafișează markerele de fiecare dată când se schimbă lista de businessuri
   useEffect(() => {
@@ -168,7 +189,7 @@ export default function MapClient() {
   }, [businesses, loaded])
 
   return (
-    <div className="flex flex-col p-4 lg:p-6">
+    <div ref={containerRef} className="flex flex-col p-4 lg:p-6">
       <div className="px-4 py-3 border rounded-t-xl bg-white flex flex-wrap gap-2">
         <button
           onClick={() => setCategory('ALL')}
@@ -199,7 +220,9 @@ export default function MapClient() {
 
       <div className="relative h-[350px] sm:h-[450px] lg:h-[500px] rounded-b-xl overflow-hidden border border-t-0">
         {!loaded && !loadError && (
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500 bg-white z-10">Se încarcă harta...</div>
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500 bg-white z-10">
+            {shouldLoad ? 'Se încarcă harta...' : 'Harta se încarcă atunci când ajungi aici.'}
+          </div>
         )}
         {loadError && (
           <div className="absolute inset-0 flex flex-col items-center gap-4 text-sm text-gray-500 px-6 py-8 text-center overflow-y-auto bg-white z-10">
