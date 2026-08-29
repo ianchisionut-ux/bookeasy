@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isAuthorizedCronRequest } from '@/lib/cron-auth'
 import { prisma } from '@/lib/prisma'
 import { sendAlertEmail } from '@/lib/email'
 import { decrypt, encrypt } from '@/lib/crypto'
@@ -6,8 +7,7 @@ import { decrypt, encrypt } from '@/lib/crypto'
 const WARNING_WINDOW_DAYS = 5
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCronRequest(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 

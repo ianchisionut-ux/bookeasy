@@ -12,12 +12,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const businessId = (session as any)?.businessId
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  const { letterId } = await params
+  const { id: customerId, letterId } = await params
   const owned = await ownsLetter(letterId, businessId)
-  if (!owned) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!owned || owned.customerId !== customerId) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
   const body = await req.json()
-  const letter = await prisma.medicalLetter.update({ where: { id: letterId }, data: body })
+  // Relațiile și câmpurile de sistem nu pot fi mutate prin mass-assignment.
+  const {
+    id: _id,
+    businessId: _businessId,
+    business: _business,
+    customerId: _customerId,
+    customer: _customer,
+    createdAt: _createdAt,
+    updatedAt: _updatedAt,
+    ...data
+  } = body
+  const letter = await prisma.medicalLetter.update({ where: { id: letterId }, data })
   return NextResponse.json({ letter })
 }
 
@@ -26,9 +37,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const businessId = (session as any)?.businessId
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  const { letterId } = await params
+  const { id: customerId, letterId } = await params
   const owned = await ownsLetter(letterId, businessId)
-  if (!owned) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!owned || owned.customerId !== customerId) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
   await prisma.medicalLetter.delete({ where: { id: letterId } })
   return NextResponse.json({ success: true })

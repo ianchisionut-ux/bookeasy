@@ -55,7 +55,10 @@ export async function createDepositCheckoutLink(bookingId: string): Promise<stri
             quantity: 1,
           },
         ],
-        metadata: { bookingId: booking.id },
+        metadata: { bookingId: booking.id, businessId: business.id },
+        payment_intent_data: {
+          metadata: { bookingId: booking.id, businessId: business.id },
+        },
         success_url: `${process.env.APP_URL}/plata-confirmata`,
         cancel_url: `${process.env.APP_URL}/plata-anulata`,
       })
