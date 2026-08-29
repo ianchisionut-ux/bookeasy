@@ -23,6 +23,65 @@ const schema = z
     message: 'Alege un client existent sau completează numele și telefonul pentru unul nou.',
   })
 
+const rangeSchema = z.object({
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+})
+
+export async function GET(req: NextRequest) {
+  const session = await auth()
+  const businessId = (session as any)?.businessId
+  if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  const parsed = rangeSchema.safeParse({
+    from: req.nextUrl.searchParams.get('from'),
+    to: req.nextUrl.searchParams.get('to'),
+  })
+  if (!parsed.success) return NextResponse.json({ error: 'Interval invalid.' }, { status: 400 })
+
+  const from = new Date(parsed.data.from)
+  const to = new Date(parsed.data.to)
+  if (to <= from || to.getTime() - from.getTime() > 366 * 86400000) {
+    return NextResponse.json({ error: 'Intervalul solicitat este prea mare.' }, { status: 400 })
+  }
+
+  const bookings = await prisma.booking.findMany({
+    where: { businessId, status: { not: 'CANCELLED' }, startAt: { gte: from, lte: to } },
+    select: {
+      id: true,
+      startAt: true,
+      endAt: true,
+      status: true,
+      customerId: true,
+      practitionerId: true,
+      confirmationRequestSent: true,
+      customerConfirmed: true,
+      customer: { select: { name: true, phone: true } },
+      service: { select: { name: true } },
+      practitioner: { select: { name: true } },
+    },
+    orderBy: { startAt: 'asc' },
+  })
+
+  return NextResponse.json({
+    events: bookings.map((booking) => ({
+      id: booking.id,
+      title: `${booking.customer.name ?? booking.customer.phone} — ${booking.service.name}${booking.practitioner ? ` (${booking.practitioner.name})` : ''}`,
+      start: booking.startAt.toISOString(),
+      end: booking.endAt.toISOString(),
+      status: booking.status,
+      customerId: booking.customerId,
+      customerName: booking.customer.name ?? booking.customer.phone ?? 'Fără nume',
+      customerPhone: booking.customer.phone ?? '',
+      serviceName: booking.service.name,
+      practitionerId: booking.practitionerId,
+      practitionerName: booking.practitioner?.name ?? null,
+      confirmationRequestSent: booking.confirmationRequestSent,
+      customerConfirmed: booking.customerConfirmed,
+    })),
+  })
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

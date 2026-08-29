@@ -6,10 +6,11 @@ import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
 import { ro } from 'date-fns/locale'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
-import BookingEditModal, { BookingDetail } from '@/components/booking-edit-modal'
+import type { BookingDetail } from '@/components/booking-edit-modal'
 import { Lock, CheckCircle2, X, Search, Users, AlertTriangle, Clock3 } from 'lucide-react'
 import { PrintButton } from '@/components/print-button'
 
@@ -23,6 +24,9 @@ const localizer = dateFnsLocalizer({
 })
 
 const DnDCalendar = withDragAndDrop(Calendar) as any
+const BookingEditModal = dynamic(() => import('@/components/booking-edit-modal'), {
+  loading: () => null,
+})
 
 function getISOWeekNumber(date: Date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
@@ -94,6 +98,8 @@ export default function CalendarClient({
   const [selected, setSelected] = useState<Event | null>(null)
   const [view, setView] = useState<any>(Views.WEEK)
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
+  const [calendarEvents, setCalendarEvents] = useState<Event[]>(events)
+  const [loadingRange, setLoadingRange] = useState(false)
   const [busy, setBusy] = useState(false)
   const [calendarRevision, setCalendarRevision] = useState(0)
   const [practitionerFilter, setPractitionerFilter] = useState<string>(() => {
@@ -105,6 +111,43 @@ export default function CalendarClient({
   })
   const [search, setSearch] = useState('')
 
+  useEffect(() => {
+    setCalendarEvents((current) => {
+      const merged = new Map(current.map((event) => [event.id, event]))
+      events.forEach((event) => merged.set(event.id, event))
+      return Array.from(merged.values())
+    })
+  }, [events])
+
+  useEffect(() => {
+    const from = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
+    const to = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 1)
+    const controller = new AbortController()
+    setLoadingRange(true)
+    fetchWithTimeout(`/api/business/bookings?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`, {
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('range request failed')
+        const data = await response.json()
+        const incoming: Event[] = (data.events ?? []).map((event: Event & { start: string; end: string }) => ({
+          ...event,
+          start: new Date(event.start),
+          end: new Date(event.end),
+        }))
+        setCalendarEvents((current) => {
+          const merged = new Map(current.map((event) => [event.id, event]))
+          incoming.forEach((event) => merged.set(event.id, event))
+          return Array.from(merged.values())
+        })
+      })
+      .catch((error) => {
+        if (error?.name !== 'AbortError') console.error('[calendar] Nu am putut încărca intervalul:', error)
+      })
+      .finally(() => setLoadingRange(false))
+    return () => controller.abort()
+  }, [currentDate.getFullYear(), currentDate.getMonth()])
+
   function changePractitionerFilter(value: string) {
     setPractitionerFilter(value)
     const params = new URLSearchParams(searchParams.toString())
@@ -114,12 +157,12 @@ export default function CalendarClient({
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
   }
 
-  const visibleEvents = useMemo(() => events.filter((e) => {
+  const visibleEvents = useMemo(() => calendarEvents.filter((e) => {
     const practitionerMatch = practitioners.length === 0 || practitionerFilter === 'all' || e.practitionerId === practitionerFilter
     const query = search.trim().toLocaleLowerCase('ro')
     const searchMatch = !query || `${e.customerName} ${e.customerPhone} ${e.serviceName} ${e.practitionerName ?? ''}`.toLocaleLowerCase('ro').includes(query)
     return practitionerMatch && searchMatch
-  }), [events, practitionerFilter, practitioners.length, search])
+  }), [calendarEvents, practitionerFilter, practitioners.length, search])
   const [blockMode, setBlockMode] = useState(false)
   const [showBookingModal, setShowBookingModal] = useState(false)
 
@@ -253,7 +296,7 @@ export default function CalendarClient({
         return
       }
 
-      const conflict = events.some((candidate) => candidate.id !== event.id && candidate.practitionerId === event.practitionerId && new Date(start) < candidate.end && new Date(end) > candidate.start)
+      const conflict = calendarEvents.some((candidate) => candidate.id !== event.id && candidate.practitionerId === event.practitionerId && new Date(start) < candidate.end && new Date(end) > candidate.start)
       if (conflict) {
         alert(`Conflict detectat: ${isClinic ? 'medicul' : category === 'EVENT_VENUE' ? 'sala' : 'profilul'} are deja o ${bookingSingular} în acest interval.`)
         resetPosition()
@@ -292,7 +335,7 @@ export default function CalendarClient({
         resetPosition()
       }
     },
-    [router, events, isClinic, isAppointmentBased, bookingSingular, practitioners, activeBreaks]
+    [router, calendarEvents, isClinic, isAppointmentBased, bookingSingular, practitioners, activeBreaks]
   )
 
   return (
@@ -348,7 +391,7 @@ export default function CalendarClient({
           <button onClick={() => setShowBookingModal(true)} className="btn-primary text-sm whitespace-nowrap">
             + Adaugă {bookingSingular}
           </button>
-          {busy && <span className="text-xs text-gray-400">se actualizează...</span>}
+          {(busy || loadingRange) && <span className="text-xs text-gray-400">se actualizează...</span>}
         </div>
         {blockMode && (
           <p className="text-xs text-gray-500 mt-2">
