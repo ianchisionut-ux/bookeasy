@@ -20,23 +20,49 @@ type Message = { id: string; direction: 'IN' | 'OUT'; text: string; createdAt: s
 type Template = { id: string; title: string; text: string }
 
 const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', INSTAGRAM: 'Instagram', FACEBOOK: 'Messenger' }
-const QUICK_REPLIES = [
-  { label: '👋 Salut', text: 'Bună! Cu ce te pot ajuta?' },
-  { label: '⌛ În pregătire', text: 'Solicitarea ta este în pregătire. Revenim imediat cu detalii.' },
-  { label: '🙏 Scuze întârziere', text: 'Ne cerem scuze pentru întârziere și îți mulțumim pentru răbdare.' },
-  { label: '❌ Indisponibil', text: 'Din păcate, intervalul solicitat nu mai este disponibil. Îți pot propune o altă oră.' },
-  { label: '✅ Confirmat', text: 'Totul este confirmat. Te așteptăm!' },
-  { label: '💳 Plată', text: 'Îți trimit imediat detaliile pentru plată.' },
-  { label: '🔎 Verific', text: 'Verific disponibilitatea și revin imediat.' },
-  { label: '🙌 Mulțumim', text: 'Mulțumim! Te mai așteptăm cu drag.' },
-]
+type BusinessCategory = 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+
+function getQuickReplies(category: BusinessCategory) {
+  if (category === 'CLINICA') return [
+    { label: '👋 Salut', text: 'Bună ziua! Cu ce vă putem ajuta?' },
+    { label: '🔎 Verific medicul', text: 'Verific disponibilitatea medicului și revin imediat cu intervalele libere.' },
+    { label: '📅 Alte intervale', text: 'Intervalul solicitat nu mai este disponibil. Vă pot propune o altă oră pentru consultație.' },
+    { label: '✅ Confirmată', text: 'Programarea dumneavoastră este confirmată. Vă așteptăm la data și ora stabilite.' },
+    { label: '🪪 Documente', text: 'Vă rugăm să aveți la dumneavoastră actul de identitate și documentele medicale relevante.' },
+    { label: '⌛ Întârziere', text: 'Ne cerem scuze pentru întârziere. Medicul vă va prelua cât mai curând posibil.' },
+    { label: '🔁 Reprogramare', text: 'Sigur, vă putem ajuta cu reprogramarea. Ce zi sau interval orar preferați?' },
+    { label: '🙏 Mulțumim', text: 'Vă mulțumim! Multă sănătate și vă mai așteptăm.' },
+  ]
+
+  if (category === 'EVENT_VENUE' || category === 'HOTEL' || category === 'PENSIUNE') return [
+    { label: '👋 Salut', text: 'Bună ziua! Cu ce detalii despre rezervare vă putem ajuta?' },
+    { label: '🔎 Verific data', text: 'Verific disponibilitatea locației pentru data solicitată și revin imediat.' },
+    { label: '📅 Data ocupată', text: 'Din păcate, data solicitată nu mai este disponibilă. Vă putem propune date alternative.' },
+    { label: '✅ Rezervată', text: 'Rezervarea este confirmată pentru data stabilită. Vă mulțumim!' },
+    { label: '👥 Detalii eveniment', text: 'Pentru o ofertă exactă, ne puteți spune data, numărul estimat de persoane și tipul evenimentului?' },
+    { label: '💳 Avans', text: 'Pentru confirmarea rezervării este necesar avansul. Vă trimit imediat detaliile de plată.' },
+    { label: '📍 Vizionare', text: 'Putem stabili o vizionare a locației. Ce zi și ce interval orar vă sunt potrivite?' },
+    { label: '🙏 Mulțumim', text: 'Vă mulțumim pentru interes! Rămânem la dispoziția dumneavoastră.' },
+  ]
+
+  return [
+    { label: '👋 Salut', text: 'Bună! Cu ce te putem ajuta?' },
+    { label: '🔎 Verific', text: 'Verific disponibilitatea specialistului și revin imediat cu orele libere.' },
+    { label: '📅 Altă oră', text: 'Ora solicitată nu mai este disponibilă. Îți pot propune un alt interval.' },
+    { label: '✅ Confirmată', text: 'Programarea ta este confirmată. Te așteptăm!' },
+    { label: '✂️ Ce serviciu?', text: 'Pentru ce serviciu dorești programarea și ce zi ți-ar fi potrivită?' },
+    { label: '⌛ Întârziere', text: 'Ne cerem scuze pentru întârziere și îți mulțumim pentru răbdare.' },
+    { label: '🔁 Reprogramare', text: 'Sigur, te ajutăm cu reprogramarea. Ce zi sau interval orar preferi?' },
+    { label: '🙏 Mulțumim', text: 'Mulțumim! Te mai așteptăm cu drag.' },
+  ]
+}
 
 function splitOperatorPrefix(text: string) {
   const match = text.match(/^\*([^*:\n]{1,60}):\*\s*/)
   return match ? { operator: match[1].trim(), text: text.slice(match[0].length) } : { operator: null, text }
 }
 
-export default function InboxManager({ businessId, isClinic, isAppointmentBased }: { businessId: string; isClinic: boolean; isAppointmentBased: boolean }) {
+export default function InboxManager({ businessId, category, isClinic, isAppointmentBased }: { businessId: string; category: BusinessCategory; isClinic: boolean; isAppointmentBased: boolean }) {
   const operatorNameKey = `bookeasy_operator_name_${businessId}`
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [loadingList, setLoadingList] = useState(true)
@@ -50,6 +76,7 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
   const [showTemplates, setShowTemplates] = useState(false)
   const [showBookingModal, setShowBookingModal] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const quickReplies = getQuickReplies(category)
 
   useEffect(() => {
     setOperatorName(localStorage.getItem(operatorNameKey) ?? '')
@@ -314,7 +341,7 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
             )}
 
             <div className="border-t border-[var(--border-soft)] bg-white px-3 py-2 flex gap-2 overflow-x-auto no-scrollbar">
-              {QUICK_REPLIES.map((reply) => (
+              {quickReplies.map((reply) => (
                 <button key={reply.label} onClick={() => setDraft(reply.text)} className="shrink-0 rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] transition">
                   {reply.label}
                 </button>

@@ -11,5 +11,5 @@ export default async function MesajePage() {
   const business = await prisma.business.findUnique({ where: { id: businessId }, select: { category: true } })
   const isClinic = business?.category === 'CLINICA'
   const isAppointmentBased = business?.category === 'SALON' || isClinic
-  return <InboxManager businessId={businessId} isClinic={isClinic} isAppointmentBased={isAppointmentBased} />
+  return <InboxManager businessId={businessId} category={business?.category ?? 'SALON'} isClinic={isClinic} isAppointmentBased={isAppointmentBased} />
 }
