@@ -339,7 +339,7 @@ export default function CalendarClient({
   )
 
   return (
-    <div className="h-[calc(100vh-56px)] lg:h-screen p-3 lg:p-5 flex flex-col">
+    <div className="calendar-page h-[calc(100vh-56px)] lg:h-screen p-3 lg:p-5 flex flex-col">
       <div className="mb-3 screen-only calendar-commandbar">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-xl lg:text-2xl font-semibold mr-1">Calendar {bookingPlural}</h1>
@@ -400,7 +400,7 @@ export default function CalendarClient({
         )}
       </div>
       {search && visibleEvents.length === 0 && <div className="mb-2 text-sm text-amber-700 flex items-center gap-2"><AlertTriangle size={15}/> Nu există {bookingPlural} care corespund căutării.</div>}
-      <div className="card printable p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
+      <div className="calendar-print-sheet card printable p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
         <DnDCalendar
           key={`${practitionerFilter}-${calendarRevision}`}
           localizer={localizer}

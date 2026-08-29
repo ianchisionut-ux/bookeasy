@@ -342,62 +342,105 @@ body {
 .print-only {
   display: none;
 }
-@media print {
-  .screen-only {
-    display: none !important;
-  }
-  .print-only {
-    display: block !important;
-  }
-  /* calendarul e construit cu înălțime de ecran (100vh) — la print lăsăm conținutul
-     să curgă natural pe pagină, altfel s-ar tăia din ce nu încape în fereastra vizibilă */
-  [class*='h-[calc(100vh'] {
-    height: auto !important;
-  }
-  /* react-big-calendar calculează înălțimile vizualizărilor Lună/Agendă cu JavaScript,
-     la randare pe ecran — la print acele înălțimi rămân "înghețate" la 0, deci grila
-     apare goală. Forțăm layout natural, pe conținut, doar la print */
-  .rbc-month-view,
-  .rbc-time-view,
-  .rbc-agenda-view {
-    height: auto !important;
-    overflow: visible !important;
-  }
-  .rbc-month-row {
-    flex: none !important;
-    min-height: 90px !important;
-    overflow: visible !important;
-  }
-  .rbc-row-content {
-    position: static !important;
-  }
-  .rbc-agenda-view table {
-    height: auto !important;
-  }
-  .rbc-time-content {
-    overflow: visible !important;
-  }
-  .printable {
-    flex: none !important;
-    min-height: 0 !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
+@page {
+  size: A4 landscape;
+  margin: 8mm;
 }
 
 @media print {
+  html,
+  body {
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+  }
+  .screen-only,
   aside,
   .no-print,
   button {
     display: none !important;
   }
+  .print-only {
+    display: block !important;
+  }
+  .app-shell-theme {
+    display: block !important;
+    min-height: 0 !important;
+    background: #fff !important;
+  }
+  .app-shell-theme::before,
+  .app-shell-theme::after {
+    display: none !important;
+  }
+  .app-shell-content,
   main {
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
     padding: 0 !important;
+  }
+  .calendar-page {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .calendar-print-sheet {
+    display: block !important;
+    width: 100% !important;
+    height: 180mm !important;
+    min-height: 180mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .calendar-print-sheet .rbc-calendar,
+  .calendar-print-sheet .rbc-month-view,
+  .calendar-print-sheet .rbc-time-view {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .calendar-print-sheet .rbc-toolbar {
+    margin: 0 0 3mm !important;
+  }
+  .calendar-print-sheet .rbc-toolbar .rbc-btn-group {
+    display: none !important;
+  }
+  .calendar-print-sheet .rbc-toolbar-label {
+    font-size: 14pt !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+  }
+  .calendar-print-sheet .rbc-month-row {
+    flex: 1 0 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .calendar-print-sheet .rbc-row-content {
+    position: relative !important;
+  }
+  .calendar-print-sheet .rbc-time-content {
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .calendar-print-sheet .rbc-agenda-view,
+  .calendar-print-sheet .rbc-agenda-view table {
+    height: auto !important;
+    overflow: visible !important;
   }
   .printable,
   .card {
     box-shadow: none !important;
-    border: 1px solid #e5e5e5 !important;
   }
 }
 @media (max-width: 640px) {
