@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { MessageCircle, Send, CheckCircle2, FileText, X } from 'lucide-react'
+import { MessageCircle, Send, CheckCircle2, FileText, X, CalendarPlus, RotateCcw } from 'lucide-react'
 import { WorkingDateTimePicker, WorkingRange } from '@/components/working-date-time-picker'
 
 type ConversationSummary = {
@@ -20,6 +20,16 @@ type Message = { id: string; direction: 'IN' | 'OUT'; text: string; createdAt: s
 type Template = { id: string; title: string; text: string }
 
 const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', INSTAGRAM: 'Instagram', FACEBOOK: 'Messenger' }
+const QUICK_REPLIES = [
+  { label: '👋 Salut', text: 'Bună! Cu ce te pot ajuta?' },
+  { label: '⌛ În pregătire', text: 'Solicitarea ta este în pregătire. Revenim imediat cu detalii.' },
+  { label: '🙏 Scuze întârziere', text: 'Ne cerem scuze pentru întârziere și îți mulțumim pentru răbdare.' },
+  { label: '❌ Indisponibil', text: 'Din păcate, intervalul solicitat nu mai este disponibil. Îți pot propune o altă oră.' },
+  { label: '✅ Confirmat', text: 'Totul este confirmat. Te așteptăm!' },
+  { label: '💳 Plată', text: 'Îți trimit imediat detaliile pentru plată.' },
+  { label: '🔎 Verific', text: 'Verific disponibilitatea și revin imediat.' },
+  { label: '🙌 Mulțumim', text: 'Mulțumim! Te mai așteptăm cu drag.' },
+]
 
 function splitOperatorPrefix(text: string) {
   const match = text.match(/^\*([^*:\n]{1,60}):\*\s*/)
@@ -74,6 +84,10 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
     const timer = setInterval(() => loadConversations(true), 5000)
     return () => clearInterval(timer)
   }, [loadConversations])
+
+  useEffect(() => {
+    if (!selectedId && conversations.length > 0) setSelectedId(conversations[0].id)
+  }, [conversations, selectedId])
 
   const loadMessages = useCallback(async (id: string, silent = false) => {
     if (!silent) setLoadingMessages(true)
@@ -156,22 +170,25 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
   const anyNeedsOperator = conversations.some((c) => c.needsOperator)
 
   return (
-    <div className="h-[calc(100vh-56px)] lg:h-[calc(100vh-40px)] flex flex-col lg:flex-row">
+    <div className="h-[calc(100vh-56px)] lg:h-screen min-h-0 p-3 lg:p-5 flex flex-col">
+      <div className="mb-4 shrink-0">
+        <h1 className="text-xl lg:text-2xl font-semibold">Mesaje</h1>
+        <p className="mt-1 text-sm text-gray-500">Toate conversațiile de pe Messenger, Instagram și WhatsApp, într-un singur loc.</p>
+      </div>
+      <div className="card min-h-0 flex-1 overflow-hidden flex flex-col lg:flex-row border border-[var(--border-soft)]">
       {/* lista de conversații */}
-      <div className="lg:w-80 shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--border-soft)] flex flex-col">
+      <div className="lg:w-[300px] shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--border-soft)] flex flex-col bg-white max-h-56 lg:max-h-none">
         <div className="p-4 border-b border-[var(--border-soft)]">
-          <h1 className="text-xl font-semibold flex items-center gap-2">
-            Mesaje
-            {anyNeedsOperator && <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />}
-          </h1>
-          <p className="text-xs text-gray-500 mt-0.5 mb-2">WhatsApp și Messenger, într-un singur loc.</p>
+          <label className="mb-1.5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+            Numele tău (apare la client)
+            {anyNeedsOperator && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
+          </label>
           <input
             value={operatorName}
             onChange={(e) => updateOperatorName(e.target.value)}
             placeholder="Numele operatorului"
             className="input-field text-sm w-full"
           />
-          <p className="mt-1 text-[10px] text-gray-400">Apare înaintea mesajelor trimise către {isClinic ? 'pacient' : 'client'}.</p>
         </div>
         <div className="flex-1 overflow-y-auto">
           {loadingList ? (
@@ -183,8 +200,8 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
               <button
                 key={c.id}
                 onClick={() => setSelectedId(c.id)}
-                className="w-full text-left p-4 border-b border-[var(--border-soft)] hover:bg-[var(--surface-muted)] transition relative group"
-                style={selectedId === c.id ? { background: 'var(--accent-soft)' } : {}}
+                className="w-full text-left px-4 py-3.5 border-b border-[var(--border-soft)] hover:bg-[var(--surface-muted)] transition relative group"
+                style={selectedId === c.id ? { background: '#fff7e8', boxShadow: 'inset 3px 0 0 var(--accent)' } : {}}
               >
                 <div className="flex items-center justify-between mb-1 pr-5">
                   <p className="text-sm font-medium truncate">{c.customerName ?? c.externalUserId}</p>
@@ -212,7 +229,7 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
       </div>
 
       {/* fereastra de conversație */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0 bg-[#f6f7f9]">
         {!selected ? (
           <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
             <div className="text-center">
@@ -222,24 +239,27 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
           </div>
         ) : (
           <>
-            <div className="p-4 border-b border-[var(--border-soft)] flex items-center justify-between">
+            <div className="px-4 py-3.5 border-b border-[var(--border-soft)] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white">
               <div>
                 <p className="font-medium">{selected.customerName ?? selected.externalUserId}</p>
                 <p className="text-xs text-gray-500">{CHANNEL_LABEL[selected.channel]}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setShowBookingModal(true)} className="btn-secondary text-xs whitespace-nowrap">
-                  + Adaugă {isAppointmentBased ? 'programare' : 'rezervare'}
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={() => setShowBookingModal(true)} className="btn-secondary !px-3 !py-2 text-xs whitespace-nowrap flex items-center gap-1.5">
+                  <CalendarPlus size={14} /> {isAppointmentBased ? 'Programare nouă' : 'Rezervare nouă'}
                 </button>
                 {selected.needsOperator && (
-                  <button onClick={markResolved} className="btn-secondary text-xs flex items-center gap-1.5 whitespace-nowrap">
+                  <button onClick={markResolved} className="btn-secondary !px-3 !py-2 text-xs flex items-center gap-1.5 whitespace-nowrap">
                     <CheckCircle2 size={14} /> Marchează rezolvat
                   </button>
                 )}
+                <button onClick={markResolved} className="btn-secondary !px-3 !py-2 text-xs flex items-center gap-1.5 whitespace-nowrap">
+                  <RotateCcw size={14} /> Repornește botul
+                </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+            <div className="flex-1 overflow-y-auto p-4 lg:p-5 flex flex-col gap-5">
               {loadingMessages ? (
                 <p className="text-sm text-gray-400">Se încarcă...</p>
               ) : messages.length === 0 ? (
@@ -253,20 +273,20 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
                       ? `Operator: ${parsed.operator}`
                       : 'BookEasy · mesaj automat'
                   return (
-                  <div key={m.id} className={`max-w-[75%] ${m.direction === 'OUT' ? 'self-end' : 'self-start'}`}>
+                  <div key={m.id} className={`max-w-[88%] sm:max-w-[72%] ${m.direction === 'OUT' ? 'self-end' : 'self-start'}`}>
                     <p className={`mb-1 px-1 text-[10px] font-semibold ${m.direction === 'OUT' ? 'text-right text-[var(--accent-hover)]' : 'text-gray-500'}`}>{sender}</p>
                     <div
-                      className="rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap"
+                      className="rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap border"
                       style={
                         m.direction === 'OUT'
-                          ? { background: 'var(--accent)', color: 'white' }
-                          : { background: 'var(--surface-muted)' }
+                          ? { background: 'var(--accent)', color: 'white', borderColor: 'var(--accent)' }
+                          : { background: 'white', borderColor: 'var(--border-soft)' }
                       }
                     >
                       {parsed.text}
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-0.5 px-1">
-                      {new Date(m.createdAt).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })}
+                    <p className={`text-[10px] text-gray-400 mt-1 px-1 ${m.direction === 'OUT' ? 'text-right' : ''}`}>
+                      {new Date(m.createdAt).toLocaleString('ro-RO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })}
                     </p>
                   </div>
                   )
@@ -293,7 +313,15 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
               </div>
             )}
 
-            <div className="p-4 border-t border-[var(--border-soft)] flex items-center gap-2">
+            <div className="border-t border-[var(--border-soft)] bg-white px-3 py-2 flex gap-2 overflow-x-auto no-scrollbar">
+              {QUICK_REPLIES.map((reply) => (
+                <button key={reply.label} onClick={() => setDraft(reply.text)} className="shrink-0 rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] transition">
+                  {reply.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="px-3 py-3 border-t border-[var(--border-soft)] bg-white flex items-end gap-2">
               {templates.length > 0 && (
                 <button
                   onClick={() => setShowTemplates((v) => !v)}
@@ -304,15 +332,21 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
                   <FileText size={18} />
                 </button>
               )}
-              <input
+              <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && sendReply()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    sendReply()
+                  }
+                }}
                 placeholder="Scrie un răspuns..."
-                className="input-field flex-1"
+                rows={1}
+                className="input-field flex-1 min-h-11 max-h-28 resize-y"
               />
-              <button onClick={sendReply} disabled={sending || !draft.trim()} className="btn-primary p-2.5 shrink-0" aria-label="Trimite">
-                <Send size={18} />
+              <button onClick={sendReply} disabled={sending || !draft.trim()} className="btn-primary !px-4 !py-3 shrink-0 flex items-center gap-2" aria-label="Trimite">
+                <Send size={16} /><span className="hidden sm:inline">Trimite</span>
               </button>
             </div>
 
@@ -331,6 +365,7 @@ export default function InboxManager({ businessId, isClinic, isAppointmentBased 
             )}
           </>
         )}
+      </div>
       </div>
     </div>
   )
