@@ -30,7 +30,6 @@ body {
   border-radius: var(--radius-card);
   border: 1px solid rgba(255, 255, 255, 0.88);
   box-shadow: var(--shadow-card);
-  backdrop-filter: blur(16px);
 }
 
 .card-interactive {
@@ -121,8 +120,7 @@ body {
   position: fixed;
   z-index: -1;
   inset: 0;
-  background: rgba(247, 249, 245, 0.68);
-  backdrop-filter: blur(2px);
+  background: rgba(247, 249, 245, 0.74);
   pointer-events: none;
 }
 .app-shell-sidebar {

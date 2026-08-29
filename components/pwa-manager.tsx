@@ -24,9 +24,15 @@ export default function PwaManager() {
     setDismissed(wasDismissed)
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((error) => {
-        console.error('[pwa] Service worker registration failed:', error)
-      })
+      const register = () => navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((error) => {
+          console.error('[pwa] Service worker registration failed:', error)
+        })
+      const requestIdle = (window as Window & { requestIdleCallback?: typeof window.requestIdleCallback }).requestIdleCallback
+      if (requestIdle) {
+        requestIdle(register, { timeout: 3000 })
+      } else {
+        globalThis.setTimeout(register, 1500)
+      }
     }
 
     const onInstall = (event: Event) => {
