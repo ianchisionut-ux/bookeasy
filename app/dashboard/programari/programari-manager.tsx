@@ -46,6 +46,12 @@ const CHANNEL_LABEL: Record<string, string> = {
   MANUAL: 'Manual',
 }
 
+function reconfirmationChannelLabel(channel: string) {
+  if (channel === 'FACEBOOK') return 'Messenger'
+  if (channel === 'INSTAGRAM') return 'Instagram'
+  return 'WhatsApp'
+}
+
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
   PENDING: 'warning',
   CONFIRMED: 'success',
@@ -192,7 +198,8 @@ export default function ProgramariManager({
         alert(data.error ?? 'Nu am putut trimite cererea de confirmare.')
         return
       }
-      alert('Cerere de reconfirmare trimisă — clientul poate confirma sau anula direct din WhatsApp.')
+      const sentChannel = CHANNEL_LABEL[data.channel] ?? reconfirmationChannelLabel(data.channel)
+      alert(`Cerere de reconfirmare trimisă pe ${sentChannel} — clientul poate confirma sau anula direct din conversație.`)
       router.refresh()
     } catch {
       alert('Conexiune eșuată. Încearcă din nou.')
@@ -261,7 +268,9 @@ export default function ProgramariManager({
               disabled={sendingConfirmId === b.id}
               className="text-xs text-[var(--accent)] font-medium mr-3"
             >
-              {sendingConfirmId === b.id ? 'Se trimite...' : 'Cere reconfirmare'}
+              {sendingConfirmId === b.id
+                ? 'Se trimite...'
+                : `Cere reconfirmare · ${reconfirmationChannelLabel(b.channel)}`}
             </button>
           )}
           {b.status !== 'CANCELLED' && (
