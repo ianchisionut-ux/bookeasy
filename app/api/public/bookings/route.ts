@@ -161,6 +161,7 @@ export async function POST(req: NextRequest) {
       status: 'PENDING',
       channel: 'WEB',
       sequenceNumber,
+      confirmationSeenByAdmin: false,
     },
   })
   await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync public booking:', error))

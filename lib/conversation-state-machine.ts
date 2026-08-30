@@ -602,6 +602,7 @@ async function createBooking({
       status: 'PENDING',
       channel,
       sequenceNumber,
+      confirmationSeenByAdmin: false,
     },
   })
   await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync bot booking:', error))

@@ -15,12 +15,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
 
   const code = req.nextUrl.searchParams.get('code')
   const stateRaw = req.nextUrl.searchParams.get('state')
-  if (!code || !stateRaw) {
-    return NextResponse.redirect(`${process.env.APP_URL}/dashboard/canale?error=missing_code`)
-  }
-
-  const state = verifyOAuthState(stateRaw, provider)
+  const state = stateRaw ? verifyOAuthState(stateRaw, provider) : null
   if (!state) return NextResponse.redirect(process.env.APP_URL + '/dashboard/canale?error=invalid_state')
+  if (!code) {
+    const message = req.nextUrl.searchParams.get('error_description') ?? 'Autorizarea a fost anulată.'
+    return NextResponse.redirect(process.env.APP_URL + state.redirectTo + '?error=' + encodeURIComponent(message))
+  }
   const { businessId, redirectTo } = state
   if (!(session as any).isSuperAdmin && (session as any).businessId !== businessId) {
     return NextResponse.redirect(process.env.APP_URL + '/dashboard/canale?error=forbidden_business')
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   )
   const tokenData = await tokenRes.json()
   if (!tokenRes.ok || !tokenData.access_token) {
-    const message = tokenData.error?.message ?? 'Meta nu a returnat tokenul de acces.'
+    const message = tokenData.error_description ?? tokenData.error?.message ?? `${provider === 'google' ? 'Google' : 'Meta'} nu a returnat tokenul de acces.`
     return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
   }
 
@@ -87,39 +87,59 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   }
 
   if (provider === 'google') {
-    const accounts = await fetch('https://mybusinessbusinessinformation.googleapis.com/v1/accounts', {
+    const accountsResponse = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
-    }).then((r) => r.json())
+    })
+    const accounts = await accountsResponse.json()
+    if (!accountsResponse.ok || accounts.error) {
+      const message = accounts.error?.message ?? 'Google nu a returnat conturile Business Profile.'
+      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
+    }
 
     const accountName = accounts.accounts?.[0]?.name // ex: "accounts/123456"
+    if (!accountName) {
+      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent('Contul Google nu are niciun Business Profile disponibil.'))
+    }
 
     // recenziile se cer pe LOCAȚIE, nu pe cont — trebuie numele complet al resursei
     // (ex: "accounts/123456/locations/789") ca să putem sincroniza ulterior recenziile
-    let locationName = accountName ?? businessId
-    if (accountName) {
-      const locations = await fetch(
-        `https://mybusinessbusinessinformation.googleapis.com/v1/${accountName}/locations?readMask=name,title`,
-        { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
-      ).then((r) => r.json())
-      locationName = locations.locations?.[0]?.name ?? locationName // ex: "accounts/123456/locations/789"
+    const locationsResponse = await fetch(
+      `https://mybusinessbusinessinformation.googleapis.com/v1/${accountName}/locations?readMask=name,title`,
+      { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
+    )
+    const locations = await locationsResponse.json()
+    if (!locationsResponse.ok || locations.error) {
+      const message = locations.error?.message ?? 'Google nu a returnat locațiile Business Profile.'
+      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
     }
+    const rawLocationName = locations.locations?.[0]?.name // de regulă "locations/789"
+    if (!rawLocationName) {
+      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent('Business Profile nu are nicio locație disponibilă.'))
+    }
+    const locationName = rawLocationName.startsWith('accounts/')
+      ? rawLocationName
+      : `${accountName}/${rawLocationName}`
 
-    await prisma.channel.upsert({
-      where: { type_externalId: { type: 'GOOGLE_BUSINESS', externalId: locationName } },
-      create: {
+    const existingGoogleChannel = await prisma.channel.findFirst({
+      where: { businessId, type: 'GOOGLE_BUSINESS' },
+    })
+    const tokenUpdate = {
+      externalId: locationName,
+      accessToken: encrypt(tokenData.access_token),
+      ...(tokenData.refresh_token ? { refreshToken: encrypt(tokenData.refresh_token) } : {}),
+      expiresAt: new Date(Date.now() + Number(tokenData.expires_in ?? 3600) * 1000),
+      status: 'ACTIVE' as const,
+      enabledByOwner: true,
+    }
+    if (existingGoogleChannel) {
+      await prisma.channel.update({ where: { id: existingGoogleChannel.id }, data: tokenUpdate })
+    } else {
+      await prisma.channel.create({ data: {
         businessId,
         type: 'GOOGLE_BUSINESS',
-        externalId: locationName,
-        accessToken: encrypt(tokenData.access_token),
-        refreshToken: encrypt(tokenData.refresh_token),
-        expiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
-      },
-      update: {
-        accessToken: encrypt(tokenData.access_token),
-        refreshToken: encrypt(tokenData.refresh_token),
-        status: 'ACTIVE',
-      },
-    })
+        ...tokenUpdate,
+      } })
+    }
   }
 
   return NextResponse.redirect(`${process.env.APP_URL}${redirectTo ?? '/dashboard/canale'}?connected=${provider}`)
