@@ -64,9 +64,9 @@ export async function sendConfirmationRequest(
   ].join('\n')
 
   const options = [
-    { id: `REMINDER_CONFIRM_${booking.id}`, title: 'Confirmă programarea' },
-    { id: `REMINDER_RESCHEDULE_${booking.id}`, title: 'Reprogramează' },
-    { id: `REMINDER_CANCEL_${booking.id}`, title: 'Anulează programarea' },
+    { id: `REMINDER_CONFIRM_${booking.id}.${booking.confirmationRequestToken}`, title: 'Confirmă programarea' },
+    { id: `REMINDER_RESCHEDULE_${booking.id}.${booking.confirmationRequestToken}`, title: 'Reprogramează' },
+    { id: `REMINDER_CANCEL_${booking.id}.${booking.confirmationRequestToken}`, title: 'Anulează programarea' },
   ]
 
   try {

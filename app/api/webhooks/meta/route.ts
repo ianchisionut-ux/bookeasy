@@ -61,7 +61,10 @@ async function handleWhatsAppEntry(entry: any) {
   })
   if (!channel) return
 
-  const bookingId = match[2]
+  const payload = match[2]
+  const separator = payload.lastIndexOf('.')
+  const bookingId = separator > 0 ? payload.slice(0, separator) : payload
+  const confirmationToken = separator > 0 ? payload.slice(separator + 1) : '__legacy_message__'
   const booking = await prisma.booking.findFirst({
     where: { id: bookingId, businessId: channel.businessId },
     include: { business: { select: { slug: true } } },
@@ -73,6 +76,7 @@ async function handleWhatsAppEntry(entry: any) {
     where: {
       id: booking.id,
       businessId: channel.businessId,
+      confirmationRequestToken: confirmationToken,
       confirmationRequestSent: true,
       customerConfirmed: null,
       status: { in: ['PENDING', 'CONFIRMED'] },
