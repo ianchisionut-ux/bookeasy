@@ -42,6 +42,7 @@ type Event = {
   start: Date
   end: Date
   status: string
+  channel: string
   customerId: string
   customerName: string
   customerPhone: string
@@ -488,6 +489,7 @@ export default function CalendarClient({
               startAt: selected.start.toISOString(),
               endAt: selected.end.toISOString(),
               status: selected.status as BookingDetail['status'],
+              channel: selected.channel,
             } as BookingDetail
           }
           onClose={() => setSelected(null)}

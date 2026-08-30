@@ -262,7 +262,9 @@ export default function ProgramariManager({
           </div>
         </td>
         <td className="pr-5 text-right whitespace-nowrap">
-          {b.status === 'PENDING' && !b.confirmationRequestSent && (
+          {(b.status === 'PENDING' || b.status === 'CONFIRMED') &&
+            new Date(b.startAt).getTime() > Date.now() &&
+            !b.confirmationRequestSent && (
             <button
               onClick={() => sendConfirmationRequest(b.id)}
               disabled={sendingConfirmId === b.id}

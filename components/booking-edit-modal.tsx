@@ -18,6 +18,7 @@ export type BookingDetail = {
   startAt: string
   endAt: string
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW'
+  channel: string
   confirmationRequestSent?: boolean
   customerConfirmed?: boolean | null
 }
@@ -36,6 +37,12 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> 
   CANCELLED: 'danger',
   COMPLETED: 'neutral',
   NO_SHOW: 'danger',
+}
+
+function reconfirmationChannelLabel(channel: string) {
+  if (channel === 'FACEBOOK') return 'Messenger'
+  if (channel === 'INSTAGRAM') return 'Instagram'
+  return 'WhatsApp'
 }
 
 function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: number; startTime: string; endTime: string }[], durationMinutes: number, stepMinutes: number) {
@@ -76,6 +83,29 @@ export default function BookingEditModal({
   const [patientName, setPatientName] = useState(booking.customerName)
   const [patientPhone, setPatientPhone] = useState(booking.customerPhone)
   const [savingPatient, setSavingPatient] = useState(false)
+  const [sendingConfirmation, setSendingConfirmation] = useState(false)
+
+  async function requestReconfirmation() {
+    setSendingConfirmation(true)
+    setError('')
+    try {
+      const res = await fetchWithTimeout(`/api/business/bookings/${booking.id}/send-confirmation-request`, {
+        method: 'POST',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(data.error ?? 'Nu am putut trimite cererea de reconfirmare.')
+        return
+      }
+      alert(`Cererea a fost trimisă pe ${reconfirmationChannelLabel(data.channel ?? booking.channel)}.`)
+      router.refresh()
+      onClose()
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      setSendingConfirmation(false)
+    }
+  }
 
   async function savePatientInfo() {
     setSavingPatient(true)
@@ -262,6 +292,20 @@ export default function BookingEditModal({
         </div>
 
         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+
+        {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') &&
+          new Date(booking.startAt).getTime() > Date.now() &&
+          !booking.confirmationRequestSent && (
+            <button
+              onClick={requestReconfirmation}
+              disabled={sendingConfirmation || saving}
+              className="btn-secondary w-full mt-4"
+            >
+              {sendingConfirmation
+                ? 'Se trimite...'
+                : `Cere reconfirmare · ${reconfirmationChannelLabel(booking.channel)}`}
+            </button>
+          )}
 
         <div className="flex justify-between mt-5">
           <button onClick={cancelBooking} disabled={saving} className="text-sm text-red-600 font-medium">
