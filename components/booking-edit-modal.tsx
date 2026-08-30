@@ -294,7 +294,6 @@ export default function BookingEditModal({
         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
 
         {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') &&
-          new Date(booking.startAt).getTime() > Date.now() &&
           !booking.confirmationRequestSent && (
             <button
               onClick={requestReconfirmation}
