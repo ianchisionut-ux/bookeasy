@@ -18,6 +18,8 @@ export default async function NearbyBusinesses({ businessId }: { businessId: str
     where: {
       id: { not: businessId },
       publicListed: true,
+      accountActive: true,
+      category: current.category,
       latitude: { gte: current.latitude - latDelta, lte: current.latitude + latDelta },
       longitude: { gte: current.longitude - lngDelta, lte: current.longitude + lngDelta },
     },
