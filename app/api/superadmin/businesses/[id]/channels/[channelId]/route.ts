@@ -8,7 +8,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  const { channelId } = await params
+  const { id, channelId } = await params
+  const channel = await prisma.channel.findFirst({ where: { id: channelId, businessId: id } })
+  if (!channel) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
   await prisma.channel.update({ where: { id: channelId }, data: { status: 'DISCONNECTED' } })
 
   return NextResponse.json({ success: true })

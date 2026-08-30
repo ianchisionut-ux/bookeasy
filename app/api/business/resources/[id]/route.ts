@@ -6,8 +6,8 @@ import { ensureVenueService, venueServiceId } from '@/lib/venue-services'
 
 const schema = z.object({
   name: z.string().min(1).optional(),
-  capacity: z.number().nullable().optional(),
-  basePrice: z.number().nullable().optional(),
+  capacity: z.number().int().positive().nullable().optional(),
+  basePrice: z.number().min(0).nullable().optional(),
 })
 
 async function assertOwnership(id: string, businessId: string) {
@@ -41,6 +41,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const businessId = (session as any).businessId
   const owned = await assertOwnership(id, businessId)
   if (!owned) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
+  const hasHistory = await prisma.booking.findFirst({ where: { resourceId: id }, select: { id: true } })
+  if (hasHistory) {
+    return NextResponse.json({ error: 'Resursa are programări în istoric și nu poate fi ștearsă.' }, { status: 409 })
+  }
 
   await prisma.$transaction([
     prisma.service.updateMany({ where: { id: venueServiceId(id), businessId }, data: { active: false } }),

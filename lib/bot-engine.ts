@@ -83,7 +83,7 @@ async function handleIncomingMessage({
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
     if (booking && booking.businessId === businessId) {
       const claimed = await prisma.booking.updateMany({
-        where: { id: bookingId, businessId, confirmationRequestToken: token, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
+        where: { id: bookingId, businessId, customer: customerIdentityFilter(channel, externalUserId), confirmationRequestToken: token, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
         data: { status: 'CONFIRMED', customerConfirmed: true, confirmationSeenByAdmin: false },
       })
       if (claimed.count === 0) {
@@ -108,7 +108,7 @@ async function handleIncomingMessage({
       // același serviciu (și aceeași persoană, dacă era cazul) — clientul nu mai trebuie
       // să aleagă din nou serviciul, doar ziua/ora noi
       const claimed = await prisma.booking.updateMany({
-        where: { id: bookingId, businessId, confirmationRequestToken: token, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
+        where: { id: bookingId, businessId, customer: customerIdentityFilter(channel, externalUserId), confirmationRequestToken: token, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
         data: { status: 'CANCELLED', customerConfirmed: false, confirmationSeenByAdmin: false },
       })
       if (claimed.count === 0) {
@@ -137,7 +137,7 @@ async function handleIncomingMessage({
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
     if (booking && booking.businessId === businessId) {
       const claimed = await prisma.booking.updateMany({
-        where: { id: bookingId, businessId, confirmationRequestToken: token, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
+        where: { id: bookingId, businessId, customer: customerIdentityFilter(channel, externalUserId), confirmationRequestToken: token, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
         data: { status: 'CANCELLED', customerConfirmed: false, confirmationSeenByAdmin: false },
       })
       if (claimed.count === 0) {
@@ -160,7 +160,7 @@ async function handleIncomingMessage({
   }
 
   if (CONFIRM_BOOKING_PATTERN.test(text.trim())) {
-    const reply = await handleBookingConfirmation(businessId, externalUserId)
+    const reply = await handleBookingConfirmation(businessId, channel, externalUserId)
     if (reply) {
       await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'OUT', text: reply } })
       await sendMessage({ channel, channelId, to: externalUserId, text: reply })
@@ -276,7 +276,7 @@ async function handleBookingCancellation(businessId: string, channel: string, ex
         businessId,
         status: 'CONFIRMED',
         startAt: { gte: new Date() },
-        customer: { phone: externalUserId },
+        customer: customerIdentityFilter(channel, externalUserId),
       },
       include: { service: true },
       orderBy: { startAt: 'asc' },
@@ -296,6 +296,7 @@ async function handleBookingCancellation(businessId: string, channel: string, ex
   }
 
   await prisma.booking.update({ where: { id: upcomingBooking.id }, data: { status: 'CANCELLED', customerConfirmed: false } })
+  await syncBookingToGoogle(upcomingBooking.id).catch((error) => console.error('[google-calendar] sync text cancellation:', error))
   return `Am anulat programarea pentru ${upcomingBooking.service.name}. Sper să te vedem altă dată!`
 }
 
@@ -303,7 +304,11 @@ async function handleBookingCancellation(businessId: string, channel: string, ex
 // (i-am trimis deja mesajul de "confirmi?" și încă n-a răspuns) — dacă găsește una, o
 // marchează confirmată; altfel întoarce null, ca "DA" să treacă mai departe prin
 // conversația normală (ar putea fi răspuns la altă întrebare a botului)
-async function handleBookingConfirmation(businessId: string, externalUserId: string): Promise<string | null> {
+async function handleBookingConfirmation(
+  businessId: string,
+  channel: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK',
+  externalUserId: string
+): Promise<string | null> {
   const booking = await prisma.booking.findFirst({
     where: {
       businessId,
@@ -311,7 +316,7 @@ async function handleBookingConfirmation(businessId: string, externalUserId: str
       confirmationRequestSent: true,
       customerConfirmed: null,
       startAt: { gte: new Date() },
-      customer: { phone: externalUserId },
+      customer: customerIdentityFilter(channel, externalUserId),
     },
     include: { service: true },
     orderBy: { startAt: 'asc' },
@@ -320,7 +325,14 @@ async function handleBookingConfirmation(businessId: string, externalUserId: str
   if (!booking) return null
 
   await prisma.booking.update({ where: { id: booking.id }, data: { customerConfirmed: true, confirmationSeenByAdmin: false } })
+  await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync text confirmation:', error))
   return `Perfect, programarea pentru ${booking.service.name} e confirmată! Te așteptăm.`
+}
+
+function customerIdentityFilter(channel: string, externalUserId: string) {
+  if (channel === 'INSTAGRAM') return { instagramUserId: externalUserId }
+  if (channel === 'FACEBOOK') return { facebookUserId: externalUserId }
+  return { phone: externalUserId }
 }
 
 async function notifyOwnerOfMissedMessage(businessId: string, channel: string) {
