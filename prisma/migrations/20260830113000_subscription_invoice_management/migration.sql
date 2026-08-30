@@ -1,9 +1,9 @@
 ALTER TABLE "Business"
-ADD COLUMN "billingAmount" DECIMAL(10,2),
-ADD COLUMN "billingCurrency" TEXT NOT NULL DEFAULT 'RON',
-ADD COLUMN "billingDueAt" TIMESTAMP(3),
-ADD COLUMN "billingInvoiceUrl" TEXT,
-ADD COLUMN "billingInvoiceName" TEXT,
-ADD COLUMN "billingInvoiceUploadedAt" TIMESTAMP(3),
-ADD COLUMN "billingDueNotifiedAt" TIMESTAMP(3),
-ADD COLUMN "billingSuspendedAt" TIMESTAMP(3);
+ADD COLUMN IF NOT EXISTS "billingAmount" DECIMAL(10,2),
+ADD COLUMN IF NOT EXISTS "billingCurrency" TEXT NOT NULL DEFAULT 'RON',
+ADD COLUMN IF NOT EXISTS "billingDueAt" TIMESTAMP(3),
+ADD COLUMN IF NOT EXISTS "billingInvoiceUrl" TEXT,
+ADD COLUMN IF NOT EXISTS "billingInvoiceName" TEXT,
+ADD COLUMN IF NOT EXISTS "billingInvoiceUploadedAt" TIMESTAMP(3),
+ADD COLUMN IF NOT EXISTS "billingDueNotifiedAt" TIMESTAMP(3),
+ADD COLUMN IF NOT EXISTS "billingSuspendedAt" TIMESTAMP(3);

@@ -5,10 +5,10 @@ function run(command, args) {
   if (result.status !== 0) process.exit(result.status ?? 1)
 }
 
-// Preview și Production pornesc aproape simultan și folosesc aceeași bază de date.
-// O singură migrare evită concurența pe advisory lock-ul PostgreSQL.
 if (process.env.VERCEL_ENV === 'production') {
-  run('npx', ['prisma', 'migrate', 'deploy'])
+  // Neon rulează prin pooler, unde advisory lock-ul Prisma poate rămâne blocat.
+  // SQL-ul este idempotent și se execută fără lock global înainte de build.
+  run('npx', ['prisma', 'db', 'execute', '--file', 'prisma/migrations/20260830113000_subscription_invoice_management/migration.sql', '--schema', 'prisma/schema.prisma'])
 }
 
 run('npx', ['next', 'build'])

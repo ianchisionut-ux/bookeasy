@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { MessageCircle, Send, CheckCircle2, FileText, X, CalendarPlus, RotateCcw } from 'lucide-react'
-import { WorkingDateTimePicker, WorkingRange } from '@/components/working-date-time-picker'
+import { WorkingRange } from '@/components/working-date-time-picker'
 
 type ConversationSummary = {
   id: string
@@ -428,7 +428,6 @@ function QuickBookingModal({
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
-  const [simpleDateTime, setSimpleDateTime] = useState('')
   const [daySlots, setDaySlots] = useState<{ time: string; available: boolean }[]>([])
   const [selectedSlot, setSelectedSlot] = useState('')
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -451,13 +450,13 @@ function QuickBookingModal({
   }, [])
 
   useEffect(() => {
-    if (!isMultiPractitioner || !serviceId || !practitionerId || !slotDate) {
+    if (!serviceId || !slotDate || (isMultiPractitioner && !practitionerId)) {
       setDaySlots([])
       return
     }
     setLoadingSlots(true)
     setSelectedSlot('')
-    fetchWithTimeout(`/api/business/practitioner-availability?serviceId=${serviceId}&practitionerId=${practitionerId}&date=${slotDate}`)
+    fetchWithTimeout(`/api/business/practitioner-availability?serviceId=${serviceId}&date=${slotDate}${practitionerId ? `&practitionerId=${practitionerId}` : ''}`)
       .then((res) => res.json())
       .then((data) => setDaySlots(data.allSlots ?? []))
       .catch(() => setDaySlots([]))
@@ -465,7 +464,7 @@ function QuickBookingModal({
   }, [isMultiPractitioner, serviceId, practitionerId, slotDate])
 
   async function submit() {
-    const hasDateInfo = isMultiPractitioner ? !!selectedSlot : !!simpleDateTime
+    const hasDateInfo = !!selectedSlot
     if (!customerName.trim() || customerPhone.trim().length < 6 || !serviceId || !hasDateInfo) {
       setError('Completează numele, telefonul, serviciul și data.')
       return
@@ -476,7 +475,7 @@ function QuickBookingModal({
     }
 
     const service = services.find((s) => s.id === serviceId)
-    const start = isMultiPractitioner ? new Date(selectedSlot) : new Date(simpleDateTime)
+    const start = new Date(selectedSlot)
     const end = new Date(start.getTime() + (service?.durationMin ?? 30) * 60000)
 
     if (start < new Date()) {
@@ -598,7 +597,7 @@ function QuickBookingModal({
                       <p className="text-sm text-gray-500">Niciun program pentru această zi.</p>
                     ) : (
                       <div className="grid grid-cols-4 gap-2">
-                        {daySlots.map((slot) => {
+                        {daySlots.filter((slot) => slot.available).map((slot) => {
                           const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
                           if (!slot.available) {
                             return (
@@ -625,13 +624,7 @@ function QuickBookingModal({
                 )}
               </>
             ) : (
-              <WorkingDateTimePicker
-                value={simpleDateTime}
-                onChange={setSimpleDateTime}
-                workingHours={workingHours}
-                durationMinutes={services.find((service) => service.id === serviceId)?.durationMin ?? 30}
-                stepMinutes={slotIntervalMinutes}
-              />
+              <div><input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} className="input-field w-full" />{serviceId && <div className="mt-3">{loadingSlots ? <p className="text-sm text-gray-400">Se încarcă orele...</p> : daySlots.filter(s=>s.available).length===0 ? <p className="text-sm text-gray-500">Nu mai sunt ore disponibile în această zi.</p> : <div className="grid grid-cols-4 gap-2">{daySlots.filter(s=>s.available).map(slot=>{const time=new Date(slot.time).toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Bucharest'});const active=selectedSlot===slot.time;return <button key={slot.time} type="button" onClick={()=>setSelectedSlot(slot.time)} className="py-2 rounded-lg text-sm font-medium border" style={active?{background:'var(--accent)',color:'white',borderColor:'var(--accent)'}:{}}>{time}</button>})}</div>}</div>}</div>
             )}
 
             {error && <p className="text-sm text-red-600">{error}</p>}
