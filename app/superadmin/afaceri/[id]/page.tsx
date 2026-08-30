@@ -48,6 +48,9 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
           teamSize: business.teamSize,
           billingStatus: business.billingStatus,
           billingNote: business.billingNote,
+          billingAmount: business.billingAmount === null ? null : Number(business.billingAmount),
+          billingDueAt: business.billingDueAt?.toISOString() ?? null,
+          billingInvoiceName: business.billingInvoiceName,
         }}
         metaAppId={process.env.META_APP_ID ?? ''}
         metaWhatsappConfigId={process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ?? ''}

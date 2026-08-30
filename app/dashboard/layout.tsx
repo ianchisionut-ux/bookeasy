@@ -42,10 +42,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let teamSize = 1
   let needsOperatorCount = 0
   let unseenConfirmationsCount = 0
+  let billingAlert: { status: string; dueAt: Date | null; amount: number | null; hasInvoice: boolean } | null = null
   if (businessId) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
-      select: { name: true, accountActive: true, onboardingDone: true, onboardingStep: true, brandColor: true, category: true, teamSize: true },
+      select: { name: true, accountActive: true, onboardingDone: true, onboardingStep: true, brandColor: true, category: true, teamSize: true, billingStatus: true, billingDueAt: true, billingAmount: true, billingInvoiceUrl: true },
     })
     if (business && !business.accountActive) {
       redirect('/cont-suspendat')
@@ -57,6 +58,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     businessName = business?.name ?? null
     category = business?.category ?? null
     teamSize = business?.teamSize ?? 1
+    if (business && ['NEPLATIT', 'RESTANT'].includes(business.billingStatus) && business.billingDueAt && business.billingDueAt <= new Date()) {
+      billingAlert = { status: business.billingStatus, dueAt: business.billingDueAt, amount: business.billingAmount === null ? null : Number(business.billingAmount), hasInvoice: Boolean(business.billingInvoiceUrl) }
+    }
     // cele două interogări de mai jos sunt independente — rulează la fiecare navigare
     // din dashboard, deci paralelizarea contează real aici, nu doar teoretic
     ;[needsOperatorCount, unseenConfirmationsCount] = await Promise.all([
@@ -102,6 +106,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       accountContent={<SidebarUserBlock label={userEmail || 'Cont'} showSupport />}
       enableLiveBadges
     >
+      {billingAlert && <div className="mx-4 mt-4 lg:mx-8 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 flex items-center justify-between gap-3 flex-wrap"><span><strong>Abonament scadent.</strong> {billingAlert.amount !== null ? `${billingAlert.amount.toLocaleString('ro-RO')} RON · ` : ''}Plătește în maximum 15 zile de la scadență pentru a evita suspendarea.</span><a href="/dashboard/setari" className="font-medium underline">Vezi factura</a></div>}
       {children}
     </ResponsiveShell>
   )

@@ -45,7 +45,7 @@ export default async function SetariPage() {
       <div className="columns-1 lg:columns-2 gap-5">
         <PublicPageLinkCard slug={business.slug} isClinic={business.category === 'CLINICA'} usesAppointments={business.category === 'SALON' || business.category === 'CLINICA'} />
 
-        <SubscriptionCard planName={business.planName} billingStatus={business.billingStatus} />
+        <SubscriptionCard businessId={business.id} planName={business.planName} billingStatus={business.billingStatus} amount={business.billingAmount === null ? null : Number(business.billingAmount)} dueAt={business.billingDueAt?.toISOString() ?? null} invoiceName={business.billingInvoiceName} />
 
         <SettingsForm
           isClinic={business.category === 'CLINICA'}

@@ -51,6 +51,14 @@ model Business {
   planName           String?      // numele planului, gestionat manual de admin până se configurează plata online
   billingStatus      BillingStatus @default(NEPLATIT)
   billingNote        String?      // notă liberă pentru superadmin (ex: "plătit cash august")
+  billingAmount      Decimal?
+  billingCurrency    String        @default("RON")
+  billingDueAt       DateTime?
+  billingInvoiceUrl  String?
+  billingInvoiceName String?
+  billingInvoiceUploadedAt DateTime?
+  billingDueNotifiedAt DateTime?
+  billingSuspendedAt DateTime?    // setat doar de automatizarea de neplată; nu confundăm cu dezactivarea manuală
   onboardingStep     Int          @default(1)
   onboardingDone     Boolean      @default(false)
   stripeCustomerId   String?
