@@ -48,6 +48,7 @@ export default async function CalendarPage() {
     start: b.startAt,
     end: b.endAt,
     status: b.status,
+    channel: b.channel,
     customerId: b.customerId,
     customerName: b.customer.name ?? b.customer.phone ?? 'Fără nume',
     customerPhone: b.customer.phone ?? '',
