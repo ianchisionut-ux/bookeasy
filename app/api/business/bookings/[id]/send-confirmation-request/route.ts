@@ -23,7 +23,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: result.error ?? 'Nu am putut trimite mesajul.' }, { status: 400 })
   }
 
-  await prisma.booking.update({ where: { id }, data: { confirmationRequestSent: true } })
+  // O retrimitere începe o rundă nouă de răspuns. Altfel, un răspuns rămas din
+  // mesajul precedent face ca butoanele noi (inclusiv Reprogramează) să fie respinse.
+  await prisma.booking.update({
+    where: { id },
+    data: { confirmationRequestSent: true, customerConfirmed: null },
+  })
 
   return NextResponse.json({ success: true, channel: result.channel })
 }
