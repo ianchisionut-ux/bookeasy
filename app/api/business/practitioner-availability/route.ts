@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { getPractitionerDaySlotsWithStatus } from '@/lib/availability'
+import { getDaySlotsWithStatus, getPractitionerDaySlotsWithStatus } from '@/lib/availability'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -10,12 +10,14 @@ export async function GET(req: NextRequest) {
   const serviceId = req.nextUrl.searchParams.get('serviceId')
   const practitionerId = req.nextUrl.searchParams.get('practitionerId')
   const dateParam = req.nextUrl.searchParams.get('date')
-  if (!serviceId || !practitionerId || !dateParam) {
+  if (!serviceId || !dateParam) {
     return NextResponse.json({ error: 'Parametri lipsă' }, { status: 400 })
   }
 
   const date = new Date(`${dateParam}T00:00:00Z`)
-  const allSlots = await getPractitionerDaySlotsWithStatus(businessId, serviceId, practitionerId, date, true)
+  const allSlots = practitionerId
+    ? await getPractitionerDaySlotsWithStatus(businessId, serviceId, practitionerId, date, true)
+    : await getDaySlotsWithStatus(businessId, serviceId, date, true)
 
   return NextResponse.json({ allSlots })
 }

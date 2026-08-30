@@ -568,8 +568,6 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
   })
   const simpleDate = simpleDateTime.split('T')[0] ?? ''
   const simpleTime = simpleDateTime.split('T')[1] ?? ''
-  const selectedServiceDuration = services.find((service) => service.id === serviceId)?.durationMin ?? 30
-  const tenMinuteTimes = buildWorkingTimeOptions(simpleDate, businessWorkingHours, selectedServiceDuration, stepMinutes)
   const [daySlots, setDaySlots] = useState<{ time: string; available: boolean }[]>([])
   const [selectedSlot, setSelectedSlot] = useState('')
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -590,18 +588,34 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
   }, [])
 
   useEffect(() => {
-    if (!isMultiPractitioner || !serviceId || !practitionerId || !slotDate) {
+    const selectedDate = isMultiPractitioner ? slotDate : simpleDate
+    if (!serviceId || !selectedDate || (isMultiPractitioner && !practitionerId)) {
       setDaySlots([])
       return
     }
     setLoadingSlots(true)
     setSelectedSlot('')
-    fetchWithTimeout(`/api/business/practitioner-availability?serviceId=${serviceId}&practitionerId=${practitionerId}&date=${slotDate}`)
+    const practitionerParam = practitionerId ? `&practitionerId=${encodeURIComponent(practitionerId)}` : ''
+    fetchWithTimeout(`/api/business/practitioner-availability?serviceId=${encodeURIComponent(serviceId)}${practitionerParam}&date=${encodeURIComponent(selectedDate)}`)
       .then((res) => res.json())
-      .then((data) => setDaySlots(data.allSlots ?? []))
+      .then((data) => {
+        const slots = data.allSlots ?? []
+        setDaySlots(slots)
+        if (!isMultiPractitioner && simpleTime) {
+          const selectedStillAvailable = slots.some((slot: { time: string; available: boolean }) =>
+            slot.available && new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' }) === simpleTime
+          )
+          if (!selectedStillAvailable) setSimpleDateTime(`${selectedDate}T`)
+        }
+      })
       .catch(() => setDaySlots([]))
       .finally(() => setLoadingSlots(false))
-  }, [isMultiPractitioner, serviceId, practitionerId, slotDate])
+  }, [isMultiPractitioner, serviceId, practitionerId, slotDate, simpleDate])
+
+  const availableDaySlots = daySlots.filter((slot) => slot.available)
+  const availableSimpleTimes = availableDaySlots.map((slot) =>
+    new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
+  )
 
   async function submit() {
     const hasDateInfo = isMultiPractitioner ? !!selectedSlot : !!simpleDateTime
@@ -613,8 +627,8 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
       setError('Alege persoana.')
       return
     }
-    if (!isMultiPractitioner && !tenMinuteTimes.includes(simpleTime)) {
-      setError('Alege o oră din programul de lucru setat pentru această zi.')
+    if (!isMultiPractitioner && !availableSimpleTimes.includes(simpleTime)) {
+      setError('Alege una dintre orele disponibile pentru această zi.')
       return
     }
 
@@ -700,19 +714,12 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
                   <div>
                     {loadingSlots ? (
                       <p className="text-sm text-gray-400">Se încarcă orele...</p>
-                    ) : daySlots.length === 0 ? (
-                      <p className="text-sm text-gray-500">Niciun program pentru această zi.</p>
+                    ) : availableDaySlots.length === 0 ? (
+                      <p className="text-sm text-gray-500">Nicio oră disponibilă pentru această zi.</p>
                     ) : (
                       <div className="grid grid-cols-4 gap-2">
-                        {daySlots.map((slot) => {
+                        {availableDaySlots.map((slot) => {
                           const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
-                          if (!slot.available) {
-                            return (
-                              <span key={slot.time} className="py-2 rounded-lg text-center text-sm text-gray-300 border border-[var(--border-soft)] line-through">
-                                {time}
-                              </span>
-                            )
-                          }
                           const active = selectedSlot === slot.time
                           return (
                             <button
@@ -746,8 +753,12 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
                   aria-label={`Ora ${isAppointmentBased ? 'programării' : 'rezervării'} în format 24 de ore`}
                 >
                   <option value="">Ora</option>
-                  {tenMinuteTimes.map((time) => <option key={time} value={time}>{time}</option>)}
+                  {availableSimpleTimes.map((time) => <option key={time} value={time}>{time}</option>)}
                 </select>
+                {loadingSlots && <p className="col-span-2 text-sm text-gray-400">Se încarcă orele disponibile...</p>}
+                {!loadingSlots && serviceId && availableSimpleTimes.length === 0 && (
+                  <p className="col-span-2 text-sm text-gray-500">Nicio oră disponibilă pentru această zi.</p>
+                )}
               </div>
             )}
 
