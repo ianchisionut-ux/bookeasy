@@ -18,7 +18,7 @@ export function calculateAdaptiveSlotStep(durations: (number | null)[], configur
 // bookeasy.ro funcționează cu o singură gestiune per salon (fără angajați multipli) —
 // un slot ocupat blochează acea oră pentru toți clienții, nu doar pentru "cineva anume"
 export async function getAvailableSlots(businessId: string, serviceId: string, date: Date) {
-  const service = await prisma.service.findUnique({ where: { id: serviceId } })
+  const service = await prisma.service.findFirst({ where: { id: serviceId, businessId, active: true } })
   if (!service) return []
 
   if (service.type === 'APPOINTMENT') {
@@ -50,7 +50,7 @@ async function isRangeBlocked(businessId: string, start: Date, end: Date): Promi
 // apelată la confirmarea finală a unei rezervări — verifică dacă intervalul exact
 // mai e liber chiar în acel moment (nu mai alocă niciun "angajat", doar validează sloul)
 export async function isSlotStillAvailable(businessId: string, serviceId: string, startAt: Date): Promise<boolean> {
-  const service = await prisma.service.findUnique({ where: { id: serviceId } })
+  const service = await prisma.service.findFirst({ where: { id: serviceId, businessId, active: true } })
   if (!service) return false
 
   if (await isWithinLeadTime(businessId, startAt)) return false
@@ -122,7 +122,7 @@ export async function isWithinWorkingHours(
   const [ranges, profile] = practitionerId
     ? await Promise.all([
         prisma.practitionerWorkingHours.findMany({ where: { practitionerId, weekday } }),
-        prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
+        prisma.practitioner.findFirst({ where: { id: practitionerId, businessId, active: true }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
       ])
     : await Promise.all([
         prisma.workingHours.findMany({ where: { businessId, weekday } }),
@@ -130,6 +130,7 @@ export async function isWithinWorkingHours(
       ])
 
   const nonStop = !practitionerId && ranges.some((range) => range.startTime === '00:00' && range.endTime === '23:59')
+  if (practitionerId && !profile) return false
   const breakDates = nonStop
     ? Array.from({ length: 8 }, (_, index) => {
         const day = new Date(localDate)
@@ -170,13 +171,20 @@ export async function getPractitionerDaySlotsWithStatus(
   ignoreLeadTime = false,
   stepOverride?: number
 ): Promise<{ time: string; available: boolean }[]> {
-  const service = await prisma.service.findUnique({ where: { id: serviceId } })
+  const service = await prisma.service.findFirst({
+    where: {
+      id: serviceId,
+      businessId,
+      active: true,
+      OR: [{ practitioners: { none: {} } }, { practitioners: { some: { practitionerId } } }],
+    },
+  })
   if (!service || service.type !== 'APPOINTMENT') return []
 
   const weekday = date.getUTCDay() // neambiguu, indiferent de fusul serverului
   const [business, practitioner, workingHours, existingBookings, blockedSlots, profileServices] = await Promise.all([
     prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
-    prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
+    prisma.practitioner.findFirst({ where: { id: practitionerId, businessId, active: true }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
     prisma.practitionerWorkingHours.findMany({ where: { practitionerId, weekday } }),
     prisma.booking.findMany({ where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
     getBlockedSlotsForDay(businessId, date),
@@ -190,6 +198,7 @@ export async function getPractitionerDaySlotsWithStatus(
       select: { durationMin: true },
     }),
   ])
+  if (!practitioner) return []
 
   // pauzele medicului (masă etc.) — aceleași ore, în fiecare zi lucrătoare
   const breaks: { startAt: Date; endAt: Date }[] = []
@@ -239,7 +248,14 @@ export async function isPractitionerSlotStillAvailable(
   practitionerId: string,
   startAt: Date
 ): Promise<boolean> {
-  const service = await prisma.service.findUnique({ where: { id: serviceId } })
+  const service = await prisma.service.findFirst({
+    where: {
+      id: serviceId,
+      businessId,
+      active: true,
+      OR: [{ practitioners: { none: {} } }, { practitioners: { some: { practitionerId } } }],
+    },
+  })
   if (!service) return false
   if (await isWithinLeadTime(businessId, startAt)) return false
 
@@ -251,7 +267,7 @@ export async function isPractitionerSlotStillAvailable(
       where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: endAt }, endAt: { gt: startAt } },
     }),
     isIntervalBlocked(businessId, startAt, endAt),
-    prisma.practitioner.findUnique({ where: { id: practitionerId }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
+    prisma.practitioner.findFirst({ where: { id: practitionerId, businessId, active: true }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
   ])
 
   const breaks: { startAt: Date; endAt: Date }[] = []
@@ -264,6 +280,7 @@ export async function isPractitionerSlotStillAvailable(
   if (practitioner?.break3Start && practitioner.break3End) {
     breaks.push({ startAt: combineDateAndTime(startAt, practitioner.break3Start), endAt: combineDateAndTime(startAt, practitioner.break3End) })
   }
+  if (!practitioner) return false
   const onBreak = breaks.some((b) => overlaps(startAt, endAt, b.startAt, b.endAt))
 
   return !conflict && !blocked && !onBreak
@@ -275,7 +292,7 @@ export async function getDaySlotsWithStatus(
   date: Date,
   ignoreLeadTime = false
 ): Promise<{ time: string; available: boolean }[]> {
-  const service = await prisma.service.findUnique({ where: { id: serviceId } })
+  const service = await prisma.service.findFirst({ where: { id: serviceId, businessId, active: true } })
   if (!service || service.type !== 'APPOINTMENT') return []
 
   const weekday = date.getUTCDay() // neambiguu, indiferent de fusul serverului

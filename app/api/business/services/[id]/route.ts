@@ -5,8 +5,8 @@ import { z } from 'zod'
 
 const schema = z.object({
   name: z.string().min(1).optional(),
-  durationMin: z.number().nullable().optional(),
-  price: z.number().nullable().optional(),
+  durationMin: z.number().int().min(5).max(1440).nullable().optional(),
+  price: z.number().min(0).nullable().optional(),
   active: z.boolean().optional(),
 })
 
@@ -40,6 +40,12 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const businessId = (session as any).businessId
   const owned = await assertOwnership(id, businessId)
   if (!owned) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
+  const hasHistory = await prisma.booking.findFirst({ where: { serviceId: id }, select: { id: true } })
+  if (hasHistory) {
+    await prisma.service.update({ where: { id }, data: { active: false } })
+    return NextResponse.json({ success: true, deactivatedInstead: true })
+  }
 
   await prisma.service.delete({ where: { id } })
   return NextResponse.json({ success: true })
