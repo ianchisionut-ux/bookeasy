@@ -2,7 +2,7 @@
 
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -311,15 +311,53 @@ function IntegrationsCard({ businessId, channels, metaAppId, metaWhatsappConfigI
       )}
       {tab === 'WHATSAPP' && <WhatsAppFields businessId={businessId} channel={channels.find((c) => c.type === 'WHATSAPP') ?? null} metaAppId={metaAppId} configId={metaWhatsappConfigId} />}
       {tab === 'GOOGLE_BUSINESS' && (
-        <ChannelFields
+        <GoogleOAuthCard
           businessId={businessId}
-          type="GOOGLE_BUSINESS"
           channel={channels.find((c) => c.type === 'GOOGLE_BUSINESS') ?? null}
-          idLabel="Location / Account ID"
-          idPlaceholder="ex: accounts/123/locations/456"
         />
       )}
     </Card>
+  )
+}
+
+function GoogleOAuthCard({ businessId, channel }: { businessId: string; channel: Channel | null }) {
+  const searchParams = useSearchParams()
+  const connected = channel?.status === 'ACTIVE'
+  const oauthError = searchParams.get('error')
+  const justConnected = searchParams.get('connected') === 'google'
+
+  return (
+    <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div>
+          <p className="text-sm font-semibold">Google Business Profile</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Clientul se autentifică în Google și aprobă accesul. BookEasy identifică automat locația și poate sincroniza recenziile.
+          </p>
+        </div>
+        <Pill tone={connected ? 'success' : 'neutral'}>{connected ? 'Conectat' : 'Neconectat'}</Pill>
+      </div>
+      {justConnected && (
+        <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-xl px-3 py-2 mb-3">
+          Google a fost conectat cu succes.
+        </p>
+      )}
+      {oauthError && (
+        <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2 mb-3">
+          Conectarea nu a reușit: {oauthError}
+        </p>
+      )}
+      {connected && channel.externalId && (
+        <p className="text-xs text-gray-400 mb-3 break-all">Locație: {channel.externalId}</p>
+      )}
+      <a
+        href={`/api/oauth/google/start?businessId=${encodeURIComponent(businessId)}`}
+        className="btn-primary inline-flex text-sm"
+      >
+        {connected ? 'Reconectează Google' : 'Conectează cu Google'}
+      </a>
+      <p className="text-[11px] text-gray-400 mt-2">Nu mai trebuie copiate manual ID-uri sau token-uri.</p>
+    </div>
   )
 }
 
