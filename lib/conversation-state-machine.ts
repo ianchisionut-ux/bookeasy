@@ -61,7 +61,6 @@ const KNOWN_DATA_OPTIONS: ChoiceOption[] = [
 ]
 
 const AFTER_BOOKING_OPTIONS: ChoiceOption[] = [
-  { id: 'VIEW_ACTIVE_BOOKING', title: 'Vezi programarea' },
   { id: 'NEW_BOOKING', title: 'Programare nouă' },
 ]
 
@@ -355,7 +354,7 @@ export async function runBotStep({
         return proceedToTimeSelection(businessId, currentState, currentState.practitionerId ?? null, true)
       }
 
-      return { reply: { kind: 'buttons', text: 'Programarea a fost confirmată! Îți trimitem un reminder înainte. Dorești să verifici programarea sau să faci încă una?', options: AFTER_BOOKING_OPTIONS }, newState: { step: 'SELECTING_SERVICE' } }
+      return { reply: { kind: 'buttons', text: 'Programarea a fost confirmată! Îți trimitem un reminder înainte. Dacă dorești, poți face încă o programare.', options: AFTER_BOOKING_OPTIONS }, newState: { step: 'SELECTING_SERVICE' } }
     }
 
     default:
