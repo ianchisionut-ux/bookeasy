@@ -264,7 +264,7 @@ export default function ProgramariManager({
         <td className="pr-5 text-right whitespace-nowrap">
           {(b.status === 'PENDING' || b.status === 'CONFIRMED') &&
             new Date(b.startAt).getTime() > Date.now() &&
-            !b.confirmationRequestSent && (
+            b.customerConfirmed !== true && (
             <button
               onClick={() => sendConfirmationRequest(b.id)}
               disabled={sendingConfirmId === b.id}
@@ -272,7 +272,7 @@ export default function ProgramariManager({
             >
               {sendingConfirmId === b.id
                 ? 'Se trimite...'
-                : `Cere reconfirmare · ${reconfirmationChannelLabel(b.channel)}`}
+                : `${b.confirmationRequestSent ? 'Retrimite reconfirmarea' : 'Cere reconfirmare'} · ${reconfirmationChannelLabel(b.channel)}`}
             </button>
           )}
           {b.status !== 'CANCELLED' && (
