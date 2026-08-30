@@ -65,6 +65,7 @@ export async function sendConfirmationRequest(
 
   const options = [
     { id: `REMINDER_CONFIRM_${booking.id}`, title: 'Confirmă programarea' },
+    { id: `REMINDER_RESCHEDULE_${booking.id}`, title: 'Reprogramează' },
     { id: `REMINDER_CANCEL_${booking.id}`, title: 'Anulează programarea' },
   ]
 
@@ -81,7 +82,7 @@ export async function sendConfirmationRequest(
         channel: preferredChannel,
         externalUserId: recipient,
         direction: 'OUT',
-        text: `${bodyText}\n\nConfirmă programarea / Anulează programarea`,
+        text: `${bodyText}\n\nConfirmă programarea / Reprogramează / Anulează programarea`,
       },
     }).catch((error) => console.error('[reconfirmation] Nu am putut salva mesajul în inbox:', error))
 

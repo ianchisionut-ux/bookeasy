@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { processIncomingMessage } from '@/lib/bot-engine'
 import { syncBookingToGoogle } from '@/lib/google-calendar'
+import { sendMessage } from '@/lib/channel-senders'
 
 export async function GET(req: NextRequest) {
   const mode = req.nextUrl.searchParams.get('hub.mode')
@@ -49,7 +50,7 @@ async function handleWhatsAppEntry(entry: any) {
   // Botul conversațional WhatsApp este dezactivat. Procesăm exclusiv răspunsurile
   // la cererile de reconfirmare trimise manual din BookEasy.
   const action = message.interactive?.button_reply?.id ?? ''
-  const match = /^(REMINDER_CONFIRM|REMINDER_CANCEL)_(.+)$/.exec(action)
+  const match = /^(REMINDER_CONFIRM|REMINDER_RESCHEDULE|REMINDER_CANCEL)_(.+)$/.exec(action)
   if (!match) return
   if (message.id && !(await markMessageProcessed(message.id))) return
 
@@ -63,20 +64,40 @@ async function handleWhatsAppEntry(entry: any) {
   const bookingId = match[2]
   const booking = await prisma.booking.findFirst({
     where: { id: bookingId, businessId: channel.businessId },
+    include: { business: { select: { slug: true } } },
   })
   if (!booking) return
 
-  if (match[1] === 'REMINDER_CONFIRM') {
-    await prisma.booking.update({
-      where: { id: booking.id },
-      data: { status: 'CONFIRMED', customerConfirmed: true, confirmationSeenByAdmin: false },
-    })
-  } else {
-    await prisma.booking.update({
-      where: { id: booking.id },
-      data: { status: 'CANCELLED', customerConfirmed: false, confirmationSeenByAdmin: false },
-    })
+  const actionType = match[1]
+  const claimed = await prisma.booking.updateMany({
+    where: {
+      id: booking.id,
+      businessId: channel.businessId,
+      confirmationRequestSent: true,
+      customerConfirmed: null,
+      status: { in: ['PENDING', 'CONFIRMED'] },
+    },
+    data:
+      actionType === 'REMINDER_CONFIRM'
+        ? { status: 'CONFIRMED', customerConfirmed: true, confirmationSeenByAdmin: false }
+        : { status: 'CANCELLED', customerConfirmed: false, confirmationSeenByAdmin: false },
+  })
+  if (claimed.count === 0) {
+    await sendMessage({
+      channel: 'WHATSAPP',
+      channelId: channel.id,
+      to: message.from,
+      text: 'Răspunsul pentru această programare a fost deja înregistrat și nu mai poate fi schimbat din mesajul vechi.',
+    }).catch(() => undefined)
+    return
   }
+
+  const friendlyText =
+    actionType === 'REMINDER_CONFIRM'
+      ? 'A confirmat programarea'
+      : actionType === 'REMINDER_RESCHEDULE'
+        ? 'A cerut reprogramarea'
+        : 'A anulat programarea'
 
   await prisma.chatMessage.create({
     data: {
@@ -84,10 +105,19 @@ async function handleWhatsAppEntry(entry: any) {
       channel: 'WHATSAPP',
       externalUserId: message.from,
       direction: 'IN',
-      text: match[1] === 'REMINDER_CONFIRM' ? 'A confirmat programarea' : 'A anulat programarea',
+      text: friendlyText,
     },
   })
   await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync WhatsApp reconfirmation:', error))
+
+  if (actionType === 'REMINDER_RESCHEDULE') {
+    const bookingUrl = `${process.env.APP_URL}/${booking.business.slug}/rezerva`
+    const responseText = `Programarea veche a fost anulată. Alege noua dată și oră aici: ${bookingUrl}`
+    await sendMessage({ channel: 'WHATSAPP', channelId: channel.id, to: message.from, text: responseText })
+    await prisma.chatMessage.create({
+      data: { businessId: channel.businessId, channel: 'WHATSAPP', externalUserId: message.from, direction: 'OUT', text: responseText },
+    })
+  }
 }
 async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') {
   const messaging = entry.messaging?.[0]

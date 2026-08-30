@@ -82,7 +82,14 @@ async function handleIncomingMessage({
     const bookingId = trimmed.replace('REMINDER_CONFIRM_', '')
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
     if (booking && booking.businessId === businessId) {
-      await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED', customerConfirmed: true, confirmationSeenByAdmin: false } })
+      const claimed = await prisma.booking.updateMany({
+        where: { id: bookingId, businessId, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
+        data: { status: 'CONFIRMED', customerConfirmed: true, confirmationSeenByAdmin: false },
+      })
+      if (claimed.count === 0) {
+        await sendMessage({ channel, channelId, to: externalUserId, text: 'Răspunsul pentru această programare a fost deja înregistrat și nu mai poate fi schimbat din mesajul vechi.' })
+        return
+      }
       await syncBookingToGoogle(bookingId).catch((error) => console.error('[google-calendar] sync confirmation:', error))
       const confirmText = 'Perfect, programarea ta a fost confirmată! Te așteptăm.'
       await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'OUT', text: confirmText } })
@@ -98,7 +105,14 @@ async function handleIncomingMessage({
       // anulăm programarea veche și pornim direct de la alegerea unei zile noi, pentru
       // același serviciu (și aceeași persoană, dacă era cazul) — clientul nu mai trebuie
       // să aleagă din nou serviciul, doar ziua/ora noi
-      await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CANCELLED', customerConfirmed: false } })
+      const claimed = await prisma.booking.updateMany({
+        where: { id: bookingId, businessId, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
+        data: { status: 'CANCELLED', customerConfirmed: false, confirmationSeenByAdmin: false },
+      })
+      if (claimed.count === 0) {
+        await sendMessage({ channel, channelId, to: externalUserId, text: 'Răspunsul pentru această programare a fost deja înregistrat și nu mai poate fi schimbat din mesajul vechi.' })
+        return
+      }
       await syncBookingToGoogle(bookingId).catch((error) => console.error('[google-calendar] sync reschedule:', error))
 
       const conversation = await prisma.conversation.findFirst({ where: { businessId, channel, externalUserId } })
@@ -120,7 +134,14 @@ async function handleIncomingMessage({
     const bookingId = trimmed.replace('REMINDER_CANCEL_', '')
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
     if (booking && booking.businessId === businessId) {
-      await prisma.booking.update({ where: { id: bookingId }, data: { status: 'CANCELLED', customerConfirmed: false } })
+      const claimed = await prisma.booking.updateMany({
+        where: { id: bookingId, businessId, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
+        data: { status: 'CANCELLED', customerConfirmed: false, confirmationSeenByAdmin: false },
+      })
+      if (claimed.count === 0) {
+        await sendMessage({ channel, channelId, to: externalUserId, text: 'Răspunsul pentru această programare a fost deja înregistrat și nu mai poate fi schimbat din mesajul vechi.' })
+        return
+      }
       await syncBookingToGoogle(bookingId).catch((error) => console.error('[google-calendar] sync cancellation:', error))
       const cancelText = 'Am anulat programarea. Sper să te vedem altă dată!'
       await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'OUT', text: cancelText } })
