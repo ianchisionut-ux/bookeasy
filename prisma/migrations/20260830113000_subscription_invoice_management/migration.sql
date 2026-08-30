@@ -7,3 +7,6 @@ ADD COLUMN IF NOT EXISTS "billingInvoiceName" TEXT,
 ADD COLUMN IF NOT EXISTS "billingInvoiceUploadedAt" TIMESTAMP(3),
 ADD COLUMN IF NOT EXISTS "billingDueNotifiedAt" TIMESTAMP(3),
 ADD COLUMN IF NOT EXISTS "billingSuspendedAt" TIMESTAMP(3);
+
+ALTER TABLE "Booking"
+ADD COLUMN IF NOT EXISTS "confirmationRequestToken" TEXT;

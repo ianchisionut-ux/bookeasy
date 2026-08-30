@@ -79,11 +79,11 @@ async function handleIncomingMessage({
   // 16:00) — mai precis decât potrivirea pe text liber, fiindcă țintește exact
   // rezervarea respectivă, nu ghicește care e "cea mai apropiată"
   if (trimmed.startsWith('REMINDER_CONFIRM_')) {
-    const bookingId = trimmed.replace('REMINDER_CONFIRM_', '')
+    const { bookingId, token } = parseReconfirmationAction(trimmed, 'REMINDER_CONFIRM_')
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
     if (booking && booking.businessId === businessId) {
       const claimed = await prisma.booking.updateMany({
-        where: { id: bookingId, businessId, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
+        where: { id: bookingId, businessId, confirmationRequestToken: token, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
         data: { status: 'CONFIRMED', customerConfirmed: true, confirmationSeenByAdmin: false },
       })
       if (claimed.count === 0) {
@@ -99,14 +99,14 @@ async function handleIncomingMessage({
   }
 
   if (trimmed.startsWith('REMINDER_RESCHEDULE_')) {
-    const bookingId = trimmed.replace('REMINDER_RESCHEDULE_', '')
+    const { bookingId, token } = parseReconfirmationAction(trimmed, 'REMINDER_RESCHEDULE_')
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
     if (booking && booking.businessId === businessId) {
       // anulăm programarea veche și pornim direct de la alegerea unei zile noi, pentru
       // același serviciu (și aceeași persoană, dacă era cazul) — clientul nu mai trebuie
       // să aleagă din nou serviciul, doar ziua/ora noi
       const claimed = await prisma.booking.updateMany({
-        where: { id: bookingId, businessId, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
+        where: { id: bookingId, businessId, confirmationRequestToken: token, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
         data: { status: 'CANCELLED', customerConfirmed: false, confirmationSeenByAdmin: false },
       })
       if (claimed.count === 0) {
@@ -131,11 +131,11 @@ async function handleIncomingMessage({
   }
 
   if (trimmed.startsWith('REMINDER_CANCEL_')) {
-    const bookingId = trimmed.replace('REMINDER_CANCEL_', '')
+    const { bookingId, token } = parseReconfirmationAction(trimmed, 'REMINDER_CANCEL_')
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
     if (booking && booking.businessId === businessId) {
       const claimed = await prisma.booking.updateMany({
-        where: { id: bookingId, businessId, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
+        where: { id: bookingId, businessId, confirmationRequestToken: token, confirmationRequestSent: true, customerConfirmed: null, status: { in: ['PENDING', 'CONFIRMED'] } },
         data: { status: 'CANCELLED', customerConfirmed: false, confirmationSeenByAdmin: false },
       })
       if (claimed.count === 0) {
@@ -368,4 +368,12 @@ function toFriendlyLogText(text: string): string {
   if (trimmed === 'CONFIRM_BOOKING') return '[a apăsat: Confirmă programarea]'
   if (trimmed === 'CANCEL_BOOKING') return '[a apăsat: Anulează]'
   return text
+}
+
+function parseReconfirmationAction(value: string, prefix: string) {
+  const payload = value.slice(prefix.length)
+  const separator = payload.lastIndexOf('.')
+  return separator > 0
+    ? { bookingId: payload.slice(0, separator), token: payload.slice(separator + 1) }
+    : { bookingId: payload, token: '__legacy_message__' }
 }

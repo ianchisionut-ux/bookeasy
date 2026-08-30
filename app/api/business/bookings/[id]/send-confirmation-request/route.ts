@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { sendConfirmationRequest } from '@/lib/confirmation-request'
+import crypto from 'crypto'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -18,17 +19,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (booking.startAt <= new Date()) return NextResponse.json({ error: 'Programarea este în trecut.' }, { status: 400 })
   if (booking.customerConfirmed === true) return NextResponse.json({ error: 'Clientul a confirmat deja această programare.' }, { status: 409 })
 
-  const result = await sendConfirmationRequest(booking)
+  const token = crypto.randomUUID()
+  const prepared = await prisma.booking.update({
+    where: { id },
+    data: { confirmationRequestSent: true, customerConfirmed: null, confirmationRequestToken: token },
+    include: { customer: true, service: true, business: { include: { channels: true } } },
+  })
+  const result = await sendConfirmationRequest(prepared)
   if (!result.success) {
+    await prisma.booking.update({ where: { id }, data: { confirmationRequestToken: booking.confirmationRequestToken, confirmationRequestSent: booking.confirmationRequestSent, customerConfirmed: booking.customerConfirmed } })
     return NextResponse.json({ error: result.error ?? 'Nu am putut trimite mesajul.' }, { status: 400 })
   }
-
-  // O retrimitere începe o rundă nouă de răspuns. Altfel, un răspuns rămas din
-  // mesajul precedent face ca butoanele noi (inclusiv Reprogramează) să fie respinse.
-  await prisma.booking.update({
-    where: { id },
-    data: { confirmationRequestSent: true, customerConfirmed: null },
-  })
 
   return NextResponse.json({ success: true, channel: result.channel })
 }
