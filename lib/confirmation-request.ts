@@ -1,12 +1,49 @@
-import { sendWhatsAppButtons } from './channel-senders'
+import { sendMessengerButtons, sendWhatsAppButtons } from './channel-senders'
+import { prisma } from './prisma'
 
-export async function sendConfirmationRequest(booking: any): Promise<{ success: boolean; error?: string }> {
-  if (!booking.customer?.phone) return { success: false, error: 'Pacientul nu are un număr de telefon salvat.' }
-  // reminder-ul merge mereu pe WhatsApp, indiferent pe ce canal a fost făcută
-  // programarea inițial (bot, site sau introdusă manual de admin) — dacă avem telefon,
-  // avem cum să trimitem
-  const channel = booking.business.channels.find((c: any) => c.type === 'WHATSAPP' && c.status === 'ACTIVE' && c.enabledByOwner)
-  if (!channel) return { success: false, error: 'Canalul WhatsApp nu e conectat sau activ pentru această afacere.' }
+type ReconfirmationChannel = 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
+
+const CHANNEL_NAME: Record<ReconfirmationChannel, string> = {
+  WHATSAPP: 'WhatsApp',
+  INSTAGRAM: 'Instagram',
+  FACEBOOK: 'Messenger',
+}
+
+export async function sendConfirmationRequest(
+  booking: any
+): Promise<{ success: boolean; error?: string; channel?: ReconfirmationChannel }> {
+  // O programare venită din Messenger/Instagram trebuie reconfirmată în aceeași
+  // conversație. Pentru site, Google sau programări introduse manual păstrăm
+  // comportamentul existent: WhatsApp, folosind numărul clientului.
+  const preferredChannel: ReconfirmationChannel =
+    booking.channel === 'FACEBOOK' || booking.channel === 'INSTAGRAM' ? booking.channel : 'WHATSAPP'
+  const recipient =
+    preferredChannel === 'FACEBOOK'
+      ? booking.customer?.facebookUserId
+      : preferredChannel === 'INSTAGRAM'
+        ? booking.customer?.instagramUserId
+        : booking.customer?.phone
+
+  if (!recipient) {
+    const missingIdentity =
+      preferredChannel === 'WHATSAPP'
+        ? 'un număr de telefon'
+        : preferredChannel === 'FACEBOOK'
+          ? 'un profil Messenger asociat'
+          : 'un profil Instagram asociat'
+    return { success: false, error: `Clientul nu are ${missingIdentity}.` }
+  }
+
+  const channel = booking.business.channels.find(
+    (candidate: any) =>
+      candidate.type === preferredChannel && candidate.status === 'ACTIVE' && candidate.enabledByOwner
+  )
+  if (!channel) {
+    return {
+      success: false,
+      error: `Canalul ${CHANNEL_NAME[preferredChannel]} nu este conectat sau activ pentru această afacere.`,
+    }
+  }
 
   const dateTime = booking.startAt.toLocaleString('ro-RO', {
     weekday: 'long',
@@ -32,8 +69,23 @@ export async function sendConfirmationRequest(booking: any): Promise<{ success: 
   ]
 
   try {
-    await sendWhatsAppButtons({ channelId: channel.id, to: booking.customer.phone, bodyText, options })
-    return { success: true }
+    if (preferredChannel === 'WHATSAPP') {
+      await sendWhatsAppButtons({ channelId: channel.id, to: recipient, bodyText, options })
+    } else {
+      await sendMessengerButtons({ channelId: channel.id, to: recipient, bodyText, options })
+    }
+
+    await prisma.chatMessage.create({
+      data: {
+        businessId: booking.businessId,
+        channel: preferredChannel,
+        externalUserId: recipient,
+        direction: 'OUT',
+        text: `${bodyText}\n\nConfirmă programarea / Anulează programarea`,
+      },
+    }).catch((error) => console.error('[reconfirmation] Nu am putut salva mesajul în inbox:', error))
+
+    return { success: true, channel: preferredChannel }
   } catch (err: any) {
     // aici ajunge acum mesajul REAL de la Meta (ex: număr neverificat, token expirat) —
     // nu mai ascundem cauza sub un mesaj generic

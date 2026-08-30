@@ -312,9 +312,9 @@ export default function SettingsForm({
       </Card>
 
       <Card className="mb-5 break-inside-avoid">
-        <h2 className="font-medium mb-1">Reconfirmare {usesAppointments ? 'programări' : 'rezervări'} pe WhatsApp</h2>
+        <h2 className="font-medium mb-1">Reconfirmare {usesAppointments ? 'programări' : 'rezervări'} în conversație</h2>
         <p className="text-sm text-gray-500">
-          WhatsApp este folosit numai când apeși manual <strong>„Cere reconfirmare”</strong> din lista de {usesAppointments ? 'programări' : 'rezervări'}. {isClinic ? 'Pacientul' : 'Clientul'} primește un singur mesaj cu butoanele Confirmă și Anulează. Botul conversațional și reminder-ele automate WhatsApp sunt dezactivate.
+          Când apeși manual <strong>„Cere reconfirmare”</strong>, mesajul pleacă pe canalul original al {usesAppointments ? 'programării' : 'rezervării'}: Messenger, Instagram sau WhatsApp. Pentru cele create din site ori manual se folosește WhatsApp. {isClinic ? 'Pacientul' : 'Clientul'} primește butoanele Confirmă și Anulează direct în conversație.
         </p>
       </Card>
 
