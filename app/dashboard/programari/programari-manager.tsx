@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
 import { PrintButton } from '@/components/print-button'
 import { CheckCircle2, Clock } from 'lucide-react'
-import { WorkingDateTimePicker, WorkingRange } from '@/components/working-date-time-picker'
+import { WorkingRange } from '@/components/working-date-time-picker'
 
 type Booking = {
   id: string
@@ -470,7 +470,6 @@ function NewBookingForm({
   const [newCustomerName, setNewCustomerName] = useState('')
   const [newCustomerPhone, setNewCustomerPhone] = useState('')
   const [serviceId, setServiceId] = useState('')
-  const [date, setDate] = useState('')
   const [practitionerId, setPractitionerId] = useState(practitioners.length === 1 ? practitioners[0].id : '')
   const [slotDate, setSlotDate] = useState(() => {
     const d = new Date()
@@ -483,14 +482,14 @@ function NewBookingForm({
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (!isMultiPractitioner || !serviceId || !practitionerId || !slotDate) {
+    if (!serviceId || !slotDate || (isMultiPractitioner && !practitionerId)) {
       setDaySlots([])
       return
     }
     setLoadingSlots(true)
     setSelectedSlot('')
     fetchWithTimeout(
-      `/api/business/practitioner-availability?serviceId=${serviceId}&practitionerId=${practitionerId}&date=${slotDate}`
+      `/api/business/practitioner-availability?serviceId=${serviceId}&date=${slotDate}${practitionerId ? `&practitionerId=${practitionerId}` : ''}`
     )
       .then((res) => res.json())
       .then((data) => setDaySlots(data.allSlots ?? []))
@@ -500,7 +499,7 @@ function NewBookingForm({
 
   async function submit() {
     const hasCustomer = newCustomerMode ? !!newCustomerName.trim() && newCustomerPhone.trim().length >= 6 : !!customerId
-    const hasDateInfo = isMultiPractitioner ? !!selectedSlot : !!date
+    const hasDateInfo = !!selectedSlot
 
     if (!hasCustomer || !serviceId || !hasDateInfo) {
       setError(
@@ -518,7 +517,7 @@ function NewBookingForm({
     }
 
     const service = services.find((s) => s.id === serviceId)
-    const start = isMultiPractitioner ? new Date(selectedSlot) : new Date(date)
+    const start = new Date(selectedSlot)
     const end = new Date(start.getTime() + (service?.durationMin ?? 30) * 60000)
 
     if (start < new Date()) {
@@ -666,7 +665,7 @@ function NewBookingForm({
                 <p className="text-sm text-gray-500">Niciun program setat pentru această persoană în ziua aleasă.</p>
               ) : (
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                  {daySlots.map((slot) => {
+                  {daySlots.filter((slot) => slot.available).map((slot) => {
                     const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
                     if (!slot.available) {
                       return (
@@ -694,18 +693,10 @@ function NewBookingForm({
           )}
         </div>
       ) : (
-        <div className="mb-3 max-w-xs">
-          <div>
-            <label className="text-sm text-gray-500 block mb-1.5">Data și ora</label>
-            <WorkingDateTimePicker
-              value={date}
-              onChange={setDate}
-              workingHours={workingHours}
-              durationMinutes={services.find((service) => service.id === serviceId)?.durationMin ?? 30}
-              stepMinutes={slotIntervalMinutes}
-              minDate={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)}
-            />
-          </div>
+        <div className="mb-3">
+          <label className="text-sm text-gray-500 block mb-1.5">Data</label>
+          <input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,10)} className="input-field w-full max-w-xs" />
+          {serviceId && <div className="mt-3"><label className="text-sm text-gray-500 block mb-2">Ore disponibile</label>{loadingSlots ? <p className="text-sm text-gray-400">Se încarcă orele...</p> : daySlots.filter(s=>s.available).length === 0 ? <p className="text-sm text-gray-500">Nu mai sunt ore disponibile în această zi.</p> : <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">{daySlots.filter(s=>s.available).map(slot=>{const time=new Date(slot.time).toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Bucharest'});const active=selectedSlot===slot.time;return <button key={slot.time} type="button" onClick={()=>setSelectedSlot(slot.time)} className="py-2 rounded-lg text-sm font-medium border" style={active?{background:'var(--accent)',color:'white',borderColor:'var(--accent)'}:{}}>{time}</button>})}</div>}</div>}
         </div>
       )}
 

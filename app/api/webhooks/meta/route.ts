@@ -121,6 +121,8 @@ async function handleWhatsAppEntry(entry: any) {
 }
 async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') {
   const messaging = entry.messaging?.[0]
+  // Mesajele expediate de operator/pagină revin ca ecouri prin webhook.
+  if (messaging?.message?.is_echo) return
   // apăsarea pe un buton de carousel vine ca "postback", nu ca "message" — trebuie
   // tratate separat, altfel butoanele din carousel sunt complet ignorate
   const effectiveText = messaging?.postback?.payload ?? messaging?.message?.quick_reply?.payload ?? messaging?.message?.text

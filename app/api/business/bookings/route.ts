@@ -17,7 +17,6 @@ const schema = z
     practitionerId: z.string().nullable().optional(),
     startAt: z.string(),
     endAt: z.string(),
-    status: z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW']).optional(),
   })
   .refine((data) => data.customerId || (data.customerName && data.customerPhone), {
     message: 'Alege un client existent sau completează numele și telefonul pentru unul nou.',
@@ -177,7 +176,8 @@ export async function POST(req: NextRequest) {
       practitionerId: parsed.data.practitionerId ?? null,
       startAt: new Date(parsed.data.startAt),
       endAt: new Date(parsed.data.endAt),
-      status: parsed.data.status ?? 'CONFIRMED',
+      // Programările operatorului pornesc mereu confirmate; statusul nu vine din browser.
+      status: 'CONFIRMED',
       channel: 'MANUAL', // rezervare adăugată manual de admin din dashboard, nu de client prin bot
       sequenceNumber,
     },
