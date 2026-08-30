@@ -91,9 +91,11 @@ async function handleIncomingMessage({
         return
       }
       await syncBookingToGoogle(bookingId).catch((error) => console.error('[google-calendar] sync confirmation:', error))
-      const confirmText = 'Perfect, programarea ta a fost confirmată! Te așteptăm.'
+      const confirmText = 'Perfect, programarea ta a fost confirmată! Poți verifica programarea sau poți face încă una.'
       await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'OUT', text: confirmText } })
-      await sendMessage({ channel, channelId, to: externalUserId, text: confirmText })
+      const options = [{ id: 'VIEW_ACTIVE_BOOKING', title: 'Vezi programarea' }, { id: 'NEW_BOOKING', title: 'Programare nouă' }]
+      if (channel === 'WHATSAPP') await sendWhatsAppButtons({ channelId, to: externalUserId, bodyText: confirmText, options })
+      else await sendMessengerButtons({ channelId, to: externalUserId, bodyText: confirmText, options })
     }
     return
   }

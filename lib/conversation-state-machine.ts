@@ -60,6 +60,11 @@ const KNOWN_DATA_OPTIONS: ChoiceOption[] = [
   { id: 'DATA_WRONG', title: 'Nu, actualizează' },
 ]
 
+const AFTER_BOOKING_OPTIONS: ChoiceOption[] = [
+  { id: 'VIEW_ACTIVE_BOOKING', title: 'Vezi programarea' },
+  { id: 'NEW_BOOKING', title: 'Programare nouă' },
+]
+
 // potrivește răspunsul clientului cu o opțiune — fie direct după ID (a apăsat pe o
 // opțiune interactivă, tap-ul trimite înapoi exact ID-ul), fie ca fallback după numărul
 // poziției din listă (a scris manual "2")
@@ -137,6 +142,13 @@ export async function runBotStep({
 
   switch (currentState.step) {
     case 'IDLE': {
+      if (incomingText.trim() === 'NEW_BOOKING' && business.botBookingEnabled) return showServiceMenu(business.services)
+      if (incomingText.trim() === 'VIEW_ACTIVE_BOOKING') {
+        const upcoming = await findUpcomingBooking(businessId, channel, externalUserId)
+        return upcoming
+          ? { reply: { kind: 'buttons', text: `Ai programare pentru ${upcoming.service.name}, ${formatDate(upcoming.startAt.toISOString())}. Dorești și una nouă?`, options: AFTER_BOOKING_OPTIONS }, newState: { step: 'SELECTING_SERVICE' } }
+          : { reply: { kind: 'buttons', text: 'Nu am găsit o programare viitoare. Dorești să faci una nouă?', options: [{ id: 'NEW_BOOKING', title: 'Programare nouă' }] }, newState: { step: 'SELECTING_SERVICE' } }
+      }
       return showWelcome(business.name, business.slug, business.botBookingEnabled)
     }
 
@@ -149,6 +161,13 @@ export async function runBotStep({
       // dacă încă n-am arătat lista reală de servicii, suntem la meniul de start —
       // potrivim răspunsul (tap sau număr scris) cu cele 3 opțiuni inițiale
       if (!currentState.serviceOptions) {
+        if (incomingText.trim() === 'VIEW_ACTIVE_BOOKING') {
+          const upcoming = await findUpcomingBooking(businessId, channel, externalUserId)
+          return upcoming
+            ? { reply: { kind: 'buttons', text: `Ai programare pentru ${upcoming.service.name}, ${formatDate(upcoming.startAt.toISOString())}. Dorești și o programare nouă?`, options: AFTER_BOOKING_OPTIONS }, newState: { step: 'SELECTING_SERVICE' } }
+            : { reply: { kind: 'buttons', text: 'Nu am găsit o programare viitoare. Dorești să faci una nouă?', options: [{ id: 'NEW_BOOKING', title: 'Programare nouă' }] }, newState: { step: 'SELECTING_SERVICE' } }
+        }
+        if (incomingText.trim() === 'NEW_BOOKING') return showServiceMenu(business.services)
         const welcomeChoice = matchChoice(incomingText, getWelcomeOptions(business.slug, business.botBookingEnabled))
 
         if (welcomeChoice === 'OPERATOR') {
@@ -169,6 +188,10 @@ export async function runBotStep({
           }
         }
         if (welcomeChoice === 'START_PROGRAMARE' && business.botBookingEnabled) {
+          const upcoming = await findUpcomingBooking(businessId, channel, externalUserId)
+          if (upcoming) {
+            return { reply: { kind: 'buttons', text: `Ai deja o programare pentru ${upcoming.service.name}, ${formatDate(upcoming.startAt.toISOString())}. Dorești să faci încă una?`, options: AFTER_BOOKING_OPTIONS }, newState: { step: 'SELECTING_SERVICE' } }
+          }
           return showServiceMenu(business.services)
         }
 
@@ -332,15 +355,25 @@ export async function runBotStep({
         return proceedToTimeSelection(businessId, currentState, currentState.practitionerId ?? null, true)
       }
 
-      return {
-        reply: { kind: 'text', text: 'Rezervarea a fost confirmată! Îți trimitem un reminder înainte de programare.' },
-        newState: { step: 'IDLE' },
-      }
+      return { reply: { kind: 'buttons', text: 'Programarea a fost confirmată! Îți trimitem un reminder înainte. Dorești să verifici programarea sau să faci încă una?', options: AFTER_BOOKING_OPTIONS }, newState: { step: 'SELECTING_SERVICE' } }
     }
 
     default:
       return showWelcome(business.name, business.slug, business.botBookingEnabled)
   }
+}
+
+async function findUpcomingBooking(businessId: string, channel: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK', externalUserId: string) {
+  return prisma.booking.findFirst({
+    where: {
+      businessId,
+      status: { in: ['PENDING', 'CONFIRMED'] },
+      startAt: { gte: new Date() },
+      customer: channel === 'WHATSAPP' ? { phone: externalUserId } : channel === 'INSTAGRAM' ? { instagramUserId: externalUserId } : { facebookUserId: externalUserId },
+    },
+    include: { service: true },
+    orderBy: { startAt: 'asc' },
+  })
 }
 
 // primul mesaj — salut + 3 opțiuni: fă o programare, vorbește cu un operator, sau
