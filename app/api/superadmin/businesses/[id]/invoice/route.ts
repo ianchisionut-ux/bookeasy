@@ -43,3 +43,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   return NextResponse.json({ success: true })
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!(session as any)?.isSuperAdmin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const { id } = await params
+  const business = await prisma.business.findUnique({ where: { id }, select: { billingInvoiceUrl: true } })
+  if (!business) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
+  if (!business.billingInvoiceUrl) return NextResponse.json({ success: true })
+
+  try {
+    if (process.env.DOCMED_STORE_ID) await del(business.billingInvoiceUrl, { storeId: process.env.DOCMED_STORE_ID })
+    await prisma.business.update({
+      where: { id },
+      data: { billingInvoiceUrl: null, billingInvoiceName: null, billingInvoiceUploadedAt: null },
+    })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Eroare ștergere factură:', error)
+    return NextResponse.json({ error: 'Factura nu a putut fi ștearsă.' }, { status: 500 })
+  }
+}
