@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!business) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
   const { allowed } = rateLimit(`invoice-upload:${id}`, 20, 60 * 60 * 1000)
   if (!allowed) return NextResponse.json({ error: 'Prea multe încărcări. Încearcă mai târziu.' }, { status: 429 })
-  if (!process.env.BOOKBLOB_STORE_ID || !process.env.BLOB_READ_WRITE_TOKEN) {
+  if (!process.env.DOCMED_STORE_ID) {
     return NextResponse.json({ error: 'Stocarea facturilor nu este configurată.' }, { status: 503 })
   }
   const form = await req.formData()
@@ -25,16 +25,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!ALLOWED_TYPES.has(file.type)) return NextResponse.json({ error: 'Sunt acceptate PDF, JPG și PNG.' }, { status: 400 })
 
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-120) || 'factura.pdf'
-  const blob = await put(`invoices/${id}/${Date.now()}-${safeName}`, file, {
-    access: 'private', storeId: process.env.BOOKBLOB_STORE_ID, token: process.env.BLOB_READ_WRITE_TOKEN,
-    addRandomSuffix: true, contentType: file.type, cacheControlMaxAge: 60,
-  })
-  await prisma.business.update({
-    where: { id },
-    data: { billingInvoiceUrl: blob.url, billingInvoiceName: file.name, billingInvoiceUploadedAt: new Date(), billingStatus: 'NEPLATIT', billingDueNotifiedAt: null },
-  })
-  if (business.billingInvoiceUrl) {
-    try { await del(business.billingInvoiceUrl, { storeId: process.env.BOOKBLOB_STORE_ID, token: process.env.BLOB_READ_WRITE_TOKEN }) } catch {}
+  try {
+    const blob = await put(`invoices/${id}/${Date.now()}-${safeName}`, file, {
+      access: 'private', storeId: process.env.DOCMED_STORE_ID,
+      addRandomSuffix: true, contentType: file.type, cacheControlMaxAge: 60,
+    })
+    await prisma.business.update({
+      where: { id },
+      data: { billingInvoiceUrl: blob.url, billingInvoiceName: file.name, billingInvoiceUploadedAt: new Date(), billingStatus: 'NEPLATIT', billingDueNotifiedAt: null },
+    })
+    if (business.billingInvoiceUrl) {
+      try { await del(business.billingInvoiceUrl, { storeId: process.env.DOCMED_STORE_ID }) } catch {}
+    }
+  } catch (error) {
+    console.error('Eroare upload factură:', error)
+    return NextResponse.json({ error: 'Factura nu a putut fi încărcată în stocarea privată.' }, { status: 500 })
   }
   return NextResponse.json({ success: true })
 }

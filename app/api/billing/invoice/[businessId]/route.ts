@@ -11,8 +11,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ bus
   }
   const business = await prisma.business.findUnique({ where: { id: businessId }, select: { billingInvoiceUrl: true, billingInvoiceName: true } })
   if (!business?.billingInvoiceUrl) return NextResponse.json({ error: 'Factura nu există.' }, { status: 404 })
-  if (!process.env.BOOKBLOB_STORE_ID || !process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ error: 'Stocarea nu este configurată.' }, { status: 503 })
-  const result = await get(business.billingInvoiceUrl, { access: 'private', storeId: process.env.BOOKBLOB_STORE_ID, token: process.env.BLOB_READ_WRITE_TOKEN })
+  if (!process.env.DOCMED_STORE_ID) return NextResponse.json({ error: 'Stocarea nu este configurată.' }, { status: 503 })
+  const result = await get(business.billingInvoiceUrl, { access: 'private', storeId: process.env.DOCMED_STORE_ID })
   if (!result || result.statusCode !== 200 || !result.stream) return NextResponse.json({ error: 'Factura nu a fost găsită.' }, { status: 404 })
   return new NextResponse(result.stream, { headers: {
     'Content-Type': result.blob.contentType || 'application/octet-stream',
