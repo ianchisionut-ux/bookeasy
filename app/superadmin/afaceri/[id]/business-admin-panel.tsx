@@ -32,6 +32,9 @@ type Business = {
   teamSize: number
   billingStatus: 'GRATUIT' | 'NEPLATIT' | 'PLATIT' | 'RESTANT'
   billingNote: string | null
+  billingAmount: number | null
+  billingDueAt: string | null
+  billingInvoiceName: string | null
 }
 
 export default function BusinessAdminPanel({ business, channels, metaAppId, metaWhatsappConfigId }: { business: Business; channels: Channel[]; metaAppId: string; metaWhatsappConfigId: string }) {
@@ -239,6 +242,9 @@ export default function BusinessAdminPanel({ business, channels, metaAppId, meta
           initialPlanName={business.planName}
           initialStatus={business.billingStatus}
           initialNote={business.billingNote}
+          initialAmount={business.billingAmount}
+          initialDueAt={business.billingDueAt}
+          invoiceName={business.billingInvoiceName}
         />
       </div>
 

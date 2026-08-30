@@ -9,6 +9,8 @@ const patchSchema = z.object({
   planName: z.string().nullable().optional(),
   billingStatus: z.enum(['GRATUIT', 'NEPLATIT', 'PLATIT', 'RESTANT']).optional(),
   billingNote: z.string().nullable().optional(),
+  billingAmount: z.number().nonnegative().nullable().optional(),
+  billingDueAt: z.string().datetime().nullable().optional(),
   publicListed: z.boolean().optional(),
   accountActive: z.boolean().optional(),
   teamSize: z.number().min(1).max(200).optional(),
@@ -29,7 +31,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = patchSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  await prisma.business.update({ where: { id }, data: parsed.data })
+  const current = await prisma.business.findUnique({ where: { id }, select: { billingSuspendedAt: true } })
+  if (!current) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
+
+  const { billingDueAt, ...input } = parsed.data
+  const data: any = {
+    ...input,
+    ...(billingDueAt !== undefined ? { billingDueAt: billingDueAt ? new Date(billingDueAt) : null } : {}),
+  }
+  if (parsed.data.billingStatus === 'PLATIT') {
+    data.billingDueNotifiedAt = null
+    if (current.billingSuspendedAt) {
+      data.accountActive = true
+      data.billingSuspendedAt = null
+    }
+  } else if (parsed.data.billingDueAt !== undefined || parsed.data.billingStatus === 'NEPLATIT') {
+    data.billingDueNotifiedAt = null
+  }
+  if (parsed.data.accountActive === true) data.billingSuspendedAt = null
+
+  await prisma.business.update({ where: { id }, data })
 
   return NextResponse.json({ success: true })
 }

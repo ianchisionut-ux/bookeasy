@@ -4,6 +4,17 @@ import { encrypt } from '@/lib/crypto'
 import { auth } from '@/lib/auth'
 import { verifyOAuthState } from '@/lib/oauth-state'
 
+async function fetchGoogleWithQuotaRetry(url: string, accessToken: string) {
+  const waits = [0, 5000, 15000]
+  let response: Response | null = null
+  for (const wait of waits) {
+    if (wait) await new Promise((resolve) => setTimeout(resolve, wait))
+    response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' })
+    if (response.status !== 429) return response
+  }
+  return response!
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { provider: providerRaw } = await params
   if (providerRaw !== 'google' && providerRaw !== 'meta') {
@@ -87,12 +98,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   }
 
   if (provider === 'google') {
-    const accountsResponse = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
-    })
+    const accountsResponse = await fetchGoogleWithQuotaRetry('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', tokenData.access_token)
     const accounts = await accountsResponse.json()
     if (!accountsResponse.ok || accounts.error) {
-      const message = accounts.error?.message ?? 'Google nu a returnat conturile Business Profile.'
+      const message = accountsResponse.status === 429 ? 'Google a limitat temporar conectările. Așteaptă un minut și apasă din nou Conectează cu Google.' : accounts.error?.message ?? 'Google nu a returnat conturile Business Profile.'
       return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
     }
 
@@ -103,13 +112,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
 
     // recenziile se cer pe LOCAȚIE, nu pe cont — trebuie numele complet al resursei
     // (ex: "accounts/123456/locations/789") ca să putem sincroniza ulterior recenziile
-    const locationsResponse = await fetch(
+    const locationsResponse = await fetchGoogleWithQuotaRetry(
       `https://mybusinessbusinessinformation.googleapis.com/v1/${accountName}/locations?readMask=name,title`,
-      { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
+      tokenData.access_token
     )
     const locations = await locationsResponse.json()
     if (!locationsResponse.ok || locations.error) {
-      const message = locations.error?.message ?? 'Google nu a returnat locațiile Business Profile.'
+      const message = locationsResponse.status === 429 ? 'Google a limitat temporar conectările. Așteaptă un minut și încearcă din nou.' : locations.error?.message ?? 'Google nu a returnat locațiile Business Profile.'
       return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
     }
     const rawLocationName = locations.locations?.[0]?.name // de regulă "locations/789"
