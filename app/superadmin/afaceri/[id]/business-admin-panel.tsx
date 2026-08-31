@@ -326,6 +326,48 @@ function IntegrationsCard({ businessId, channels, metaAppId, metaWhatsappConfigI
   )
 }
 
+function DisconnectChannelButton({ businessId, channel }: { businessId: string; channel: Channel }) {
+  const router = useRouter()
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [error, setError] = useState('')
+  const label: Record<string, string> = {
+    FACEBOOK: 'Messenger',
+    INSTAGRAM: 'Instagram',
+    WHATSAPP: 'WhatsApp',
+    GOOGLE_BUSINESS: 'Google',
+  }
+
+  async function disconnect() {
+    const channelLabel = label[channel.type] ?? 'integrarea'
+    if (!window.confirm(`Deconectezi ${channelLabel}? Tokenul va fi șters din BookEasy, iar canalul va trebui autorizat din nou pentru reconectare.`)) return
+
+    setDisconnecting(true)
+    setError('')
+    try {
+      const response = await fetch(`/api/superadmin/businesses/${businessId}/channels/${channel.id}`, { method: 'DELETE' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error ?? 'Deconectarea nu a reușit.')
+      if (data.warning) {
+        window.alert(`Canalul a fost eliminat din BookEasy. Meta a răspuns însă: ${data.warning}`)
+      }
+      router.refresh()
+    } catch (disconnectError) {
+      setError(disconnectError instanceof Error ? disconnectError.message : 'Deconectarea nu a reușit.')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  return (
+    <div>
+      <Button variant="secondary" className="text-red-600 border-red-200 hover:bg-red-50" onClick={disconnect} disabled={disconnecting}>
+        {disconnecting ? 'Se deconectează...' : 'Deconectează'}
+      </Button>
+      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+    </div>
+  )
+}
+
 function GoogleOAuthCard({ businessId, channel }: { businessId: string; channel: Channel | null }) {
   const searchParams = useSearchParams()
   const connected = channel?.status === 'ACTIVE'
@@ -422,10 +464,11 @@ function ChannelFields({
         </div>
       </div>
       {helpText && <p className="text-xs text-gray-400 mt-2">{helpText}</p>}
-      <div className="mt-3">
+      <div className="mt-3 flex flex-wrap items-start gap-2">
         <Button variant="secondary" onClick={save} disabled={saving || !externalId}>
           {saving ? 'Se salvează...' : 'Salvează'}
         </Button>
+        {channel && <DisconnectChannelButton businessId={businessId} channel={channel} />}
       </div>
     </div>
   )
@@ -567,10 +610,11 @@ function WhatsAppFields({ businessId, channel, metaAppId, configId }: { business
 
       {message && <p className="text-xs mt-2 text-[var(--accent)]">{message}</p>}
 
-      <div className="mt-3">
+      <div className="mt-3 flex flex-wrap items-start gap-2">
         <Button variant="secondary" onClick={save} disabled={saving || !externalId}>
           {saving ? 'Se salvează...' : 'Salvează'}
         </Button>
+        {channel && <DisconnectChannelButton businessId={businessId} channel={channel} />}
       </div>
     </div>
   )
