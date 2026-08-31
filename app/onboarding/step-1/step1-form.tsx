@@ -16,10 +16,10 @@ const CATEGORY_LABEL: Record<string, string> = {
   CLINICA: 'Clinică medicală/stomatologică',
 }
 
-// doar aceste două categorii se pot alege chiar aici, în onboarding — restul (Clinică,
-// Hotel, Pensiune) sunt stabilite de admin la crearea contului și nu se schimbă aici,
+// Categoriile active se pot alege chiar aici, în onboarding — Hotel și Pensiune
+// sunt stabilite de admin la crearea contului și nu se schimbă aici,
 // ca să nu riști să strici din greșeală o categorie deja setată corect
-const SELECTABLE = ['SALON', 'EVENT_VENUE']
+const SELECTABLE = ['SALON', 'EVENT_VENUE', 'CLINICA']
 
 export default function Step1Form({ currentCategory }: { currentCategory: string }) {
   const router = useRouter()
@@ -27,7 +27,7 @@ export default function Step1Form({ currentCategory }: { currentCategory: string
 
   const [form, setForm] = useState({
     name: '',
-    category: (SELECTABLE.includes(currentCategory) ? currentCategory : 'SALON') as 'SALON' | 'EVENT_VENUE',
+    category: (SELECTABLE.includes(currentCategory) ? currentCategory : 'SALON') as 'SALON' | 'EVENT_VENUE' | 'CLINICA',
     contactPhone: '',
     city: '',
     address: '',
@@ -93,7 +93,7 @@ export default function Step1Form({ currentCategory }: { currentCategory: string
         ) : (
           <div>
             <label className="text-sm text-gray-500 block mb-2">Tip de afacere</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => setForm({ ...form, category: 'SALON' })}
@@ -124,6 +124,20 @@ export default function Step1Form({ currentCategory }: { currentCategory: string
                   Spații evenimente
                 </p>
                 <p className="text-xs text-gray-500">săli, nunți, corporate</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, category: 'CLINICA' })}
+                className="rounded-2xl p-4 text-left transition"
+                style={{
+                  border: form.category === 'CLINICA' ? '2px solid var(--accent)' : '1px solid var(--border-soft)',
+                  background: form.category === 'CLINICA' ? 'var(--accent-soft)' : 'white',
+                }}
+              >
+                <p className="text-sm font-medium" style={{ color: form.category === 'CLINICA' ? 'var(--accent)' : undefined }}>
+                  Clinică
+                </p>
+                <p className="text-xs text-gray-500">medicală, stomatologică</p>
               </button>
             </div>
           </div>
