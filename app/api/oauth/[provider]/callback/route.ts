@@ -68,27 +68,30 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
       return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
     }
 
-    for (const page of pages.data ?? []) {
-      const subscription = await fetch(`https://graph.facebook.com/v21.0/${page.id}/subscribed_apps?subscribed_fields=messages,messaging_postbacks,message_deliveries,message_reads&access_token=${page.access_token}`, { method: 'POST' })
-      const subscriptionData = await subscription.json()
-      if (!subscription.ok || subscriptionData.error) {
-        const message = subscriptionData.error?.message ?? 'Abonarea paginii la webhook a eșuat.'
-        return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
-      }
-
-      await prisma.channel.upsert({
-        where: { type_externalId: { type: 'FACEBOOK', externalId: page.id } },
-        create: {
-          businessId,
-          type: 'FACEBOOK',
-          externalId: page.id,
-          accessToken: encrypt(page.access_token),
-          expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-        },
-        update: { businessId, accessToken: encrypt(page.access_token), status: 'ACTIVE', enabledByOwner: true },
-      })
-
+    if (pages.data.length !== 1) {
+      const message = 'Selectează exact o singură Pagină Facebook pentru această afacere.'
+      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
     }
+
+    const page = pages.data[0]
+    const subscription = await fetch(`https://graph.facebook.com/v21.0/${page.id}/subscribed_apps?subscribed_fields=messages,messaging_postbacks,message_deliveries,message_reads&access_token=${page.access_token}`, { method: 'POST' })
+    const subscriptionData = await subscription.json()
+    if (!subscription.ok || subscriptionData.error) {
+      const message = subscriptionData.error?.message ?? 'Abonarea paginii la webhook a eșuat.'
+      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
+    }
+
+    await prisma.channel.upsert({
+      where: { type_externalId: { type: 'FACEBOOK', externalId: page.id } },
+      create: {
+        businessId,
+        type: 'FACEBOOK',
+        externalId: page.id,
+        accessToken: encrypt(page.access_token),
+        expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+      },
+      update: { businessId, accessToken: encrypt(page.access_token), status: 'ACTIVE', enabledByOwner: true },
+    })
   }
 
   if (provider === 'google') {

@@ -32,16 +32,34 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const channel = await prisma.channel.findFirst({ where: { id: channelId, businessId: id } })
   if (!channel) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  let warning: string | null = null
+  // Interfata trateaza fiecare tip ca o singura integrare. Eliminam toate intrarile
+  // de acelasi tip ca sa nu ramana ACTIVE o a doua Pagina salvata accidental.
+  const channels = await prisma.channel.findMany({
+    where: { businessId: id, type: channel.type },
+  })
 
-  if (channel.type === 'FACEBOOK') {
-    warning = await unsubscribeFromMeta(channel.externalId, channel.accessToken)
-  } else if (channel.type === 'WHATSAPP' && channel.wabaId) {
-    warning = await unsubscribeFromMeta(channel.wabaId, channel.accessToken)
-  }
+  const warnings = (
+    await Promise.all(
+      channels.map(async (currentChannel) => {
+        if (currentChannel.type === 'FACEBOOK') {
+          return unsubscribeFromMeta(currentChannel.externalId, currentChannel.accessToken)
+        }
+        if (currentChannel.type === 'WHATSAPP' && currentChannel.wabaId) {
+          return unsubscribeFromMeta(currentChannel.wabaId, currentChannel.accessToken)
+        }
+        return null
+      })
+    )
+  ).filter((warning): warning is string => Boolean(warning))
 
-  // Stergerea canalului elimina tokenul din BookEasy si permite o inrolare curata ulterioara.
-  await prisma.channel.delete({ where: { id: channelId } })
+  // Stergerea elimina toate tokenurile locale si permite o inrolare curata ulterioara.
+  const deleted = await prisma.channel.deleteMany({
+    where: { businessId: id, type: channel.type },
+  })
 
-  return NextResponse.json({ success: true, warning })
+  return NextResponse.json({
+    success: true,
+    removed: deleted.count,
+    warning: warnings.length > 0 ? [...new Set(warnings)].join(' | ') : null,
+  })
 }
