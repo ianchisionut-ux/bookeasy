@@ -25,6 +25,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { type, externalId, accessToken, wabaId, expiresInDays } = parsed.data
 
+  if (type === 'FACEBOOK') {
+    return NextResponse.json(
+      { error: 'Messenger se conectează numai prin fluxul oficial Autorizează Messenger.' },
+      { status: 400 }
+    )
+  }
+
+  if ((type === 'INSTAGRAM' || type === 'WHATSAPP') && !/^\d{5,}$/.test(externalId)) {
+    return NextResponse.json({ error: 'ID-ul canalului trebuie să conțină numai cifre.' }, { status: 400 })
+  }
+  if (type === 'WHATSAPP' && wabaId && !/^\d{5,}$/.test(wabaId)) {
+    return NextResponse.json({ error: 'WABA ID trebuie să conțină numai cifre.' }, { status: 400 })
+  }
+
   const existing = await prisma.channel.findUnique({ where: { type_externalId: { type, externalId } } })
   if (!existing && !accessToken) {
     return NextResponse.json({ error: 'Access Token e obligatoriu la prima conectare a canalului.' }, { status: 400 })
