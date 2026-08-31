@@ -22,6 +22,24 @@ async function unsubscribeFromMeta(objectId: string, encryptedToken: string) {
   return null
 }
 
+async function revokeGoogleToken(encryptedToken: string) {
+  try {
+    const response = await fetch('https://oauth2.googleapis.com/revoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ token: decrypt(encryptedToken) }),
+      cache: 'no-store',
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      return data?.error_description ?? data?.error ?? 'Google nu a confirmat revocarea accesului.'
+    }
+  } catch (error) {
+    return error instanceof Error ? error.message : 'Google nu a putut fi contactat pentru revocare.'
+  }
+  return null
+}
+
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string; channelId: string }> }) {
   const session = await auth()
   if (!session || !(session as any).isSuperAdmin) {
@@ -33,7 +51,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!channel) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
   // Interfata trateaza fiecare tip ca o singura integrare. Eliminam toate intrarile
-  // de acelasi tip ca sa nu ramana ACTIVE o a doua Pagina salvata accidental.
+  // de acelasi tip ca sa nu ramana ACTIVE o a doua configurare salvata accidental.
   const channels = await prisma.channel.findMany({
     where: { businessId: id, type: channel.type },
   })
@@ -41,11 +59,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const warnings = (
     await Promise.all(
       channels.map(async (currentChannel) => {
-        if (currentChannel.type === 'FACEBOOK') {
+        if (currentChannel.type === 'FACEBOOK' || currentChannel.type === 'INSTAGRAM') {
           return unsubscribeFromMeta(currentChannel.externalId, currentChannel.accessToken)
         }
         if (currentChannel.type === 'WHATSAPP' && currentChannel.wabaId) {
           return unsubscribeFromMeta(currentChannel.wabaId, currentChannel.accessToken)
+        }
+        if (currentChannel.type === 'GOOGLE_BUSINESS') {
+          return revokeGoogleToken(currentChannel.refreshToken ?? currentChannel.accessToken)
         }
         return null
       })

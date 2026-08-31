@@ -348,7 +348,7 @@ function DisconnectChannelButton({ businessId, channel }: { businessId: string; 
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? 'Deconectarea nu a reușit.')
       if (data.warning) {
-        window.alert(`Canalul a fost eliminat din BookEasy. Meta a răspuns însă: ${data.warning}`)
+        window.alert(`Canalul a fost eliminat din BookEasy. Furnizorul extern a răspuns însă: ${data.warning}`)
       }
       router.refresh()
     } catch (disconnectError) {
@@ -398,12 +398,15 @@ function GoogleOAuthCard({ businessId, channel }: { businessId: string; channel:
       {connected && channel.externalId && (
         <p className="text-xs text-gray-400 mb-3 break-all">Locație: {channel.externalId}</p>
       )}
-      <a
-        href={`/api/oauth/google/start?businessId=${encodeURIComponent(businessId)}`}
-        className="btn-primary inline-flex text-sm"
-      >
-        {connected ? 'Reconectează Google' : 'Conectează cu Google'}
-      </a>
+      <div className="flex flex-wrap items-start gap-2">
+        <a
+          href={`/api/oauth/google/start?businessId=${encodeURIComponent(businessId)}`}
+          className="btn-primary inline-flex text-sm"
+        >
+          {connected ? 'Reconectează Google' : 'Conectează cu Google'}
+        </a>
+        {channel && <DisconnectChannelButton businessId={businessId} channel={channel} />}
+      </div>
       <p className="text-[11px] text-gray-400 mt-2">Nu mai trebuie copiate manual ID-uri sau token-uri.</p>
     </div>
   )
