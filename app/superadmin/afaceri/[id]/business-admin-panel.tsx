@@ -263,6 +263,8 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
 }
 
 function IntegrationsCard({ businessId, channels, practitioners, metaAppId, metaWhatsappConfigId }: { businessId: string; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string }) {
+  const searchParams = useSearchParams()
+  const oauthError = searchParams.get('error')
   const [tab, setTab] = useState<'FACEBOOK' | 'INSTAGRAM' | 'WHATSAPP' | 'GOOGLE_CALENDAR'>('FACEBOOK')
 
   const tabs: { id: typeof tab; label: string }[] = [
@@ -275,6 +277,11 @@ function IntegrationsCard({ businessId, channels, practitioners, metaAppId, meta
   return (
     <Card>
       <h2 className="text-xs font-semibold text-gray-500 tracking-wide mb-3">INTEGRĂRI</h2>
+      {oauthError && (
+        <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2 mb-3">
+          Conectarea nu a reușit: {oauthError}
+        </p>
+      )}
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 mb-4">
         <p className="text-sm font-medium text-blue-950">Înrolare asistată Meta</p>
         <p className="text-xs text-blue-800 mt-1 mb-3">Clientul se conectează cu propriul cont Meta și selectează numai pagina afacerii sale. Messenger se configurează și se abonează automat.</p>
@@ -304,12 +311,9 @@ function IntegrationsCard({ businessId, channels, practitioners, metaAppId, meta
       </div>
 
       {tab === 'FACEBOOK' && (
-        <ChannelFields
+        <MessengerConnectionCard
           businessId={businessId}
-          type="FACEBOOK"
           channel={channels.find((c) => c.type === 'FACEBOOK') ?? null}
-          idLabel="Page ID"
-          idPlaceholder="ex: 120984102888104"
         />
       )}
       {tab === 'INSTAGRAM' && (
@@ -325,6 +329,72 @@ function IntegrationsCard({ businessId, channels, practitioners, metaAppId, meta
       {tab === 'WHATSAPP' && <WhatsAppFields businessId={businessId} channel={channels.find((c) => c.type === 'WHATSAPP') ?? null} metaAppId={metaAppId} configId={metaWhatsappConfigId} />}
       {tab === 'GOOGLE_CALENDAR' && <GoogleCalendarCard businessId={businessId} practitioners={practitioners} />}
     </Card>
+  )
+}
+
+function MessengerConnectionCard({ businessId, channel }: { businessId: string; channel: Channel | null }) {
+  const connected = channel?.status === 'ACTIVE'
+
+  return (
+    <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold">Facebook Messenger</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Conectarea se face exclusiv prin autorizarea Meta. Nu trebuie completate manual Page ID sau Access Token.
+          </p>
+        </div>
+        <Pill tone={connected ? 'success' : 'neutral'}>{connected ? 'ACTIVE' : 'Neconectat'}</Pill>
+      </div>
+      {channel && (
+        <div className="mt-3">
+          <p className="text-xs text-gray-500 mb-3 break-all">Page ID: {channel.externalId}</p>
+          <DisconnectChannelButton businessId={businessId} channel={channel} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DisconnectChannelButton({ businessId, channel }: { businessId: string; channel: Channel }) {
+  const router = useRouter()
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [error, setError] = useState('')
+  const label: Record<string, string> = {
+    FACEBOOK: 'Messenger',
+    INSTAGRAM: 'Instagram',
+    WHATSAPP: 'WhatsApp',
+    GOOGLE_BUSINESS: 'Google',
+  }
+
+  async function disconnect() {
+    const channelLabel = label[channel.type] ?? 'integrarea'
+    if (!window.confirm(`Deconectezi ${channelLabel}? Tokenul va fi șters din BookEasy, iar canalul va trebui autorizat din nou pentru reconectare.`)) return
+
+    setDisconnecting(true)
+    setError('')
+    try {
+      const response = await fetch(`/api/superadmin/businesses/${businessId}/channels/${channel.id}`, { method: 'DELETE' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error ?? 'Deconectarea nu a reușit.')
+      if (data.warning) {
+        window.alert(`Canalul a fost eliminat din BookEasy. Furnizorul extern a răspuns însă: ${data.warning}`)
+      }
+      router.refresh()
+    } catch (disconnectError) {
+      setError(disconnectError instanceof Error ? disconnectError.message : 'Deconectarea nu a reușit.')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  return (
+    <div>
+      <Button variant="secondary" className="text-red-600 border-red-200 hover:bg-red-50" onClick={disconnect} disabled={disconnecting}>
+        {disconnecting ? 'Se deconectează...' : 'Deconectează'}
+      </Button>
+      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+    </div>
   )
 }
 
@@ -386,14 +456,22 @@ function ChannelFields({
   const [externalId, setExternalId] = useState(channel?.externalId ?? '')
   const [accessToken, setAccessToken] = useState('')
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   async function save() {
     setSaving(true)
-    await fetch(`/api/superadmin/businesses/${businessId}/channels`, {
+    setSaveError('')
+    const response = await fetch(`/api/superadmin/businesses/${businessId}/channels`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, externalId, accessToken: accessToken || undefined }),
     })
+    const data = await response.json()
+    if (!response.ok) {
+      setSaveError(typeof data.error === 'string' ? data.error : 'Datele canalului nu sunt valide.')
+      setSaving(false)
+      return
+    }
     setAccessToken('')
     setSaving(false)
     router.refresh()
@@ -409,7 +487,14 @@ function ChannelFields({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">{idLabel}</label>
-          <Input value={externalId} onChange={(e) => setExternalId(e.target.value)} placeholder={idPlaceholder} />
+          <Input
+            name={`${type.toLowerCase()}-external-id`}
+            autoComplete="one-time-code"
+            data-1p-ignore="true"
+            value={externalId}
+            onChange={(e) => setExternalId(e.target.value)}
+            placeholder={idPlaceholder}
+          />
         </div>
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">Access Token</label>
@@ -417,16 +502,23 @@ function ChannelFields({
             value={accessToken}
             onChange={(e) => setAccessToken(e.target.value)}
             placeholder="Lasă gol dacă nu schimbi"
-            type="password"
+            type="text"
+            className="[-webkit-text-security:disc]"
+            spellCheck={false}
+            name={`${type.toLowerCase()}-access-token`}
+            autoComplete="one-time-code"
+            data-1p-ignore="true"
           />
         </div>
       </div>
       {helpText && <p className="text-xs text-gray-400 mt-2">{helpText}</p>}
-      <div className="mt-3">
+      <div className="mt-3 flex flex-wrap items-start gap-2">
         <Button variant="secondary" onClick={save} disabled={saving || !externalId}>
           {saving ? 'Se salvează...' : 'Salvează'}
         </Button>
+        {channel && <DisconnectChannelButton businessId={businessId} channel={channel} />}
       </div>
+      {saveError && <p className="text-xs text-red-600 mt-2">{saveError}</p>}
     </div>
   )
 }
@@ -502,11 +594,18 @@ function WhatsAppFields({ businessId, channel, metaAppId, configId }: { business
 
   async function save() {
     setSaving(true)
-    await fetch(`/api/superadmin/businesses/${businessId}/channels`, {
+    setMessage('')
+    const response = await fetch(`/api/superadmin/businesses/${businessId}/channels`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'WHATSAPP', externalId, wabaId, accessToken: accessToken || undefined }),
     })
+    const data = await response.json()
+    if (!response.ok) {
+      setMessage(typeof data.error === 'string' ? data.error : 'Datele WhatsApp nu sunt valide.')
+      setSaving(false)
+      return
+    }
     setAccessToken('')
     setSaving(false)
     router.refresh()
@@ -540,18 +639,18 @@ function WhatsAppFields({ businessId, channel, metaAppId, configId }: { business
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">Phone Number ID</label>
-          <Input value={externalId} onChange={(e) => setExternalId(e.target.value)} placeholder="ex: 126137824372250" />
+          <Input name="whatsapp-phone-number-id" autoComplete="one-time-code" data-1p-ignore="true" value={externalId} onChange={(e) => setExternalId(e.target.value)} placeholder="ex: 126137824372250" />
         </div>
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">Access Token</label>
-          <Input value={accessToken} onChange={(e) => setAccessToken(e.target.value)} placeholder="Lasă gol dacă nu schimbi" type="password" />
+          <Input name="whatsapp-access-token" autoComplete="one-time-code" data-1p-ignore="true" className="[-webkit-text-security:disc]" spellCheck={false} value={accessToken} onChange={(e) => setAccessToken(e.target.value)} placeholder="Lasă gol dacă nu schimbi" type="text" />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">WhatsApp Business Account ID (WABA)</label>
-          <Input value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="ex: 120826654809241" />
+          <Input name="whatsapp-waba-id" autoComplete="one-time-code" data-1p-ignore="true" value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="ex: 120826654809241" />
         </div>
         <div className="flex items-end">
           <button onClick={subscribe} disabled={subscribing} className="btn-secondary w-full">
@@ -567,10 +666,11 @@ function WhatsAppFields({ businessId, channel, metaAppId, configId }: { business
 
       {message && <p className="text-xs mt-2 text-[var(--accent)]">{message}</p>}
 
-      <div className="mt-3">
+      <div className="mt-3 flex flex-wrap items-start gap-2">
         <Button variant="secondary" onClick={save} disabled={saving || !externalId}>
           {saving ? 'Se salvează...' : 'Salvează'}
         </Button>
+        {channel && <DisconnectChannelButton businessId={businessId} channel={channel} />}
       </div>
     </div>
   )
