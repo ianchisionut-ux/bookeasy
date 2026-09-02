@@ -16,6 +16,16 @@ export async function GET(req: NextRequest) {
   const redirectUri = `${process.env.APP_URL}/api/google-calendar/callback`
   const state = signCalendarState({ businessId, practitionerId, initiatedBySuperAdmin, expiresAt: Date.now() + 10 * 60_000 })
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth')
-  url.search = new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID ?? '', redirect_uri: redirectUri, response_type: 'code', access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true', scope: 'openid email https://www.googleapis.com/auth/calendar', state }).toString()
+  // BookEasy creează un calendar secundar propriu și gestionează exclusiv evenimentele
+  // din el. Nu avem nevoie de acces la toate calendarele utilizatorului.
+  url.search = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID ?? '',
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: 'openid email https://www.googleapis.com/auth/calendar.app.created',
+    state,
+  }).toString()
   return NextResponse.redirect(url)
 }
