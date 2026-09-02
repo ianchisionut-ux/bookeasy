@@ -10,6 +10,11 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
       where: { id },
       include: {
         channels: true,
+        practitioners: {
+          where: { active: true },
+          orderBy: { name: 'asc' },
+          include: { googleCalendar: { select: { googleEmail: true, calendarName: true, syncEnabled: true, lastError: true } } },
+        },
         users: { where: { role: 'OWNER' } },
         _count: { select: { bookings: true } },
       },
@@ -60,6 +65,11 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
           externalId: c.externalId,
           wabaId: c.wabaId,
           status: c.status,
+        }))}
+        practitioners={business.practitioners.map((practitioner) => ({
+          id: practitioner.id,
+          name: practitioner.name,
+          googleCalendar: practitioner.googleCalendar,
         }))}
       />
     </div>
