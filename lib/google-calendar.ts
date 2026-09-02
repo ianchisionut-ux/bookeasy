@@ -44,8 +44,18 @@ export async function syncBookingToGoogle(bookingId: string) {
     customer: true, service: true, business: true,
     practitioner: { include: { googleCalendar: true } },
   } })
-  const connection = booking?.practitioner?.googleCalendar
-  if (!booking || !connection?.syncEnabled) return
+  if (!booking) return
+
+  // În modul Individual există un singur calendar pentru întreaga afacere, chiar dacă
+  // au rămas profiluri vechi în bază. Programările fără practitionerId trebuie și ele
+  // sincronizate, deci folosim prima conexiune activă a afacerii drept calendar implicit.
+  const connection = booking.business.teamSize <= 1
+    ? await prisma.googleCalendarConnection.findFirst({
+        where: { businessId: booking.businessId, syncEnabled: true },
+        orderBy: { createdAt: 'asc' },
+      })
+    : booking.practitioner?.googleCalendar
+  if (!connection?.syncEnabled) return
 
   try {
     const token = await accessToken(connection)
@@ -82,7 +92,24 @@ export async function syncBookingToGoogle(bookingId: string) {
 }
 
 export async function syncFutureBookings(practitionerId: string) {
-  const bookings = await prisma.booking.findMany({ where: { practitionerId, endAt: { gte: new Date() }, status: { not: 'CANCELLED' } }, select: { id: true }, orderBy: { startAt: 'asc' }, take: 500 })
+  const practitioner = await prisma.practitioner.findUnique({
+    where: { id: practitionerId },
+    include: { business: { select: { teamSize: true } } },
+  })
+  if (!practitioner) return 0
+
+  const bookings = await prisma.booking.findMany({
+    where: {
+      ...(practitioner.business.teamSize <= 1
+        ? { businessId: practitioner.businessId }
+        : { practitionerId }),
+      endAt: { gte: new Date() },
+      status: { not: 'CANCELLED' },
+    },
+    select: { id: true },
+    orderBy: { startAt: 'asc' },
+    take: 500,
+  })
   for (const booking of bookings) await syncBookingToGoogle(booking.id)
   return bookings.length
 }

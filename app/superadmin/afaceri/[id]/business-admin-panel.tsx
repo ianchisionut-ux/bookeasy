@@ -255,14 +255,14 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
 
       {/* Coloana dreaptă — integrări unificate, plată */}
       <div className="flex flex-col gap-5">
-        <IntegrationsCard businessId={business.id} channels={channels} practitioners={practitioners} metaAppId={metaAppId} metaWhatsappConfigId={metaWhatsappConfigId} />
+        <IntegrationsCard businessId={business.id} individual={business.teamSize <= 1} channels={channels} practitioners={practitioners} metaAppId={metaAppId} metaWhatsappConfigId={metaWhatsappConfigId} />
         <PaymentSection businessId={business.id} businessSlug={business.slug} />
       </div>
     </div>
   )
 }
 
-function IntegrationsCard({ businessId, channels, practitioners, metaAppId, metaWhatsappConfigId }: { businessId: string; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string }) {
+function IntegrationsCard({ businessId, individual, channels, practitioners, metaAppId, metaWhatsappConfigId }: { businessId: string; individual: boolean; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string }) {
   const searchParams = useSearchParams()
   const oauthError = searchParams.get('error')
   const [tab, setTab] = useState<'FACEBOOK' | 'INSTAGRAM' | 'WHATSAPP' | 'GOOGLE_CALENDAR'>('FACEBOOK')
@@ -327,7 +327,7 @@ function IntegrationsCard({ businessId, channels, practitioners, metaAppId, meta
         />
       )}
       {tab === 'WHATSAPP' && <WhatsAppFields businessId={businessId} channel={channels.find((c) => c.type === 'WHATSAPP') ?? null} metaAppId={metaAppId} configId={metaWhatsappConfigId} />}
-      {tab === 'GOOGLE_CALENDAR' && <GoogleCalendarCard businessId={businessId} practitioners={practitioners} />}
+      {tab === 'GOOGLE_CALENDAR' && <GoogleCalendarCard businessId={businessId} individual={individual} practitioners={practitioners} />}
     </Card>
   )
 }
@@ -398,9 +398,12 @@ function DisconnectChannelButton({ businessId, channel }: { businessId: string; 
   )
 }
 
-function GoogleCalendarCard({ businessId, practitioners }: { businessId: string; practitioners: CalendarPractitioner[] }) {
+function GoogleCalendarCard({ businessId, individual, practitioners }: { businessId: string; individual: boolean; practitioners: CalendarPractitioner[] }) {
   const searchParams = useSearchParams()
   const googleStatus = searchParams.get('google')
+  const visiblePractitioners = individual
+    ? [practitioners.find((item) => item.googleCalendar?.syncEnabled) ?? practitioners[0]].filter(Boolean) as CalendarPractitioner[]
+    : practitioners
 
   return (
     <div className="space-y-3">
@@ -418,22 +421,48 @@ function GoogleCalendarCard({ businessId, practitioners }: { businessId: string;
           Conectarea Google Calendar nu a reușit. Verifică permisiunile contului și încearcă din nou.
         </p>
       )}
-      {practitioners.length === 0 && <p className="text-sm text-gray-500">Nu există niciun profil activ. Creează mai întâi profilul din Medici/Echipă.</p>}
-      {practitioners.map((practitioner) => (
+      {visiblePractitioners.length === 0 && <p className="text-sm text-gray-500">Nu există niciun profil activ. Creează mai întâi profilul din Medici/Echipă.</p>}
+      {visiblePractitioners.map((practitioner) => (
         <div key={practitioner.id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border-soft)] p-3">
           <div className="min-w-0">
-            <p className="text-sm font-medium">{practitioner.name}</p>
+            <p className="text-sm font-medium">{individual ? 'Calendarul afacerii' : practitioner.name}</p>
             <p className={`truncate text-xs ${practitioner.googleCalendar ? 'text-green-700' : 'text-gray-500'}`}>
               {practitioner.googleCalendar ? `Conectat: ${practitioner.googleCalendar.googleEmail ?? practitioner.googleCalendar.calendarName}` : 'Calendar neconectat'}
             </p>
             {practitioner.googleCalendar?.lastError && <p className="mt-1 text-xs text-red-600">Necesită reconectare</p>}
           </div>
-          <a href={`/api/google-calendar/connect?businessId=${encodeURIComponent(businessId)}&practitionerId=${encodeURIComponent(practitioner.id)}`} className="btn-secondary inline-flex shrink-0 text-xs">
-            {practitioner.googleCalendar ? 'Reconectează' : 'Conectează'}
-          </a>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <a href={`/api/google-calendar/connect?businessId=${encodeURIComponent(businessId)}&practitionerId=${encodeURIComponent(practitioner.id)}`} className="btn-secondary inline-flex text-xs">
+              {practitioner.googleCalendar ? 'Reconectează' : 'Conectează'}
+            </a>
+            {practitioner.googleCalendar && <DisconnectGoogleCalendarButton businessId={businessId} practitionerId={practitioner.id} />}
+          </div>
         </div>
       ))}
     </div>
+  )
+}
+
+function DisconnectGoogleCalendarButton({ businessId, practitionerId }: { businessId: string; practitionerId: string }) {
+  const router = useRouter()
+  const [disconnecting, setDisconnecting] = useState(false)
+
+  async function disconnect() {
+    if (!window.confirm('Deconectezi Google Calendar? Evenimentele deja create vor rămâne în Google, dar sincronizarea BookEasy se va opri.')) return
+    setDisconnecting(true)
+    const response = await fetch(`/api/google-calendar/settings?businessId=${encodeURIComponent(businessId)}&practitionerId=${encodeURIComponent(practitionerId)}`, { method: 'DELETE' })
+    setDisconnecting(false)
+    if (!response.ok) {
+      window.alert('Google Calendar nu a putut fi deconectat.')
+      return
+    }
+    router.refresh()
+  }
+
+  return (
+    <Button variant="secondary" className="text-xs text-red-600 border-red-200 hover:bg-red-50" onClick={disconnect} disabled={disconnecting}>
+      {disconnecting ? 'Se deconectează...' : 'Deconectează'}
+    </Button>
   )
 }
 

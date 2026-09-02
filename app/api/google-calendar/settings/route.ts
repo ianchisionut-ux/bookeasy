@@ -31,10 +31,22 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ success: true, count: await syncFutureBookings(practitionerId) })
 }
 export async function DELETE(req: NextRequest) {
-  const session = await auth(); const businessId = (session as any)?.businessId
+  const session = await auth()
+  const requestedBusinessId = req.nextUrl.searchParams.get('businessId')
+  const businessId = (session as any)?.isSuperAdmin && requestedBusinessId
+    ? requestedBusinessId
+    : (session as any)?.businessId
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const practitionerId = req.nextUrl.searchParams.get('practitionerId') ?? ''; const connection = await owned(practitionerId, businessId)
   if (!connection) return NextResponse.json({ error: 'Conexiunea nu există.' }, { status: 404 })
-  await prisma.googleCalendarConnection.delete({ where: { id: connection.id } })
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { teamSize: true } })
+  if (business?.teamSize && business.teamSize > 1) {
+    await prisma.googleCalendarConnection.delete({ where: { id: connection.id } })
+  } else {
+    // În modul Individual toate conexiunile rămase de la profiluri vechi reprezintă
+    // același calendar al afacerii; deconectarea trebuie să oprească tot, nu să activeze
+    // accidental următoarea conexiune veche.
+    await prisma.googleCalendarConnection.deleteMany({ where: { businessId } })
+  }
   return NextResponse.json({ success: true })
 }
