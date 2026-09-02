@@ -6,11 +6,15 @@ import { createBookEasyCalendar, syncFutureBookings } from '@/lib/google-calenda
 import { verifyCalendarState } from '@/lib/google-calendar-oauth'
 
 export async function GET(req: NextRequest) {
-  const back = (status: string) => NextResponse.redirect(`${process.env.APP_URL}/dashboard/medici?google=${status}`)
+  let backPath = '/dashboard/medici'
+  const back = (status: string) => NextResponse.redirect(`${process.env.APP_URL}${backPath}?google=${status}`)
   try {
     const session = await auth()
     const state = verifyCalendarState(req.nextUrl.searchParams.get('state') ?? '')
-    if (!(session as any)?.businessId || (session as any).businessId !== state.businessId) return back('unauthorized')
+    if (state.initiatedBySuperAdmin) backPath = `/superadmin/afaceri/${state.businessId}`
+    const ownsBusiness = (session as any)?.businessId === state.businessId
+    const isSuperAdmin = Boolean((session as any)?.isSuperAdmin)
+    if (!ownsBusiness && !(state.initiatedBySuperAdmin && isSuperAdmin)) return back('unauthorized')
     const practitioner = await prisma.practitioner.findFirst({ where: { id: state.practitionerId, businessId: state.businessId }, include: { business: true } })
     if (!practitioner) return back('not_found')
     const response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({

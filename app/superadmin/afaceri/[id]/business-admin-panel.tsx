@@ -18,6 +18,11 @@ const CATEGORY_LABEL: Record<string, string> = {
 }
 
 type Channel = { id: string; type: string; externalId: string; wabaId: string | null; status: string }
+type CalendarPractitioner = {
+  id: string
+  name: string
+  googleCalendar: { googleEmail: string | null; calendarName: string; syncEnabled: boolean; lastError: string | null } | null
+}
 type Business = {
   id: string
   slug: string
@@ -37,7 +42,7 @@ type Business = {
   billingInvoiceName: string | null
 }
 
-export default function BusinessAdminPanel({ business, channels, metaAppId, metaWhatsappConfigId }: { business: Business; channels: Channel[]; metaAppId: string; metaWhatsappConfigId: string }) {
+export default function BusinessAdminPanel({ business, channels, practitioners, metaAppId, metaWhatsappConfigId }: { business: Business; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(business.name)
@@ -250,21 +255,21 @@ export default function BusinessAdminPanel({ business, channels, metaAppId, meta
 
       {/* Coloana dreaptă — integrări unificate, plată */}
       <div className="flex flex-col gap-5">
-        <IntegrationsCard businessId={business.id} channels={channels} metaAppId={metaAppId} metaWhatsappConfigId={metaWhatsappConfigId} />
+        <IntegrationsCard businessId={business.id} channels={channels} practitioners={practitioners} metaAppId={metaAppId} metaWhatsappConfigId={metaWhatsappConfigId} />
         <PaymentSection businessId={business.id} businessSlug={business.slug} />
       </div>
     </div>
   )
 }
 
-function IntegrationsCard({ businessId, channels, metaAppId, metaWhatsappConfigId }: { businessId: string; channels: Channel[]; metaAppId: string; metaWhatsappConfigId: string }) {
-  const [tab, setTab] = useState<'FACEBOOK' | 'INSTAGRAM' | 'WHATSAPP' | 'GOOGLE_BUSINESS'>('FACEBOOK')
+function IntegrationsCard({ businessId, channels, practitioners, metaAppId, metaWhatsappConfigId }: { businessId: string; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string }) {
+  const [tab, setTab] = useState<'FACEBOOK' | 'INSTAGRAM' | 'WHATSAPP' | 'GOOGLE_CALENDAR'>('FACEBOOK')
 
   const tabs: { id: typeof tab; label: string }[] = [
     { id: 'FACEBOOK', label: 'Messenger' },
     { id: 'INSTAGRAM', label: 'Instagram' },
     { id: 'WHATSAPP', label: 'WhatsApp' },
-    { id: 'GOOGLE_BUSINESS', label: 'Google' },
+    { id: 'GOOGLE_CALENDAR', label: 'Google Calendar' },
   ]
 
   return (
@@ -277,7 +282,9 @@ function IntegrationsCard({ businessId, channels, metaAppId, metaWhatsappConfigI
       </div>
       <div className="flex gap-1.5 mb-4 flex-wrap">
         {tabs.map((t) => {
-          const channel = channels.find((c) => c.type === t.id)
+          const connected = t.id === 'GOOGLE_CALENDAR'
+            ? practitioners.some((p) => p.googleCalendar?.syncEnabled)
+            : channels.some((c) => c.type === t.id && c.status === 'ACTIVE')
           return (
             <button
               key={t.id}
@@ -290,7 +297,7 @@ function IntegrationsCard({ businessId, channels, metaAppId, metaWhatsappConfigI
               }
             >
               {t.label}
-              {channel?.status === 'ACTIVE' && <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />}
+              {connected && <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />}
             </button>
           )
         })}
@@ -316,53 +323,46 @@ function IntegrationsCard({ businessId, channels, metaAppId, metaWhatsappConfigI
         />
       )}
       {tab === 'WHATSAPP' && <WhatsAppFields businessId={businessId} channel={channels.find((c) => c.type === 'WHATSAPP') ?? null} metaAppId={metaAppId} configId={metaWhatsappConfigId} />}
-      {tab === 'GOOGLE_BUSINESS' && (
-        <GoogleOAuthCard
-          businessId={businessId}
-          channel={channels.find((c) => c.type === 'GOOGLE_BUSINESS') ?? null}
-        />
-      )}
+      {tab === 'GOOGLE_CALENDAR' && <GoogleCalendarCard businessId={businessId} practitioners={practitioners} />}
     </Card>
   )
 }
 
-function GoogleOAuthCard({ businessId, channel }: { businessId: string; channel: Channel | null }) {
+function GoogleCalendarCard({ businessId, practitioners }: { businessId: string; practitioners: CalendarPractitioner[] }) {
   const searchParams = useSearchParams()
-  const connected = channel?.status === 'ACTIVE'
-  const oauthError = searchParams.get('error')
-  const justConnected = searchParams.get('connected') === 'google'
+  const googleStatus = searchParams.get('google')
 
   return (
-    <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <div>
-          <p className="text-sm font-semibold">Google Business Profile</p>
-          <p className="text-xs text-gray-500 mt-1">
-            Clientul se autentifică în Google și aprobă accesul. BookEasy identifică automat locația și poate sincroniza recenziile.
-          </p>
-        </div>
-        <Pill tone={connected ? 'success' : 'neutral'}>{connected ? 'Conectat' : 'Neconectat'}</Pill>
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+        <p className="text-sm font-semibold text-blue-950">Google Calendar</p>
+        <p className="mt-1 text-xs text-blue-800">Programările create, mutate sau anulate în calendarul BookEasy se sincronizează automat. Nu este necesar Google Business Profile.</p>
       </div>
-      {justConnected && (
+      {googleStatus === 'connected' && (
         <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-xl px-3 py-2 mb-3">
-          Google a fost conectat cu succes.
+          Google Calendar a fost conectat și programările viitoare au fost sincronizate.
         </p>
       )}
-      {oauthError && (
+      {googleStatus && googleStatus !== 'connected' && (
         <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2 mb-3">
-          Conectarea nu a reușit: {oauthError}
+          Conectarea Google Calendar nu a reușit. Verifică permisiunile contului și încearcă din nou.
         </p>
       )}
-      {connected && channel.externalId && (
-        <p className="text-xs text-gray-400 mb-3 break-all">Locație: {channel.externalId}</p>
-      )}
-      <a
-        href={`/api/oauth/google/start?businessId=${encodeURIComponent(businessId)}`}
-        className="btn-primary inline-flex text-sm"
-      >
-        {connected ? 'Reconectează Google' : 'Conectează cu Google'}
-      </a>
-      <p className="text-[11px] text-gray-400 mt-2">Nu mai trebuie copiate manual ID-uri sau token-uri.</p>
+      {practitioners.length === 0 && <p className="text-sm text-gray-500">Nu există niciun profil activ. Creează mai întâi profilul din Medici/Echipă.</p>}
+      {practitioners.map((practitioner) => (
+        <div key={practitioner.id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border-soft)] p-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">{practitioner.name}</p>
+            <p className={`truncate text-xs ${practitioner.googleCalendar ? 'text-green-700' : 'text-gray-500'}`}>
+              {practitioner.googleCalendar ? `Conectat: ${practitioner.googleCalendar.googleEmail ?? practitioner.googleCalendar.calendarName}` : 'Calendar neconectat'}
+            </p>
+            {practitioner.googleCalendar?.lastError && <p className="mt-1 text-xs text-red-600">Necesită reconectare</p>}
+          </div>
+          <a href={`/api/google-calendar/connect?businessId=${encodeURIComponent(businessId)}&practitionerId=${encodeURIComponent(practitioner.id)}`} className="btn-secondary inline-flex shrink-0 text-xs">
+            {practitioner.googleCalendar ? 'Reconectează' : 'Conectează'}
+          </a>
+        </div>
+      ))}
     </div>
   )
 }
