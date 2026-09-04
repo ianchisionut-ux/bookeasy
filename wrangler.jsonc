@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "bookeasy",
+  "main": "./cloudflare-worker.ts",
+  "compatibility_date": "2026-09-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "r2_buckets": [
+    {
+      "binding": "BOOKEASY_FILES",
+      "bucket_name": "bookeasy-files",
+      "preview_bucket_name": "bookeasy-files-preview"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "placement": {
+    "mode": "smart"
+  },
+  "vars": {
+    "ENABLE_CRON_TRIGGERS": "false"
+  },
+  "triggers": {
+    "crons": ["0 5 * * *", "0 6 * * *", "0 7 * * *"]
+  }
+}

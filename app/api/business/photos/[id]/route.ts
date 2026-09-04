@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { del } from '@vercel/blob'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-
-const blobOptions = { token: process.env.BLOB_READ_WRITE_TOKEN, storeId: process.env.BOOKBLOB_STORE_ID }
+import { deleteR2File } from '@/lib/r2-storage'
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -15,7 +13,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (id === 'hero') {
     const business = await prisma.business.findUnique({ where: { id: businessId } })
     if (business?.heroImageUrl) {
-      await del(business.heroImageUrl, blobOptions).catch(() => {}) // dacă fișierul nu mai există fizic, ignorăm
+      await deleteR2File(business.heroImageUrl).catch(() => {})
       await prisma.business.update({ where: { id: businessId }, data: { heroImageUrl: null } })
     }
     return NextResponse.json({ success: true })
@@ -26,7 +24,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
-  await del(photo.url, blobOptions).catch(() => {})
+  await deleteR2File(photo.url).catch(() => {})
   await prisma.businessPhoto.delete({ where: { id } })
 
   return NextResponse.json({ success: true })

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { del, get } from '@vercel/blob'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { deleteR2File, getR2File, r2Key } from '@/lib/r2-storage'
 
 async function getOwnedDocument(docId: string, customerId: string, businessId: string) {
   return prisma.patientDocument.findFirst({ where: { id: docId, customerId, businessId } })
@@ -17,39 +17,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
   try {
-    let stream: ReadableStream<Uint8Array> | null = null
+    let stream: ReadableStream | null = null
     let contentType = 'application/octet-stream'
 
-    if (doc.url.includes('.private.blob.vercel-storage.com')) {
-      const stores = [
-        process.env.DOCMED_STORE_ID ? { storeId: process.env.DOCMED_STORE_ID, token: undefined } : null,
-        process.env.BOOKBLOB_STORE_ID
-          ? { storeId: process.env.BOOKBLOB_STORE_ID, token: process.env.BLOB_READ_WRITE_TOKEN }
-          : null,
-      ].filter(Boolean) as { storeId: string; token: string | undefined }[]
-      let result: Awaited<ReturnType<typeof get>> | null = null
-      for (const store of stores) {
-        try {
-          const candidate = await get(doc.url, {
-            access: 'private',
-            ...(store.token ? { token: store.token } : {}),
-            storeId: store.storeId,
-          })
-          if (candidate?.statusCode === 200 && candidate.stream) {
-            result = candidate
-            break
-          }
-        } catch {
-          // Poate fi un document vechi din celălalt store privat; încercăm următorul.
-        }
-      }
-      if (!result || result.statusCode !== 200 || !result.stream) {
+    const key = r2Key(doc.url)
+    if (key) {
+      const object = await getR2File(key)
+      if (!object) {
         return NextResponse.json({ error: 'Documentul nu a fost găsit în stocare.' }, { status: 404 })
       }
-      stream = result.stream
-      contentType = result.blob.contentType || contentType
+      stream = object.body
+      contentType = object.httpMetadata?.contentType || contentType
     } else {
-      // Compatibilitate temporară pentru documentele vechi din store-ul public.
+      // Compatibilitate de citire pentru fișierele publice vechi, până la migrare.
       const response = await fetch(doc.url, { cache: 'no-store' })
       if (!response.ok || !response.body) {
         return NextResponse.json({ error: 'Documentul nu a fost găsit în stocare.' }, { status: 404 })
@@ -82,25 +62,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const doc = await getOwnedDocument(docId, id, businessId)
   if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  const stores = doc.url.includes('.private.blob.vercel-storage.com')
-    ? [
-        process.env.DOCMED_STORE_ID ? { storeId: process.env.DOCMED_STORE_ID, token: undefined } : null,
-        process.env.BOOKBLOB_STORE_ID
-          ? { storeId: process.env.BOOKBLOB_STORE_ID, token: process.env.BLOB_READ_WRITE_TOKEN }
-          : null,
-      ].filter(Boolean) as { storeId: string; token: string | undefined }[]
-    : [{ storeId: process.env.BOOKBLOB_STORE_ID as string, token: process.env.BLOB_READ_WRITE_TOKEN }]
-  for (const store of stores) {
-    try {
-      await del(doc.url, {
-        ...(store.token ? { token: store.token } : {}),
-        storeId: store.storeId,
-      })
-      break
-    } catch {
-      // Documentele vechi pot aparține celuilalt store; încercăm toate variantele cunoscute.
-    }
-  }
+  await deleteR2File(doc.url).catch(() => {})
   await prisma.patientDocument.delete({ where: { id: docId } })
 
   return NextResponse.json({ success: true })

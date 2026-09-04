@@ -12,6 +12,7 @@ build/
 
 # Prisma
 prisma/generated/
+lib/generated/prisma/
 
 # logs
 npm-debug.log*
@@ -30,3 +31,10 @@ next-env.d.ts
 
 # Vercel
 .vercel
+
+# Cloudflare local/build state
+.open-next/
+.wrangler/
+.dev.vars
+.dev.vars.*
+static/wasm/

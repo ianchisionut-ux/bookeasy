@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { del, put } from '@vercel/blob'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { rateLimit } from '@/lib/rate-limit'
+import { deleteR2File, putR2File, r2Url } from '@/lib/r2-storage'
 
 const MAX_SIZE = 10 * 1024 * 1024
 const ALLOWED_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png'])
@@ -15,9 +15,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!business) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
   const { allowed } = rateLimit(`invoice-upload:${id}`, 20, 60 * 60 * 1000)
   if (!allowed) return NextResponse.json({ error: 'Prea multe încărcări. Încearcă mai târziu.' }, { status: 429 })
-  if (!process.env.DOCMED_STORE_ID) {
-    return NextResponse.json({ error: 'Stocarea facturilor nu este configurată.' }, { status: 503 })
-  }
   const form = await req.formData()
   const file = form.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'Alege o factură.' }, { status: 400 })
@@ -26,16 +23,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-120) || 'factura.pdf'
   try {
-    const blob = await put(`invoices/${id}/${Date.now()}-${safeName}`, file, {
-      access: 'private', storeId: process.env.DOCMED_STORE_ID,
-      addRandomSuffix: true, contentType: file.type, cacheControlMaxAge: 60,
-    })
+    const key = `invoices/${id}/${Date.now()}-${safeName}`
+    await putR2File(key, file)
     await prisma.business.update({
       where: { id },
-      data: { billingInvoiceUrl: blob.url, billingInvoiceName: file.name, billingInvoiceUploadedAt: new Date(), billingStatus: 'NEPLATIT', billingDueNotifiedAt: null },
+      data: { billingInvoiceUrl: r2Url(key), billingInvoiceName: file.name, billingInvoiceUploadedAt: new Date(), billingStatus: 'NEPLATIT', billingDueNotifiedAt: null },
     })
     if (business.billingInvoiceUrl) {
-      try { await del(business.billingInvoiceUrl, { storeId: process.env.DOCMED_STORE_ID }) } catch {}
+      await deleteR2File(business.billingInvoiceUrl).catch(() => {})
     }
   } catch (error) {
     console.error('Eroare upload factură:', error)
@@ -53,7 +48,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!business.billingInvoiceUrl) return NextResponse.json({ success: true })
 
   try {
-    if (process.env.DOCMED_STORE_ID) await del(business.billingInvoiceUrl, { storeId: process.env.DOCMED_STORE_ID })
+    await deleteR2File(business.billingInvoiceUrl)
     await prisma.business.update({
       where: { id },
       data: { billingInvoiceUrl: null, billingInvoiceName: null, billingInvoiceUploadedAt: null },

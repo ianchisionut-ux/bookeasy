@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { put } from '@vercel/blob'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
+import { putR2File, r2Url } from '@/lib/r2-storage'
 
 const MAX_SIZE = 15 * 1024 * 1024 // 15MB
 const ALLOWED_TYPES = new Set([
@@ -37,24 +37,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!ALLOWED_TYPES.has(file.type)) {
     return NextResponse.json({ error: 'Sunt acceptate doar fișiere PDF, JPG, PNG, DOC și DOCX.' }, { status: 400 })
   }
-  if (!process.env.DOCMED_STORE_ID) {
-    return NextResponse.json({ error: 'Stocarea privată pentru documente nu este configurată.' }, { status: 503 })
-  }
-
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-120) || 'document'
   const filename = `patients/${businessId}/${id}/${Date.now()}-${safeName}`
 
   try {
-    const blob = await put(filename, file, {
-      access: 'private',
-      storeId: process.env.DOCMED_STORE_ID,
-      addRandomSuffix: true,
-      contentType: file.type,
-      cacheControlMaxAge: 60,
-    })
+    await putR2File(filename, file)
 
     const doc = await prisma.patientDocument.create({
-      data: { customerId: id, businessId, url: blob.url, filename: file.name },
+      data: { customerId: id, businessId, url: r2Url(filename), filename: file.name },
     })
 
     return NextResponse.json({

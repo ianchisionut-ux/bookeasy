@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: __dirname,
+  serverExternalPackages: ['@prisma/client', '.prisma/client'],
   async headers() {
     return [
       {
@@ -24,14 +25,6 @@ const nextConfig = {
         headers: [{ key: 'Cache-Control', value: 'public, max-age=3600' }],
       },
     ]
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '*.public.blob.vercel-storage.com',
-      },
-    ],
   },
 }
 
