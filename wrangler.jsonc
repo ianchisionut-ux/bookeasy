@@ -1,6 +1,11 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "bookeasy",
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "bookeasy.ro/*", "zone_name": "bookeasy.ro" },
+    { "pattern": "www.bookeasy.ro/*", "zone_name": "bookeasy.ro" }
+  ],
   "main": "./cloudflare-worker.ts",
   "compatibility_date": "2026-09-04",
   "compatibility_flags": ["nodejs_compat"],
@@ -22,7 +27,7 @@
     "mode": "smart"
   },
   "vars": {
-    "ENABLE_CRON_TRIGGERS": "false"
+    "ENABLE_CRON_TRIGGERS": "true"
   },
   "triggers": {
     "crons": ["0 5 * * *", "0 6 * * *", "0 7 * * *"]

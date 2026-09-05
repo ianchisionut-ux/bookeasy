@@ -23,8 +23,14 @@ export default {
     const route = cronRoutes[event.cron]
     if (!route || !env.APP_URL || !env.CRON_SECRET) return
 
-    ctx.waitUntil(fetch(`${env.APP_URL}${route}`, {
-      headers: { Authorization: `Bearer ${env.CRON_SECRET}` },
-    }))
+    // Dispatch internally: a same-zone fetch on a Worker route can reach the
+    // legacy DNS origin instead of this Worker.
+    ctx.waitUntil((async () => {
+      const response = await handler.fetch(new Request(`${env.APP_URL}${route}`, {
+        headers: { Authorization: `Bearer ${env.CRON_SECRET}` },
+      }), env, ctx)
+      await response.arrayBuffer()
+      if (!response.ok) throw new Error(`Cron ${route} failed: HTTP ${response.status}`)
+    })())
   },
 }
