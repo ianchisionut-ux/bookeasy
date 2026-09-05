@@ -84,7 +84,7 @@ export default function BusinessPhotosUploader({
           <p className="text-sm text-gray-500 mb-2">Poză copertă</p>
           {heroImageUrl ? (
             <div className="relative rounded-xl overflow-hidden aspect-video">
-              <Image src={heroImageUrl} alt="Copertă" fill className="object-cover" quality={95} />
+              <Image src={heroImageUrl} unoptimized={heroImageUrl.startsWith('/api/storage/public/')} alt="Copertă" fill className="object-cover" quality={95} />
               <button
                 onClick={removeHero}
                 className="absolute top-2 right-2 bg-white/90 rounded-full w-7 h-7 flex items-center justify-center text-xs shadow"
@@ -146,7 +146,7 @@ export default function BusinessPhotosUploader({
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-4">
           {gallery.map((photo) => (
             <div key={photo.id} className="relative rounded-lg overflow-hidden aspect-square">
-              <Image src={photo.url} alt="" fill className="object-cover" quality={90} />
+              <Image src={photo.url} unoptimized={photo.url.startsWith('/api/storage/public/')} alt="" fill className="object-cover" quality={90} />
               <button
                 onClick={() => removeGalleryPhoto(photo.id)}
                 className="absolute top-1 right-1 bg-white/90 rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow"

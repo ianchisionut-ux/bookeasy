@@ -40,7 +40,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
       <div className="px-3 pt-4 sm:px-6 sm:pt-8">
         <section className="relative mx-auto min-h-[260px] max-w-6xl overflow-hidden rounded-[22px] shadow-xl sm:min-h-[340px] sm:rounded-[26px]">
           {business.heroImageUrl && (
-            <Image src={business.heroImageUrl} alt={business.name} fill className="object-cover" priority quality={95} />
+            <Image src={business.heroImageUrl} unoptimized={business.heroImageUrl.startsWith('/api/storage/public/')} alt={business.name} fill className="object-cover" priority quality={95} />
           )}
           <div className="absolute inset-0" style={{ background: business.heroImageUrl ? 'linear-gradient(90deg, rgba(20,20,43,.94) 0%, rgba(20,20,43,.72) 52%, rgba(20,20,43,.2) 100%)' : `linear-gradient(125deg, #14142b 0%, ${accent} 150%)` }} />
           <div className="relative flex min-h-[260px] max-w-3xl flex-col justify-end p-5 text-white sm:min-h-[340px] sm:p-9 lg:p-11">
@@ -97,7 +97,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {business.photos.map((photo, index) => (
                   <div key={photo.id} className={`relative overflow-hidden rounded-xl ${index === 0 ? 'col-span-2 aspect-[2/1] sm:col-span-2' : 'aspect-square'}`}>
-                    <Image src={photo.url} alt={`${business.name} – fotografie ${index + 1}`} fill className="object-cover transition duration-300 hover:scale-[1.03]" quality={90} />
+                    <Image src={photo.url} unoptimized={photo.url.startsWith('/api/storage/public/')} alt={`${business.name} – fotografie ${index + 1}`} fill className="object-cover transition duration-300 hover:scale-[1.03]" quality={90} />
                   </div>
                 ))}
               </div>

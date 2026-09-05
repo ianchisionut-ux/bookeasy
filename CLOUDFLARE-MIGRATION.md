@@ -22,7 +22,13 @@ The existing proxied web DNS records remain as fallback origins; Worker routes s
 5. Observe the next scheduled executions. Configuration was verified; jobs were not manually run because they send notifications and may suspend overdue accounts.
 6. Validate the first Workers Builds deployment. GitHub is connected to `cloudflare-migration`, with preview builds disabled, build command `npm run build:cloudflare`, deploy command `npx wrangler deploy --config wrangler.jsonc`, root `/`, and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` configured at build time. The user approved Cloudflare's generated `bookeasy build token`. Keep using this branch until a merge can be performed without triggering an incompatible Vercel production build.
 
-Keep the Vercel deployment available for rollback until the migration is verified.
+## File migration completed on 2026-09-05
+
+The legacy clinic cover was copied from public Vercel Blob to `BOOKEASY_FILES` R2. Source and destination SHA-256 matched, and the database URL was updated with a compare-and-set guard. A local backup and rollback manifest are under `.wrangler/cover-migration-6bpNML/`. The original Blob was not deleted.
+
+`scripts/audit-vercel-files.cjs` scanned every public-schema text column after the update and found no remaining Vercel references. R2 public URLs bypass the Next image optimizer because its local API image lookup returned 404; the R2 endpoint itself returned 200 image/jpeg.
+
+Local DNS now resolves both Cloudflare IPv4 addresses. The production Worker routes and R2 do not require the Vercel project. The existing A-record origin addresses are only fallbacks when Worker routes are absent; keep the Worker routes in place. Delete only the Vercel BookEasy project, not the independently used Neon database or any external integration account. Authenticated happy-path and external message/email/calendar tests remain unverified and are separate from removal of the Vercel file dependency.
 
 ## Checks
 
