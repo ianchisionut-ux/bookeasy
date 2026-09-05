@@ -20,7 +20,7 @@ The existing proxied web DNS records remain as fallback origins; Worker routes s
 2. Keep the persisted Worker routes active; removing them sends traffic to the fallback DNS origin.
 4. Verify authenticated dashboard access, Google Calendar and Meta callbacks, email, and file upload/download on the production hostname. Public HTTP 200 checks do not validate these integrations.
 5. Observe the next scheduled executions. Configuration was verified; jobs were not manually run because they send notifications and may suspend overdue accounts.
-6. Configure a reproducible Cloudflare build/deploy from GitHub with the public build variable, then merge the migration branch without triggering an incompatible Vercel production build.
+6. Validate the first Workers Builds deployment. GitHub is connected to `cloudflare-migration`, with preview builds disabled, build command `npm run build:cloudflare`, deploy command `npx wrangler deploy --config wrangler.jsonc`, root `/`, and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` configured at build time. The user approved Cloudflare's generated `bookeasy build token`. Keep using this branch until a merge can be performed without triggering an incompatible Vercel production build.
 
 Keep the Vercel deployment available for rollback until the migration is verified.
 
