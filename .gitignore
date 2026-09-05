@@ -9,6 +9,7 @@ build/
 # env — nu urca niciodată secrete în git
 .env
 .env*.local
+.env.cloudflare-*
 
 # Prisma
 prisma/generated/

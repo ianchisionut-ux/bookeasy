@@ -2,6 +2,9 @@
 const nextConfig = {
   outputFileTracingRoot: __dirname,
   serverExternalPackages: ['@prisma/client', '.prisma/client'],
+  images: {
+    remotePatterns: [{ protocol: 'https', hostname: '*.public.blob.vercel-storage.com' }],
+  },
   async headers() {
     return [
       {

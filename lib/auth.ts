@@ -8,6 +8,9 @@ import { rateLimit } from './rate-limit'
 // iar adapter-ul ar căuta tabele (Account, Session, VerificationToken) care
 // nu există în schema noastră (avem doar User simplu, cu parolă hash-uită).
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // BookEasy rulează în spatele proxy-ului Cloudflare. Hostul ajunge din
+  // request, iar URL-ul public este controlat de configurația Worker-ului.
+  trustHost: true,
   session: { strategy: 'jwt' },
   providers: [
     Credentials({
