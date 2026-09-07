@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await putR2File(key, file)
     await prisma.business.update({
       where: { id },
-      data: { billingInvoiceUrl: r2Url(key), billingInvoiceName: file.name, billingInvoiceUploadedAt: new Date(), billingStatus: 'NEPLATIT', billingDueNotifiedAt: null },
+      data: { billingInvoiceUrl: r2Url(key), billingInvoiceName: file.name, billingInvoiceUploadedAt: new Date(), billingInvoiceExternalId: null, billingStatus: 'NEPLATIT', billingDueNotifiedAt: null },
     })
     if (business.billingInvoiceUrl) {
       await deleteR2File(business.billingInvoiceUrl).catch(() => {})
@@ -46,6 +46,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const business = await prisma.business.findUnique({ where: { id }, select: { billingInvoiceUrl: true } })
   if (!business) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
   if (!business.billingInvoiceUrl) return NextResponse.json({ success: true })
+  if (business.billingInvoiceUrl.startsWith('signal:')) {
+    return NextResponse.json({ error: 'Factura fiscală emisă în Signal nu poate fi ștearsă. Pentru corecții folosește storno în Signal.' }, { status: 409 })
+  }
 
   try {
     await deleteR2File(business.billingInvoiceUrl)

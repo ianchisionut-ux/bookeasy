@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
+import { ensureSignalBillingSchema } from '@/lib/signal-billing-schema'
 
 const patchSchema = z.object({
   name: z.string().min(2).optional(),
@@ -10,7 +11,18 @@ const patchSchema = z.object({
   billingStatus: z.enum(['GRATUIT', 'NEPLATIT', 'PLATIT', 'RESTANT']).optional(),
   billingNote: z.string().nullable().optional(),
   billingAmount: z.number().nonnegative().nullable().optional(),
+  billingSubtotal: z.number().positive().nullable().optional(),
+  billingVatRate: z.number().refine((value) => [0, 5, 9, 11, 19, 21].includes(value)).optional(),
   billingDueAt: z.string().datetime().nullable().optional(),
+  billingLegalName: z.string().max(200).nullable().optional(),
+  billingClientType: z.enum(['PF', 'PJ']).optional(),
+  billingCif: z.string().max(40).nullable().optional(),
+  billingRegCom: z.string().max(100).nullable().optional(),
+  billingAddress: z.string().max(500).nullable().optional(),
+  billingCounty: z.string().max(100).nullable().optional(),
+  billingCity: z.string().max(100).nullable().optional(),
+  billingPostalCode: z.string().max(20).nullable().optional(),
+  billingEmail: z.string().email().nullable().optional(),
   publicListed: z.boolean().optional(),
   accountActive: z.boolean().optional(),
   teamSize: z.number().min(1).max(200).optional(),
@@ -27,11 +39,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const { id } = await params
+  await ensureSignalBillingSchema()
   const body = await req.json()
   const parsed = patchSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const current = await prisma.business.findUnique({ where: { id }, select: { billingSuspendedAt: true } })
+  const current = await prisma.business.findUnique({ where: { id }, select: { billingSuspendedAt: true, billingDueAt: true, billingInvoiceUrl: true } })
   if (!current) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
 
   const { billingDueAt, ...input } = parsed.data
@@ -49,6 +62,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.billingDueNotifiedAt = null
   }
   if (parsed.data.accountActive === true) data.billingSuspendedAt = null
+  if (
+    parsed.data.billingDueAt && current.billingInvoiceUrl?.startsWith('signal:') &&
+    current.billingDueAt?.toISOString() !== parsed.data.billingDueAt
+  ) {
+    data.billingInvoiceUrl = null
+    data.billingInvoiceName = null
+    data.billingInvoiceUploadedAt = null
+    data.billingInvoiceExternalId = null
+  }
 
   await prisma.business.update({ where: { id }, data })
 

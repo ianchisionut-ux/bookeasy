@@ -53,11 +53,23 @@ model Business {
   billingStatus      BillingStatus @default(NEPLATIT)
   billingNote        String?      // notă liberă pentru superadmin (ex: "plătit cash august")
   billingAmount      Decimal?
+  billingSubtotal    Decimal?
+  billingVatRate     Decimal       @default(21)
   billingCurrency    String        @default("RON")
   billingDueAt       DateTime?
   billingInvoiceUrl  String?
   billingInvoiceName String?
   billingInvoiceUploadedAt DateTime?
+  billingInvoiceExternalId String?
+  billingLegalName   String?
+  billingClientType  String        @default("PJ")
+  billingCif         String?
+  billingRegCom      String?
+  billingAddress     String?
+  billingCounty      String?
+  billingCity        String?
+  billingPostalCode  String?
+  billingEmail       String?
   billingDueNotifiedAt DateTime?
   billingSuspendedAt DateTime?    // setat doar de automatizarea de neplată; nu confundăm cu dezactivarea manuală
   onboardingStep     Int          @default(1)
