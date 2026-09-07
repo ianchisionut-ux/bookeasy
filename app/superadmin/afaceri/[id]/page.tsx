@@ -2,9 +2,11 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import { BackLink } from '@/components/ui/back-link'
 import BusinessAdminPanel from './business-admin-panel'
+import { ensureSignalBillingSchema } from '@/lib/signal-billing-schema'
 
 export default async function SuperAdminBusinessDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  await ensureSignalBillingSchema()
   const [business, revenueAgg] = await Promise.all([
     prisma.business.findUnique({
       where: { id },
