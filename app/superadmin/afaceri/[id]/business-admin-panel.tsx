@@ -38,8 +38,19 @@ type Business = {
   billingStatus: 'GRATUIT' | 'NEPLATIT' | 'PLATIT' | 'RESTANT'
   billingNote: string | null
   billingAmount: number | null
+  billingSubtotal: number | null
+  billingVatRate: number
   billingDueAt: string | null
   billingInvoiceName: string | null
+  billingLegalName: string | null
+  billingClientType: string
+  billingCif: string | null
+  billingRegCom: string | null
+  billingAddress: string | null
+  billingCounty: string | null
+  billingCity: string | null
+  billingPostalCode: string | null
+  billingEmail: string | null
 }
 
 export default function BusinessAdminPanel({ business, channels, practitioners, metaAppId, metaWhatsappConfigId }: { business: Business; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string }) {
@@ -248,8 +259,19 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
           initialStatus={business.billingStatus}
           initialNote={business.billingNote}
           initialAmount={business.billingAmount}
+          initialSubtotal={business.billingSubtotal}
+          initialVatRate={business.billingVatRate}
           initialDueAt={business.billingDueAt}
           invoiceName={business.billingInvoiceName}
+          initialLegalName={business.billingLegalName ?? business.name}
+          initialClientType={business.billingClientType}
+          initialCif={business.billingCif}
+          initialRegCom={business.billingRegCom}
+          initialAddress={business.billingAddress}
+          initialCounty={business.billingCounty}
+          initialCity={business.billingCity}
+          initialPostalCode={business.billingPostalCode}
+          initialEmail={business.billingEmail ?? business.ownerEmail}
         />
       </div>
 

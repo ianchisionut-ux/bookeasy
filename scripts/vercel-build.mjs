@@ -9,6 +9,7 @@ if (process.env.VERCEL_ENV === 'production') {
   // Neon rulează prin pooler, unde advisory lock-ul Prisma poate rămâne blocat.
   // SQL-ul este idempotent și se execută fără lock global înainte de build.
   run('npx', ['prisma', 'db', 'execute', '--file', 'prisma/migrations/20260830113000_subscription_invoice_management/migration.sql', '--schema', 'prisma/schema.prisma'])
+  run('npx', ['prisma', 'db', 'execute', '--file', 'prisma/migrations/20260907120000_signal_billing/migration.sql', '--schema', 'prisma/schema.prisma'])
 }
 
 run('npx', ['next', 'build'])
