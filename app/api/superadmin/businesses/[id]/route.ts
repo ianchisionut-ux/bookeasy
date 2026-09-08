@@ -98,11 +98,18 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         // de cheie străină blochează întreaga ștergere
         await tx.passwordResetToken.deleteMany({ where: { userId: { in: userIds } } })
         await tx.missedMessageAlert.deleteMany({ where: { businessId } })
+        await tx.chatMessage.deleteMany({ where: { businessId } })
+        await tx.messageTemplate.deleteMany({ where: { businessId } })
+        await tx.supportTicket.deleteMany({ where: { businessId } })
         await tx.review.deleteMany({ where: { businessId } })
         await tx.blockedSlot.deleteMany({ where: { businessId } })
         await tx.businessPhoto.deleteMany({ where: { businessId } })
         await tx.conversation.deleteMany({ where: { businessId } })
         await tx.booking.deleteMany({ where: { businessId } })
+        // Lista de așteptare referă simultan business-ul, clientul și serviciul.
+        // Trebuie eliminată înaintea medicilor, clienților și serviciilor.
+        await tx.waitlistEntry.deleteMany({ where: { businessId } })
+        await tx.googleCalendarConnection.deleteMany({ where: { businessId } })
         await tx.servicePractitioner.deleteMany({ where: { practitioner: { businessId } } })
         await tx.practitionerWorkingHours.deleteMany({ where: { practitioner: { businessId } } })
         await tx.practitioner.deleteMany({ where: { businessId } })
