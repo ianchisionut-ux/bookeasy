@@ -88,6 +88,7 @@ export function ResponsiveShell({
     if (!enableLiveBadges) return
     let cancelled = false
     async function poll() {
+      if (document.visibilityState !== 'visible') return
       try {
         const res = await fetch('/api/business/notification-counts')
         if (!res.ok) return
@@ -102,7 +103,7 @@ export function ResponsiveShell({
       }
     }
     poll()
-    const timer = setInterval(poll, 8000)
+    const timer = setInterval(poll, 30000)
     return () => {
       cancelled = true
       clearInterval(timer)
@@ -125,7 +126,7 @@ export function ResponsiveShell({
       {/* header mobil, doar sub lg */}
       <div className="lg:hidden sticky top-0 z-40 border-b border-white/70 bg-white/90 backdrop-blur-xl screen-only">
         <div className="flex items-center justify-between px-4 py-3">
-          <Link href={logoHref} className="flex items-center gap-2">
+          <Link href={logoHref} prefetch={false} className="flex items-center gap-2">
             {fitnessBrand ? <img src="/fiteasy-logo.png" alt="FitEasy.ro" width={140} height={66} className="h-12 w-auto" /> : <><Image src="/logo-mark-square.png" alt="bookeasy.ro" width={24} height={24} /><span className="font-semibold">{logoLabel}</span></>}
           </Link>
           <button
@@ -147,6 +148,7 @@ export function ResponsiveShell({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 className="shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition flex items-center gap-1.5"
                 style={
                   active
@@ -185,7 +187,7 @@ export function ResponsiveShell({
 
       {/* sidebar fix, doar de la lg in sus */}
       <aside className="app-shell-sidebar hidden lg:flex flex-col gap-1 p-3" style={{ '--sidebar-tint': softTint } as React.CSSProperties}>
-        {fitnessBrand && <Link href={logoHref}><img src="/fiteasy-logo.png" alt="FitEasy.ro" width={160} height={75} className="w-full h-auto" /></Link>}
+        {fitnessBrand && <Link href={logoHref} prefetch={false}><img src="/fiteasy-logo.png" alt="FitEasy.ro" width={160} height={75} className="w-full h-auto" /></Link>}
         <button onClick={() => setSidebarCollapsed(v => !v)} className="self-start ml-1 w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/70" aria-label={sidebarCollapsed ? 'Extinde meniul' : 'Restrânge meniul'}>{sidebarCollapsed ? <PanelLeftOpen size={17}/> : <PanelLeftClose size={17}/>}</button>
         {!sidebarCollapsed && profileName && <p className="font-semibold text-base px-3 mb-1 truncate">{profileName}</p>}
         {!sidebarCollapsed && <SidebarClock />}
@@ -196,6 +198,7 @@ export function ResponsiveShell({
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               className="flex items-center gap-2.5 rounded-xl border-l-[3px] px-3 py-2.5 text-sm font-medium transition"
               style={
                 active
