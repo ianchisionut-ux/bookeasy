@@ -61,6 +61,7 @@ export function ResponsiveShell({
   accountContent,
   children,
   enableLiveBadges = false,
+  fitnessBrand = false,
 }: {
   logoHref: string
   logoLabel: string
@@ -70,6 +71,7 @@ export function ResponsiveShell({
   accountContent: React.ReactNode // blocul de cont/ieșire — separat, ca să nu intre în carusel
   children: React.ReactNode
   enableLiveBadges?: boolean // interoghează periodic numărul de notificări, ca badge-urile să se actualizeze fără reîncărcare de pagină
+  fitnessBrand?: boolean
 }) {
   const [accountOpen, setAccountOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -119,13 +121,12 @@ export function ResponsiveShell({
     .sort((a, b) => b.href.length - a.href.length)[0]?.href
 
   return (
-    <div className={`app-shell-theme min-h-screen lg:grid transition-[grid-template-columns] ${sidebarCollapsed ? 'lg:grid-cols-[76px_1fr]' : 'lg:grid-cols-[188px_1fr]'}`}>
+    <div data-brand={fitnessBrand ? 'fiteasy' : 'bookeasy'} className={`app-shell-theme min-h-screen lg:grid transition-[grid-template-columns] ${sidebarCollapsed ? 'lg:grid-cols-[76px_1fr]' : 'lg:grid-cols-[188px_1fr]'}`}>
       {/* header mobil, doar sub lg */}
       <div className="lg:hidden sticky top-0 z-40 border-b border-white/70 bg-white/90 backdrop-blur-xl screen-only">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href={logoHref} className="flex items-center gap-2">
-            <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={24} height={24} />
-            <span className="font-semibold">{logoLabel}</span>
+            {fitnessBrand ? <img src="/fiteasy-logo.png" alt="FitEasy.ro" width={140} height={66} className="h-12 w-auto" /> : <><Image src="/logo-mark-square.png" alt="bookeasy.ro" width={24} height={24} /><span className="font-semibold">{logoLabel}</span></>}
           </Link>
           <button
             onClick={() => setAccountOpen(true)}
@@ -184,6 +185,7 @@ export function ResponsiveShell({
 
       {/* sidebar fix, doar de la lg in sus */}
       <aside className="app-shell-sidebar hidden lg:flex flex-col gap-1 p-3" style={{ '--sidebar-tint': softTint } as React.CSSProperties}>
+        {fitnessBrand && <Link href={logoHref}><img src="/fiteasy-logo.png" alt="FitEasy.ro" width={160} height={75} className="w-full h-auto" /></Link>}
         <button onClick={() => setSidebarCollapsed(v => !v)} className="self-start ml-1 w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/70" aria-label={sidebarCollapsed ? 'Extinde meniul' : 'Restrânge meniul'}>{sidebarCollapsed ? <PanelLeftOpen size={17}/> : <PanelLeftClose size={17}/>}</button>
         {!sidebarCollapsed && profileName && <p className="font-semibold text-base px-3 mb-1 truncate">{profileName}</p>}
         {!sidebarCollapsed && <SidebarClock />}

@@ -7,6 +7,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   HOTEL: 'Hoteluri',
   PENSIUNE: 'Pensiuni',
   CLINICA: 'Clinici',
+  FITNESS: 'Fitness',
 }
 
 export default async function SuperAdminOverview() {

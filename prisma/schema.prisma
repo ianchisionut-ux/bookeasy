@@ -102,6 +102,7 @@ model Business {
   blockedSlots       BlockedSlot[]
   subscription       Subscription?
   missedMessageAlerts MissedMessageAlert[]
+  fitnessClients      FitnessClient[]
 }
 
 enum BillingStatus {
@@ -118,6 +119,7 @@ enum PaymentProcessor {
 }
 
 enum BusinessType {
+  FITNESS
   SALON
   EVENT_VENUE
   HOTEL
@@ -212,10 +214,63 @@ model Customer {
   medicalRecord    PatientMedicalRecord?
   documents        PatientDocument[]
   medicalLetters   MedicalLetter[]
+  fitnessClient    FitnessClient?
 
   @@unique([businessId, phone])
   @@unique([businessId, instagramUserId])
   @@unique([businessId, facebookUserId])
+}
+
+// Separate portal credentials: a fitness client NEVER receives a dashboard User role.
+model FitnessClient {
+  id             String @id @default(cuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id])
+  customerId     String @unique
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  active         Boolean @default(true)
+  inviteHash     String? @unique
+  inviteExpiresAt DateTime?
+  sessions       FitnessSession[]
+  entries        FitnessEntry[]
+  messages       FitnessMessage[]
+  createdAt      DateTime @default(now())
+  @@index([businessId])
+}
+
+model FitnessSession {
+  id        String @id @default(cuid())
+  clientId  String
+  client    FitnessClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tokenHash String @unique
+  expiresAt DateTime
+  @@index([clientId])
+}
+
+model FitnessEntry {
+  id        String @id @default(cuid())
+  clientId  String
+  client    FitnessClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  kind      String // NUTRITION or WORKOUT; validated at API boundary
+  date      String // YYYY-MM-DD, in the business timezone
+  time      String // HH:mm, in the business timezone
+  title     String
+  details   String
+  completed Boolean @default(false)
+  feedback  String @default("")
+  version   Int @default(1)
+  updatedAt DateTime @updatedAt
+  @@index([clientId, date])
+}
+
+model FitnessMessage {
+  id        String @id @default(cuid())
+  clientId  String
+  client    FitnessClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  sender    String // INSTRUCTOR or CLIENT
+  text      String
+  createdAt DateTime @default(now())
+  @@index([clientId, createdAt])
 }
 
 model Booking {

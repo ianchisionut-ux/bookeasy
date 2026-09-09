@@ -9,6 +9,17 @@ import { ResponsiveShell } from '@/components/responsive-shell'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+export async function generateMetadata() {
+  const session = await auth()
+  const id = (session as any)?.businessId as string | undefined
+  const business = id ? await prisma.business.findUnique({ where: { id }, select: { category: true } }) : null
+  return business?.category === 'FITNESS' ? {
+    title: 'FitEasy · Instructor', applicationName: 'FitEasy Instructor', manifest: '/api/fitness/manifest?role=instructor',
+    icons: { icon: '/api/fitness/icon', apple: '/api/fitness/icon' },
+    appleWebApp: { capable: true, title: 'FitEasy Instructor' },
+  } : {}
+}
+
 const NAV_ITEMS = [
   { href: '/dashboard/calendar', label: 'Calendar', icon: 'calendar' },
   { href: '/dashboard/mesaje', label: 'Mesaje', icon: 'mesaje' },
@@ -71,6 +82,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const navItems = [
     ...NAV_ITEMS.slice(0, 3),
+    ...(category === 'FITNESS' && (session as any)?.role === 'OWNER' ? [{ href: '/dashboard/fitness', label: 'Planuri Fitness', icon: 'calendar' }] : []),
     ...(teamSize > 1 ? [{ href: '/dashboard/medici', label: category === 'CLINICA' ? 'Medici' : 'Echipă', icon: 'medici' }] : []),
     ...NAV_ITEMS.slice(3),
   ]
@@ -100,6 +112,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <ResponsiveShell
       logoHref="/dashboard"
       logoLabel="bookeasy.ro"
+      fitnessBrand={category === 'FITNESS'}
       profileName={businessName ?? undefined}
       navItems={navItems}
       accentColor={brandColor ?? undefined}

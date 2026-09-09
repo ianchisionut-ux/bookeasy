@@ -13,6 +13,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   HOTEL: 'Hotel',
   PENSIUNE: 'Pensiune',
   CLINICA: 'Clinică medicală',
+  FITNESS: 'Fitness',
 }
 
 const WEEKDAY_SHORT = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
@@ -52,8 +53,8 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
   const accentSoft = business.brandColor ? `${business.brandColor}1a` : 'var(--accent-soft)'
 
   return (
-    <div className="themed-static-bg min-h-screen">
-      <PublicHeader />
+    <div data-brand={business.category === 'FITNESS' ? 'fiteasy' : 'bookeasy'} className="themed-static-bg min-h-screen">
+      <PublicHeader fitness={business.category === 'FITNESS'} />
 
       <div className="px-3 pt-4 sm:px-6 sm:pt-8">
         <div className="mx-auto max-w-6xl overflow-hidden rounded-[22px] px-4 py-5 shadow-xl sm:rounded-[26px] sm:px-8 sm:py-8" style={{ background: `linear-gradient(125deg, #14142b 0%, ${accent} 150%)` }}>
@@ -112,7 +113,7 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
           />
         </section>
       </main>
-      <PublicFooter />
+      <PublicFooter fitness={business.category === 'FITNESS'} />
     </div>
   )
 }

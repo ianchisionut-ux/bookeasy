@@ -6,7 +6,7 @@ import { ensureSignalBillingSchema } from '@/lib/signal-billing-schema'
 
 const patchSchema = z.object({
   name: z.string().min(2).optional(),
-  category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE', 'CLINICA']).optional(),
+  category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE', 'CLINICA', 'FITNESS']).optional(),
   planName: z.string().nullable().optional(),
   billingStatus: z.enum(['GRATUIT', 'NEPLATIT', 'PLATIT', 'RESTANT']).optional(),
   billingNote: z.string().nullable().optional(),

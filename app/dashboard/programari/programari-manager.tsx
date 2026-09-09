@@ -71,7 +71,7 @@ const STATUS_COLOR: Record<string, string> = {
 // Saloanele și clinicile au servicii cu durată fixă (Telefon), spațiile de evenimente
 // au săli/resurse (Sală) — dimensiune independentă de teamSize
 function isAppointmentBased(category: string) {
-  return category === 'SALON' || category === 'CLINICA'
+  return category === 'SALON' || category === 'CLINICA' || category === 'FITNESS'
 }
 
 function SortableHeader({
@@ -111,7 +111,7 @@ export default function ProgramariManager({
   filters,
   newlyConfirmedIds,
 }: {
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' | 'FITNESS'
   isMultiPractitioner: boolean
   bookings: Booking[]
   customers: { id: string; name: string }[]
@@ -451,7 +451,7 @@ function NewBookingForm({
   slotIntervalMinutes,
   onDone,
 }: {
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' | 'FITNESS'
   isMultiPractitioner: boolean
   customers: { id: string; name: string }[]
   services: { id: string; name: string; durationMin: number | null }[]

@@ -20,7 +20,7 @@ type Message = { id: string; direction: 'IN' | 'OUT'; text: string; createdAt: s
 type Template = { id: string; title: string; text: string }
 
 const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', INSTAGRAM: 'Instagram', FACEBOOK: 'Messenger' }
-type BusinessCategory = 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+type BusinessCategory = 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' | 'FITNESS'
 
 function getQuickReplies(category: BusinessCategory) {
   if (category === 'CLINICA') return [

@@ -77,7 +77,7 @@ export default function CalendarClient({
   slotIntervalMinutes,
   practitioners,
 }: {
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' | 'FITNESS'
   events: Event[]
   blockedSlots: BlockedSlot[]
   minTime: string
@@ -88,7 +88,7 @@ export default function CalendarClient({
   practitioners: { id: string; name: string; minTime: string; maxTime: string; workingHours: { weekday: number; startTime: string; endTime: string }[]; breaks: BreakRange[] }[]
 }) {
   const isClinic = category === 'CLINICA'
-  const isAppointmentBased = category === 'SALON' || category === 'CLINICA'
+  const isAppointmentBased = category === 'SALON' || category === 'CLINICA' || category === 'FITNESS'
   const bookingPlural = isAppointmentBased ? 'programări' : 'rezervări'
   const bookingSingular = isAppointmentBased ? 'programare' : 'rezervare'
   const customerPlural = isClinic ? 'pacienți' : 'clienți'

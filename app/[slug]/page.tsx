@@ -12,6 +12,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   SALON: 'Salon',
   EVENT_VENUE: 'Spațiu pentru evenimente',
   CLINICA: 'Clinică medicală',
+  FITNESS: 'Fitness',
 }
 
 export default async function PublicBusinessPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -34,8 +35,8 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
   const bookingLabel = business.category === 'CLINICA' ? 'Programează-te acum' : 'Rezervă acum'
 
   return (
-    <div className="themed-static-bg min-h-screen">
-      <PublicHeader />
+    <div data-brand={business.category === 'FITNESS' ? 'fiteasy' : 'bookeasy'} className="themed-static-bg min-h-screen">
+      <PublicHeader fitness={business.category === 'FITNESS'} />
 
       <div className="px-3 pt-4 sm:px-6 sm:pt-8">
         <section className="relative mx-auto min-h-[260px] max-w-6xl overflow-hidden rounded-[22px] shadow-xl sm:min-h-[340px] sm:rounded-[26px]">
@@ -146,7 +147,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
         </aside>
       </main>
 
-      <PublicFooter />
+      <PublicFooter fitness={business.category === 'FITNESS'} />
     </div>
   )
 }
