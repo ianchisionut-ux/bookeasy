@@ -5,7 +5,10 @@ const assert = require('node:assert/strict')
 async function main() {
   const events = {}
   const deleted = []
+  const cachedBodies = []
   let claimed = false
+  let releaseCache
+  const cacheReady = new Promise((resolve) => { releaseCache = resolve })
   runInNewContext(readFileSync('public/sw.js', 'utf8'), {
     URL, Response,
     self: {
@@ -17,8 +20,16 @@ async function main() {
     caches: {
       keys: async () => ['bookeasy-pwa-v1-static', 'unrelated-cache'],
       delete: async (key) => { deleted.push(key) },
+      match: async () => undefined,
+      open: async () => {
+        await cacheReady
+        return { put: async (_request, response) => { cachedBodies.push(await response.text()) } }
+      },
     },
-    fetch: async () => { throw new Error('Network unavailable') },
+    fetch: async (request) => {
+      if (request.url.endsWith('/logo.png')) return new Response('logo-body')
+      throw new Error('Network unavailable')
+    },
   })
   let activation
   events.activate({ waitUntil: (promise) => { activation = promise } })
@@ -42,6 +53,18 @@ async function main() {
       respondWith: () => assert.fail(`Unexpected interception: ${path}`),
     })
   }
-  console.log('PASS: offline response works without cached assets; private APIs and Next bundles bypass PWA cache; legacy cache removed')
+  let assetResponse
+  let cacheWrite
+  events.fetch({
+    request: { method: 'GET', mode: 'cors', url: 'https://www.bookeasy.ro/logo.png' },
+    respondWith: (promise) => { assetResponse = promise },
+    waitUntil: (promise) => { cacheWrite = promise },
+  })
+  const logo = await assetResponse
+  assert.equal(await logo.text(), 'logo-body')
+  releaseCache()
+  await cacheWrite
+  assert.deepEqual(cachedBodies, ['logo-body'])
+  console.log('PASS: offline response works; private routes bypass cache; asset response is cloned before browser consumption; legacy cache removed')
 }
 main().catch((error) => { console.error(error); process.exitCode = 1 })

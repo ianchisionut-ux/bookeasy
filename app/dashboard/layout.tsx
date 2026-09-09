@@ -81,7 +81,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   const navItems = [
-    ...NAV_ITEMS.slice(0, 3),
+    ...NAV_ITEMS.slice(0, 2),
+    ...(category === 'FITNESS' ? [] : [NAV_ITEMS[2]]),
     ...(category === 'FITNESS' && (session as any)?.role === 'OWNER' ? [{ href: '/dashboard/fitness', label: 'Planuri Fitness', icon: 'calendar' }] : []),
     ...(teamSize > 1 ? [{ href: '/dashboard/medici', label: category === 'CLINICA' ? 'Medici' : 'Echipă', icon: 'medici' }] : []),
     ...NAV_ITEMS.slice(3),
@@ -104,6 +105,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
             ? 'Rezervări'
             : category === 'EVENT_VENUE' && item.href === '/dashboard/servicii'
               ? 'Săli'
+              : category === 'FITNESS' && item.href === '/dashboard/servicii'
+                ? 'Tipuri de ședințe'
               : item.label,
     }))
     .concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin', badge: undefined, icon: 'superadmin' }] : [])

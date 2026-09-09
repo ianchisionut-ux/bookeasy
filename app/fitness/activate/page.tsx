@@ -12,7 +12,10 @@ export default function Activate() {
       setBusy(true); setError('')
       try {
         const r = await fetch('/api/fitness/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) })
-        const d = await r.json(); if (!r.ok) throw new Error(d.error)
+        const isJson = r.headers.get('content-type')?.includes('application/json')
+        const d = isJson ? await r.json().catch(() => null) : null
+        if (!r.ok) throw new Error(d?.error || `Conectarea nu a putut fi finalizată (HTTP ${r.status}).`)
+        if (!d) throw new Error('Serverul a trimis un răspuns invalid. Reîncarcă pagina și încearcă din nou.')
         window.location.replace('/fitness')
       } catch (e) { setError(e instanceof Error ? e.message : 'Conectarea a eșuat.') }
       finally { setBusy(false) }

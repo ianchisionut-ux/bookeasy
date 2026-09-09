@@ -14,7 +14,13 @@ export class FitnessError extends Error {
 export async function instructor() {
   const session = await auth()
   const userId = (session as any)?.userId as string | undefined
-  const user = userId ? await prisma.user.findUnique({ where: { id: userId }, include: { business: true } }) : null
+  const user = userId ? await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      role: true,
+      business: { select: { id: true, category: true, accountActive: true } },
+    },
+  }) : null
   // Only the business owner manages these sensitive client plans. No new access for STAFF.
   if (!user || user.role !== 'OWNER' || user.business?.category !== 'FITNESS' || !user.business.accountActive) {
     throw new FitnessError(403, 'Acces rezervat instructorului unei afaceri Fitness active.')
@@ -25,7 +31,20 @@ export async function portalClient() {
   const token = (await cookies()).get(FITNESS_COOKIE)?.value
   if (!token || !/^[a-f0-9]{64}$/.test(token)) throw new FitnessError(401, 'Solicită instructorului un link de acces nou.')
   const session = await prisma.fitnessSession.findUnique({
-    where: { tokenHash: hashToken(token) }, include: { client: { include: { business: true, customer: true } } },
+    where: { tokenHash: hashToken(token) },
+    select: {
+      expiresAt: true,
+      client: {
+        select: {
+          id: true,
+          businessId: true,
+          customerId: true,
+          active: true,
+          business: { select: { name: true, timezone: true, accountActive: true, category: true } },
+          customer: { select: { name: true } },
+        },
+      },
+    },
   })
   if (!session || session.expiresAt <= new Date() || !session.client.active || !session.client.business.accountActive || session.client.business.category !== 'FITNESS') {
     throw new FitnessError(401, 'Accesul a expirat sau a fost revocat. Contactează instructorul.')
@@ -40,7 +59,17 @@ export async function fitnessActor(req: Request) {
   }
   const business = await instructor()
   const id = new URL(req.url).searchParams.get('clientId') ?? ''
-  const client = await prisma.fitnessClient.findFirst({ where: { id, businessId: business.id }, include: { customer: true, business: true } })
+  const client = await prisma.fitnessClient.findFirst({
+    where: { id, businessId: business.id },
+    select: {
+      id: true,
+      businessId: true,
+      customerId: true,
+      active: true,
+      business: { select: { name: true, timezone: true, accountActive: true, category: true } },
+      customer: { select: { name: true } },
+    },
+  })
   if (!client) throw new FitnessError(404, 'Client inexistent.')
   return { client, owner: true }
 }

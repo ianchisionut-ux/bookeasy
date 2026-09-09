@@ -1,4 +1,4 @@
-const VERSION = 'bookeasy-pwa-v2'
+const VERSION = 'bookeasy-pwa-v3'
 const STATIC_CACHE = `${VERSION}-static`
 const STATIC_ASSETS = [
   '/favicon.ico',
@@ -55,7 +55,11 @@ self.addEventListener('fetch', (event) => {
   // in a long-lived PWA cache shared across deployments.
   if (STATIC_ASSETS.includes(url.pathname)) {
     event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-      if (response.ok) caches.open(STATIC_CACHE).then((cache) => cache.put(request, response.clone()))
+      if (response.ok) {
+        // Clone synchronously, before the browser can start consuming the response body.
+        const cacheCopy = response.clone()
+        event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.put(request, cacheCopy)))
+      }
       return response
     })))
   }

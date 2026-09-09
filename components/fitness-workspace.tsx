@@ -13,8 +13,10 @@ const emptyPlan = { kind: 'WORKOUT', date: '', time: '09:00', title: '', details
 
 async function api(url: string, method = 'GET', body?: unknown, signal?: AbortSignal) {
   const response = await fetch(url, { method, signal, cache: 'no-store', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.error || 'Cererea a eșuat.')
+  const isJson = response.headers.get('content-type')?.includes('application/json')
+  const data = isJson ? await response.json().catch(() => null) : null
+  if (!response.ok) throw new Error(data?.error || `Serverul nu a putut finaliza cererea (HTTP ${response.status}).`)
+  if (!data) throw new Error('Serverul a trimis un răspuns invalid. Reîncarcă pagina și încearcă din nou.')
   return data
 }
 
