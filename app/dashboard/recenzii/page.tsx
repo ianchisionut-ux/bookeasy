@@ -8,17 +8,28 @@ export default async function RecenziiPage() {
   const businessId = (session as any)?.businessId
   if (!businessId) redirect('/login')
 
-  const [business, reviews, googleChannel] = await Promise.all([
-    prisma.business.findUnique({ where: { id: businessId }, select: { rating: true, reviewCount: true } }),
-    prisma.review.findMany({ where: { businessId }, orderBy: { createdAt: 'desc' } }),
-    prisma.channel.findFirst({ where: { businessId, type: 'GOOGLE_BUSINESS', status: 'ACTIVE', enabledByOwner: true } }),
-  ])
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: {
+      category: true,
+      rating: true,
+      reviewCount: true,
+      reviews: { orderBy: { createdAt: 'desc' } },
+      channels: {
+        where: { type: 'GOOGLE_BUSINESS', status: 'ACTIVE', enabledByOwner: true },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  })
+  if (business?.category === 'FITNESS') redirect('/dashboard/calendar')
+  const reviews = business?.reviews ?? []
 
   return (
     <ReviewsManager
       rating={business?.rating ? Number(business.rating) : null}
       reviewCount={business?.reviewCount ?? 0}
-      googleConnected={!!googleChannel}
+      googleConnected={Boolean(business?.channels.length)}
       reviews={reviews.map((r) => ({
         id: r.id,
         authorName: r.authorName,

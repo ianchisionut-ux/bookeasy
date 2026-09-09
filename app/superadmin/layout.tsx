@@ -18,10 +18,13 @@ export default async function SuperAdminLayout({ children }: { children: React.R
   }
 
   const userEmail = (session as any)?.user?.email ?? 'admin'
-  const [newRequestsCount, newTicketsCount] = await Promise.all([
-    prisma.accessRequest.count({ where: { status: 'NEW' } }),
-    prisma.supportTicket.count({ where: { status: 'NEW' } }),
-  ])
+  const badgeRows = await prisma.$queryRaw<Array<{ newRequestsCount: bigint; newTicketsCount: bigint }>>`
+    SELECT
+      (SELECT COUNT(*) FROM "AccessRequest" WHERE status = 'NEW') AS "newRequestsCount",
+      (SELECT COUNT(*) FROM "SupportTicket" WHERE status = 'NEW') AS "newTicketsCount"
+  `
+  const newRequestsCount = Number(badgeRows[0]?.newRequestsCount ?? 0)
+  const newTicketsCount = Number(badgeRows[0]?.newTicketsCount ?? 0)
 
   const navItems = NAV_ITEMS.map((item) => ({
     ...item,

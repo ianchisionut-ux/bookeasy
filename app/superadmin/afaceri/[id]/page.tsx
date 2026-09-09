@@ -2,11 +2,9 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import { BackLink } from '@/components/ui/back-link'
 import BusinessAdminPanel from './business-admin-panel'
-import { ensureSignalBillingSchema } from '@/lib/signal-billing-schema'
 
 export default async function SuperAdminBusinessDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  await ensureSignalBillingSchema()
   const [business, revenueAgg] = await Promise.all([
     prisma.business.findUnique({
       where: { id },
@@ -24,15 +22,18 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
     // venit estimat brut (aproximativ — sumă preț servicii pentru rezervările CONFIRMED/COMPLETED)
     // — independentă de "business", rulează în paralel; dacă afacerea nu există, pur și
     // simplu ignorăm rezultatul mai jos (cost mic, câștig real în cazul normal, frecvent)
-    prisma.booking.findMany({
-      where: { businessId: id, status: { in: ['CONFIRMED', 'COMPLETED'] } },
-      include: { service: true },
-    }),
+    prisma.$queryRaw<Array<{ totalRevenue: unknown }>>`
+      SELECT COALESCE(SUM(service.price), 0) AS "totalRevenue"
+      FROM "Booking" booking
+      INNER JOIN "Service" service ON service.id = booking."serviceId"
+      WHERE booking."businessId" = ${id}
+        AND booking.status IN ('CONFIRMED', 'COMPLETED')
+    `,
   ])
 
   if (!business) notFound()
 
-  const totalRevenue = revenueAgg.reduce((sum, b) => sum + Number(b.service.price ?? 0), 0)
+  const totalRevenue = Number(revenueAgg[0]?.totalRevenue ?? 0)
 
   return (
     <div className="p-4 lg:p-8 max-w-6xl">

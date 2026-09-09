@@ -4,7 +4,6 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { rateLimit } from '@/lib/rate-limit'
 import { createSignalInvoice } from '@/lib/signal-billing'
-import { ensureSignalBillingSchema } from '@/lib/signal-billing-schema'
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -16,7 +15,6 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Prea multe încercări. Reîncearcă mai târziu.' }, { status: 429 })
 
   try {
-    await ensureSignalBillingSchema()
     let business = await prisma.business.findUnique({ where: { id } })
     if (!business) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
     if (business.billingInvoiceUrl)

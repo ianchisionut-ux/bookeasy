@@ -9,17 +9,6 @@ import { ResponsiveShell } from '@/components/responsive-shell'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-export async function generateMetadata() {
-  const session = await auth()
-  const id = (session as any)?.businessId as string | undefined
-  const business = id ? await prisma.business.findUnique({ where: { id }, select: { category: true } }) : null
-  return business?.category === 'FITNESS' ? {
-    title: 'FitEasy · Instructor', applicationName: 'FitEasy Instructor', manifest: '/api/fitness/manifest?role=instructor',
-    icons: { icon: '/api/fitness/icon', apple: '/api/fitness/icon' },
-    appleWebApp: { capable: true, title: 'FitEasy Instructor' },
-  } : {}
-}
-
 const NAV_ITEMS = [
   { href: '/dashboard/calendar', label: 'Calendar', icon: 'calendar' },
   { href: '/dashboard/mesaje', label: 'Mesaje', icon: 'mesaje' },
@@ -57,7 +46,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (businessId) {
     const business = await prisma.business.findUnique({
       where: { id: businessId },
-      select: { name: true, accountActive: true, onboardingDone: true, onboardingStep: true, brandColor: true, category: true, teamSize: true, billingStatus: true, billingDueAt: true, billingAmount: true, billingInvoiceUrl: true },
+      select: {
+        name: true, accountActive: true, onboardingDone: true, onboardingStep: true,
+        brandColor: true, category: true, teamSize: true, billingStatus: true,
+        billingDueAt: true, billingAmount: true, billingInvoiceUrl: true,
+        _count: {
+          select: {
+            conversations: { where: { needsOperator: true } },
+            bookings: { where: { confirmationSeenByAdmin: false } },
+          },
+        },
+      },
     })
     if (business && !business.accountActive) {
       redirect('/cont-suspendat')
@@ -69,15 +68,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     businessName = business?.name ?? null
     category = business?.category ?? null
     teamSize = business?.teamSize ?? 1
+    needsOperatorCount = business?._count.conversations ?? 0
+    unseenConfirmationsCount = business?._count.bookings ?? 0
     if (business && ['NEPLATIT', 'RESTANT'].includes(business.billingStatus) && business.billingDueAt && business.billingDueAt <= new Date()) {
       billingAlert = { status: business.billingStatus, dueAt: business.billingDueAt, amount: business.billingAmount === null ? null : Number(business.billingAmount), hasInvoice: Boolean(business.billingInvoiceUrl) }
     }
-    // cele două interogări de mai jos sunt independente — rulează la fiecare navigare
-    // din dashboard, deci paralelizarea contează real aici, nu doar teoretic
-    ;[needsOperatorCount, unseenConfirmationsCount] = await Promise.all([
-      prisma.conversation.count({ where: { businessId, needsOperator: true } }),
-      prisma.booking.count({ where: { businessId, confirmationSeenByAdmin: false } }),
-    ])
   }
 
   const navItems = [
@@ -87,6 +82,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     ...(teamSize > 1 ? [{ href: '/dashboard/medici', label: category === 'CLINICA' ? 'Medici' : 'Echipă', icon: 'medici' }] : []),
     ...NAV_ITEMS.slice(3),
   ]
+    .filter((item) => category !== 'FITNESS' || item.href !== '/dashboard/recenzii')
     .map((item) => ({
       ...item,
       badge:
@@ -112,7 +108,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin', badge: undefined, icon: 'superadmin' }] : [])
 
   return (
-    <ResponsiveShell
+    <>
+      {category === 'FITNESS' && <>
+        <title>FitEasy · Instructor</title>
+        <link rel="manifest" href="/api/fitness/manifest?role=instructor" />
+        <link rel="icon" href="/api/fitness/icon" />
+        <link rel="apple-touch-icon" href="/api/fitness/icon" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="FitEasy Instructor" />
+      </>}
+      <ResponsiveShell
       logoHref="/dashboard"
       logoLabel="bookeasy.ro"
       fitnessBrand={category === 'FITNESS'}
@@ -123,7 +128,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
       enableLiveBadges
     >
       {billingAlert && <div className="mx-4 mt-4 lg:mx-8 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 flex items-center justify-between gap-3 flex-wrap"><span><strong>Abonament scadent.</strong> {billingAlert.amount !== null ? `${billingAlert.amount.toLocaleString('ro-RO')} RON · ` : ''}Plătește în maximum 15 zile de la scadență pentru a evita suspendarea.</span><a href="/dashboard/setari" className="font-medium underline">Vezi factura</a></div>}
-      {children}
-    </ResponsiveShell>
+        {children}
+      </ResponsiveShell>
+    </>
   )
 }

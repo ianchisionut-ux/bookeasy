@@ -7,10 +7,20 @@ export async function GET() {
   const businessId = (session as any)?.businessId
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  const [needsOperatorCount, unseenConfirmationsCount] = await Promise.all([
-    prisma.conversation.count({ where: { businessId, needsOperator: true } }),
-    prisma.booking.count({ where: { businessId, confirmationSeenByAdmin: false } }),
-  ])
+  const counts = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: {
+      _count: {
+        select: {
+          conversations: { where: { needsOperator: true } },
+          bookings: { where: { confirmationSeenByAdmin: false } },
+        },
+      },
+    },
+  })
 
-  return NextResponse.json({ needsOperatorCount, unseenConfirmationsCount })
+  return NextResponse.json({
+    needsOperatorCount: counts?._count.conversations ?? 0,
+    unseenConfirmationsCount: counts?._count.bookings ?? 0,
+  })
 }

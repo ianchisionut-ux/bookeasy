@@ -4,7 +4,6 @@ import { Pill } from '@/components/ui/input'
 import Link from 'next/link'
 import BusinessRowActions from './business-row-actions'
 import CreateBusinessButton from './create-business-button'
-import { ensureSignalBillingSchema } from '@/lib/signal-billing-schema'
 
 const CATEGORY_LABEL: Record<string, string> = {
   SALON: 'Salon',
@@ -37,10 +36,20 @@ export default async function SuperAdminBusinesses({
   const { neplatite } = await searchParams
   const onlyUnpaid = neplatite === '1'
 
-  await ensureSignalBillingSchema()
   const businesses = await prisma.business.findMany({
     where: onlyUnpaid ? { billingStatus: { in: ['NEPLATIT', 'RESTANT'] } } : {},
-    include: { _count: { select: { bookings: true, users: true } } },
+    select: {
+      id: true,
+      name: true,
+      city: true,
+      slug: true,
+      category: true,
+      teamSize: true,
+      billingStatus: true,
+      planName: true,
+      publicListed: true,
+      _count: { select: { bookings: true } },
+    },
     orderBy: { createdAt: 'desc' },
   })
 
