@@ -16,7 +16,7 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> 
 }
 
 export function SubscriptionCard({ businessId, planName, billingStatus, amount, dueAt, invoiceName }: { businessId: string; planName: string | null; billingStatus: string; amount: number | null; dueAt: string | null; invoiceName: string | null }) {
-  const dueLabel = dueAt ? new Date(dueAt).toLocaleDateString('ro-RO') : null
+  const dueLabel = dueAt ? new Date(dueAt).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : null
   return (
     <Card className="mb-5 break-inside-avoid">
       <div className="flex items-center justify-between mb-1">

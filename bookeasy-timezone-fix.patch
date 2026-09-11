@@ -1,0 +1,85 @@
+diff --git a/app/dashboard/calendar/calendar-client-loader.tsx b/app/dashboard/calendar/calendar-client-loader.tsx
+new file mode 100644
+index 0000000..4fb1b09
+--- /dev/null
++++ b/app/dashboard/calendar/calendar-client-loader.tsx
+@@ -0,0 +1,22 @@
++'use client'
++
++import dynamic from 'next/dynamic'
++
++// react-big-calendar (via date-fns) face calcule de dată/oră care depind de
++// timezone-ul runtime-ului (getDay, startOfWeek, format etc. nu primesc un
++// timeZone explicit). Pe Cloudflare Workers randarea server rulează de regulă
++// în UTC, diferit de timezone-ul clientului (Europe/Bucharest) -> React
++// hydration error #418 la orele de graniță ale zilei.
++//
++// ssr: false scoate complet acest component din randarea server-side, deci
++// nu mai există niciun HTML de comparat la hidratare pentru el.
++const CalendarClient = dynamic(() => import('./calendar-client'), {
++  ssr: false,
++  loading: () => (
++    <div className="flex h-96 items-center justify-center text-sm text-gray-400">
++      Se încarcă calendarul...
++    </div>
++  ),
++})
++
++export default CalendarClient
+diff --git a/app/dashboard/calendar/page.tsx b/app/dashboard/calendar/page.tsx
+index 8052b7b..f959918 100644
+--- a/app/dashboard/calendar/page.tsx
++++ b/app/dashboard/calendar/page.tsx
+@@ -1,7 +1,12 @@
+ import { prisma } from '@/lib/prisma'
+ import { auth } from '@/lib/auth'
+-import CalendarClient from './calendar-client'
+ import { calculateAdaptiveSlotStep } from '@/lib/availability'
++// react-big-calendar + date-fns fac calcule de dată/oră fără timezone explicit
++// (folosesc timezone-ul runtime-ului). Pe Cloudflare Workers (edge, de regulă UTC)
++// randarea server diferă de clientul din România -> React hydration error #418.
++// CalendarClientLoader dezactivează SSR pentru acest component (ssr:false nu e
++// permis direct într-un Server Component, de-aia trece printr-un wrapper 'use client').
++import CalendarClient from './calendar-client-loader'
+ 
+ function computeMinMax(hours: { startTime: string; endTime: string }[], fallbackMin = '08:00', fallbackMax = '20:00') {
+   if (hours.length === 0) return { minTime: fallbackMin, maxTime: fallbackMax }
+diff --git a/app/dashboard/medici/practitioners-manager.tsx b/app/dashboard/medici/practitioners-manager.tsx
+index ef760b3..4354b92 100644
+--- a/app/dashboard/medici/practitioners-manager.tsx
++++ b/app/dashboard/medici/practitioners-manager.tsx
+@@ -378,7 +378,7 @@ function PractitionerDetail({
+             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={syncEnabled} onChange={(e) => setSyncEnabled(e.target.checked)} /> Sincronizare automată activă</label>
+             <label className="flex items-start gap-2 text-sm"><input className="mt-0.5" type="checkbox" checked={includeCustomerDetails} onChange={(e) => setIncludeCustomerDetails(e.target.checked)} /><span>Include numele, telefonul și serviciul clientului <span className="block text-xs text-gray-400">Pentru clinici recomandăm să rămână dezactivat.</span></span></label>
+             {practitioner.googleCalendar.lastError && <p className="text-xs text-red-600">Necesită atenție: {practitioner.googleCalendar.lastError}</p>}
+-            {practitioner.googleCalendar.lastSyncAt && !practitioner.googleCalendar.lastError && <p className="text-xs text-emerald-600">Sincronizat: {new Date(practitioner.googleCalendar.lastSyncAt).toLocaleString('ro-RO')}</p>}
++            {practitioner.googleCalendar.lastSyncAt && !practitioner.googleCalendar.lastError && <p className="text-xs text-emerald-600">Sincronizat: {new Date(practitioner.googleCalendar.lastSyncAt).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' })}</p>}
+             <div className="flex flex-wrap gap-2">
+               <Button onClick={updateCalendarSettings} disabled={calendarBusy}>Salvează setările</Button>
+               <Button variant="secondary" onClick={syncCalendar} disabled={calendarBusy}>Sincronizează acum</Button>
+diff --git a/app/dashboard/setari/subscription-card.tsx b/app/dashboard/setari/subscription-card.tsx
+index dc96a82..e6a1bf8 100644
+--- a/app/dashboard/setari/subscription-card.tsx
++++ b/app/dashboard/setari/subscription-card.tsx
+@@ -16,7 +16,7 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'>
+ }
+ 
+ export function SubscriptionCard({ businessId, planName, billingStatus, amount, dueAt, invoiceName }: { businessId: string; planName: string | null; billingStatus: string; amount: number | null; dueAt: string | null; invoiceName: string | null }) {
+-  const dueLabel = dueAt ? new Date(dueAt).toLocaleDateString('ro-RO') : null
++  const dueLabel = dueAt ? new Date(dueAt).toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' }) : null
+   return (
+     <Card className="mb-5 break-inside-avoid">
+       <div className="flex items-center justify-between mb-1">
+diff --git a/app/dashboard/statistici/statistici-charts.tsx b/app/dashboard/statistici/statistici-charts.tsx
+index 302e414..255a7c9 100644
+--- a/app/dashboard/statistici/statistici-charts.tsx
++++ b/app/dashboard/statistici/statistici-charts.tsx
+@@ -131,7 +131,7 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
+                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" vertical={false} />
+                 <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(value) => value.slice(5)} minTickGap={24} />
+                 <YAxis tick={{ fontSize: 10 }} allowDecimals={false} width={45} tickFormatter={(value) => metric === 'revenue' && value >= 1000 ? `${Math.round(value / 1000)}k` : value} />
+-                <Tooltip formatter={(value) => metric === 'revenue' ? money(Number(value)) : [Number(value), bookingLabel]} labelFormatter={(value) => new Date(`${value}T12:00:00`).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' })} />
++                <Tooltip formatter={(value) => metric === 'revenue' ? money(Number(value)) : [Number(value), bookingLabel]} labelFormatter={(value) => new Date(`${value}T12:00:00`).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Bucharest' })} />
+                 <Area type="monotone" dataKey={metric} stroke="var(--accent)" strokeWidth={2.5} fill="url(#statFill)" activeDot={{ r: 5 }} />
+               </AreaChart>
+             </ResponsiveContainer>

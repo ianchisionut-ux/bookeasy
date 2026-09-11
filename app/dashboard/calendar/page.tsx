@@ -1,7 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import CalendarClient from './calendar-client'
 import { calculateAdaptiveSlotStep } from '@/lib/availability'
+// react-big-calendar + date-fns fac calcule de dată/oră fără timezone explicit
+// (folosesc timezone-ul runtime-ului). Pe Cloudflare Workers (edge, de regulă UTC)
+// randarea server diferă de clientul din România -> React hydration error #418.
+// CalendarClientLoader dezactivează SSR pentru acest component (ssr:false nu e
+// permis direct într-un Server Component, de-aia trece printr-un wrapper 'use client').
+import CalendarClient from './calendar-client-loader'
 
 function computeMinMax(hours: { startTime: string; endTime: string }[], fallbackMin = '08:00', fallbackMax = '20:00') {
   if (hours.length === 0) return { minTime: fallbackMin, maxTime: fallbackMax }
