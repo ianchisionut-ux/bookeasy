@@ -1,0 +1,43 @@
+diff --git a/lib/prisma.ts b/lib/prisma.ts
+index abb1885..51f8d60 100644
+--- a/lib/prisma.ts
++++ b/lib/prisma.ts
+@@ -1,4 +1,4 @@
+-import { PrismaClient } from '@prisma/client/wasm'
++import { PrismaClient } from '@prisma/client'
+ import { PrismaNeon } from '@prisma/adapter-neon'
+ import { getCloudflareContext } from '@opennextjs/cloudflare'
+ 
+@@ -14,17 +14,28 @@ const requestClients = new WeakMap<object, PrismaClient>()
+ let localClient: PrismaClient | undefined
+ 
+ function currentClient() {
+-  let context: object
++  let context: ReturnType<typeof getCloudflareContext>
+   try {
+-    context = getCloudflareContext().ctx
++    context = getCloudflareContext()
+   } catch {
+     // Next.js build / local Node server, outside the Workers runtime.
+     return localClient ??= createPrismaClient()
+   }
+-  let client = requestClients.get(context)
++  // getCloudflareContext()'s return type resolves `ctx` as `unknown` here,
++  // so cast explicitly rather than relying on inference — the object at
++  // runtime is Cloudflare's ExecutionContext regardless of the TS type.
++  const key = context.ctx as object
++  let client = requestClients.get(key)
+   if (!client) {
+     client = createPrismaClient()
+-    requestClients.set(context, client)
++    requestClients.set(key, client)
++    // Tie the Neon WebSocket's teardown to THIS request's lifecycle.
++    // $disconnect() drains any in-flight queries on this client before
++    // closing the socket, so registering it immediately is safe — but
++    // without waitUntil, that teardown could otherwise run while the
++    // isolate is already serving a different request, which is exactly
++    // what produces "Cannot perform I/O on behalf of a different request."
++    ;(key as { waitUntil(promise: Promise<unknown>): void }).waitUntil(client.$disconnect())
+   }
+   return client
+ }
