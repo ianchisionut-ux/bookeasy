@@ -131,7 +131,7 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(value) => value.slice(5)} minTickGap={24} />
                 <YAxis tick={{ fontSize: 10 }} allowDecimals={false} width={45} tickFormatter={(value) => metric === 'revenue' && value >= 1000 ? `${Math.round(value / 1000)}k` : value} />
-                <Tooltip formatter={(value) => metric === 'revenue' ? money(Number(value)) : [Number(value), bookingLabel]} labelFormatter={(value) => new Date(`${value}T12:00:00`).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' })} />
+                <Tooltip formatter={(value) => metric === 'revenue' ? money(Number(value)) : [Number(value), bookingLabel]} labelFormatter={(value) => new Date(`${value}T12:00:00`).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Bucharest' })} />
                 <Area type="monotone" dataKey={metric} stroke="var(--accent)" strokeWidth={2.5} fill="url(#statFill)" activeDot={{ r: 5 }} />
               </AreaChart>
             </ResponsiveContainer>

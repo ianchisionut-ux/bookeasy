@@ -378,7 +378,7 @@ function PractitionerDetail({
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={syncEnabled} onChange={(e) => setSyncEnabled(e.target.checked)} /> Sincronizare automată activă</label>
             <label className="flex items-start gap-2 text-sm"><input className="mt-0.5" type="checkbox" checked={includeCustomerDetails} onChange={(e) => setIncludeCustomerDetails(e.target.checked)} /><span>Include numele, telefonul și serviciul clientului <span className="block text-xs text-gray-400">Pentru clinici recomandăm să rămână dezactivat.</span></span></label>
             {practitioner.googleCalendar.lastError && <p className="text-xs text-red-600">Necesită atenție: {practitioner.googleCalendar.lastError}</p>}
-            {practitioner.googleCalendar.lastSyncAt && !practitioner.googleCalendar.lastError && <p className="text-xs text-emerald-600">Sincronizat: {new Date(practitioner.googleCalendar.lastSyncAt).toLocaleString('ro-RO')}</p>}
+            {practitioner.googleCalendar.lastSyncAt && !practitioner.googleCalendar.lastError && <p className="text-xs text-emerald-600">Sincronizat: {new Date(practitioner.googleCalendar.lastSyncAt).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' })}</p>}
             <div className="flex flex-wrap gap-2">
               <Button onClick={updateCalendarSettings} disabled={calendarBusy}>Salvează setările</Button>
               <Button variant="secondary" onClick={syncCalendar} disabled={calendarBusy}>Sincronizează acum</Button>
