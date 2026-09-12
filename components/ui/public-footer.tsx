@@ -2,7 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { company } from '@/lib/company'
 
-export function PublicFooter({ fitness = false }: { fitness?: boolean }) {
+export function PublicFooter() {
   return (
     <footer className="border-t border-[var(--border-soft)] bg-white px-4 py-6 sm:px-6">
       <div className="mx-auto mb-6 flex max-w-4xl flex-wrap items-center justify-center gap-4 border-b border-[var(--border-soft)] pb-6">
@@ -39,7 +39,7 @@ export function PublicFooter({ fitness = false }: { fitness?: boolean }) {
       </div>
       <div className="mx-auto flex max-w-4xl flex-col items-center justify-between gap-3 text-center text-xs text-gray-500 sm:flex-row sm:text-left">
         <p>
-          © {new Date().getFullYear()} {fitness ? 'FitEasy' : 'BookEasy'} · {company.legalName} · CUI {company.cui} ·{' '}
+          © {new Date().getFullYear()} BookEasy · {company.legalName} · CUI {company.cui} ·{' '}
           <a
             href="https://www.nextlevel-agency.ro"
             target="_blank"

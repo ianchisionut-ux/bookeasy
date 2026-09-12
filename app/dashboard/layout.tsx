@@ -76,14 +76,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   const navItems = [
-    ...NAV_ITEMS.slice(0, 2),
-    ...(category === 'FITNESS' ? [] : [NAV_ITEMS[2]]),
-    ...(category === 'FITNESS' && (session as any)?.role === 'OWNER' ? [{ href: '/dashboard/fitness', label: 'Planuri Fitness', icon: 'calendar' }] : []),
+    ...NAV_ITEMS.slice(0, 3),
     ...(teamSize > 1 ? [{ href: '/dashboard/medici', label: category === 'CLINICA' ? 'Medici' : 'Echipă', icon: 'medici' }] : []),
     ...NAV_ITEMS.slice(3),
-  ]
-    .filter((item) => category !== 'FITNESS' || item.href !== '/dashboard/recenzii')
-    .map((item) => ({
+  ].map((item) => ({
       ...item,
       badge:
         item.href === '/dashboard/mesaje' && needsOperatorCount > 0
@@ -101,26 +97,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
             ? 'Rezervări'
             : category === 'EVENT_VENUE' && item.href === '/dashboard/servicii'
               ? 'Săli'
-              : category === 'FITNESS' && item.href === '/dashboard/servicii'
-                ? 'Tipuri de ședințe'
               : item.label,
     }))
     .concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin', badge: undefined, icon: 'superadmin' }] : [])
 
   return (
-    <>
-      {category === 'FITNESS' && <>
-        <title>FitEasy · Instructor</title>
-        <link rel="manifest" href="/api/fitness/manifest?role=instructor" />
-        <link rel="icon" href="/api/fitness/icon" />
-        <link rel="apple-touch-icon" href="/api/fitness/icon" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-title" content="FitEasy Instructor" />
-      </>}
-      <ResponsiveShell
+    <ResponsiveShell
       logoHref="/dashboard"
       logoLabel="bookeasy.ro"
-      fitnessBrand={category === 'FITNESS'}
       profileName={businessName ?? undefined}
       navItems={navItems}
       accentColor={brandColor ?? undefined}
@@ -128,8 +112,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       enableLiveBadges
     >
       {billingAlert && <div className="mx-4 mt-4 lg:mx-8 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 flex items-center justify-between gap-3 flex-wrap"><span><strong>Abonament scadent.</strong> {billingAlert.amount !== null ? `${billingAlert.amount.toLocaleString('ro-RO')} RON · ` : ''}Plătește în maximum 15 zile de la scadență pentru a evita suspendarea.</span><a href="/dashboard/setari" className="font-medium underline">Vezi factura</a></div>}
-        {children}
-      </ResponsiveShell>
-    </>
+      {children}
+    </ResponsiveShell>
   )
 }

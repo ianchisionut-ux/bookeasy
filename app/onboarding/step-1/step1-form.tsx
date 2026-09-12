@@ -14,13 +14,12 @@ const CATEGORY_LABEL: Record<string, string> = {
   HOTEL: 'Hotel',
   PENSIUNE: 'Pensiune',
   CLINICA: 'Clinică medicală/stomatologică',
-  FITNESS: 'Fitness',
 }
 
 // Categoriile active se pot alege chiar aici, în onboarding — Hotel și Pensiune
 // sunt stabilite de admin la crearea contului și nu se schimbă aici,
 // ca să nu riști să strici din greșeală o categorie deja setată corect
-const SELECTABLE = ['SALON', 'EVENT_VENUE', 'CLINICA', 'FITNESS']
+const SELECTABLE = ['SALON', 'EVENT_VENUE', 'CLINICA']
 
 export default function Step1Form({ currentCategory }: { currentCategory: string }) {
   const router = useRouter()
@@ -28,7 +27,7 @@ export default function Step1Form({ currentCategory }: { currentCategory: string
 
   const [form, setForm] = useState({
     name: '',
-    category: (SELECTABLE.includes(currentCategory) ? currentCategory : 'SALON') as 'SALON' | 'EVENT_VENUE' | 'CLINICA' | 'FITNESS',
+    category: (SELECTABLE.includes(currentCategory) ? currentCategory : 'SALON') as 'SALON' | 'EVENT_VENUE' | 'CLINICA',
     contactPhone: '',
     city: '',
     address: '',
@@ -95,9 +94,6 @@ export default function Step1Form({ currentCategory }: { currentCategory: string
           <div>
             <label className="text-sm text-gray-500 block mb-2">Tip de afacere</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button type="button" onClick={() => setForm({ ...form, category: 'FITNESS' })} className="rounded-2xl p-4 text-left border" style={{ borderColor: form.category === 'FITNESS' ? 'var(--accent)' : 'var(--border-soft)', background: form.category === 'FITNESS' ? 'var(--accent-soft)' : 'white' }}>
-                <p className="text-sm font-medium">Fitness</p><p className="text-xs text-gray-500">antrenamente și nutriție</p>
-              </button>
               <button
                 type="button"
                 onClick={() => setForm({ ...form, category: 'SALON' })}

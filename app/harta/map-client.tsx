@@ -6,7 +6,7 @@ type Business = {
   id: string
   name: string
   slug: string
-  category: 'SALON' | 'EVENT_VENUE' | 'CLINICA' | 'FITNESS'
+  category: 'SALON' | 'EVENT_VENUE' | 'CLINICA'
   city: string | null
   address: string | null
   latitude: number
@@ -26,13 +26,11 @@ const CATEGORY_LABEL: Record<string, string> = {
   SALON: 'Salon',
   EVENT_VENUE: 'Spații evenimente',
   CLINICA: 'Clinică',
-  FITNESS: 'Fitness',
 }
 const CATEGORY_COLOR: Record<string, string> = {
   SALON: '#639922',
   EVENT_VENUE: '#0c2c53',
   CLINICA: '#0e9aa7',
-  FITNESS: '#438531',
 }
 
 export default function MapClient() {
@@ -41,7 +39,7 @@ export default function MapClient() {
   const mapInstance = useRef<any>(null)
   const markersRef = useRef<any[]>([])
   const [businesses, setBusinesses] = useState<Business[]>([])
-  const [category, setCategory] = useState<'ALL' | 'SALON' | 'EVENT_VENUE' | 'CLINICA' | 'FITNESS'>('ALL')
+  const [category, setCategory] = useState<'ALL' | 'SALON' | 'EVENT_VENUE' | 'CLINICA'>('ALL')
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [shouldLoad, setShouldLoad] = useState(false)
@@ -217,7 +215,6 @@ export default function MapClient() {
         >
           Clinici
         </button>
-        <button onClick={() => setCategory('FITNESS')} className={`text-sm px-3 py-1.5 rounded-full border ${category === 'FITNESS' ? 'bg-gray-900 text-white' : ''}`}>Fitness</button>
         <span className="text-sm text-gray-500 ml-auto self-center">{businesses.length} afaceri</span>
       </div>
 

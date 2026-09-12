@@ -3,7 +3,6 @@
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { Download, Share, WifiOff, X } from 'lucide-react'
-import { usePathname } from 'next/navigation'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
@@ -11,9 +10,6 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function PwaManager() {
-  const pathname = usePathname()
-  const [fitnessBrand, setFitnessBrand] = useState(false)
-  useEffect(() => { setFitnessBrand(Boolean(document.querySelector('[data-brand="fiteasy"]'))) }, [pathname])
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [iosInstallable, setIosInstallable] = useState(false)
   const [online, setOnline] = useState(true)
@@ -70,10 +66,8 @@ export default function PwaManager() {
     setDismissed(true)
   }
 
-  // Public/onboarding pages still use the shared site manifest. Offer FitEasy
-  // installation only inside a portal with its own verified role-specific manifest.
-  const fitnessInstallPage = pathname === '/fitness' || pathname?.startsWith('/dashboard/')
-  const showInstallCard = online && !dismissed && Boolean(installPrompt || iosInstallable) && (!fitnessBrand || fitnessInstallPage)
+  // Public/onboarding pages still use the shared site manifest.
+  const showInstallCard = online && !dismissed && Boolean(installPrompt || iosInstallable)
 
   return (
     <>
@@ -83,12 +77,12 @@ export default function PwaManager() {
         </div>
       )}
       {showInstallCard && (
-        <div className="fixed left-3 right-3 bottom-3 sm:left-auto sm:right-5 sm:w-96 z-[99] card p-4 shadow-xl border border-[var(--border-soft)]" role="dialog" aria-label={fitnessBrand ? 'Instalează FitEasy' : 'Instalează BookEasy'}>
+        <div className="fixed left-3 right-3 bottom-3 sm:left-auto sm:right-5 sm:w-96 z-[99] card p-4 shadow-xl border border-[var(--border-soft)]" role="dialog" aria-label="Instalează BookEasy">
           <button onClick={dismiss} className="absolute right-3 top-3 text-gray-400" aria-label="Închide"><X size={17} /></button>
           <div className="flex items-start gap-3 pr-6">
-            {fitnessBrand ? <img src="/fiteasy-logo.png" width={90} height={44} alt="" className="h-11 w-auto" /> : <Image src="/icon-192.png" width={44} height={44} alt="" className="h-11 w-11 rounded-xl" />}
+            <Image src="/icon-192.png" width={44} height={44} alt="" className="h-11 w-11 rounded-xl" />
             <div>
-              <p className="font-medium">Instalează {fitnessBrand ? 'FitEasy' : 'BookEasy'}</p>
+              <p className="font-medium">Instalează BookEasy</p>
               {installPrompt ? (
                 <p className="text-xs text-gray-500 mt-0.5">Acces rapid din ecranul principal, ca o aplicație.</p>
               ) : (

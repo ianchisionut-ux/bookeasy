@@ -11,7 +11,6 @@ export default async function RecenziiPage() {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
     select: {
-      category: true,
       rating: true,
       reviewCount: true,
       reviews: { orderBy: { createdAt: 'desc' } },
@@ -22,7 +21,6 @@ export default async function RecenziiPage() {
       },
     },
   })
-  if (business?.category === 'FITNESS') redirect('/dashboard/calendar')
   const reviews = business?.reviews ?? []
 
   return (

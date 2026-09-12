@@ -10,9 +10,9 @@ import { Button } from '@/components/ui/button'
 
 type Item = { name: string; durationMin?: string; price?: string; capacity?: string }
 
-export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' | 'FITNESS' }) {
+export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' }) {
   const router = useRouter()
-  const isSalon = category === 'SALON' || category === 'CLINICA' || category === 'FITNESS'
+  const isSalon = category === 'SALON' || category === 'CLINICA'
   const [items, setItems] = useState<Item[]>([])
   const [draft, setDraft] = useState<Item>({ name: '', durationMin: '', price: '', capacity: '' })
   const [loading, setLoading] = useState(false)

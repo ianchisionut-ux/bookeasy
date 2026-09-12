@@ -15,7 +15,6 @@ const CATEGORY_LABEL: Record<string, string> = {
   HOTEL: 'Hotel',
   PENSIUNE: 'Pensiune',
   CLINICA: 'Clinică',
-  FITNESS: 'Fitness',
 }
 
 type Channel = { id: string; type: string; externalId: string; wabaId: string | null; status: string }
@@ -28,7 +27,7 @@ type Business = {
   id: string
   slug: string
   name: string
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' | 'FITNESS'
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
   accountActive: boolean
   publicListed: boolean
   ownerEmail: string | null

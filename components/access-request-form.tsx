@@ -59,7 +59,6 @@ export default function AccessRequestForm() {
         <option value="SALON">Salon</option>
         <option value="EVENT_VENUE">Spații evenimente</option>
         <option value="CLINICA">Clinică medicală/stomatologică</option>
-            <option value="FITNESS">Fitness / instructor personal</option>
       </select>
       <textarea
         placeholder="Spune-ne câte ceva despre afacerea ta (opțional)"

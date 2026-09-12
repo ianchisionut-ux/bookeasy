@@ -52,14 +52,14 @@ export default function BookingFlow({
 }: {
   businessId: string
   businessSlug: string
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' | 'FITNESS'
+  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
   isMultiPractitioner: boolean
   services: Service[]
   canPayOnline: boolean
   accentColor: string
   accentSoftColor: string
 }) {
-  const isAppointment = category === 'SALON' || category === 'CLINICA' || category === 'FITNESS'
+  const isAppointment = category === 'SALON' || category === 'CLINICA'
   const isVenue = category === 'EVENT_VENUE'
   const days = useMemo(() => buildNextDays(30), [])
 

@@ -14,9 +14,9 @@ export default async function OnboardingLayout({ children }: { children: React.R
   if (business?.onboardingDone) redirect('/dashboard')
 
   return (
-    <main data-brand={business?.category === 'FITNESS' ? 'fiteasy' : 'bookeasy'} className="themed-static-bg min-h-screen flex flex-col items-center px-6 py-10">
+    <main className="themed-static-bg min-h-screen flex flex-col items-center px-6 py-10">
       <Link href="/" className="flex items-center gap-2 mb-8">
-        {business?.category === 'FITNESS' ? <img src="/fiteasy-logo.png" alt="FitEasy.ro" width={180} height={84} /> : <><Image src="/logo-mark-square.png" alt="bookeasy.ro" width={28} height={28} /><span className="font-semibold">bookeasy.ro</span></>}
+        <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={28} height={28} /><span className="font-semibold">bookeasy.ro</span>
       </Link>
       <div className="w-full max-w-lg">{children}</div>
     </main>
