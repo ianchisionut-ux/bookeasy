@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client/wasm'
 import { PrismaNeon } from '@prisma/adapter-neon'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 

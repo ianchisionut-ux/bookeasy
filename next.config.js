@@ -2,11 +2,6 @@
 const nextConfig = {
   outputFileTracingRoot: __dirname,
   serverExternalPackages: ['@prisma/client', '.prisma/client'],
-  // Prisma loads its query compiler at runtime. Next's file tracer otherwise
-  // keeps the JS loader but omits the adjacent WASM binary from OpenNext.
-  outputFileTracingIncludes: {
-    '/*': ['./node_modules/.prisma/client/query_compiler_bg.wasm'],
-  },
   images: {
     qualities: [75, 90, 95],
     remotePatterns: [{ protocol: 'https', hostname: '*.public.blob.vercel-storage.com' }],
