@@ -62,6 +62,7 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
   const [teamMode, setTeamMode] = useState(business.teamSize > 1)
   const [savingTeam, setSavingTeam] = useState(false)
   const [teamSaved, setTeamSaved] = useState(false)
+  const [demoLinkCopied, setDemoLinkCopied] = useState(false)
   const teamModeChanged = teamMode !== (business.teamSize > 1)
 
   async function saveTeamMode() {
@@ -137,6 +138,17 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
     }
   }
 
+  async function copyDemoLink() {
+    const demoUrl = `${window.location.origin}/demo/${business.slug}`
+    try {
+      await navigator.clipboard.writeText(demoUrl)
+      setDemoLinkCopied(true)
+      window.setTimeout(() => setDemoLinkCopied(false), 2500)
+    } catch {
+      window.prompt('Copiază linkul demonstrației:', demoUrl)
+    }
+  }
+
   return (
     <div className="lg:grid lg:grid-cols-[1fr_380px] gap-5 items-start flex flex-col lg:flex">
       {/* Header — nume, status, stats — pe toată lățimea */}
@@ -166,6 +178,19 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
             >
               bookeasy.ro/{business.slug} ↗
             </a>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <a
+                href={`/demo/${business.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-medium text-[var(--accent)] hover:underline"
+              >
+                Deschide modul demonstrație ↗
+              </a>
+              <button type="button" onClick={copyDemoLink} className="text-xs font-medium text-[var(--accent)] hover:underline">
+                {demoLinkCopied ? 'Link copiat ✓' : 'Copiază linkul demo'}
+              </button>
+            </div>
           </div>
           <div className="text-right text-sm">
             <p className="font-semibold">{business.bookingsCount} rezervări</p>
