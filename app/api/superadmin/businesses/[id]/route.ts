@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = patchSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const current = await prisma.business.findUnique({ where: { id }, select: { billingSuspendedAt: true, billingDueAt: true, billingInvoiceUrl: true } })
+  const current = await prisma.business.findUnique({ where: { id }, select: { billingSuspendedAt: true, billingDueAt: true, billingInvoiceUrl: true, billingAmount: true, billingSubtotal: true, billingStatus: true } })
   if (!current) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
 
   const { billingDueAt, ...input } = parsed.data
@@ -50,8 +50,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     ...input,
     ...(billingDueAt !== undefined ? { billingDueAt: billingDueAt ? new Date(billingDueAt) : null } : {}),
   }
+  const billingChanged =
+    (parsed.data.billingAmount !== undefined && Number(current.billingAmount) !== parsed.data.billingAmount) ||
+    (parsed.data.billingSubtotal !== undefined && Number(current.billingSubtotal) !== parsed.data.billingSubtotal) ||
+    (parsed.data.billingDueAt !== undefined && current.billingDueAt?.toISOString() !== parsed.data.billingDueAt) ||
+    (parsed.data.billingStatus === 'NEPLATIT' && current.billingStatus !== 'NEPLATIT')
+  if (billingChanged) {
+    data.billingStripeCheckoutSessionId = null
+    data.billingStripePaymentIntentId = null
+    data.billingPaidAt = null
+  }
   if (parsed.data.billingStatus === 'PLATIT') {
     data.billingDueNotifiedAt = null
+    data.billingPaidAt = new Date()
     if (current.billingSuspendedAt) {
       data.accountActive = true
       data.billingSuspendedAt = null

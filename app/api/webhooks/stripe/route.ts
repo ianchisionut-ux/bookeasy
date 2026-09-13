@@ -1,20 +1,23 @@
 import Stripe from 'stripe'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { amountToMinorUnits, getInvoiceReference } from '@/lib/billing-invoice'
 
-let stripeClient: Stripe | null = null
 function getStripe() {
-  if (!stripeClient) stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!)
-  return stripeClient
+  if (!process.env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY lipsește')
+  return new Stripe(process.env.STRIPE_SECRET_KEY)
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
-  const signature = req.headers.get('stripe-signature')!
+  const signature = req.headers.get('stripe-signature')
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  if (!signature || !webhookSecret)
+    return NextResponse.json({ error: 'webhook not configured' }, { status: 503 })
 
   let event: Stripe.Event
   try {
-    event = getStripe().webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET!)
+    event = getStripe().webhooks.constructEvent(body, signature, webhookSecret)
   } catch {
     return NextResponse.json({ error: 'invalid signature' }, { status: 400 })
   }
@@ -22,8 +25,17 @@ export async function POST(req: NextRequest) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
-      const subscription = await getStripe().subscriptions.retrieve(session.subscription as string)
-      await upsertSubscription(subscription)
+      if (session.metadata?.kind === 'bookeasy_invoice') {
+        if (session.payment_status === 'paid') await markInvoicePaid(session)
+      } else if (session.mode === 'subscription' && typeof session.subscription === 'string') {
+        const subscription = await getStripe().subscriptions.retrieve(session.subscription)
+        await upsertSubscription(subscription)
+      }
+      break
+    }
+    case 'checkout.session.async_payment_succeeded': {
+      const session = event.data.object as Stripe.Checkout.Session
+      if (session.metadata?.kind === 'bookeasy_invoice') await markInvoicePaid(session)
       break
     }
     case 'customer.subscription.updated':
@@ -38,6 +50,35 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ received: true })
+}
+
+async function markInvoicePaid(session: Stripe.Checkout.Session) {
+  const businessId = session.metadata?.businessId
+  const invoiceRef = session.metadata?.invoiceRef
+  if (!businessId || !invoiceRef) throw new Error('Metadate factură Stripe incomplete')
+
+  const business = await prisma.business.findUnique({ where: { id: businessId } })
+  if (!business) throw new Error('Business Stripe inexistent')
+  const expectedRef = getInvoiceReference(business)
+  const expectedAmount = business.billingAmount === null ? null : amountToMinorUnits(Number(business.billingAmount))
+  if (
+    expectedRef !== invoiceRef ||
+    business.billingStripeCheckoutSessionId !== session.id ||
+    expectedAmount === null ||
+    session.amount_total !== expectedAmount ||
+    session.currency?.toUpperCase() !== (business.billingCurrency || 'RON').toUpperCase()
+  ) throw new Error('Plata Stripe nu corespunde facturii curente')
+
+  await prisma.business.update({
+    where: { id: business.id },
+    data: {
+      billingStatus: 'PLATIT',
+      billingPaidAt: new Date(),
+      billingStripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+      billingDueNotifiedAt: null,
+      ...(business.billingSuspendedAt ? { accountActive: true, billingSuspendedAt: null } : {}),
+    },
+  })
 }
 
 async function upsertSubscription(sub: Stripe.Subscription) {

@@ -11,8 +11,9 @@ import PasswordForm from './password-form'
 // (valorile 'weekday' rămân 0=Duminică...6=Sâmbătă, standardul JS getDay(), doar ordinea vizuală se schimbă)
 const WEEKDAYS_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
-export default async function SetariPage() {
+export default async function SetariPage({ searchParams }: { searchParams: Promise<{ payment?: string }> }) {
   const session = await auth()
+  const query = await searchParams
   const businessId = (session as any)?.businessId
   if (!businessId) redirect('/login')
 
@@ -45,7 +46,19 @@ export default async function SetariPage() {
       <div className="columns-1 lg:columns-2 gap-5">
         <PublicPageLinkCard slug={business.slug} isClinic={business.category === 'CLINICA'} usesAppointments={business.category === 'SALON' || business.category === 'CLINICA'} />
 
-        <SubscriptionCard businessId={business.id} planName={business.planName} billingStatus={business.billingStatus} amount={business.billingAmount === null ? null : Number(business.billingAmount)} dueAt={business.billingDueAt?.toISOString() ?? null} invoiceName={business.billingInvoiceName} />
+        <SubscriptionCard
+          businessId={business.id}
+          planName={business.planName}
+          billingStatus={business.billingStatus}
+          amount={business.billingAmount === null ? null : Number(business.billingAmount)}
+          currency={business.billingCurrency}
+          dueAt={business.billingDueAt?.toISOString() ?? null}
+          invoiceName={business.billingInvoiceName}
+          paidAt={business.billingPaidAt?.toISOString() ?? null}
+          stripeConfigured={Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET)}
+          canPay={!(session as any).isSuperAdmin}
+          paymentResult={query.payment}
+        />
 
         <SettingsForm
           isClinic={business.category === 'CLINICA'}

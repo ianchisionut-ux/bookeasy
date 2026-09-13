@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await putR2File(key, file)
     await prisma.business.update({
       where: { id },
-      data: { billingInvoiceUrl: r2Url(key), billingInvoiceName: file.name, billingInvoiceUploadedAt: new Date(), billingInvoiceExternalId: null, billingStatus: 'NEPLATIT', billingDueNotifiedAt: null },
+      data: { billingInvoiceUrl: r2Url(key), billingInvoiceName: file.name, billingInvoiceUploadedAt: new Date(), billingInvoiceExternalId: null, billingStatus: 'NEPLATIT', billingDueNotifiedAt: null, billingStripeCheckoutSessionId: null, billingStripePaymentIntentId: null, billingPaidAt: null },
     })
     if (business.billingInvoiceUrl) {
       await deleteR2File(business.billingInvoiceUrl).catch(() => {})
@@ -54,7 +54,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     await deleteR2File(business.billingInvoiceUrl)
     await prisma.business.update({
       where: { id },
-      data: { billingInvoiceUrl: null, billingInvoiceName: null, billingInvoiceUploadedAt: null },
+      data: { billingInvoiceUrl: null, billingInvoiceName: null, billingInvoiceUploadedAt: null, billingStripeCheckoutSessionId: null, billingStripePaymentIntentId: null, billingPaidAt: null },
     })
     return NextResponse.json({ success: true })
   } catch (error) {

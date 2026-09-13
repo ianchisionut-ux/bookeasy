@@ -79,6 +79,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         billingInvoiceUploadedAt: new Date(),
         billingStatus: 'NEPLATIT',
         billingDueNotifiedAt: null,
+        billingStripeCheckoutSessionId: null,
+        billingStripePaymentIntentId: null,
+        billingPaidAt: null,
       },
     })
     return NextResponse.json({ success: true, reference: result.reference, total: result.total, duplicate: result.duplicate })
