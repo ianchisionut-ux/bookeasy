@@ -491,16 +491,16 @@ function GoogleCalendarCard({ businessId, individual, practitioners }: { busines
       )}
       {visiblePractitioners.length === 0 && <p className="text-sm text-gray-500">Nu există niciun profil activ. Creează mai întâi profilul din Medici/Echipă.</p>}
       {visiblePractitioners.map((practitioner) => (
-        <div key={practitioner.id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border-soft)] p-3">
-          <div className="min-w-0">
+        <div key={practitioner.id} className="flex flex-col gap-3 rounded-xl border border-[var(--border-soft)] p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 w-full sm:w-auto">
             <p className="text-sm font-medium">{individual ? 'Calendarul afacerii' : practitioner.name}</p>
-            <p className={`truncate text-xs ${practitioner.googleCalendar ? 'text-green-700' : 'text-gray-500'}`}>
+            <p className={`break-all text-xs sm:truncate ${practitioner.googleCalendar ? 'text-green-700' : 'text-gray-500'}`}>
               {practitioner.googleCalendar ? `Conectat: ${practitioner.googleCalendar.googleEmail ?? practitioner.googleCalendar.calendarName}` : 'Calendar neconectat'}
             </p>
             {practitioner.googleCalendar?.lastError && <p className="mt-1 text-xs text-red-600">Necesită reconectare</p>}
           </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <a href={`/api/google-calendar/connect?businessId=${encodeURIComponent(businessId)}&practitionerId=${encodeURIComponent(practitioner.id)}`} className="btn-secondary inline-flex text-xs">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0">
+            <a href={`/api/google-calendar/connect?businessId=${encodeURIComponent(businessId)}&practitionerId=${encodeURIComponent(practitioner.id)}`} className="btn-secondary inline-flex flex-1 justify-center text-xs sm:flex-none">
               {practitioner.googleCalendar ? 'Reconectează' : 'Conectează'}
             </a>
             {practitioner.googleCalendar && <DisconnectGoogleCalendarButton businessId={businessId} practitionerId={practitioner.id} />}
@@ -528,7 +528,7 @@ function DisconnectGoogleCalendarButton({ businessId, practitionerId }: { busine
   }
 
   return (
-    <Button variant="secondary" className="text-xs text-red-600 border-red-200 hover:bg-red-50" onClick={disconnect} disabled={disconnecting}>
+    <Button variant="secondary" className="flex-1 justify-center text-xs text-red-600 border-red-200 hover:bg-red-50 sm:flex-none" onClick={disconnect} disabled={disconnecting}>
       {disconnecting ? 'Se deconectează...' : 'Deconectează'}
     </Button>
   )
