@@ -63,6 +63,7 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
   const [savingTeam, setSavingTeam] = useState(false)
   const [teamSaved, setTeamSaved] = useState(false)
   const [demoLinkCopied, setDemoLinkCopied] = useState(false)
+  const [openingDashboard, setOpeningDashboard] = useState(false)
   const teamModeChanged = teamMode !== (business.teamSize > 1)
 
   async function saveTeamMode() {
@@ -149,6 +150,23 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
     }
   }
 
+  async function openBusinessDashboard() {
+    setOpeningDashboard(true)
+    try {
+      const response = await fetch(`/api/superadmin/businesses/${business.id}/access`, { method: 'POST' })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        alert(data.error ?? 'Nu am putut deschide dashboard-ul.')
+        return
+      }
+      window.location.assign(data.redirectTo ?? '/dashboard/calendar')
+    } catch {
+      alert('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      setOpeningDashboard(false)
+    }
+  }
+
   return (
     <div className="lg:grid lg:grid-cols-[1fr_380px] gap-5 items-start flex flex-col lg:flex">
       {/* Header — nume, status, stats — pe toată lățimea */}
@@ -199,6 +217,9 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Button onClick={openBusinessDashboard} disabled={openingDashboard}>
+            {openingDashboard ? 'Se deschide…' : 'Intră în dashboard'}
+          </Button>
           {editing ? (
             <>
               <Button variant="secondary" onClick={saveName} disabled={loading}>

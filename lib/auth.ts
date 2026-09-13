@@ -3,11 +3,13 @@ import Credentials from 'next-auth/providers/credentials'
 import { prisma } from './prisma'
 import bcrypt from 'bcryptjs'
 import { rateLimit } from './rate-limit'
+import { cookies } from 'next/headers'
+import { SUPERADMIN_BUSINESS_COOKIE } from './superadmin-business-access'
 
 // Nu folosim PrismaAdapter — cu Credentials + strategie JWT nu e nevoie de el,
 // iar adapter-ul ar căuta tabele (Account, Session, VerificationToken) care
 // nu există în schema noastră (avem doar User simplu, cu parolă hash-uită).
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const nextAuth = NextAuth({
   // BookEasy rulează în spatele proxy-ului Cloudflare. Hostul ajunge din
   // request, iar URL-ul public este controlat de configurația Worker-ului.
   trustHost: true,
@@ -55,3 +57,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   pages: { signIn: '/login' },
 })
+
+export const { handlers, signIn, signOut } = nextAuth
+
+// Un Super Admin poate intra temporar în dashboard-ul unui business fără parola
+// clientului. Cookie-ul este luat în calcul numai dacă JWT-ul confirmă rolul
+// SUPER_ADMIN; pentru orice alt utilizator este ignorat complet.
+export async function auth() {
+  const session = await nextAuth.auth()
+  if (!session || !(session as any).isSuperAdmin) return session
+
+  const businessId = (await cookies()).get(SUPERADMIN_BUSINESS_COOKIE)?.value
+  if (businessId) {
+    ;(session as any).businessId = businessId
+    ;(session as any).isImpersonatingBusiness = true
+  }
+  return session
+}

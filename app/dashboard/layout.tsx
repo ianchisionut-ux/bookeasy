@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import { SidebarUserBlock } from '@/components/sidebar-user-block'
 import { ResponsiveShell } from '@/components/responsive-shell'
+import { ExitBusinessAccessButton } from '@/components/exit-business-access-button'
 
 // layout-ul se randează mereu din nou, la fiecare cerere — fără nicio cache, ca
 // setări cum e culoarea businessului să apară imediat, nu doar la un moment ulterior
@@ -31,6 +32,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const isSuperAdmin = (session as any)?.isSuperAdmin
   const businessId = (session as any)?.businessId
   const userEmail = (session as any)?.user?.email ?? ''
+  const isImpersonatingBusiness = Boolean((session as any)?.isImpersonatingBusiness)
 
   if (isSuperAdmin && !businessId) {
     redirect('/superadmin')
@@ -58,10 +60,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
         },
       },
     })
-    if (business && !business.accountActive) {
+    if (business && !business.accountActive && !isSuperAdmin) {
       redirect('/cont-suspendat')
     }
-    if (business && !business.onboardingDone) {
+    if (business && !business.onboardingDone && !isSuperAdmin) {
       redirect(`/onboarding/step-${business.onboardingStep}`)
     }
     brandColor = business?.brandColor ?? null
@@ -111,6 +113,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
       accountContent={<SidebarUserBlock label={userEmail || 'Cont'} showSupport />}
       enableLiveBadges
     >
+      {isImpersonatingBusiness && (
+        <div className="mx-4 mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950 lg:mx-8">
+          <span><strong>Acces Super Admin:</strong> lucrezi în contul {businessName} cu drepturi complete.</span>
+          <ExitBusinessAccessButton />
+        </div>
+      )}
       {billingAlert && <div className="mx-4 mt-4 lg:mx-8 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 flex items-center justify-between gap-3 flex-wrap"><span><strong>Abonament scadent.</strong> {billingAlert.amount !== null ? `${billingAlert.amount.toLocaleString('ro-RO')} RON · ` : ''}Plătește în maximum 15 zile de la scadență pentru a evita suspendarea.</span><a href="/dashboard/setari" className="font-medium underline">Vezi factura</a></div>}
       {children}
     </ResponsiveShell>
