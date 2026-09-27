@@ -43,7 +43,7 @@ app/
     oauth/[provider]/   → conectare Meta / Google Business Profile
     cron/               → verificare token-uri + reminder-e programări
     onboarding/         → salvare progresivă wizard
-    subscription/       → creare checkout Stripe
+    billing/            → facturi SaaS și checkout BT iPay
 lib/
   bot-engine.ts          → punctul de intrare pentru mesaje primite
   conversation-state-machine.ts → logica de conversație a botului
