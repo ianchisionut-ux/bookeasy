@@ -2,6 +2,7 @@ import Stripe from 'stripe'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { amountToMinorUnits, getInvoiceReference } from '@/lib/billing-invoice'
+import { resetIpayPaymentFields } from '@/lib/billing-ipay'
 
 function getStripe() {
   if (!process.env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY lipsește')
@@ -76,6 +77,7 @@ async function markInvoicePaid(session: Stripe.Checkout.Session) {
       billingPaidAt: new Date(),
       billingStripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
       billingDueNotifiedAt: null,
+      ...resetIpayPaymentFields(),
       ...(business.billingSuspendedAt ? { accountActive: true, billingSuspendedAt: null } : {}),
     },
   })

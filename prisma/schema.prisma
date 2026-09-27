@@ -63,6 +63,14 @@ model Business {
   billingInvoiceExternalId String?
   billingStripeCheckoutSessionId String?
   billingStripePaymentIntentId String?
+  billingIpayOrderId String?
+  billingIpayOrderNumber String?
+  billingIpayPaymentState String?
+  billingIpayPaymentError String?
+  billingIpayStartedAt DateTime?
+  billingIpayAmountMinor Int?
+  billingIpayCurrency Int?
+  billingIpayInvoiceReference String?
   billingPaidAt     DateTime?
   billingLegalName   String?
   billingClientType  String        @default("PJ")

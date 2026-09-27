@@ -6,20 +6,30 @@ Vezi `bookeasy-arhitectura.md` pentru documentul complet de arhitectură.
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Prisma · PostgreSQL (Neon) · Vercel · Stripe · Resend · Meta Graph API · Claude API
+Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Prisma · PostgreSQL (Neon) · Cloudflare Workers/OpenNext · BT iPay · Stripe · Resend · Meta Graph API · Claude API
 
 ## Setup local
 
 ```bash
 npm install
 cp .env.example .env
-# completează .env cu valorile tale (DB, Meta, Google, Stripe, Anthropic, Resend)
+# completează .env cu valorile tale (DB, Meta, Google, BT iPay, Stripe, Anthropic, Resend)
 
 npx prisma generate
 npx prisma migrate dev --name init
 
 npm run dev
 ```
+
+## Facturi de abonament prin BT iPay
+
+Facturile SaaS încărcate sau emise individual pentru fiecare business sunt plătite prin contul merchant BT iPay al platformei. Configurează `PLATFORM_IPAY_USERNAME`, `PLATFORM_IPAY_PASSWORD`, `PLATFORM_IPAY_IS_LIVE` și `APP_URL`, apoi aplică migrarea Prisma înainte de deploy:
+
+```bash
+npx prisma migrate deploy
+```
+
+Confirmarea financiară se face server-la-server prin `getOrderStatusExtended.do`, cu verificarea numărului comenzii, sumei și monedei. Retururile întârziate sunt reconciliate de ruta protejată `/api/cron/billing-payments`, apelată la fiecare cinci minute de Cloudflare Cron. Nu stoca credentialele BT iPay în `wrangler.jsonc`; configurează-le ca secrete Worker.
 
 ## Structură proiect
 

@@ -2,6 +2,7 @@
 import handler from './.open-next/worker.js'
 
 const cronRoutes: Record<string, string> = {
+  '*/5 * * * *': '/api/cron/billing-payments',
   '0 5 * * *': '/api/cron/billing',
   '0 6 * * *': '/api/cron/check-tokens',
   '0 7 * * *': '/api/cron/sync-google-reviews',

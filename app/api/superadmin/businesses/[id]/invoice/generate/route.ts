@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { rateLimit } from '@/lib/rate-limit'
 import { createSignalInvoice } from '@/lib/signal-billing'
+import { resetIpayPaymentFields } from '@/lib/billing-ipay'
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
@@ -82,6 +83,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         billingStripeCheckoutSessionId: null,
         billingStripePaymentIntentId: null,
         billingPaidAt: null,
+        ...resetIpayPaymentFields(),
       },
     })
     return NextResponse.json({ success: true, reference: result.reference, total: result.total, duplicate: result.duplicate })

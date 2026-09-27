@@ -14,6 +14,7 @@ type Props = {
   businessId: string; initialPlanName: string | null; initialStatus: string; initialNote: string | null
   initialAmount: number | null; initialSubtotal: number | null; initialVatRate: number
   initialDueAt: string | null; invoiceName: string | null; initialLegalName: string
+  paymentState: string | null; paymentError: string | null; paidAt: string | null
   initialClientType: string; initialCif: string | null; initialRegCom: string | null
   initialAddress: string | null; initialCounty: string | null; initialCity: string | null
   initialPostalCode: string | null; initialEmail: string | null
@@ -88,6 +89,10 @@ export default function BillingSection(p: Props) {
   return <Card>
     <div className="flex items-center justify-between mb-1"><h2 className="font-medium">Abonament și factură</h2><Pill tone={TONE[status]}>{LABEL[status]}</Pill></div>
     <p className="text-sm text-gray-500 mb-4">Factura este emisă de Next Level în Signal și devine disponibilă clientului în Bookeasy.</p>
+    {p.paymentState && <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+      <strong>BT iPay:</strong> {p.paymentState}{p.paidAt ? ` · achitată ${new Date(p.paidAt).toLocaleString('ro-RO')}` : ''}
+      {p.paymentError && p.paymentState !== 'DEPOSITED' ? <span className="block mt-1 text-red-700">{p.paymentError}</span> : null}
+    </div>}
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
       <div><label className="text-sm text-gray-500 block mb-1.5">Plan</label><Input placeholder="ex: Standard" value={planName} onChange={(e) => setPlanName(e.target.value)} /></div>
       <div><label className="text-sm text-gray-500 block mb-1.5">Status plată</label><select value={status} onChange={(e) => setStatus(e.target.value)} className="input-field w-full">{Object.entries(LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>

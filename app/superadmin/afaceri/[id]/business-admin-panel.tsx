@@ -42,6 +42,9 @@ type Business = {
   billingVatRate: number
   billingDueAt: string | null
   billingInvoiceName: string | null
+  billingIpayPaymentState: string | null
+  billingIpayPaymentError: string | null
+  billingPaidAt: string | null
   billingLegalName: string | null
   billingClientType: string
   billingCif: string | null
@@ -309,6 +312,9 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
           initialVatRate={business.billingVatRate}
           initialDueAt={business.billingDueAt}
           invoiceName={business.billingInvoiceName}
+          paymentState={business.billingIpayPaymentState}
+          paymentError={business.billingIpayPaymentError}
+          paidAt={business.billingPaidAt}
           initialLegalName={business.billingLegalName ?? business.name}
           initialClientType={business.billingClientType}
           initialCif={business.billingCif}

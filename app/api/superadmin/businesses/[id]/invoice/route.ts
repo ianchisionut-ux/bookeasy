@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { rateLimit } from '@/lib/rate-limit'
 import { deleteR2File, putR2File, r2Url } from '@/lib/r2-storage'
+import { resetIpayPaymentFields } from '@/lib/billing-ipay'
 
 const MAX_SIZE = 10 * 1024 * 1024
 const ALLOWED_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png'])
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await putR2File(key, file)
     await prisma.business.update({
       where: { id },
-      data: { billingInvoiceUrl: r2Url(key), billingInvoiceName: file.name, billingInvoiceUploadedAt: new Date(), billingInvoiceExternalId: null, billingStatus: 'NEPLATIT', billingDueNotifiedAt: null, billingStripeCheckoutSessionId: null, billingStripePaymentIntentId: null, billingPaidAt: null },
+      data: { billingInvoiceUrl: r2Url(key), billingInvoiceName: file.name, billingInvoiceUploadedAt: new Date(), billingInvoiceExternalId: null, billingStatus: 'NEPLATIT', billingDueNotifiedAt: null, billingStripeCheckoutSessionId: null, billingStripePaymentIntentId: null, billingPaidAt: null, ...resetIpayPaymentFields() },
     })
     if (business.billingInvoiceUrl) {
       await deleteR2File(business.billingInvoiceUrl).catch(() => {})
@@ -54,7 +55,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     await deleteR2File(business.billingInvoiceUrl)
     await prisma.business.update({
       where: { id },
-      data: { billingInvoiceUrl: null, billingInvoiceName: null, billingInvoiceUploadedAt: null, billingStripeCheckoutSessionId: null, billingStripePaymentIntentId: null, billingPaidAt: null },
+      data: { billingInvoiceUrl: null, billingInvoiceName: null, billingInvoiceUploadedAt: null, billingStripeCheckoutSessionId: null, billingStripePaymentIntentId: null, billingPaidAt: null, ...resetIpayPaymentFields() },
     })
     return NextResponse.json({ success: true })
   } catch (error) {

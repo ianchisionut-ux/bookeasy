@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
+import { resetIpayPaymentFields } from '@/lib/billing-ipay'
 
 const patchSchema = z.object({
   name: z.string().min(2).optional(),
@@ -59,10 +60,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.billingStripeCheckoutSessionId = null
     data.billingStripePaymentIntentId = null
     data.billingPaidAt = null
+    Object.assign(data, resetIpayPaymentFields())
   }
   if (parsed.data.billingStatus === 'PLATIT') {
     data.billingDueNotifiedAt = null
     data.billingPaidAt = new Date()
+    Object.assign(data, resetIpayPaymentFields())
     if (current.billingSuspendedAt) {
       data.accountActive = true
       data.billingSuspendedAt = null

@@ -1,93 +1,94 @@
-import Stripe from 'stripe'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { amountToMinorUnits, getInvoiceReference } from '@/lib/billing-invoice'
+import {
+  ACTIVE_IPAY_STATES,
+  createIpayInvoiceCheckout,
+  IPAY_ATTEMPT_TTL_MS,
+  isActiveIpayAttempt,
+  newIpayOrderNumber,
+  validateIpayInvoice,
+} from '@/lib/billing-ipay'
+import { IPAY_RON_CURRENCY } from '@/lib/payments/ipay'
+import { getClientIp, rateLimit } from '@/lib/rate-limit'
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   const session = await auth()
   const businessId = (session as any)?.businessId as string | undefined
   if (!session || !businessId || (session as any).isSuperAdmin)
     return NextResponse.json({ error: 'Neautorizat.' }, { status: 401 })
+  if ((session as any).role !== 'OWNER')
+    return NextResponse.json({ error: 'Doar proprietarul business-ului poate iniția plata facturii.' }, { status: 403 })
 
-  const secretKey = process.env.STRIPE_SECRET_KEY
-  const appUrl = process.env.APP_URL?.replace(/\/$/, '')
-  if (!secretKey || !appUrl)
-    return NextResponse.json({ error: 'Plata cu cardul nu este configurată încă.' }, { status: 503 })
+  const { allowed } = rateLimit(`ipay-invoice:${businessId}:${getClientIp(req)}`, 10, 60 * 60 * 1000)
+  if (!allowed) return NextResponse.json({ error: 'Prea multe încercări de plată. Încearcă mai târziu.' }, { status: 429 })
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
     include: { users: { where: { role: 'OWNER' }, select: { email: true }, take: 1 } },
   })
   if (!business) return NextResponse.json({ error: 'Afacerea nu există.' }, { status: 404 })
-  if (!['NEPLATIT', 'RESTANT'].includes(business.billingStatus))
-    return NextResponse.json({ error: 'Factura nu mai este disponibilă pentru plată.' }, { status: 409 })
-  if (!business.billingInvoiceUrl)
-    return NextResponse.json({ error: 'Nu există o factură emisă pentru plată.' }, { status: 400 })
-
-  const invoiceRef = getInvoiceReference(business)
-  const amount = business.billingAmount === null ? null : amountToMinorUnits(Number(business.billingAmount))
-  const currency = (business.billingCurrency || 'RON').toLowerCase()
-  if (!invoiceRef || !amount)
-    return NextResponse.json({ error: 'Factura nu are o sumă validă.' }, { status: 400 })
-  if (!/^[a-z]{3}$/.test(currency))
-    return NextResponse.json({ error: 'Moneda facturii nu este validă.' }, { status: 400 })
-
-  const stripe = new Stripe(secretKey)
-  let previousCheckoutId: string | null = null
-  if (business.billingStripeCheckoutSessionId) {
-    previousCheckoutId = business.billingStripeCheckoutSessionId
-    try {
-      const existing = await stripe.checkout.sessions.retrieve(business.billingStripeCheckoutSessionId)
-      if (existing.status === 'open' && existing.url && existing.metadata?.invoiceRef === invoiceRef)
-        return NextResponse.json({ checkoutUrl: existing.url })
-    } catch {
-      // Sesiunea poate fi expirată sau creată cu alte credențiale; generăm una nouă.
-    }
+  if (isActiveIpayAttempt(business.billingIpayPaymentState, business.billingIpayStartedAt)) {
+    return NextResponse.json({ error: 'Există deja o plată inițiată pentru această factură. Finalizeaz-o sau încearcă din nou peste 30 de minute.' }, { status: 409 })
   }
 
-  let stripeCustomerId = business.stripeCustomerId
-  if (!stripeCustomerId) {
-    const customer = await stripe.customers.create({
-      email: business.billingEmail || business.users[0]?.email,
-      name: business.billingLegalName || business.name,
-      metadata: { businessId: business.id },
-    })
-    stripeCustomerId = customer.id
-    await prisma.business.update({ where: { id: business.id }, data: { stripeCustomerId } })
+  let payer: ReturnType<typeof validateIpayInvoice>
+  try {
+    payer = validateIpayInvoice(business, business.users[0]?.email)
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Factura nu poate fi plătită.' }, { status: 400 })
   }
 
-  const metadata = { kind: 'bookeasy_invoice', businessId: business.id, invoiceRef }
-  const checkout = await stripe.checkout.sessions.create({
-    customer: stripeCustomerId,
-    client_reference_id: business.id,
-    mode: 'payment',
-    payment_method_types: ['card'],
-    locale: 'ro',
-    submit_type: 'pay',
-    line_items: [{
-      quantity: 1,
-      price_data: {
-        currency,
-        unit_amount: amount,
-        product_data: {
-          name: `Abonament BookEasy${business.planName ? ` — ${business.planName}` : ''}`,
-          description: business.billingInvoiceName || undefined,
-        },
+  const startedAt = new Date()
+  const staleBefore = new Date(startedAt.getTime() - IPAY_ATTEMPT_TTL_MS)
+  const orderNumber = newIpayOrderNumber(business.id)
+  const claim = await prisma.business.updateMany({
+    where: {
+      id: business.id,
+      billingStatus: { in: ['NEPLATIT', 'RESTANT'] },
+      billingInvoiceUrl: business.billingInvoiceUrl,
+      billingInvoiceUploadedAt: business.billingInvoiceUploadedAt,
+      OR: [
+        { billingIpayPaymentState: null },
+        { billingIpayPaymentState: { notIn: [...ACTIVE_IPAY_STATES] } },
+        { billingIpayStartedAt: null },
+        { billingIpayStartedAt: { lt: staleBefore } },
+      ],
+    },
+    data: {
+      billingIpayOrderId: null,
+      billingIpayOrderNumber: orderNumber,
+      billingIpayPaymentState: 'REGISTERING',
+      billingIpayPaymentError: null,
+      billingIpayStartedAt: startedAt,
+      billingIpayAmountMinor: payer.amountMinor,
+      billingIpayCurrency: IPAY_RON_CURRENCY,
+      billingIpayInvoiceReference: payer.invoiceReference,
+    },
+  })
+  if (claim.count !== 1) {
+    return NextResponse.json({ error: 'Factura sau starea plății s-a modificat. Reîncarcă pagina și încearcă din nou.' }, { status: 409 })
+  }
+
+  try {
+    const checkout = await createIpayInvoiceCheckout(business, orderNumber, payer)
+    const saved = await prisma.business.updateMany({
+      where: {
+        id: business.id,
+        billingIpayOrderNumber: orderNumber,
+        billingIpayPaymentState: 'REGISTERING',
+        billingIpayInvoiceReference: payer.invoiceReference,
       },
-    }],
-    metadata,
-    payment_intent_data: { metadata },
-    success_url: `${appUrl}/dashboard/setari?payment=success`,
-    cancel_url: `${appUrl}/dashboard/setari?payment=cancelled`,
-  }, {
-    // Împiedică două clickuri simultane să genereze două plăți pentru aceeași factură.
-    idempotencyKey: `bookeasy-invoice-${business.id}-${invoiceRef}${previousCheckoutId ? `-retry-${previousCheckoutId}` : ''}`,
-  })
-
-  await prisma.business.update({
-    where: { id: business.id },
-    data: { billingStripeCheckoutSessionId: checkout.id },
-  })
-  return NextResponse.json({ checkoutUrl: checkout.url })
+      data: { billingIpayOrderId: checkout.orderId, billingIpayPaymentState: 'REGISTERED' },
+    })
+    if (saved.count !== 1) throw new Error('Tranzacția BT iPay nu a putut fi asociată facturii curente.')
+    return NextResponse.json({ checkoutUrl: checkout.paymentUrl })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Plata nu a putut fi inițiată.'
+    await prisma.business.updateMany({
+      where: { id: business.id, billingIpayOrderNumber: orderNumber, billingIpayPaymentState: 'REGISTERING' },
+      data: { billingIpayPaymentState: 'FAILED', billingIpayPaymentError: message.slice(0, 500) },
+    }).catch(() => {})
+    return NextResponse.json({ error: message }, { status: 502 })
+  }
 }
