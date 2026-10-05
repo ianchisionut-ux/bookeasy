@@ -22,7 +22,7 @@ const SAMPLE_BOOKINGS = [
 ]
 
 function DemoButton({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
-  return <button type="button" onClick={onClick} title="Simulare — nu salvează date" className="rounded-xl bg-[#14142b] px-4 py-2 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:shadow-lg">{children}</button>
+  return <button type="button" onClick={onClick} title="Simulare — nu salvează date" className="rounded-xl bg-[var(--brand-teal-dark)] px-4 py-2 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:shadow-lg">{children}</button>
 }
 
 function Status({ label, tone }: { label: string; tone: string }) {
@@ -86,7 +86,7 @@ export default function DemoDashboard({ businessName, category, accentColor, tea
           {nav.map((item) => {
             const Icon = ICONS[item.id]
             const active = item.id === section
-            return <button key={item.id} onClick={() => choose(item.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${active ? 'bg-[#14142b] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
+            return <button key={item.id} onClick={() => choose(item.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${active ? 'bg-[var(--brand-teal-dark)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
               <Icon size={17} /><span>{item.label}</span>{item.badge && <span className="ml-auto rounded-full bg-red-600 px-1.5 text-[11px] text-white">{item.badge}</span>}
             </button>
           })}
@@ -142,7 +142,7 @@ function CalendarPreview({ accent, onPreview }: { accent: string; onPreview: (ti
 function MessagesPreview({ onPreview }: { onPreview: (title: string) => void }) {
   return <Panel className="grid min-h-[590px] overflow-hidden p-0 md:grid-cols-[280px_1fr]">
     <div className="border-r"><div className="border-b p-4"><input disabled value="" placeholder="Caută conversații..." className="w-full rounded-xl border px-3 py-2 text-sm" /></div>{['Maria Popescu','Andrei Ionescu','Elena Dumitru'].map((n,i)=><div key={n} className={`border-b p-4 ${i===0?'bg-amber-50':''}`}><strong className="text-sm">{n}</strong><p className="mt-1 truncate text-xs text-gray-500">{i===0?'Mulțumesc, confirm programarea.':'Bună ziua, aș dori o programare.'}</p></div>)}</div>
-    <div className="flex flex-col"><div className="border-b p-4"><strong>Maria Popescu</strong><p className="text-xs text-gray-500">Messenger</p></div><div className="flex-1 space-y-4 bg-gray-50 p-5"><div className="max-w-sm rounded-2xl bg-white p-3 text-sm shadow-sm">Bună ziua! Mai este disponibilă programarea de marți?</div><div className="ml-auto max-w-sm rounded-2xl bg-[#14142b] p-3 text-sm text-white">Bună ziua! Da, vă așteptăm marți la ora 09:00.</div><div className="max-w-sm rounded-2xl bg-white p-3 text-sm shadow-sm">Mulțumesc, confirm programarea.</div></div><div className="flex gap-2 border-t p-4"><input readOnly placeholder="Scrie un răspuns demonstrativ..." className="flex-1 rounded-xl border px-3" /><DemoButton onClick={() => onPreview('Trimitere mesaj')}>Trimite</DemoButton></div></div>
+    <div className="flex flex-col"><div className="border-b p-4"><strong>Maria Popescu</strong><p className="text-xs text-gray-500">Messenger</p></div><div className="flex-1 space-y-4 bg-gray-50 p-5"><div className="max-w-sm rounded-2xl bg-white p-3 text-sm shadow-sm">Bună ziua! Mai este disponibilă programarea de marți?</div><div className="ml-auto max-w-sm rounded-2xl bg-[var(--brand-teal-dark)] p-3 text-sm text-white">Bună ziua! Da, vă așteptăm marți la ora 09:00.</div><div className="max-w-sm rounded-2xl bg-white p-3 text-sm shadow-sm">Mulțumesc, confirm programarea.</div></div><div className="flex gap-2 border-t p-4"><input readOnly placeholder="Scrie un răspuns demonstrativ..." className="flex-1 rounded-xl border px-3" /><DemoButton onClick={() => onPreview('Trimitere mesaj')}>Trimite</DemoButton></div></div>
   </Panel>
 }
 
@@ -179,7 +179,7 @@ function FeaturePreview({ title, onClose }: { title: string; onClose: () => void
       <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-semibold">{title}</h2><button onClick={onClose} aria-label="Închide"><X size={20} /></button></div>
       {isBooking ? <div className="space-y-3"><input readOnly value="Maria Popescu" className="w-full rounded-xl border bg-gray-50 px-3 py-2.5" /><input readOnly value="Consultație inițială" className="w-full rounded-xl border bg-gray-50 px-3 py-2.5" /><div className="grid grid-cols-2 gap-3"><input readOnly value="16.09.2026" className="rounded-xl border bg-gray-50 px-3 py-2.5" /><input readOnly value="09:00" className="rounded-xl border bg-gray-50 px-3 py-2.5" /></div></div> : <p className="text-sm leading-6 text-gray-600">În contul real, această funcție este activă. Aici vezi fluxul fără ca vreo informație să fie trimisă sau salvată.</p>}
       <div className="mt-5 rounded-xl bg-amber-50 p-3 text-xs text-amber-900"><strong>Simulare:</strong> nicio acțiune din această fereastră nu modifică date.</div>
-      <button onClick={onClose} className="mt-4 w-full rounded-xl bg-[#14142b] px-4 py-2.5 text-sm font-medium text-white">Am înțeles</button>
+      <button onClick={onClose} className="mt-4 w-full rounded-xl bg-[var(--brand-teal-dark)] px-4 py-2.5 text-sm font-medium text-white">Am înțeles</button>
     </div>
   </div>
 }

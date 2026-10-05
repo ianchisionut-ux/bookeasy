@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { hasFunctionalConsent } from '@/lib/cookie-consent'
 import { CalendarDays, Check, Clock3, ShieldCheck, UserRound } from 'lucide-react'
 
 type Service = {
@@ -85,6 +86,7 @@ export default function BookingFlow({
   }
 
   useEffect(() => {
+    if (!hasFunctionalConsent()) return
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
@@ -153,10 +155,12 @@ export default function BookingFlow({
     setSubmitting(true)
     setError('')
 
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ name, phone }))
-    } catch {
-      // ignorăm dacă localStorage nu e disponibil
+    if (hasFunctionalConsent()) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ name, phone }))
+      } catch {
+        // ignorăm dacă localStorage nu e disponibil
+      }
     }
 
     const startAt = isAppointment || isVenue ? selectedSlot! : new Date(`${toDateParam(selectedDate)}T00:00:00`).toISOString()
@@ -419,7 +423,7 @@ export default function BookingFlow({
           onClick={submitBooking}
           disabled={submitting}
           className="mx-auto block w-auto min-w-[220px] px-6 py-2.5 text-sm sm:w-full sm:py-3.5 sm:text-base"
-          style={{ background: '#14142b', borderColor: '#14142b' }}
+          style={{ background: 'var(--brand-teal-dark)', borderColor: 'var(--brand-teal-dark)' }}
         >
           {submitting ? 'Se trimite...' : category === 'CLINICA' ? 'Confirmă programarea' : 'Confirmă rezervarea'}
         </Button>

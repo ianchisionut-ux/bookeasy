@@ -42,7 +42,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
           {business.heroImageUrl && (
             <Image src={business.heroImageUrl} unoptimized={business.heroImageUrl.startsWith('/api/storage/public/')} alt={business.name} fill className="object-cover" priority quality={95} />
           )}
-          <div className="absolute inset-0" style={{ background: business.heroImageUrl ? 'linear-gradient(90deg, rgba(20,20,43,.94) 0%, rgba(20,20,43,.72) 52%, rgba(20,20,43,.2) 100%)' : `linear-gradient(125deg, #14142b 0%, ${accent} 150%)` }} />
+          <div className="absolute inset-0" style={{ background: business.heroImageUrl ? 'linear-gradient(90deg, rgba(38,59,63,.94) 0%, rgba(38,59,63,.72) 52%, rgba(38,59,63,.2) 100%)' : `linear-gradient(125deg, var(--brand-ink) 0%, ${accent} 150%)` }} />
           <div className="relative flex min-h-[260px] max-w-3xl flex-col justify-end p-5 text-white sm:min-h-[340px] sm:p-9 lg:p-11">
             <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-white/20 bg-white/15 text-lg font-semibold shadow-inner backdrop-blur sm:h-16 sm:w-16 sm:text-xl">{initials}</div>
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/65">{CATEGORY_LABEL[business.category] ?? 'Servicii locale'}</p>
@@ -52,7 +52,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
               {business.rating && <span className="flex items-center gap-1.5"><Star size={15} fill="#facc15" color="#facc15" />{business.rating.toString()} · {business.reviewCount ?? 0} recenzii</span>}
             </div>
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <Link href={`/${business.slug}/rezerva`} className="btn-primary inline-flex items-center justify-center gap-2 bg-white px-5 py-3 text-[#14142b] shadow-lg hover:bg-white">
+              <Link href={`/${business.slug}/rezerva`} className="btn-primary inline-flex items-center justify-center gap-2 bg-white px-5 py-3 text-[var(--brand-ink)] shadow-lg hover:bg-white">
                 <CalendarCheck2 size={17} /> {bookingLabel} <ArrowRight size={16} />
               </Link>
               {business.contactPhone && <a href={`tel:${business.contactPhone}`} className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-medium text-white backdrop-blur transition hover:bg-white/20"><Phone size={15} /> Sună acum</a>}

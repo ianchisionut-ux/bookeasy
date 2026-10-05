@@ -56,7 +56,7 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
       <PublicHeader />
 
       <div className="px-3 pt-4 sm:px-6 sm:pt-8">
-        <div className="mx-auto max-w-6xl overflow-hidden rounded-[22px] px-4 py-5 shadow-xl sm:rounded-[26px] sm:px-8 sm:py-8" style={{ background: `linear-gradient(125deg, #14142b 0%, ${accent} 150%)` }}>
+        <div className="mx-auto max-w-6xl overflow-hidden rounded-[22px] px-4 py-5 shadow-xl sm:rounded-[26px] sm:px-8 sm:py-8" style={{ background: `linear-gradient(125deg, var(--brand-ink) 0%, ${accent} 150%)` }}>
           <div className="flex items-center gap-4">
             <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-white/20 bg-white/15 text-xl font-semibold text-white shadow-inner backdrop-blur">{initials}</div>
             <div className="min-w-0">

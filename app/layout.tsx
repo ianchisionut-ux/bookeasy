@@ -2,6 +2,7 @@ import './globals.css'
 import { Manrope } from 'next/font/google'
 import type { Metadata, Viewport } from 'next'
 import PwaManager from '@/components/pwa-manager'
+import CookieConsent from '@/components/cookie-consent'
 
 const manrope = Manrope({ subsets: ['latin', 'latin-ext'], variable: '--font-manrope' })
 
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
   },
 }
 export const viewport: Viewport = {
-  themeColor: '#11112b',
+  themeColor: '#178f92',
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <PwaManager />
+        <CookieConsent />
       </body>
     </html>
   )

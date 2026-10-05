@@ -63,7 +63,7 @@ export default function HomePage() {
             <Link href="/login" className="whitespace-nowrap px-2 py-2 text-xs font-semibold text-gray-700 transition hover:text-gray-950 sm:px-3 sm:text-sm">
               <span className="sm:hidden">Intră</span><span className="hidden sm:inline">Intră în cont</span>
             </Link>
-            <a href="#cere-acces" className="whitespace-nowrap rounded-full bg-[#14142b] px-3 py-2 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg sm:px-4 sm:text-sm">
+            <a href="#cere-acces" className="whitespace-nowrap rounded-full bg-[var(--brand-teal-dark)] px-3 py-2 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--brand-teal)] hover:shadow-lg sm:px-4 sm:text-sm">
               Cere acces
             </a>
           </div>
@@ -87,8 +87,8 @@ export default function HomePage() {
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#dcebc9] bg-[#f5faee]/90 px-3 py-1.5 text-xs font-semibold text-[#5f8d27] backdrop-blur">
               <Sparkles size={14} /> Asistentul tău pentru programări, disponibil 24/7
             </div>
-            <h1 className="max-w-2xl text-4xl font-semibold leading-[1.08] tracking-[-0.04em] text-[#14142b] sm:text-5xl lg:text-6xl">
-              Transformă fiecare mesaj într-o <span className="text-[#70a832]">programare.</span>
+            <h1 className="max-w-2xl text-4xl font-semibold leading-[1.08] tracking-[-0.04em] text-[var(--brand-ink)] sm:text-5xl lg:text-6xl">
+              Transformă fiecare mesaj într-o <span className="text-[var(--brand-green-dark)]">programare.</span>
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-gray-600 sm:text-lg">
               BookEasy răspunde clienților, găsește orele libere și organizează întreaga echipă într-un singur calendar — chiar și când tu ești ocupat.
@@ -102,9 +102,9 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs text-gray-600 sm:text-sm">
-              <span className="flex items-center gap-1.5"><Check size={15} className="text-[#70a832]" /> Fără aplicație pentru clienți</span>
-              <span className="flex items-center gap-1.5"><Check size={15} className="text-[#70a832]" /> Configurare asistată</span>
-              <span className="flex items-center gap-1.5"><Check size={15} className="text-[#70a832]" /> Potrivit pentru echipe</span>
+              <span className="flex items-center gap-1.5"><Check size={15} className="text-[var(--brand-green-dark)]" /> Fără aplicație pentru clienți</span>
+              <span className="flex items-center gap-1.5"><Check size={15} className="text-[var(--brand-green-dark)]" /> Configurare asistată</span>
+              <span className="flex items-center gap-1.5"><Check size={15} className="text-[var(--brand-green-dark)]" /> Potrivit pentru echipe</span>
             </div>
           </div>
         </div>
@@ -118,7 +118,7 @@ export default function HomePage() {
           <span><strong>Reminder trimis</strong><small>Client notificat automat</small></span>
         </div>
         <div className="hero-float hero-chat hero-float-three hidden 2xl:block" aria-hidden="true">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-[#14142b]">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-[var(--brand-ink)]">
             <span className="social-logo social-logo-whatsapp !h-7 !w-7"><MessageCircle size={15} /></span>
             Conversație WhatsApp
           </div>
@@ -126,13 +126,13 @@ export default function HomePage() {
           <p className="hero-chat-out">Da, la 16:30. Îl rezervăm?</p>
         </div>
         <div className="hero-float hero-float-four hidden 2xl:flex" aria-hidden="true">
-          <span className="relative grid h-9 w-9 place-items-center rounded-full bg-[#14142b] text-white">
+          <span className="relative grid h-9 w-9 place-items-center rounded-full bg-[var(--brand-teal-dark)] text-white">
             <Bell size={17} /><i className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#7eb735]" />
           </span>
           <span><strong>Programare nouă</strong><small>Maria · Consultație · 16:30</small></span>
         </div>
         <div className="hero-float hero-social-chat hero-float-five hidden 2xl:block" aria-hidden="true">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-[#14142b]">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-[var(--brand-ink)]">
             <span className="social-logo social-logo-messenger"><MessageCircle size={15} /></span>
             Messenger
           </div>
@@ -140,7 +140,7 @@ export default function HomePage() {
           <p className="hero-chat-out hero-chat-messenger">Astăzi la 18:00. Confirmăm?</p>
         </div>
         <div className="hero-float hero-social-chat hero-float-six hidden 2xl:block" aria-hidden="true">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-[#14142b]">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-[var(--brand-ink)]">
             <span className="social-logo social-logo-instagram"><i className="instagram-glyph" /></span>
             Instagram
           </div>
@@ -175,18 +175,18 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div id="beneficii" className="relative mt-14 overflow-hidden rounded-[30px] bg-[#14142b] px-6 py-9 text-white sm:px-10 sm:py-11">
-            <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#7eb735]/20 blur-3xl" />
+          <div id="beneficii" className="relative mt-14 overflow-hidden rounded-[30px] bg-[var(--brand-ink)] px-6 py-9 text-white sm:px-10 sm:py-11">
+            <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[var(--brand-green)]/20 blur-3xl" />
             <div className="relative grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
               <div>
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-[#a9d476]">Tot ce contează</p>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--brand-green)]">Tot ce contează</p>
                 <h3 className="text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">Mai puțină administrare. Mai mult timp pentru clienți.</h3>
                 <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/60">Tu stabilești programul și regulile. BookEasy se ocupă de rutina dintre mesaj și programarea confirmată.</p>
               </div>
               <div className="divide-y divide-white/10 border-y border-white/10">
             {FEATURES.map((feature) => (
               <div key={feature.title} className="grid grid-cols-[auto_1fr] gap-3 py-4">
-                <feature.icon size={19} className="mt-0.5 text-[#a9d476]" />
+                <feature.icon size={19} className="mt-0.5 text-[var(--brand-green)]" />
                 <div><h4 className="text-sm font-semibold">{feature.title}</h4><p className="mt-1 text-xs text-white/55">{feature.desc}</p></div>
               </div>
             ))}
@@ -208,9 +208,9 @@ export default function HomePage() {
               Completează formularul și revenim cu o configurare adaptată afacerii tale, fără să pierzi timp cu setări complicate.
             </p>
             <div className="mt-6 space-y-3 text-sm text-gray-700">
-              <p className="flex items-center gap-2"><Check size={16} className="text-[#70a832]" /> Discutăm fluxul actual de programări</p>
-              <p className="flex items-center gap-2"><Check size={16} className="text-[#70a832]" /> Configurăm serviciile și echipa</p>
-              <p className="flex items-center gap-2"><Check size={16} className="text-[#70a832]" /> Te ajutăm să conectezi canalele</p>
+              <p className="flex items-center gap-2"><Check size={16} className="text-[var(--brand-green-dark)]" /> Discutăm fluxul actual de programări</p>
+              <p className="flex items-center gap-2"><Check size={16} className="text-[var(--brand-green-dark)]" /> Configurăm serviciile și echipa</p>
+              <p className="flex items-center gap-2"><Check size={16} className="text-[var(--brand-green-dark)]" /> Te ajutăm să conectezi canalele</p>
             </div>
           </div>
         </div>

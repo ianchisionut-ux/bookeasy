@@ -3,14 +3,14 @@ import Image from 'next/image'
 
 export function PublicHeader() {
   return (
-    <header className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[var(--border-soft)] flex items-center justify-between bg-white gap-3">
+    <header className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[var(--border-soft)] flex items-center justify-between bg-white/95 backdrop-blur gap-3">
       <Link href="/" className="flex items-center gap-2 min-w-0">
-        <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={24} height={24} className="shrink-0" /><span className="font-semibold text-sm sm:text-base truncate">bookeasy.ro</span>
+        <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={34} height={34} className="shrink-0" /><span className="font-semibold text-sm text-[var(--brand-ink)] sm:text-base truncate">bookeasy.ro</span>
       </Link>
       <nav className="flex items-center gap-2 sm:gap-4 text-sm shrink-0">
         <Link
           href="/harta"
-          className="hidden sm:inline text-gray-500 hover:text-gray-900 transition whitespace-nowrap"
+          className="hidden sm:inline text-gray-500 hover:text-[var(--brand-teal-dark)] transition whitespace-nowrap"
         >
           Descoperă afaceri
         </Link>

@@ -460,7 +460,7 @@ export default function CalendarClient({
             return {
               style: {
                 backgroundColor: event.status === 'CONFIRMED' ? '#f0fdf4' : event.status === 'PENDING' ? '#fffbeb' : event.status === 'COMPLETED' ? '#f3f4f6' : '#fef2f2',
-                color: '#14142b',
+                color: 'var(--brand-ink)',
                 borderRadius: '10px',
                 border: '1px solid #eceef1',
                 borderLeft: `4px solid ${event.status === 'CONFIRMED' ? '#16a34a' : event.status === 'PENDING' ? '#eab308' : event.status === 'COMPLETED' ? '#6b7280' : '#ef4444'}`,

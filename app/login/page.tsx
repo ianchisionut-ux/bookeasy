@@ -45,7 +45,7 @@ export default function LoginPage() {
           sizes="(min-width: 1024px) 56vw, 100vw"
           className="object-cover object-right"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/60 to-transparent lg:bg-gradient-to-t lg:from-[#14142b]/75 lg:via-transparent lg:to-white/5" />
+        <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/60 to-transparent lg:bg-gradient-to-t lg:from-[var(--brand-ink)]/80 lg:via-transparent lg:to-white/5" />
 
         <Link href="/" className="absolute left-5 top-5 z-20 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/90 px-3 py-2 text-xs font-semibold shadow-sm backdrop-blur sm:left-7 sm:top-7">
           <ArrowLeft size={15} /> Înapoi la site
@@ -56,9 +56,9 @@ export default function LoginPage() {
             <Image src="/logo.png" alt="bookeasy.ro" width={180} height={120} className="mb-6 h-auto w-[150px] rounded-2xl bg-white/90 px-3 py-1 backdrop-blur" />
             <h2 className="text-4xl font-semibold leading-tight tracking-[-0.035em]">Programările afacerii tale, mereu la îndemână.</h2>
             <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/80">
-              <span className="flex items-center gap-1.5"><Check size={15} className="text-[#b9e188]" /> Calendar unic</span>
-              <span className="flex items-center gap-1.5"><Check size={15} className="text-[#b9e188]" /> Echipă sincronizată</span>
-              <span className="flex items-center gap-1.5"><Check size={15} className="text-[#b9e188]" /> Notificări automate</span>
+              <span className="flex items-center gap-1.5"><Check size={15} className="text-[var(--brand-green)]" /> Calendar unic</span>
+              <span className="flex items-center gap-1.5"><Check size={15} className="text-[var(--brand-green)]" /> Echipă sincronizată</span>
+              <span className="flex items-center gap-1.5"><Check size={15} className="text-[var(--brand-green)]" /> Notificări automate</span>
             </div>
           </div>
         </div>
@@ -68,7 +68,7 @@ export default function LoginPage() {
           <span><strong>Programare confirmată</strong><small>Astăzi, 16:30</small></span>
         </div>
         <div className="hero-float hero-social-chat login-instagram-float hidden 2xl:block" aria-hidden="true">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-[#14142b]">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-[var(--brand-ink)]">
             <span className="social-logo social-logo-instagram"><i className="instagram-glyph" /></span>
             Instagram
           </div>

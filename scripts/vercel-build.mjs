@@ -10,6 +10,8 @@ if (process.env.VERCEL_ENV === 'production') {
   // SQL-ul este idempotent și se execută fără lock global înainte de build.
   run('npx', ['prisma', 'db', 'execute', '--file', 'prisma/migrations/20260830113000_subscription_invoice_management/migration.sql', '--schema', 'prisma/schema.prisma'])
   run('npx', ['prisma', 'db', 'execute', '--file', 'prisma/migrations/20260907120000_signal_billing/migration.sql', '--schema', 'prisma/schema.prisma'])
+  run('npx', ['prisma', 'db', 'execute', '--file', 'prisma/migrations/20260913170000_add_invoice_card_payments/migration.sql', '--schema', 'prisma/schema.prisma'])
+  run('npx', ['prisma', 'db', 'execute', '--file', 'prisma/migrations/20260927090000_add_bt_ipay_invoice_payments/migration.sql', '--schema', 'prisma/schema.prisma'])
 }
 
 run('npx', ['next', 'build'])

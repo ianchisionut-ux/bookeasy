@@ -150,7 +150,7 @@ export function ResponsiveShell({
                 className="shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition flex items-center gap-1.5"
                 style={
                   active
-                    ? { background: '#14142b', color: 'white', boxShadow: '0 8px 18px -10px rgba(20,20,43,.65)' }
+                    ? { background: 'var(--brand-teal-dark)', color: 'white', boxShadow: '0 8px 18px -10px rgba(20,127,131,.65)' }
                     : { background: 'var(--surface-muted)', color: 'var(--foreground)' }
                 }
               >
@@ -199,7 +199,7 @@ export function ResponsiveShell({
               className="flex items-center gap-2.5 rounded-xl border-l-[3px] px-3 py-2.5 text-sm font-medium transition"
               style={
                 active
-                  ? { background: '#14142b', color: 'white', borderLeftColor: accent, boxShadow: '0 9px 22px -12px rgba(20,20,43,.7)' }
+                  ? { background: 'var(--brand-teal-dark)', color: 'white', borderLeftColor: accent, boxShadow: '0 9px 22px -12px rgba(20,127,131,.7)' }
                   : { color: 'var(--foreground-muted, #4b5563)', borderLeftColor: 'transparent' }
               }
             >
