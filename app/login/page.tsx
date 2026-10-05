@@ -53,7 +53,7 @@ export default function LoginPage() {
 
         <div className="relative z-10 hidden h-full min-h-screen items-end p-10 lg:flex xl:p-14">
           <div className="max-w-xl text-white">
-            <Image src="/logo.png" alt="bookeasy.ro" width={180} height={120} className="mb-6 h-auto w-[150px] rounded-2xl bg-white/90 px-3 py-1 backdrop-blur" />
+            <Image src="/logo.png" alt="bookeasy.ro" width={180} height={120} className="mb-6 h-auto w-[150px]" />
             <h2 className="text-4xl font-semibold leading-tight tracking-[-0.035em]">Programările afacerii tale, mereu la îndemână.</h2>
             <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/80">
               <span className="flex items-center gap-1.5"><Check size={15} className="text-[var(--brand-green)]" /> Calendar unic</span>

@@ -68,20 +68,27 @@ export default function MapClient() {
       setLoaded(true)
       return
     }
-    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
-      setLoadError(true)
-      return
-    }
-    const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
-    script.async = true
-    script.onload = () => setLoaded(true)
-    script.onerror = () => setLoadError(true)
+    const controller = new AbortController()
+    let script: HTMLScriptElement | null = null
+    fetch('/api/public/maps-config', { cache: 'no-store', signal: controller.signal })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Config indisponibil')))
+      .then(({ apiKey }: { apiKey?: string }) => {
+        if (!apiKey) throw new Error('Cheie Google Maps lipsă')
+        script = document.createElement('script')
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`
+        script.async = true
+        script.onload = () => setLoaded(true)
+        script.onerror = () => setLoadError(true)
+        document.head.appendChild(script)
+      })
+      .catch((error) => {
+        if ((error as Error).name !== 'AbortError') setLoadError(true)
+      })
     // Google apelează asta când cheia e respinsă (referrer greșit, API dezactivat, facturare
     // neactivată etc.) — de multe ori FĂRĂ niciun mesaj vizual pe hartă, doar spațiu gol
     window.gm_authFailure = () => setLoadError(true)
-    document.head.appendChild(script)
     return () => {
+      controller.abort()
       delete window.gm_authFailure
     }
   }, [shouldLoad])
