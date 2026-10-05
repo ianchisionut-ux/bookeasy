@@ -44,7 +44,8 @@ export async function sendPasswordSetupEmail(email: string, businessName: string
     return
   }
   await getResend().emails.send({
-    from: 'bookeasy.ro <cont@bookeasy.ro>',
+    from: 'bookeasy.ro <noreply@bookeasy.ro>',
+    replyTo: 'nextlevel.zalau@gmail.com',
     to: email,
     subject: `Bun venit pe bookeasy.ro — configurează-ți contul pentru ${businessName}`,
     html: `
@@ -64,7 +65,8 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     return
   }
   await getResend().emails.send({
-    from: 'bookeasy.ro <cont@bookeasy.ro>',
+    from: 'bookeasy.ro <noreply@bookeasy.ro>',
+    replyTo: 'nextlevel.zalau@gmail.com',
     to: email,
     subject: 'Resetare parolă — bookeasy.ro',
     html: `

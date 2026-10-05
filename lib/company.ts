@@ -5,7 +5,7 @@ export const company = {
   registeredAddress: 'Str. Fundătura nr. 1A, sat Mirșid, com. Mirșid, jud. Sălaj, România',
   mainActivity: 'Activități de realizare a softului la comandă (software orientat client)',
   caen: '6210',
-  legalEmail: 'cont@bookeasy.ro',
-  privacyEmail: 'cont@bookeasy.ro',
+  legalEmail: 'nextlevel.zalau@gmail.com',
+  privacyEmail: 'nextlevel.zalau@gmail.com',
   website: 'https://bookeasy.ro',
 } as const

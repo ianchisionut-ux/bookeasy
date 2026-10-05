@@ -46,7 +46,8 @@ export async function sendAccessRequestNotification({
   }
 
   await getResend().emails.send({
-    from: 'bookeasy.ro <cont@bookeasy.ro>',
+    from: 'bookeasy.ro <noreply@bookeasy.ro>',
+    replyTo: 'nextlevel.zalau@gmail.com',
     to,
     subject: `Cerere de acces nouă — ${businessName}`,
     html: `
@@ -141,7 +142,7 @@ export async function sendBillingDueEmail({ to, businessName, amount, dueAt }: {
   if (!process.env.RESEND_API_KEY) return
   const date = dueAt.toLocaleDateString('ro-RO', { timeZone: 'Europe/Bucharest' })
   await getResend().emails.send({
-    from: 'Facturare bookeasy.ro <cont@bookeasy.ro>', to,
+    from: 'Facturare bookeasy.ro <noreply@bookeasy.ro>', replyTo: 'nextlevel.zalau@gmail.com', to,
     subject: `Abonamentul BookEasy a ajuns la scadență — ${businessName}`,
     html: `<p>Salut,</p><p>Factura pentru abonamentul <strong>${businessName}</strong>${amount === null ? '' : `, în valoare de <strong>${amount.toLocaleString('ro-RO')} RON</strong>`}, a ajuns la scadență în ${date}.</p><p>Factura poate fi descărcată din <a href="${process.env.APP_URL}/dashboard/setari">Setări → Abonament</a>.</p><p>Contul se suspendă automat dacă plata nu este înregistrată în 15 zile de la scadență.</p>`,
   })
