@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { recalculateBusinessRating } from '@/lib/reviews'
+import { publicReviewName } from '@/lib/review-privacy'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { z } from 'zod'
 
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     include: { customer: true, review: true },
   })
 
-  if (!booking || booking.status !== 'COMPLETED' || booking.customer.phone !== phone) {
+  if (!booking || !['CONFIRMED', 'COMPLETED'].includes(booking.status) || booking.endAt > new Date() || booking.customer.phone !== phone) {
     return NextResponse.json({ error: 'Programarea nu a fost găsită sau nu poate fi recenzată.' }, { status: 400 })
   }
   if (booking.review) {
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
     data: {
       businessId: booking.businessId,
       bookingId: booking.id,
-      authorName: booking.customer.name ?? 'Client',
+      authorName: publicReviewName(booking.customer.name),
       rating,
       comment: comment || null,
       source: 'bookeasy',

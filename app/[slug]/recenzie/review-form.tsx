@@ -30,7 +30,7 @@ export default function ReviewForm({ slug }: { slug: string }) {
         return
       }
       if (data.bookings.length === 0) {
-        setError('Nu am găsit nicio programare finalizată, nerecenzată, pe acest număr.')
+        setError('Nu am găsit nicio programare confirmată sau finalizată, deja încheiată și nerecenzată, pe acest număr.')
         return
       }
       setBookings(data.bookings)
@@ -81,7 +81,7 @@ export default function ReviewForm({ slug }: { slug: string }) {
   if (step === 'PICK') {
     return (
       <Card>
-        <p className="text-sm text-gray-500 mb-3">Ai mai multe programări finalizate — pentru care lași recenzia?</p>
+        <p className="text-sm text-gray-500 mb-3">Ai mai multe programări încheiate — pentru care lași recenzia?</p>
         <div className="flex flex-col gap-2">
           {bookings.map((b) => (
             <button
@@ -114,7 +114,7 @@ export default function ReviewForm({ slug }: { slug: string }) {
             <button
               key={n}
               onClick={() => setRating(n)}
-              className="text-3xl leading-none"
+              className="min-h-11 min-w-11 text-3xl leading-none"
               style={{ color: n <= rating ? '#eab308' : '#d1d5db' }}
               aria-label={`${n} stele`}
             >
@@ -143,7 +143,7 @@ export default function ReviewForm({ slug }: { slug: string }) {
   return (
     <Card>
       <p className="text-sm text-gray-500 mb-3">
-        Introdu numărul de telefon folosit la rezervare, ca să găsim programarea ta finalizată.
+        Introdu numărul de telefon folosit la programare. Poți lăsa o recenzie după încheierea unei programări confirmate sau finalizate. Publicăm doar prenumele și inițiala numelui.
       </p>
       <form onSubmit={lookup} className="flex flex-col gap-3">
         <Input type="tel" inputMode="tel" placeholder="07XX XXX XXX" value={phone} onChange={(e) => setPhone(e.target.value)} required />

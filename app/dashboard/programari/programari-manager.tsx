@@ -288,13 +288,62 @@ export default function ProgramariManager({
     )
   }
 
+  function renderMobileCard(b: Booking) {
+    const date = new Date(b.startAt)
+    const canReconfirm = (b.status === 'PENDING' || b.status === 'CONFIRMED') && date.getTime() > Date.now() && b.customerConfirmed !== true
+    return (
+      <article key={b.id} className="rounded-2xl border border-[var(--border-soft)] bg-white p-4 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              {date.toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Bucharest' })} · {date.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })}
+            </p>
+            <a href={'/dashboard/clienti/' + b.customerId} className="mt-1 block truncate text-lg font-semibold text-[var(--accent)]">
+              {b.customerName}
+            </a>
+          </div>
+          {b.sequenceNumber && <span className="shrink-0 text-xs text-gray-400">#{String(b.sequenceNumber).padStart(3, '0')}</span>}
+        </div>
+        <p className="mt-1 text-sm font-medium text-[var(--foreground)]">{b.serviceName}</p>
+        {(b.practitionerName || b.resourceName) && <p className="mt-1 text-sm text-gray-500">{b.practitionerName ?? b.resourceName}</p>}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <select
+            aria-label={'Status pentru ' + b.customerName}
+            value={b.status}
+            onChange={(e) => changeStatus(b.id, e.target.value)}
+            className="min-h-11 rounded-full border-0 px-3 text-sm font-semibold"
+            style={{ backgroundColor: (STATUS_COLOR[b.status] ?? '#6b7280') + '20', color: STATUS_COLOR[b.status] ?? '#6b7280' }}
+          >
+            {Object.entries(STATUS_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+          {b.confirmationRequestSent && b.status === 'CONFIRMED' && <span className="flex items-center gap-1 text-xs text-gray-500">
+            {b.customerConfirmed ? <CheckCircle2 size={15} color="#16a34a" /> : <Clock size={15} color="#eab308" />}
+            {b.customerConfirmed ? 'Confirmată de client' : 'Așteaptă clientul'}
+          </span>}
+        </div>
+        <details className="mt-3 border-t border-[var(--border-soft)] pt-2">
+          <summary className="cursor-pointer py-2 text-sm font-semibold text-[var(--accent)]">Detalii și acțiuni</summary>
+          <div className="flex flex-col gap-2 pb-1 text-sm">
+            <a href={'tel:' + b.customerPhone} className="py-2 text-[var(--accent)]">Sună: {b.customerPhone}</a>
+            <span className="text-gray-500">Canal: {CHANNEL_LABEL[b.channel] ?? b.channel}</span>
+            {canReconfirm && <button type="button" onClick={() => sendConfirmationRequest(b.id)} disabled={sendingConfirmId === b.id} className="min-h-11 rounded-xl bg-[var(--accent-soft)] px-3 text-left font-medium text-[var(--accent)]">
+              {sendingConfirmId === b.id ? 'Se trimite...' : (b.confirmationRequestSent ? 'Retrimite reconfirmarea' : 'Cere reconfirmare')}
+            </button>}
+            {b.status !== 'CANCELLED' && <button type="button" onClick={() => cancelBooking(b.id)} className="min-h-11 rounded-xl bg-red-50 px-3 text-left font-medium text-red-700">Anulează {bookingSingular}a</button>}
+            <button type="button" onClick={() => deletePermanently(b.id)} className="min-h-11 px-3 text-left text-gray-500">Șterge definitiv</button>
+          </div>
+        </details>
+      </article>
+    )
+  }
+
   return (
     <div className="p-4 lg:p-8">
-      <div className="flex flex-wrap items-center gap-2 mb-5">
+      <div className="flex flex-col gap-3 mb-4 md:flex-row md:flex-wrap md:items-center md:gap-2 md:mb-5">
         <h1 className="text-2xl font-semibold mr-1">{appointmentBased ? 'Programări' : 'Rezervări'}</h1>
         <span className="text-sm text-gray-500 mr-1 whitespace-nowrap">{bookings.length} {bookingPlural}</span>
-        <form method="get" className="contents">
-          <Input name="q" defaultValue={filters.q} placeholder={`Caută ${customerSingular}...`} className="w-40" />
+        <form method="get" className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 md:contents">
+          <Input name="q" defaultValue={filters.q} placeholder={`Caută ${customerSingular}...`} className="col-span-2 w-full md:col-auto md:w-40" />
           <select name="status" defaultValue={filters.status} className="input-field">
             <option value="">Toate statusurile</option>
             {Object.entries(STATUS_LABEL).map(([value, label]) => (
@@ -307,8 +356,8 @@ export default function ProgramariManager({
             Filtrează
           </button>
         </form>
-        <PrintButton />
-        <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : `+ Adaugă ${bookingSingular}`}</Button>
+        <div className="hidden md:block"><PrintButton /></div>
+        <Button className="w-full min-h-11 md:w-auto" onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : `+ Adaugă ${bookingSingular}`}</Button>
       </div>
 
       {adding && (
@@ -328,7 +377,17 @@ export default function ProgramariManager({
         />
       )}
 
-      <Card className="p-0 overflow-hidden printable">
+      <div className="space-y-4 md:hidden screen-only" aria-label={bookingPlural}>
+        {sortColumn
+          ? sortBookings(bookings, sortColumn, sortAsc).map(renderMobileCard)
+          : groupByWeek(bookings).map((group) => <section key={'mobile-week-' + group.year + '-' + group.week} className="space-y-2">
+              <h2 className="px-1 text-sm font-semibold text-gray-600">Săptămâna {group.week} · {group.rangeLabel} ({group.bookings.length})</h2>
+              {group.bookings.map(renderMobileCard)}
+            </section>)}
+        {bookings.length === 0 && <p className="rounded-2xl bg-white p-6 text-center text-gray-500">Nicio {bookingSingular} găsită.</p>}
+      </div>
+
+      <Card className="hidden md:block print:block p-0 overflow-hidden printable booking-table-print">
         <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[760px]">
           <thead>
