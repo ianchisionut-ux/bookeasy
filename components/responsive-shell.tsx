@@ -21,6 +21,7 @@ import {
   LifeBuoy,
 } from 'lucide-react'
 import { SidebarClock } from './sidebar-clock'
+import { CookiePreferencesButton } from './cookie-preferences-button'
 
 const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   calendar: Calendar,
@@ -170,6 +171,7 @@ export function ResponsiveShell({
                 {Icon && <Icon size={18}/>}<span>{item.label}</span>{!!item.badge && <span className="ml-auto rounded-full bg-red-600 px-1.5 text-xs text-white">{item.badge}</span>}
               </Link>
             })}
+            <CookiePreferencesButton onOpen={() => setMobileMenuOpen(false)} className="flex min-h-12 items-center rounded-xl bg-[var(--surface-muted)] px-3 text-left text-sm font-medium" />
           </div>
         </div>
       </div>}
@@ -226,6 +228,7 @@ export function ResponsiveShell({
           <Image src="/logo.png" alt="bookeasy.ro" width={800} height={471} className="w-full h-auto opacity-50" />
         </div>}
         {!sidebarCollapsed && accountContent}
+        {!sidebarCollapsed && <CookiePreferencesButton className="px-3 py-2 text-left text-xs text-gray-600 hover:underline" />}
       </aside>
 
       <main className="app-shell-content min-w-0 pb-20 lg:pb-0">{children}</main>
