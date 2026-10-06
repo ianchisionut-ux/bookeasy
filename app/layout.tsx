@@ -9,7 +9,7 @@ const manrope = Manrope({ subsets: ['latin', 'latin-ext'], variable: '--font-man
 export const metadata: Metadata = {
   title: 'bookeasy.ro',
   description: 'Platformă pentru programări și rezervări, într-un singur calendar.',
-  manifest: '/manifest.webmanifest?v=2',
+  manifest: '/bookeasy-v2.webmanifest',
   applicationName: 'BookEasy',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'BookEasy' },
   formatDetection: { telephone: false },
