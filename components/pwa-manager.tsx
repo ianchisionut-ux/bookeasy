@@ -80,7 +80,7 @@ export default function PwaManager() {
         <div className="fixed left-3 right-3 bottom-3 sm:left-auto sm:right-5 sm:w-96 z-[99] card p-4 shadow-xl border border-[var(--border-soft)]" role="dialog" aria-label="Instalează BookEasy">
           <button onClick={dismiss} className="absolute right-3 top-3 text-gray-400" aria-label="Închide"><X size={17} /></button>
           <div className="flex items-start gap-3 pr-6">
-            <Image src="/pwa-icon-192-white.png" width={44} height={44} alt="" className="h-11 w-11 rounded-xl" />
+            <Image src="/pwa-icon-192-white-v2.png" width={44} height={44} alt="" className="h-11 w-11 rounded-xl" />
             <div>
               <p className="font-medium">Instalează BookEasy</p>
               {installPrompt ? (

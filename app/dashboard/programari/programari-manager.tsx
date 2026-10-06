@@ -321,14 +321,14 @@ export default function ProgramariManager({
             {b.customerConfirmed ? 'Confirmată de client' : 'Așteaptă clientul'}
           </span>}
         </div>
+        {canReconfirm && <button type="button" onClick={() => sendConfirmationRequest(b.id)} disabled={sendingConfirmId === b.id} className="mt-3 min-h-11 w-full rounded-xl bg-[var(--accent-soft)] px-3 text-left font-medium text-[var(--accent)]">
+          {sendingConfirmId === b.id ? 'Se trimite...' : `${b.confirmationRequestSent ? 'Retrimite reconfirmarea' : 'Cere reconfirmare'} · ${reconfirmationChannelLabel(b.channel)}`}
+        </button>}
         <details className="mt-3 border-t border-[var(--border-soft)] pt-2">
           <summary className="cursor-pointer py-2 text-sm font-semibold text-[var(--accent)]">Detalii și acțiuni</summary>
           <div className="flex flex-col gap-2 pb-1 text-sm">
             <a href={'tel:' + b.customerPhone} className="py-2 text-[var(--accent)]">Sună: {b.customerPhone}</a>
             <span className="text-gray-500">Canal: {CHANNEL_LABEL[b.channel] ?? b.channel}</span>
-            {canReconfirm && <button type="button" onClick={() => sendConfirmationRequest(b.id)} disabled={sendingConfirmId === b.id} className="min-h-11 rounded-xl bg-[var(--accent-soft)] px-3 text-left font-medium text-[var(--accent)]">
-              {sendingConfirmId === b.id ? 'Se trimite...' : (b.confirmationRequestSent ? 'Retrimite reconfirmarea' : 'Cere reconfirmare')}
-            </button>}
             {b.status !== 'CANCELLED' && <button type="button" onClick={() => cancelBooking(b.id)} className="min-h-11 rounded-xl bg-red-50 px-3 text-left font-medium text-red-700">Anulează {bookingSingular}a</button>}
             <button type="button" onClick={() => deletePermanently(b.id)} className="min-h-11 px-3 text-left text-gray-500">Șterge definitiv</button>
           </div>

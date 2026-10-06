@@ -1,12 +1,12 @@
-const VERSION = 'bookeasy-pwa-v5'
+const VERSION = 'bookeasy-pwa-v6'
 const STATIC_CACHE = `${VERSION}-static`
 const STATIC_ASSETS = [
   '/favicon.ico',
   '/favicon-16x16.png',
   '/favicon-32x32.png',
-  '/pwa-icon-192-white.png',
-  '/pwa-icon-512-white.png',
-  '/pwa-icon-maskable-white.png',
+  '/pwa-icon-192-white-v2.png',
+  '/pwa-icon-512-white-v2.png',
+  '/pwa-icon-maskable-white-v2.png',
   '/apple-touch-icon.png',
   '/logo-mark-square.png',
   '/logo.png',

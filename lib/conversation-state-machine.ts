@@ -350,6 +350,13 @@ export async function runBotStep({
         externalUserId,
       })
 
+      if (result.reason === 'phone_in_use') {
+        return {
+          reply: { kind: 'text', text: 'Numărul acesta este deja asociat altei fișe de client. Scrie un alt număr de telefon sau scrie „anulează” și cere ajutor unui operator.' },
+          newState: { ...currentState, step: 'COLLECTING_PHONE', customerPhone: undefined },
+        }
+      }
+
       if (!result.success) {
         return proceedToTimeSelection(businessId, currentState, currentState.practitionerId ?? null, true)
       }
@@ -589,9 +596,9 @@ async function createBooking({
   customerPhone: string
   channel: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
   externalUserId: string
-}): Promise<{ success: boolean }> {
+}): Promise<{ success: boolean; reason?: 'phone_in_use' | 'slot_unavailable' }> {
   const service = await prisma.service.findUnique({ where: { id: serviceId } })
-  if (!service) return { success: false }
+  if (!service) return { success: false, reason: 'slot_unavailable' }
 
   const startDate = new Date(startAt)
   const endDate = new Date(startDate.getTime() + (service.durationMin ?? 30) * 60000)
@@ -600,7 +607,7 @@ async function createBooking({
   const stillFree = practitionerId
     ? await isPractitionerSlotStillAvailable(businessId, serviceId, practitionerId, startDate)
     : await isSlotStillAvailable(businessId, serviceId, startDate)
-  if (!stillFree) return { success: false }
+  if (!stillFree) return { success: false, reason: 'slot_unavailable' }
 
   // identificarea clientului în bază rămâne legată de externalUserId (unic per canal —
   // pe WhatsApp e chiar numărul de telefon, pe Instagram/Facebook e ID-ul intern al
@@ -610,16 +617,37 @@ async function createBooking({
   const channelIdField =
     channel === 'INSTAGRAM' ? { instagramUserId: externalUserId } : channel === 'FACEBOOK' ? { facebookUserId: externalUserId } : {}
 
-  const customer = await prisma.customer.upsert({
-    where:
-      channel === 'WHATSAPP'
-        ? { businessId_phone: { businessId, phone: externalUserId } }
-        : channel === 'INSTAGRAM'
-          ? { businessId_instagramUserId: { businessId, instagramUserId: externalUserId } }
-          : { businessId_facebookUserId: { businessId, facebookUserId: externalUserId } },
-    create: { businessId, name: customerName, phone: customerPhone, ...channelIdField },
-    update: { name: customerName, phone: customerPhone },
-  })
+  // Un număr deja asociat altei fișe nu dovedește că persoana din Messenger
+  // deține acea fișă. Evităm atât încălcarea unicității cât și unirea nesigură.
+  if (channel !== 'WHATSAPP') {
+    const [channelCustomer, phoneCustomer] = await Promise.all([
+      prisma.customer.findFirst({ where: { businessId, ...channelIdField }, select: { id: true } }),
+      prisma.customer.findUnique({ where: { businessId_phone: { businessId, phone: customerPhone } }, select: { id: true } }),
+    ])
+    if (phoneCustomer && phoneCustomer.id !== channelCustomer?.id) {
+      return { success: false, reason: 'phone_in_use' }
+    }
+  }
+
+  let customer: { id: string }
+  try {
+    customer = await prisma.customer.upsert({
+      where:
+        channel === 'WHATSAPP'
+          ? { businessId_phone: { businessId, phone: externalUserId } }
+          : channel === 'INSTAGRAM'
+            ? { businessId_instagramUserId: { businessId, instagramUserId: externalUserId } }
+            : { businessId_facebookUserId: { businessId, facebookUserId: externalUserId } },
+      create: { businessId, name: customerName, phone: customerPhone, ...channelIdField },
+      update: { name: customerName, phone: customerPhone },
+    })
+  } catch (error) {
+    // Acoperă cazul în care altă cerere ocupă numărul între verificare și upsert.
+    if (channel !== 'WHATSAPP' && (error as { code?: string })?.code === 'P2002') {
+      return { success: false, reason: 'phone_in_use' }
+    }
+    throw error
+  }
 
   const sequenceNumber = await getNextSequenceNumber(businessId, startDate)
 

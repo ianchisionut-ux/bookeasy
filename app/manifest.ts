@@ -16,14 +16,14 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: 'ro',
     categories: ['business', 'productivity', 'medical'],
     icons: [
-      { src: '/pwa-icon-192-white.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-      { src: '/pwa-icon-512-white.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-      { src: '/pwa-icon-maskable-white.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: '/pwa-icon-192-white-v2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/pwa-icon-512-white-v2.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/pwa-icon-maskable-white-v2.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
     shortcuts: [
-      { name: 'Calendar', short_name: 'Calendar', url: '/dashboard/calendar', icons: [{ src: '/pwa-icon-192-white.png', sizes: '192x192' }] },
-      { name: 'Programări', short_name: 'Programări', url: '/dashboard/programari', icons: [{ src: '/pwa-icon-192-white.png', sizes: '192x192' }] },
-      { name: 'Clienți', short_name: 'Clienți', url: '/dashboard/clienti', icons: [{ src: '/pwa-icon-192-white.png', sizes: '192x192' }] },
+      { name: 'Calendar', short_name: 'Calendar', url: '/dashboard/calendar', icons: [{ src: '/pwa-icon-192-white-v2.png', sizes: '192x192' }] },
+      { name: 'Programări', short_name: 'Programări', url: '/dashboard/programari', icons: [{ src: '/pwa-icon-192-white-v2.png', sizes: '192x192' }] },
+      { name: 'Clienți', short_name: 'Clienți', url: '/dashboard/clienti', icons: [{ src: '/pwa-icon-192-white-v2.png', sizes: '192x192' }] },
     ],
   }
 }
