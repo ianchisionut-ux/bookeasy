@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!parsed.success) return NextResponse.json({ error: 'Scrie un mesaj.' }, { status: 400 })
 
   const channelRecord = await prisma.channel.findFirst({
-    where: { businessId, type: conversation.channel, status: 'ACTIVE', enabledByOwner: true },
+    where: { businessId, type: conversation.channel, status: 'ACTIVE', ...(conversation.channel === 'FACEBOOK' ? {} : { enabledByOwner: true }) },
   })
   if (!channelRecord) return NextResponse.json({ error: 'Canalul nu e conectat sau activ.' }, { status: 400 })
 

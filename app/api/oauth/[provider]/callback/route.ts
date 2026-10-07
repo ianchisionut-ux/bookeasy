@@ -90,7 +90,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
         accessToken: encrypt(page.access_token),
         expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
       },
-      update: { businessId, accessToken: encrypt(page.access_token), status: 'ACTIVE', enabledByOwner: true },
+      update: { businessId, accessToken: encrypt(page.access_token), status: 'ACTIVE' },
     })
   }
 

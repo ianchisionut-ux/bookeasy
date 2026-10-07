@@ -36,7 +36,7 @@ export async function sendConfirmationRequest(
 
   const channel = booking.business.channels.find(
     (candidate: any) =>
-      candidate.type === preferredChannel && candidate.status === 'ACTIVE' && candidate.enabledByOwner
+      candidate.type === preferredChannel && candidate.status === 'ACTIVE' && (preferredChannel === 'FACEBOOK' || candidate.enabledByOwner)
   )
   if (!channel) {
     return {

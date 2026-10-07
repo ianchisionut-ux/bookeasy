@@ -25,6 +25,10 @@ export async function processIncomingMessage(params: {
     // logăm eroarea reală (vizibilă în Vercel Logs) și încercăm să trimitem măcar un
     // mesaj de rezervă, ca să știe că ceva n-a mers, nu doar tăcere completă
     console.error('[bot-engine] Eroare neașteptată la procesarea mesajului:', err?.message ?? err, err?.stack)
+    if (params.channel === 'FACEBOOK') {
+      const messenger = await prisma.channel.findUnique({ where: { id: params.channelId }, select: { enabledByOwner: true } }).catch(() => null)
+      if (messenger && !messenger.enabledByOwner) return
+    }
     try {
       await sendMessage({
         channel: params.channel,
@@ -64,11 +68,11 @@ async function handleIncomingMessage({
   // operator) sau canalul are o problemă — ca istoricul din inbox-ul din dashboard
   // să fie complet, nu doar ce a "văzut" botul. Traducem ID-urile tehnice de buton
   // (ex: REMINDER_CONFIRM_xyz) într-un text ușor de citit de un operator uman
-  await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'IN', text: toFriendlyLogText(text) } })
+  const incomingMessage = await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'IN', text: toFriendlyLogText(text) } })
 
   const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
 
-  if (!channelRecord || channelRecord.status !== 'ACTIVE' || !channelRecord.enabledByOwner) {
+  if (!channelRecord || channelRecord.status !== 'ACTIVE' || (channel !== 'FACEBOOK' && !channelRecord.enabledByOwner)) {
     await notifyOwnerOfMissedMessage(businessId, channel)
     return
   }
@@ -152,6 +156,22 @@ async function handleIncomingMessage({
     return
   }
 
+  // Când botul Messenger este oprit, mesajele rămân în inbox pentru operator.
+  // Acțiunile explicite dintr-o cerere de reconfirmare au fost tratate mai sus.
+  if (channel === 'FACEBOOK' && !channelRecord.enabledByOwner) {
+    const conversation = await prisma.conversation.findFirst({ where: { businessId, channel, externalUserId } })
+    if (conversation) {
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { needsOperator: true, operatorRequestedAt: conversation.operatorRequestedAt ?? incomingMessage.createdAt },
+      })
+    } else {
+      await prisma.conversation.create({
+        data: { businessId, channel, externalUserId, state: { step: 'IDLE' }, needsOperator: true, operatorRequestedAt: incomingMessage.createdAt },
+      })
+    }
+    return
+  }
   if (CANCEL_BOOKING_PATTERN.test(text.trim())) {
     const reply = await handleBookingCancellation(businessId, channel, externalUserId)
     await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'OUT', text: reply } })

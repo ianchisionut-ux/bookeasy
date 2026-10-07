@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
 import BillingSection from './billing-section'
+import MessengerBotToggle from '@/components/messenger-bot-toggle'
 
 const CATEGORY_LABEL: Record<string, string> = {
   SALON: 'Salon',
@@ -17,7 +18,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   CLINICA: 'Clinică',
 }
 
-type Channel = { id: string; type: string; externalId: string; wabaId: string | null; status: string }
+type Channel = { id: string; type: string; externalId: string; wabaId: string | null; status: string; enabledByOwner: boolean }
 type CalendarPractitioner = {
   id: string
   name: string
@@ -422,6 +423,7 @@ function MessengerConnectionCard({ businessId, channel }: { businessId: string; 
       {channel && (
         <div className="mt-3">
           <p className="text-xs text-gray-500 mb-3 break-all">Page ID: {channel.externalId}</p>
+          <div className="mb-3"><MessengerBotToggle channelId={channel.id} enabled={channel.enabledByOwner} businessId={businessId} /></div>
           <DisconnectChannelButton businessId={businessId} channel={channel} />
         </div>
       )}
