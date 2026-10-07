@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: __dirname,
+  outputFileTracingIncludes: {
+    '/*': ['./node_modules/.prisma/client/query_compiler_bg.wasm'],
+  },
   serverExternalPackages: ['@prisma/client', '.prisma/client'],
   images: {
     qualities: [75, 90, 95],
