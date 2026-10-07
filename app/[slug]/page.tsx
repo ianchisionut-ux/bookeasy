@@ -1,3 +1,4 @@
+import { publicReviewName } from '@/lib/review-privacy'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
@@ -116,7 +117,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
                 {business.reviews.map((review) => (
                   <article key={review.id} className="min-w-0 rounded-2xl border border-[var(--border-soft)] bg-white p-4">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <p className="min-w-0 truncate font-medium">{review.authorName}</p>
+                      <p className="min-w-0 truncate font-medium">{review.source === 'bookeasy' ? publicReviewName(review.authorName) : review.authorName}</p>
                       <p className="flex shrink-0 gap-0.5">{Array.from({ length: 5 }).map((_, index) => <Star key={index} size={13} fill={index < review.rating ? '#eab308' : 'none'} color={index < review.rating ? '#eab308' : '#d1d5db'} />)}</p>
                     </div>
                     {review.comment && <p className="break-words text-sm leading-relaxed text-gray-600">{review.comment}</p>}

@@ -22,11 +22,16 @@ export async function GET(req: NextRequest) {
   const results = { expired: 0, expiringSoon: 0, autoRefreshed: 0 }
 
   for (const channel of channels) {
-    if (channel.type === 'GOOGLE_BUSINESS' && channel.refreshToken) {
-      const refreshed = await tryRefreshGoogleToken(channel.id, channel.refreshToken)
-      if (refreshed) {
-        results.autoRefreshed++
-        continue
+    if (channel.type === 'GOOGLE_BUSINESS' && channel.refreshToken && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+      try {
+        const refreshed = await tryRefreshGoogleToken(channel.id, channel.refreshToken)
+        if (refreshed) {
+          results.autoRefreshed++
+          continue
+        }
+      } catch (error) {
+        // Tokenurile criptate cu cheia veche necesită reconectarea contului.
+        console.error('[check-tokens] Reconectare Google necesară:', channel.id, error)
       }
     }
 

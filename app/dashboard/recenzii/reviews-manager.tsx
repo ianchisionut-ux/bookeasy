@@ -141,7 +141,7 @@ export default function ReviewsManager({
                 {r.authorName}
                 {r.verified && (
                   <span className="text-xs text-green-700 font-normal flex items-center gap-1">
-                    <CheckCircle2 size={12} /> client verificat
+                    <CheckCircle2 size={12} /> programare verificată
                   </span>
                 )}
                 {r.source === 'google' && (

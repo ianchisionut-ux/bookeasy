@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { company } from '@/lib/company'
+import { CookiePreferencesButton } from '@/components/cookie-preferences-button'
 
 export function PublicFooter({ showLogo = true }: { showLogo?: boolean }) {
   return (
@@ -17,6 +18,7 @@ export function PublicFooter({ showLogo = true }: { showLogo?: boolean }) {
             <Link href="/legal/termeni" className="hover:text-white">Termeni și condiții</Link>
             <Link href="/legal/confidentialitate" className="hover:text-white">Confidențialitate</Link>
             <Link href="/legal/cookies" className="hover:text-white">Politica de cookie-uri</Link>
+            <CookiePreferencesButton className="text-left hover:text-white" />
             <Link href="/dpa" className="hover:text-white">DPA - Art. 28 GDPR</Link>
             <Link href="/legal" className="hover:text-white">Informații legale</Link>
           </nav>

@@ -1,70 +1,22 @@
-# bookeasy.ro
+# BookEasy
 
-Platformă de rezervări cu bot conversațional pe WhatsApp, Instagram și Facebook, pentru saloane (frizerie, manichiură, coafor) și spații de evenimente.
+Aplicație Next.js pentru programări, rezervări, mesaje și facturi. Ținta de hosting este Vercel (Node.js), cu PostgreSQL în Neon și fișiere în Vercel Blob privat. Plățile online noi sunt dezactivate; facturile și statusul plăților se gestionează manual.
 
-Vezi `bookeasy-arhitectura.md` pentru documentul complet de arhitectură.
-
-## Stack
-
-Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Prisma · PostgreSQL (Neon) · Cloudflare Workers/OpenNext · BT iPay · Stripe · Resend · Meta Graph API · Claude API
-
-## Setup local
+## Dezvoltare locală
 
 ```bash
-npm install
-cp .env.example .env
-# completează .env cu valorile tale (DB, Meta, Google, BT iPay, Stripe, Anthropic, Resend)
-
+npm ci
+cp .env.example .env.local
 npx prisma generate
-npx prisma migrate dev --name init
-
 npm run dev
 ```
 
-## Facturi de abonament prin BT iPay
+Nu rula migrațiile automat la build. Aplică o migrare numai după verificarea bazei și a planului de rollback.
 
-Facturile SaaS încărcate sau emise individual pentru fiecare business sunt plătite prin contul merchant BT iPay al platformei. Configurează `PLATFORM_IPAY_USERNAME`, `PLATFORM_IPAY_PASSWORD`, `PLATFORM_IPAY_IS_LIVE` și `APP_URL`, apoi aplică migrarea Prisma înainte de deploy:
+## Migrare Vercel
 
-```bash
-npx prisma migrate deploy
-```
+Pașii de configurare și verificare sunt în [VERCEL-MIGRATION.md](VERCEL-MIGRATION.md). `npm run build` produce build-ul Vercel. Proiectul existent este `pmcustoms/bookeasy`.
 
-Confirmarea financiară se face server-la-server prin `getOrderStatusExtended.do`, cu verificarea numărului comenzii, sumei și monedei. Retururile întârziate sunt reconciliate de ruta protejată `/api/cron/billing-payments`, apelată la fiecare cinci minute de Cloudflare Cron. Nu stoca credentialele BT iPay în `wrangler.jsonc`; configurează-le ca secrete Worker.
+## Plăți
 
-## Structură proiect
-
-```
-app/
-  dashboard/          → calendar, clienți, servicii, statistici, canale (UI protejat)
-  onboarding/          → wizard 5 pași pentru businessuri noi
-  api/
-    webhooks/meta/      → primire mesaje WhatsApp/Instagram/Facebook
-    webhooks/stripe/    → sincronizare abonamente
-    oauth/[provider]/   → conectare Meta / Google Business Profile
-    cron/               → verificare token-uri + reminder-e programări
-    onboarding/         → salvare progresivă wizard
-    billing/            → facturi SaaS și checkout BT iPay
-lib/
-  bot-engine.ts          → punctul de intrare pentru mesaje primite
-  conversation-state-machine.ts → logica de conversație a botului
-  nlu.ts                 → extracție intenție via Claude API
-  availability.ts        → calcul sloturi libere (staff / resurse)
-  channel-senders.ts      → trimitere mesaje pe fiecare canal
-  crypto.ts               → criptare AES-256-GCM pentru token-uri
-  email.ts                → alerte prin Resend
-  auth.ts                 → NextAuth (credentials, JWT)
-prisma/
-  schema.prisma            → schema completă a bazei de date
-```
-
-## Ce mai trebuie făcut înainte de producție
-
-- [ ] Meta App Review (whatsapp_business_messaging, pages_messaging, instagram_manage_messages)
-- [ ] Verificare Google Business Profile (activ 60+ zile) + cerere acces API
-- [ ] Template-uri WhatsApp aprobate pentru reminder-e (mesaje proactive)
-- [ ] Configurare Stripe products/prices pentru fiecare `Plan`
-- [ ] Populare `Plan` în DB cu `stripePriceId` reale
-- [ ] Configurare cron extern (cron-job.org) pentru `/api/cron/reminders` (Vercel Hobby permite doar cron zilnic)
-- [x] Pagini `/login`, `/signup`, `/onboarding/step-1..5` — implementate, flux complet funcțional
-- [x] Ruta NextAuth (`/api/auth/[...nextauth]`) — era lipsă, adăugată
-- [ ] Middleware suplimentar de protecție pe `/api/*` sensibile (în afară de verificările din fiecare rută)
+Formularul public acceptă rezervări fără plată online. Rutele care inițiau checkout de avans, checkout BT iPay și configurarea procesatorilor răspund cu HTTP 410. Webhook-urile procesatorilor și finalizarea BT iPay rămân disponibile pentru tranzacțiile inițiate anterior dezactivării. Istoricul facturilor și marcarea manuală a plății rămân în dashboard.

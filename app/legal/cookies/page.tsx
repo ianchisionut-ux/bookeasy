@@ -1,3 +1,4 @@
+import { CookiePreferencesButton } from '@/components/cookie-preferences-button'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LegalPage } from '@/components/ui/legal-page'
@@ -23,7 +24,7 @@ export default function CookiesPage() {
         <tr><td><code>bookeasy-install-dismissed</code></td><td>sessionStorage</td><td>Ascunderea bannerului de instalare PWA pentru sesiunea curentă</td></tr>
       </tbody></table>
       <h2>4. Analiză și marketing</h2><div className="legal-callout">La data acestei versiuni, BookEasy nu instalează Google Analytics, Meta Pixel sau alte cookie-uri de marketing pe domeniul bookeasy.ro.</div><p>Dacă vom activa instrumente opționale de analiză sau marketing, acestea vor fi blocate până la consimțământ și politica va fi actualizată.</p>
-      <h2>5. Gestionarea preferințelor</h2><p>Poți redeschide setările prin butonul cu simbolul cookie din colțul paginii. Poți șterge cookie-urile și datele locale din setările browserului. Blocarea cookie-urilor strict necesare poate împiedica autentificarea.</p>
+      <h2>5. Gestionarea preferințelor</h2><p>Poți modifica oricând alegerea privind stocarea funcțională. Poți șterge cookie-urile și datele locale din setările browserului. Blocarea cookie-urilor strict necesare poate împiedica autentificarea.</p><CookiePreferencesButton className="btn-secondary mt-3" />
       <h2>6. Servicii terțe</h2><p>Hărțile Google, autentificarea OAuth, canalele Meta și paginile procesatorilor de plăți pot folosi propriile tehnologii pe domeniile lor. Consultă politicile acelor furnizori. Detalii suplimentare sunt disponibile în <Link href="/legal/confidentialitate">Politica de confidențialitate</Link>.</p>
       <h2>7. Contact</h2><p>Operator: {company.legalName}, CUI {company.cui}, {company.tradeRegistryNumber}. Întrebări: <a href={`mailto:${company.privacyEmail}`}>{company.privacyEmail}</a>.</p>
     </LegalPage>

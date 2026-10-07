@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { User, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { User, PanelLeftClose, PanelLeftOpen, Menu, X } from 'lucide-react'
 import {
   Calendar,
   MessagesSquare,
@@ -21,6 +21,7 @@ import {
   LifeBuoy,
 } from 'lucide-react'
 import { SidebarClock } from './sidebar-clock'
+import { CookiePreferencesButton } from './cookie-preferences-button'
 
 const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   calendar: Calendar,
@@ -72,6 +73,7 @@ export function ResponsiveShell({
   enableLiveBadges?: boolean // interoghează periodic numărul de notificări, ca badge-urile să se actualizeze fără reîncărcare de pagină
 }) {
   const [accountOpen, setAccountOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const pathname = usePathname()
   const accent = accentColor || 'var(--accent)'
@@ -119,6 +121,12 @@ export function ResponsiveShell({
     .filter((item) => pathname === item.href || pathname?.startsWith(item.href + '/'))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href
 
+  const dashboardMobileItems = displayNavItems.filter((item) =>
+    ['/dashboard/calendar', '/dashboard/mesaje', '/dashboard/programari'].includes(item.href)
+  )
+  const primaryMobileItems = dashboardMobileItems.length > 0 ? dashboardMobileItems : displayNavItems.slice(0, 3)
+  const otherMobileItems = displayNavItems.filter((item) => !primaryMobileItems.some((primary) => primary.href === item.href))
+
   return (
     <div className={`app-shell-theme min-h-screen lg:grid transition-[grid-template-columns] ${sidebarCollapsed ? 'lg:grid-cols-[76px_1fr]' : 'lg:grid-cols-[188px_1fr]'}`}>
       {/* header mobil, doar sub lg */}
@@ -137,35 +145,36 @@ export function ResponsiveShell({
           </button>
         </div>
 
-        {/* carusel orizontal de navigare — scroll cu degetul, fără dropdown */}
-        <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
-          {displayNavItems.map((item) => {
-            const active = item.href === activeHref
-            const Icon = item.icon ? NAV_ICONS[item.icon] : null
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch={false}
-                className="shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition flex items-center gap-1.5"
-                style={
-                  active
-                    ? { background: 'var(--brand-teal-dark)', color: 'white', boxShadow: '0 8px 18px -10px rgba(20,127,131,.65)' }
-                    : { background: 'var(--surface-muted)', color: 'var(--foreground)' }
-                }
-              >
-                {Icon && <Icon size={14} />}
-                {item.label}
-                {!!item.badge && (
-                  <span className="text-xs bg-red-600 text-white rounded-full px-1.5 min-w-[16px] text-center leading-4">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
-        </div>
       </div>
+
+      <nav aria-label="Navigare principală" className="mobile-bottom-nav lg:hidden screen-only">
+        {primaryMobileItems.map((item) => {
+          const Icon = item.icon ? NAV_ICONS[item.icon] : null
+          return <Link key={item.href} href={item.href} prefetch={false} aria-current={item.href === activeHref ? 'page' : undefined} className={'mobile-bottom-nav-item' + (item.href === activeHref ? ' is-active' : '')}>
+            <span className="relative">{Icon && <Icon size={21} />}{!!item.badge && <span className="mobile-bottom-nav-badge">{item.badge > 99 ? '99+' : item.badge}</span>}</span>
+            <span>{item.label}</span>
+          </Link>
+        })}
+        <button type="button" onClick={() => setMobileMenuOpen(true)} aria-label="Mai mult" aria-expanded={mobileMenuOpen} className={'mobile-bottom-nav-item' + (otherMobileItems.some((item) => item.href === activeHref) ? ' is-active' : '')}>
+          <Menu size={21} /><span>Mai mult</span>
+        </button>
+      </nav>
+
+      {mobileMenuOpen && <div className="lg:hidden fixed inset-0 z-50 screen-only">
+        <button type="button" className="absolute inset-0 w-full bg-black/40" aria-label="Închide meniul" onClick={() => setMobileMenuOpen(false)} />
+        <div className="mobile-more-sheet absolute inset-x-0 bottom-0 bg-white p-4 overflow-y-auto">
+          <div className="flex items-center justify-between mb-3"><h2 className="text-lg font-semibold">Mai mult</h2><button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Închide meniul" className="p-2"><X size={20}/></button></div>
+          <div className="grid grid-cols-2 gap-2">
+            {otherMobileItems.map((item) => {
+              const Icon = item.icon ? NAV_ICONS[item.icon] : null
+              return <Link key={item.href} href={item.href} prefetch={false} onClick={() => setMobileMenuOpen(false)} className="flex min-h-12 items-center gap-2 rounded-xl bg-[var(--surface-muted)] px-3 text-sm font-medium">
+                {Icon && <Icon size={18}/>}<span>{item.label}</span>{!!item.badge && <span className="ml-auto rounded-full bg-red-600 px-1.5 text-xs text-white">{item.badge}</span>}
+              </Link>
+            })}
+            <CookiePreferencesButton onOpen={() => setMobileMenuOpen(false)} className="flex min-h-12 items-center rounded-xl bg-[var(--surface-muted)] px-3 text-left text-sm font-medium" />
+          </div>
+        </div>
+      </div>}
 
       {/* popover de cont, doar sub lg, doar cand e deschis */}
       {accountOpen && (
@@ -219,9 +228,10 @@ export function ResponsiveShell({
           <Image src="/logo.png" alt="bookeasy.ro" width={800} height={471} className="w-full h-auto opacity-50" />
         </div>}
         {!sidebarCollapsed && accountContent}
+        {!sidebarCollapsed && <CookiePreferencesButton className="px-3 py-2 text-left text-xs text-gray-600 hover:underline" />}
       </aside>
 
-      <main className="app-shell-content min-w-0">{children}</main>
+      <main className="app-shell-content min-w-0 pb-20 lg:pb-0">{children}</main>
     </div>
   )
 }

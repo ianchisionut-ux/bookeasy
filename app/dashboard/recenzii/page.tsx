@@ -1,3 +1,4 @@
+import { publicReviewName } from '@/lib/review-privacy'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
@@ -30,12 +31,12 @@ export default async function RecenziiPage() {
       googleConnected={Boolean(business?.channels.length)}
       reviews={reviews.map((r) => ({
         id: r.id,
-        authorName: r.authorName,
+        authorName: r.source === 'bookeasy' ? publicReviewName(r.authorName) : r.authorName,
         rating: r.rating,
         comment: r.comment,
         reply: r.reply,
         createdAt: r.createdAt.toISOString(),
-        verified: r.source === 'bookeasy',
+        verified: r.source === 'bookeasy' && r.bookingId !== null,
         source: r.source,
       }))}
     />

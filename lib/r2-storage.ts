@@ -1,5 +1,7 @@
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { del, get, put } from '@vercel/blob'
 
+// Keep legacy r2:// references already stored in the database. File contents
+// now live in Vercel Blob, so no database rewrite is required.
 const R2_SCHEME = 'r2://'
 const PUBLIC_ROUTE = '/api/storage/public/'
 
@@ -10,31 +12,10 @@ type StoredBody = {
   writeHttpMetadata(headers: Headers): void
 }
 
-type FilesBucket = {
-  put(key: string, value: ReadableStream, options: { httpMetadata: { contentType: string } }): Promise<unknown>
-  get(key: string): Promise<StoredBody | null>
-  delete(key: string): Promise<void>
-}
-
-async function bucket() {
-  const { getCloudflareContext } = await import('@opennextjs/cloudflare')
-  const { env } = await getCloudflareContext({ async: true })
-  const store = (env as unknown as { BOOKEASY_FILES?: FilesBucket }).BOOKEASY_FILES
-  if (!store) throw new Error('Bucketul Cloudflare R2 BOOKEASY_FILES nu este configurat.')
-  return store
-}
-
-function s3Config() {
-  const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME } = process.env
-  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) return null
-  return {
-    bucketName: R2_BUCKET_NAME,
-    client: new S3Client({
-      region: 'auto',
-      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
-    }),
-  }
+function blobToken() {
+  const token = process.env.BLOB_READ_WRITE_TOKEN
+  if (!token) throw new Error('BLOB_READ_WRITE_TOKEN nu este configurat în Vercel.')
+  return token
 }
 
 export function r2Url(key: string) {
@@ -55,48 +36,31 @@ export function r2Key(value: string | null | undefined) {
 }
 
 export async function putR2File(key: string, file: File) {
-  const s3 = s3Config()
-  if (s3) {
-    await s3.client.send(new PutObjectCommand({ Bucket: s3.bucketName, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: file.type || 'application/octet-stream' }))
-    return key
-  }
-  const store = await bucket()
-  await store.put(key, file.stream(), {
-    httpMetadata: { contentType: file.type || 'application/octet-stream' },
+  await put(key, file, {
+    access: 'private',
+    token: blobToken(),
+    contentType: file.type || 'application/octet-stream',
+    addRandomSuffix: false,
   })
   return key
 }
 
 export async function getR2File(key: string) {
-  const s3 = s3Config()
-  if (!s3) return (await bucket()).get(key)
-  try {
-    const object = await s3.client.send(new GetObjectCommand({ Bucket: s3.bucketName, Key: key }))
-    if (!object.Body) return null
-    const body = object.Body.transformToWebStream()
-    return {
-      body,
-      httpEtag: object.ETag ?? '',
-      httpMetadata: { contentType: object.ContentType },
-      writeHttpMetadata(headers: Headers) {
-        if (object.ContentType) headers.set('Content-Type', object.ContentType)
-        if (object.CacheControl) headers.set('Cache-Control', object.CacheControl)
-      },
-    } satisfies StoredBody
-  } catch (error) {
-    if ((error as { name?: string; $metadata?: { httpStatusCode?: number } }).name === 'NoSuchKey' || (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) return null
-    throw error
-  }
+  const result = await get(key, { access: 'private', token: blobToken() })
+  if (!result?.stream || result.statusCode !== 200) return null
+  return {
+    body: result.stream,
+    httpEtag: result.blob.etag,
+    httpMetadata: { contentType: result.blob.contentType ?? undefined },
+    writeHttpMetadata(headers: Headers) {
+      if (result.blob.contentType) headers.set('Content-Type', result.blob.contentType)
+    },
+  } satisfies StoredBody
 }
 
 export async function deleteR2File(value: string | null | undefined) {
   const key = r2Key(value)
   if (!key) return false
-  const s3 = s3Config()
-  if (s3) {
-    await s3.client.send(new DeleteObjectCommand({ Bucket: s3.bucketName, Key: key }))
-    return true
-  }
-  await (await bucket()).delete(key)
+  await del(key, { token: blobToken() })
   return true
 }

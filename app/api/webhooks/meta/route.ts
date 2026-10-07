@@ -17,11 +17,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const appSecret = process.env.META_APP_SECRET
+  if (!appSecret) return NextResponse.json({ error: 'Meta nu este configurat.' }, { status: 503 })
+
   const rawBody = await req.text()
 
   const signature = req.headers.get('x-hub-signature-256')
   const expected =
-    'sha256=' + crypto.createHmac('sha256', process.env.META_APP_SECRET!).update(rawBody).digest('hex')
+    'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex')
 
   if (signature !== expected) {
     return NextResponse.json({ error: 'invalid signature' }, { status: 401 })

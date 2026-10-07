@@ -340,8 +340,43 @@ export default function CalendarClient({
   )
 
   return (
-    <div className="calendar-page h-[calc(100vh-56px)] lg:h-screen p-3 lg:p-5 flex flex-col">
-      <div className="mb-3 screen-only calendar-commandbar">
+    <div className="calendar-page h-[calc(100dvh-138px)] min-h-[420px] md:h-[calc(100vh-56px)] lg:h-screen p-3 lg:p-5 flex flex-col">
+      <div className="mb-3 space-y-2 md:hidden screen-only">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="min-w-0 text-lg font-semibold">Calendar {bookingPlural}</h1>
+          <button type="button" onClick={() => setShowBookingModal(true)} className="btn-primary min-h-11 shrink-0 px-3 text-sm">+ Adaugă</button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            type="date"
+            value={currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0')}
+            onChange={(e) => {
+              if (!e.target.value) return
+              const [year, month, day] = e.target.value.split('-').map(Number)
+              setCurrentDate(new Date(year, month - 1, day))
+            }}
+            className="input-field min-w-0 min-h-11"
+            aria-label="Alege data"
+          />
+          {practitioners.length > 0 ? <select value={practitionerFilter} onChange={(e) => changePractitionerFilter(e.target.value)} className="input-field min-w-0 min-h-11" aria-label="Filtrează după persoană">
+            {practitioners.length > 1 && <option value="all">Toți medicii</option>}
+            {practitioners.map((practitioner) => <option key={practitioner.id} value={practitioner.id}>{practitioner.name}</option>)}
+          </select> : <span className="flex items-center text-sm text-gray-500">{visibleEvents.length} {bookingPlural}</span>}
+        </div>
+        <details className="calendar-mobile-options rounded-xl border border-[var(--border-soft)] bg-white px-3">
+          <summary className="cursor-pointer py-2.5 text-sm font-medium text-[var(--accent)]">Căutare și opțiuni</summary>
+          <div className="flex flex-col gap-2 pb-3">
+            <label className="calendar-search !m-0 !min-w-0"><Search size={16}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={'Caută ' + customerSingular + ', telefon...'} aria-label={'Caută ' + customerSingular}/></label>
+            <button type="button" onClick={() => setBlockMode((value) => !value)} className="btn-secondary min-h-11 text-sm">
+              {blockMode ? 'Blocare activă' : 'Blocare poziții'}
+            </button>
+            <PrintButton />
+          </div>
+        </details>
+        {blockMode && <p className="text-xs text-gray-600">Ține apăsat pe un interval pentru a-l bloca.</p>}
+        {(busy || loadingRange) && <p className="text-xs text-gray-500">Se actualizează...</p>}
+      </div>
+      <div className="mb-3 hidden md:block screen-only calendar-commandbar">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-xl lg:text-2xl font-semibold mr-1">Calendar {bookingPlural}</h1>
           <span className="calendar-kpi"><Clock3 size={14}/>{visibleEvents.length} {bookingPlural}</span>

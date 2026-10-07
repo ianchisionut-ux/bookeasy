@@ -13,7 +13,6 @@ import {
 import { venueServiceId } from '@/lib/venue-services'
 import { getNextSequenceNumber } from '@/lib/booking-number'
 import { syncBookingToGoogle } from '@/lib/google-calendar'
-import { createDepositCheckoutLink } from '@/lib/payments/create-checkout'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { z } from 'zod'
 
@@ -26,7 +25,7 @@ const schema = z.object({
   startAt: z.string(),
   customerName: z.string().min(1),
   customerPhone: z.string().min(6),
-  paymentMethod: z.enum(['CASH', 'ONLINE']),
+  paymentMethod: z.enum(['CASH', 'ONLINE']).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -41,6 +40,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: 'Date invalide, verifică formularul.' }, { status: 400 })
 
   const { businessId, serviceId, practitionerId, resourceId: requestedResourceId, customerName, customerPhone, paymentMethod } = parsed.data
+  if (paymentMethod === 'ONLINE') return NextResponse.json({ error: 'Plata online este dezactivată. Fă rezervarea fără plată online.' }, { status: 410 })
 
   const business = await prisma.business.findUnique({ where: { id: businessId } })
   if (!business || !business.publicListed || !business.accountActive) {
@@ -147,7 +147,6 @@ export async function POST(req: NextRequest) {
   })
 
   const sequenceNumber = await getNextSequenceNumber(businessId, startAt)
-  const wantsOnlinePayment = paymentMethod === 'ONLINE' && !!business.paymentProcessor
 
   const booking = await prisma.booking.create({
     data: {
@@ -166,17 +165,6 @@ export async function POST(req: NextRequest) {
   })
   await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync public booking:', error))
 
-  if (wantsOnlinePayment) {
-    try {
-      const checkoutUrl = await createDepositCheckoutLink(booking.id)
-      return NextResponse.json({ bookingId: booking.id, checkoutUrl })
-    } catch (err: any) {
-      // plata nu s-a putut iniția — rezervarea rămâne PENDING, owner-ul poate confirma manual
-      return NextResponse.json({ bookingId: booking.id, checkoutUrl: null, paymentError: err.message })
-    }
-  }
-
-
-  return NextResponse.json({ bookingId: booking.id, checkoutUrl: null })
+  return NextResponse.json({ bookingId: booking.id })
 }
 
