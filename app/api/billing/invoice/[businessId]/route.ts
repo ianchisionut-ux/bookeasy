@@ -25,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ bus
     }
   }
   const key = r2Key(business.billingInvoiceUrl)
-  if (!key) return NextResponse.json({ error: 'Factura trebuie migrată în Cloudflare R2.' }, { status: 409 })
+  if (!key) return NextResponse.json({ error: 'Factura trebuie migrată în stocarea fișierelor.' }, { status: 409 })
   const object = await getR2File(key)
   if (!object) return NextResponse.json({ error: 'Factura nu a fost găsită.' }, { status: 404 })
   return new NextResponse(object.body, { headers: {

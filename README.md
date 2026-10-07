@@ -1,6 +1,6 @@
 # BookEasy
 
-Aplicație Next.js pentru programări, rezervări, mesaje și facturi. Ținta de hosting este Vercel (Node.js), cu PostgreSQL în Neon și fișiere în bucketul Cloudflare R2 existent. Plățile online noi sunt dezactivate; facturile și statusul plăților se gestionează manual.
+Aplicație Next.js pentru programări, rezervări, mesaje și facturi. Ținta de hosting este Vercel (Node.js), cu PostgreSQL în Neon și fișiere în Vercel Blob privat. Plățile online noi sunt dezactivate; facturile și statusul plăților se gestionează manual.
 
 ## Dezvoltare locală
 

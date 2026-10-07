@@ -1,5 +1,7 @@
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { del, get, put } from '@vercel/blob'
 
+// Keep legacy r2:// references already stored in the database. File contents
+// now live in Vercel Blob, so no database rewrite is required.
 const R2_SCHEME = 'r2://'
 const PUBLIC_ROUTE = '/api/storage/public/'
 
@@ -10,17 +12,10 @@ type StoredBody = {
   writeHttpMetadata(headers: Headers): void
 }
 
-function s3Config() {
-  const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME } = process.env
-  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) throw new Error('Accesul R2 nu este configurat în Vercel.')
-  return {
-    bucketName: R2_BUCKET_NAME,
-    client: new S3Client({
-      region: 'auto',
-      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
-    }),
-  }
+function blobToken() {
+  const token = process.env.BLOB_READ_WRITE_TOKEN
+  if (!token) throw new Error('BLOB_READ_WRITE_TOKEN nu este configurat în Vercel.')
+  return token
 }
 
 export function r2Url(key: string) {
@@ -41,36 +36,31 @@ export function r2Key(value: string | null | undefined) {
 }
 
 export async function putR2File(key: string, file: File) {
-  const s3 = s3Config()
-  await s3.client.send(new PutObjectCommand({ Bucket: s3.bucketName, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: file.type || 'application/octet-stream' }))
+  await put(key, file, {
+    access: 'private',
+    token: blobToken(),
+    contentType: file.type || 'application/octet-stream',
+    addRandomSuffix: false,
+  })
   return key
 }
 
 export async function getR2File(key: string) {
-  const s3 = s3Config()
-  try {
-    const object = await s3.client.send(new GetObjectCommand({ Bucket: s3.bucketName, Key: key }))
-    if (!object.Body) return null
-    const body = object.Body.transformToWebStream()
-    return {
-      body,
-      httpEtag: object.ETag ?? '',
-      httpMetadata: { contentType: object.ContentType },
-      writeHttpMetadata(headers: Headers) {
-        if (object.ContentType) headers.set('Content-Type', object.ContentType)
-        if (object.CacheControl) headers.set('Cache-Control', object.CacheControl)
-      },
-    } satisfies StoredBody
-  } catch (error) {
-    if ((error as { name?: string; $metadata?: { httpStatusCode?: number } }).name === 'NoSuchKey' || (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) return null
-    throw error
-  }
+  const result = await get(key, { access: 'private', token: blobToken() })
+  if (!result?.stream || result.statusCode !== 200) return null
+  return {
+    body: result.stream,
+    httpEtag: result.blob.etag,
+    httpMetadata: { contentType: result.blob.contentType ?? undefined },
+    writeHttpMetadata(headers: Headers) {
+      if (result.blob.contentType) headers.set('Content-Type', result.blob.contentType)
+    },
+  } satisfies StoredBody
 }
 
 export async function deleteR2File(value: string | null | undefined) {
   const key = r2Key(value)
   if (!key) return false
-  const s3 = s3Config()
-  await s3.client.send(new DeleteObjectCommand({ Bucket: s3.bucketName, Key: key }))
+  await del(key, { token: blobToken() })
   return true
 }
