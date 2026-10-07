@@ -31,14 +31,19 @@ async function sendUnconfirmedAlerts(now: Date, results: { unconfirmedAlerts: nu
   for (const booking of bookings) {
     const ownerEmail = booking.business.users[0]?.email
     if (!ownerEmail) continue
-    await sendUnconfirmedBookingAlert({
-      to: ownerEmail,
-      businessName: booking.business.name,
-      customerName: booking.customer.name ?? booking.customer.phone ?? 'Fără nume',
-      customerPhone: booking.customer.phone ?? 'Nespecificat',
-      serviceName: booking.service.name,
-      startAt: booking.startAt,
-    }).catch((error) => console.error('Eroare la alerta de neconfirmare:', error))
+    try {
+      await sendUnconfirmedBookingAlert({
+        to: ownerEmail,
+        businessName: booking.business.name,
+        customerName: booking.customer.name ?? booking.customer.phone ?? 'Fără nume',
+        customerPhone: booking.customer.phone ?? 'Nespecificat',
+        serviceName: booking.service.name,
+        startAt: booking.startAt,
+      })
+    } catch (error) {
+      console.error('Eroare la alerta de neconfirmare:', error)
+      continue
+    }
     await prisma.booking.update({ where: { id: booking.id }, data: { unconfirmedAlertSent: true } })
     results.unconfirmedAlerts++
   }

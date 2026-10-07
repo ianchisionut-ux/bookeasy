@@ -81,13 +81,12 @@ export async function sendUnconfirmedBookingAlert({
   startAt: Date
 }) {
   if (!process.env.RESEND_API_KEY) {
-    console.warn('RESEND_API_KEY lipsește — sar peste alerta de rezervare neconfirmată.')
-    return
+    throw new Error('RESEND_API_KEY lipsește — alerta de rezervare neconfirmată nu a fost trimisă.')
   }
 
   const time = startAt.toLocaleString('ro-RO', { dateStyle: 'medium', timeStyle: 'short', hour12: false, timeZone: 'Europe/Bucharest' })
 
-  await getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from: 'Notificări <alerte@bookeasy.ro>',
     to,
     subject: `Rezervare neconfirmată — ${customerName}, ${time}`,
@@ -98,6 +97,7 @@ export async function sendUnconfirmedBookingAlert({
       <p>Poate fi util să-l suni direct, ca să confirmi că vine.</p>
     `,
   })
+  if (error) throw new Error(`Resend a respins alerta: ${error.message}`)
 }
 
 export async function sendAlertEmail({
