@@ -10,9 +10,9 @@
 ## Stare verificată pe 7 octombrie 2026
 
 - Deploymentul Vercel răspunde 200 pentru homepage, login, lista publică din Neon și pagina de rezervare a clinicii. Imaginea migrată în Blob răspunde 200 și are 302404 bytes. Checkout-ul online răspunde 410.
-- DNS-ul public încă indică spre Cloudflare. Sesiunea Cloudflare disponibilă prin CLI are acces la citirea zonei, fără drept de modificare DNS. Comutarea DNS necesită aplicare din contul Cloudflare.
+- DNS-ul a fost comutat de proprietar pe 7 octombrie 2026. Vercel confirmă ambele domenii ca `configured-correctly`; testele HTTPS directe către Vercel au trecut. Unele resolvere locale mai pot păstra temporar vechile IP-uri Cloudflare în cache.
 - Lipsesc în Vercel cheile pentru Meta, Google și Resend; aceste integrări trebuie reconectate. Secretul GitHub `BOOKEASY_CRON_SECRET` nu este configurat încă, deci workflow-ul de alerte la 15 minute nu este activ.
-- Originalul imaginii din R2 și Worker-ul Cloudflare rămân disponibile pentru revenire până la confirmarea funcționării domeniului pe Vercel.
+- Originalul imaginii din R2 și Worker-ul Cloudflare rămân disponibile temporar pentru revenire. Ramura GitHub `codex/mobile-ux` conține versiunea publicată, iar `main` încă are codul vechi; înainte de viitoare deployuri din Git, integrează această ramură în `main` sau setează-o drept ramură Production în Vercel.
 
 ## Variabile Production în Vercel
 
