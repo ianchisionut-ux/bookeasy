@@ -97,12 +97,12 @@ export default function HomePage() {
               <a href="#cere-acces" className="btn-primary group inline-flex items-center justify-center gap-2 px-6 py-3">
                 Începe cu BookEasy <ArrowRight size={17} className="transition group-hover:translate-x-1" />
               </a>
-              <Link href="/harta" className="btn-secondary inline-flex items-center justify-center gap-2 px-6 py-3">
+              <Link href="/descopera" className="btn-secondary inline-flex items-center justify-center gap-2 px-6 py-3">
                 <Globe size={17} /> Vezi afacerile
               </Link>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs text-gray-600 sm:text-sm">
-              <span className="flex items-center gap-1.5"><Check size={15} className="text-[var(--brand-green-dark)]" /> Fără aplicație pentru clienți</span>
+              <span className="flex items-center gap-1.5"><Check size={15} className="text-[var(--brand-green-dark)]" /> Aplicație opțională pentru clienți</span>
               <span className="flex items-center gap-1.5"><Check size={15} className="text-[var(--brand-green-dark)]" /> Configurare asistată</span>
               <span className="flex items-center gap-1.5"><Check size={15} className="text-[var(--brand-green-dark)]" /> Potrivit pentru echipe</span>
             </div>
@@ -155,7 +155,7 @@ export default function HomePage() {
             <div>
               <p className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--accent-hover)]">Un singur flux</p>
               <h2 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">Simplu pentru client. Automat pentru tine.</h2>
-              <p className="mt-4 text-sm leading-relaxed text-gray-600 sm:text-base">Fără aplicații noi și fără introducere manuală. BookEasy leagă mesajele, disponibilitatea și calendarul într-un proces continuu.</p>
+              <p className="mt-4 text-sm leading-relaxed text-gray-600 sm:text-base">Cu rezervare rapidă din browser sau din aplicația instalată. BookEasy leagă mesajele, disponibilitatea și calendarul într-un proces continuu.</p>
               <a href="#cere-acces" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent-hover)] transition hover:gap-3">
                 Vreau să automatizez programările <ArrowRight size={16} />
               </a>

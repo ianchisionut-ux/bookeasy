@@ -66,7 +66,7 @@ export default function PwaManager() {
     setDismissed(true)
   }
 
-  // Public/onboarding pages still use the shared site manifest.
+  const isClientPage = typeof window !== 'undefined' && (/^\/(descopera|harta)(\/|$)/.test(window.location.pathname) || /^\/[^/]+\/(rezerva|recenzie)(\/|$)/.test(window.location.pathname))
   const showInstallCard = online && !dismissed && Boolean(installPrompt || iosInstallable)
 
   return (
@@ -82,7 +82,7 @@ export default function PwaManager() {
           <div className="flex items-start gap-3 pr-6">
             <Image src="/pwa-icon-192-white-v2.png" width={44} height={44} alt="" className="h-11 w-11 rounded-xl" />
             <div>
-              <p className="font-medium">Instalează BookEasy</p>
+              <p className="font-medium">Instalează {isClientPage ? 'BookEasy pentru clienți' : 'BookEasy'}</p>
               {installPrompt ? (
                 <p className="text-xs text-gray-500 mt-0.5">Acces rapid din ecranul principal, ca o aplicație.</p>
               ) : (
