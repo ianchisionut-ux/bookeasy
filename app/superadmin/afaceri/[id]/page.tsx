@@ -82,6 +82,7 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
           externalId: c.externalId,
           wabaId: c.wabaId,
           status: c.status,
+          enabledByOwner: c.enabledByOwner,
         }))}
         practitioners={business.practitioners.map((practitioner) => ({
           id: practitioner.id,

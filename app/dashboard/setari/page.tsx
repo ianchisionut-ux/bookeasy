@@ -6,6 +6,7 @@ import { PublicPageLinkCard } from './public-page-link-card'
 import { SubscriptionCard } from './subscription-card'
 import BrandColorCard from './brand-color-card'
 import PasswordForm from './password-form'
+import MessengerBotToggle from '@/components/messenger-bot-toggle'
 
 // Luni primul, Duminică ultima — ordinea de afișare a programului de lucru
 // (valorile 'weekday' rămân 0=Duminică...6=Sâmbătă, standardul JS getDay(), doar ordinea vizuală se schimbă)
@@ -17,10 +18,16 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
   const businessId = (session as any)?.businessId
   if (!businessId) redirect('/login')
 
-  const business = await prisma.business.findUnique({
-    where: { id: businessId },
-    include: { workingHours: true },
-  })
+  const [business, messengerChannel] = await Promise.all([
+    prisma.business.findUnique({
+      where: { id: businessId },
+      include: { workingHours: true },
+    }),
+    prisma.channel.findFirst({
+      where: { businessId, type: 'FACEBOOK', status: 'ACTIVE' },
+      select: { id: true, enabledByOwner: true },
+    }),
+  ])
   if (!business) redirect('/login')
 
   const workingHours = WEEKDAYS_DISPLAY_ORDER.map((weekday) => {
@@ -86,6 +93,12 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
         />
 
         <BrandColorCard initialColor={business.brandColor} usesAppointments={business.category === 'SALON' || business.category === 'CLINICA'} />
+        {messengerChannel && (
+          <div className="card p-5 mb-5 break-inside-avoid">
+            <h2 className="font-medium mb-3">Messenger</h2>
+            <MessengerBotToggle channelId={messengerChannel.id} enabled={messengerChannel.enabledByOwner} />
+          </div>
+        )}
 
         <div className="card p-5 mb-5 break-inside-avoid">
           <h2 className="font-medium mb-1">Cont</h2>

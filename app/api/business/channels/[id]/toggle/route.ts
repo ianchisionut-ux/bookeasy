@@ -8,14 +8,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params
   const { enabledByOwner } = await req.json()
+  if (typeof enabledByOwner !== 'boolean') return NextResponse.json({ error: 'Valoare invalidă.' }, { status: 400 })
 
-  // owner-ul poate opri/porni doar canale care aparțin business-ului lui — nu poate atinge conexiunea/cheile
+  // Proprietarul controlează doar canalele sale; superadminul indică explicit afacerea.
+  const requestedBusinessId = req.nextUrl.searchParams.get('businessId')
+  const businessId = (session as any).isSuperAdmin && requestedBusinessId
+    ? requestedBusinessId
+    : (session as any).businessId
   const channel = await prisma.channel.findUnique({ where: { id } })
-  if (!channel || channel.businessId !== (session as any).businessId) {
+  if (!businessId || !channel || channel.businessId !== businessId) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
-  await prisma.channel.update({ where: { id }, data: { enabledByOwner: Boolean(enabledByOwner) } })
+  await prisma.channel.update({ where: { id }, data: { enabledByOwner } })
 
   return NextResponse.json({ success: true })
 }
