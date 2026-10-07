@@ -163,7 +163,7 @@ export default function MapClient() {
 
       marker.addListener('click', () => {
         infoWindow.setContent(`
-          <div style="font-family:sans-serif; padding:4px;">
+          <div style="font-family:var(--font-sans),sans-serif; padding:4px;">
             <p style="font-weight:600; margin:0 0 2px;">${b.name}</p>
             <p style="font-size:11px; color:${CATEGORY_COLOR[b.category]}; font-weight:600; margin:0 0 4px;">${CATEGORY_LABEL[b.category]}</p>
             <p style="font-size:12px; color:#666; margin:0 0 4px;">${b.address ?? b.city ?? ''}</p>

@@ -216,7 +216,7 @@ export default function ProgramariManager({
         className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--surface-muted)]"
         style={isNewlyConfirmed ? { background: 'rgba(34, 197, 94, 0.07)' } : {}}
       >
-        <td className="py-3 px-5 text-gray-400 font-mono text-xs">
+        <td className="py-3 px-5 text-gray-400 text-xs">
           {b.sequenceNumber ? `#${String(b.sequenceNumber).padStart(3, '0')}` : '—'}
         </td>
         <td className="font-medium">
