@@ -3,13 +3,13 @@ import Image from 'next/image'
 import { company } from '@/lib/company'
 import { CookiePreferencesButton } from '@/components/cookie-preferences-button'
 
-export function PublicFooter() {
+export function PublicFooter({ showLogo = true }: { showLogo?: boolean }) {
   return (
     <footer className="border-t border-[var(--border-soft)] bg-[var(--brand-ink)] px-4 py-9 text-white sm:px-6">
       <div className="mx-auto grid max-w-6xl gap-8 border-b border-white/10 pb-8 md:grid-cols-[1.2fr_1fr_1fr]">
         <div>
-          <Image src="/logo.png" alt="bookeasy.ro" width={260} height={130} className="h-auto w-[180px]" />
-          <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/65">Platformă SaaS pentru programări, clienți, echipe și comunicare automată.</p>
+          {showLogo && <Image src="/logo.png" alt="bookeasy.ro" width={260} height={130} className="h-auto w-[180px]" />}
+          <p className={`${showLogo ? 'mt-4' : ''} max-w-sm text-sm leading-relaxed text-white/65`}>Platformă SaaS pentru programări, clienți, echipe și comunicare automată.</p>
           <p className="mt-3 text-xs text-white/50">{company.legalName} · CUI {company.cui}<br />{company.tradeRegistryNumber}</p>
         </div>
         <div>

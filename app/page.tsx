@@ -233,7 +233,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <PublicFooter />
+      <PublicFooter showLogo={false} />
     </main>
   )
 }
