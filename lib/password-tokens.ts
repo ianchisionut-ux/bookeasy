@@ -11,6 +11,11 @@ function getResend() {
   return resendClient
 }
 
+async function sendOrThrow(message: Parameters<Resend['emails']['send']>[0]) {
+  const { error } = await getResend().emails.send(message)
+  if (error) throw new Error('Resend a respins emailul: ' + error.message)
+}
+
 const TOKEN_EXPIRY_HOURS = 24
 
 // pe medii serverless (Vercel), funcția se poate opri imediat după ce răspunde —
@@ -43,7 +48,7 @@ export async function sendPasswordSetupEmail(email: string, businessName: string
     console.warn('RESEND_API_KEY lipsește — sar peste trimiterea email-ului de configurare cont.')
     return
   }
-  await getResend().emails.send({
+  await sendOrThrow({
     from: 'bookeasy.ro <noreply@bookeasy.ro>',
     replyTo: 'nextlevel.zalau@gmail.com',
     to: email,
@@ -64,7 +69,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     console.warn('RESEND_API_KEY lipsește — sar peste trimiterea email-ului de resetare parolă.')
     return
   }
-  await getResend().emails.send({
+  await sendOrThrow({
     from: 'bookeasy.ro <noreply@bookeasy.ro>',
     replyTo: 'nextlevel.zalau@gmail.com',
     to: email,
