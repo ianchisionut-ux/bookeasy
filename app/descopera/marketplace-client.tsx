@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Building2, Heart, LayoutGrid, MapPin, Menu, Search, Scissors, Smartphone, Star, Stethoscope, X } from 'lucide-react'
+import ClientInstallBanner from '@/components/client-install-banner'
+import { ArrowRight, Building2, Heart, LayoutGrid, MapPin, Menu, Search, Scissors, Star, Stethoscope, X } from 'lucide-react'
 
 type Category = 'ALL' | 'SALON' | 'CLINICA' | 'EVENT_VENUE'
 type Business = {
@@ -58,6 +59,32 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
   function showFavorites() { setFavoritesOnly(true); setMenuOpen(false); showResults() }
   function startSearch() { setFavoritesOnly(false); searchRef.current?.focus(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
+  useEffect(() => {
+    const navigate = (destination = window.location.hash) => {
+      if (destination.endsWith('#favorite')) {
+        setFavoritesOnly(true)
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      } else if (destination.endsWith('#cauta')) {
+        setFavoritesOnly(false)
+        searchRef.current?.focus()
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      } else if (destination === '/descopera') {
+        setCategory('ALL')
+        setFavoritesOnly(false)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    }
+    const onHashChange = () => navigate()
+    const onClientNav = (event: Event) => navigate((event as CustomEvent<string>).detail)
+    window.addEventListener('hashchange', onHashChange)
+    window.addEventListener('bookeasy-client-nav', onClientNav)
+    if (window.location.hash) navigate()
+    return () => {
+      window.removeEventListener('hashchange', onHashChange)
+      window.removeEventListener('bookeasy-client-nav', onClientNav)
+    }
+  }, [])
+
   const visible = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('ro-RO')
     return businesses.filter((business) =>
@@ -69,7 +96,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
   }, [businesses, category, city, favorites, favoritesOnly, query])
 
   return (
-    <main className="min-h-screen bg-[var(--surface-muted)] pb-20 font-sans text-[var(--brand-ink)] md:pb-0">
+    <main className="min-h-screen bg-[var(--surface-muted)] font-sans text-[var(--brand-ink)]">
       <header className="relative z-30 border-b border-[var(--border-soft)] bg-white">
         <div className="mx-auto flex h-[66px] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
           <Link href="/descopera" className="flex min-w-0 items-center gap-2" aria-label="BookEasy — acasă">
@@ -88,7 +115,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
       </header>
 
       <section className="relative isolate h-[310px] overflow-hidden bg-[var(--brand-ink)] sm:h-[350px] lg:h-[390px]">
-        <Image src="/client-marketplace-hero-v2.jpg" alt="Instrumente de salon și clinică, alături de un calendar de programări" fill priority sizes="100vw" className="object-cover object-[66%_center]" />
+        <Image src="/client-marketplace-hero-v3.jpg" alt="Laptop, tabletă și telefon cu interfețe de programări BookEasy" fill priority sizes="100vw" className="object-cover object-center" />
         <div className="absolute inset-0 bg-gradient-to-r from-[var(--brand-ink)]/95 via-[var(--brand-ink)]/70 to-[var(--brand-ink)]/20" />
         <div className="relative mx-auto flex h-full max-w-7xl items-center px-5 pb-8 sm:px-8 lg:pb-10">
           <div className="max-w-2xl text-white"><p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">Rezervă simplu, oriunde</p><h1 className="text-[32px] font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-[56px]">Descoperă locuri<br />și experiențe<br /><span className="text-[var(--brand-teal)]">în orașul tău</span></h1><p className="mt-4 max-w-lg text-sm leading-relaxed text-white/90 sm:text-base">Saloane, clinici și spații de evenimente. Alegi locul potrivit și rezervi direct.</p></div>
@@ -115,9 +142,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
         })}</div>}
       </section>
 
-      <section className="mx-auto mb-10 max-w-7xl px-4 sm:px-6"><div className="flex flex-col items-start gap-5 overflow-hidden rounded-[24px] bg-gradient-to-r from-[var(--brand-teal-soft)] to-[var(--brand-green-soft)] p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8"><div><h2 className="text-2xl font-bold tracking-tight">BookEasy în buzunarul tău</h2><p className="mt-1 text-sm text-gray-600">Instalează aplicația pentru clienți și revino rapid la locurile favorite.</p><div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-[var(--brand-teal-dark)]"><span>♡ Favorite pe telefon</span><span>▣ Rezervare rapidă</span><span>✓ Fără magazin de aplicații</span></div></div><button onClick={() => window.dispatchEvent(new Event('bookeasy-install-request'))} className="btn-primary flex min-h-12 items-center gap-2 px-5 text-sm"><Smartphone size={19} /> Instalează aplicația</button></div></section>
-
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[var(--border-soft)] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(17,38,58,.07)] md:hidden" aria-label="Navigare aplicație client"><button onClick={() => { setCategory('ALL'); setFavoritesOnly(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] text-[var(--brand-teal-dark)]"><LayoutGrid size={21} />Acasă</button><button onClick={startSearch} className="flex min-h-16 flex-col items-center justify-center gap-1 text-[11px]"><Search size={21} />Caută</button><button onClick={showFavorites} className="flex min-h-16 flex-col items-center justify-center gap-1 text-[11px]"><Heart size={21} fill={favoritesOnly ? 'currentColor' : 'none'} />Favorite</button><Link href="/harta" className="flex min-h-16 flex-col items-center justify-center gap-1 text-[11px]"><MapPin size={21} />Hartă</Link></nav>
+      <ClientInstallBanner />
     </main>
   )
 }

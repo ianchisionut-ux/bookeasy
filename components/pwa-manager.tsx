@@ -4,10 +4,15 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Download, Share, WifiOff, X } from 'lucide-react'
+import { CLIENT_INSTALL_DISMISSED_KEY, CLIENT_INSTALLED_KEY, isStandaloneApp } from '@/lib/client-pwa'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
+function isStandaloneAppSafe() {
+  return typeof window !== 'undefined' && isStandaloneApp()
 }
 
 export default function PwaManager() {
@@ -20,7 +25,7 @@ export default function PwaManager() {
 
   useEffect(() => {
     setOnline(navigator.onLine)
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone)
+    const standalone = isStandaloneApp()
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
     const wasDismissed = sessionStorage.getItem('bookeasy-install-dismissed') === '1'
     setIosInstallable(ios && !standalone)
@@ -40,6 +45,15 @@ export default function PwaManager() {
       }
     }
 
+    const onAppInstalled = () => {
+      if (/^\/(descopera|harta)(\/|$)/.test(window.location.pathname)) {
+        try { localStorage.setItem(CLIENT_INSTALLED_KEY, '1') } catch { /* Storage may be disabled. */ }
+      }
+      setInstallPrompt(null)
+      setManualInstall(false)
+      setDismissed(true)
+      window.dispatchEvent(new Event('bookeasy-app-installed'))
+    }
     const onInstall = (event: Event) => {
       event.preventDefault()
       setInstallPrompt(event as BeforeInstallPromptEvent)
@@ -48,10 +62,12 @@ export default function PwaManager() {
     const onOnline = () => setOnline(true)
     const onOffline = () => setOnline(false)
     window.addEventListener('beforeinstallprompt', onInstall)
+    window.addEventListener('appinstalled', onAppInstalled)
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
     return () => {
       window.removeEventListener('beforeinstallprompt', onInstall)
+      window.removeEventListener('appinstalled', onAppInstalled)
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
     }
@@ -59,6 +75,7 @@ export default function PwaManager() {
 
   useEffect(() => {
     const onInstallRequest = () => {
+      if (isStandaloneApp()) return
       if (installPrompt) void install()
       else { setManualInstall(true); setDismissed(false) }
     }
@@ -74,12 +91,16 @@ export default function PwaManager() {
   }
 
   function dismiss() {
-    sessionStorage.setItem('bookeasy-install-dismissed', '1')
+    if (isClientPage) {
+      try { localStorage.setItem(CLIENT_INSTALL_DISMISSED_KEY, '1') } catch { /* Storage may be disabled. */ }
+    } else {
+      sessionStorage.setItem('bookeasy-install-dismissed', '1')
+    }
     setDismissed(true)
   }
 
   const isClientPage = /^\/(descopera|harta)(\/|$)/.test(pathname) || /^\/[^/]+\/(rezerva|recenzie)(\/|$)/.test(pathname)
-  const showInstallCard = online && !dismissed && Boolean(installPrompt || iosInstallable || manualInstall)
+  const showInstallCard = online && !dismissed && !isStandaloneAppSafe() && (isClientPage ? manualInstall : Boolean(installPrompt || iosInstallable || manualInstall))
 
   return (
     <>
@@ -89,7 +110,7 @@ export default function PwaManager() {
         </div>
       )}
       {showInstallCard && (
-        <div className={`fixed left-3 right-3 ${pathname === '/descopera' ? 'bottom-20' : 'bottom-3'} sm:bottom-3 sm:left-auto sm:right-5 sm:w-96 z-[99] card p-4 shadow-xl border border-[var(--border-soft)]`} role="dialog" aria-label="Instalează BookEasy">
+        <div className={`fixed left-3 right-3 ${isClientPage ? 'bottom-[calc(5rem+env(safe-area-inset-bottom))]' : 'bottom-3'} sm:bottom-3 sm:left-auto sm:right-5 sm:w-96 z-[99] card p-4 shadow-xl border border-[var(--border-soft)]`} role="dialog" aria-label="Instalează BookEasy">
           <button onClick={dismiss} className="absolute right-3 top-3 text-gray-400" aria-label="Închide"><X size={17} /></button>
           <div className="flex items-start gap-3 pr-6">
             <Image src="/pwa-icon-192-white-v2.png" width={44} height={44} alt="" className="h-11 w-11 rounded-xl" />

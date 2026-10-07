@@ -382,7 +382,7 @@ export default function BookingFlow({
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="sticky bottom-3 z-10 rounded-2xl border border-white/80 bg-white/90 p-2.5 shadow-xl backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+      <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-10 rounded-2xl border border-white/80 bg-white/90 p-2.5 shadow-xl backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
         {service && selectedSlot && <p className="mb-2 text-center text-xs text-gray-500">{service.name} · {new Date(selectedSlot).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })}</p>}
         <Button
           onClick={submitBooking}

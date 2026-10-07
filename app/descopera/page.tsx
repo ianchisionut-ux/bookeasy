@@ -17,7 +17,7 @@ export default async function DiscoverPage() {
         ...business,
         rating: business.rating === null ? null : Number(business.rating),
       }))} />
-      <div className="pb-20 md:pb-0"><PublicFooter /></div>
+      <PublicFooter />
     </>
   )
 }
