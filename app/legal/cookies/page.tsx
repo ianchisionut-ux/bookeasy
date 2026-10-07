@@ -22,6 +22,8 @@ export default function CookiesPage() {
         <tr><td><code>bookeasy_customer_info</code></td><td>localStorage, opțional</td><td>Memorarea locală a numelui și telefonului completate la rezervare, numai după acord</td></tr>
         <tr><td>Preferința numelui operatorului</td><td>localStorage, utilizator autentificat</td><td>Afișarea operatorului în conversațiile gestionate din dashboard</td></tr>
         <tr><td><code>bookeasy-install-dismissed</code></td><td>sessionStorage</td><td>Ascunderea bannerului de instalare PWA pentru sesiunea curentă</td></tr>
+        <tr><td><code>bookeasy-client-install-dismissed-v1</code></td><td>localStorage</td><td>Ascunderea permanentă pe acest dispozitiv a bannerului de instalare pentru clienți, după închiderea cu X</td></tr>
+        <tr><td><code>bookeasy-client-installed-v1</code></td><td>localStorage</td><td>Ascunderea bannerului după instalarea aplicației pe dispozitiv</td></tr>
       </tbody></table>
       <h2>4. Analiză și marketing</h2><div className="legal-callout">La data acestei versiuni, BookEasy nu instalează Google Analytics, Meta Pixel sau alte cookie-uri de marketing pe domeniul bookeasy.ro.</div><p>Dacă vom activa instrumente opționale de analiză sau marketing, acestea vor fi blocate până la consimțământ și politica va fi actualizată.</p>
       <h2>5. Gestionarea preferințelor</h2><p>Poți modifica oricând alegerea privind stocarea funcțională. Poți șterge cookie-urile și datele locale din setările browserului. Blocarea cookie-urilor strict necesare poate împiedica autentificarea.</p><CookiePreferencesButton className="btn-secondary mt-3" />

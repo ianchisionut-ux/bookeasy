@@ -3,6 +3,7 @@ import { Manrope } from 'next/font/google'
 import type { Metadata, Viewport } from 'next'
 import PwaManager from '@/components/pwa-manager'
 import CookieConsent from '@/components/cookie-consent'
+import ClientBottomNav from '@/components/client-bottom-nav'
 
 const manrope = Manrope({ subsets: ['latin', 'latin-ext'], variable: '--font-manrope' })
 
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <PwaManager />
         <CookieConsent />
+        <ClientBottomNav />
       </body>
     </html>
   )
