@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import MarketplaceClient from './marketplace-client'
+import { PublicFooter } from '@/components/ui/public-footer'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +17,7 @@ export default async function DiscoverPage() {
         ...business,
         rating: business.rating === null ? null : Number(business.rating),
       }))} />
+      <div className="pb-20 md:pb-0"><PublicFooter /></div>
     </>
   )
 }
