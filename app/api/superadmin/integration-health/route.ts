@@ -5,9 +5,14 @@ import { decrypt } from '@/lib/crypto'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
-  if (!(session as any)?.isSuperAdmin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  const businessId = req.nextUrl.searchParams.get('businessId')
+  if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const requestedBusinessId = req.nextUrl.searchParams.get('businessId')
+  const isSuperAdmin = Boolean((session as any).isSuperAdmin)
+  const businessId = isSuperAdmin ? requestedBusinessId : (session as any).businessId
   if (!businessId) return NextResponse.json({ error: 'businessId required' }, { status: 400 })
+  if (!isSuperAdmin && requestedBusinessId && requestedBusinessId !== businessId) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
   const request = (url: string, init: RequestInit = {}) => fetch(url, { ...init, cache: 'no-store', signal: AbortSignal.timeout(15000) })
   const [calendars, channels] = await Promise.all([
     prisma.googleCalendarConnection.findMany({ where: { businessId } }),
