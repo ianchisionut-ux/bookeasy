@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/prisma'
-import { PublicHeader } from '@/components/ui/public-header'
 import MarketplaceClient from './marketplace-client'
 
 export const dynamic = 'force-dynamic'
@@ -12,12 +11,11 @@ export default async function DiscoverPage() {
   })
 
   return (
-    <main className="min-h-screen bg-[var(--surface-muted)]">
-      <PublicHeader />
+    <>
       <MarketplaceClient businesses={businesses.map((business) => ({
         ...business,
         rating: business.rating === null ? null : Number(business.rating),
       }))} />
-    </main>
+    </>
   )
 }
