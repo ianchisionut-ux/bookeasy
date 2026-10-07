@@ -3,7 +3,7 @@
 ## Stare și reguli
 
 - Proiect Vercel existent: `pmcustoms/bookeasy`, URL de producție Vercel: `https://bookeasy-dun.vercel.app`.
-- Domeniul `bookeasy.ro` folosește nameserverele Cloudflare și traficul încă trece prin Worker până la schimbarea DNS/rutelor.
+- Domeniul `bookeasy.ro` folosește nameserverele Cloudflare, iar traficul aplicației ajunge la Vercel.
 - Baza de date rămâne în Neon. Unica imagine existentă în R2 a fost copiată și verificată în Vercel Blob privat. Referințele `r2://` din baza de date rămân valide ca identificatori logici; originalul R2 rămâne pentru rollback.
 - Checkout-ul online pentru avans și abonament este oprit. Webhook-urile vechi rămân pentru tranzacțiile în curs.
 
@@ -11,8 +11,8 @@
 
 - Deploymentul Vercel răspunde 200 pentru homepage, login, lista publică din Neon și pagina de rezervare a clinicii. Imaginea migrată în Blob răspunde 200 și are 302404 bytes. Checkout-ul online răspunde 410.
 - DNS-ul a fost comutat de proprietar pe 7 octombrie 2026. Vercel confirmă ambele domenii ca `configured-correctly`; testele HTTPS directe către Vercel au trecut. Unele resolvere locale mai pot păstra temporar vechile IP-uri Cloudflare în cache.
-- Lipsesc în Vercel cheile pentru Meta, Google și Resend; aceste integrări trebuie reconectate. Secretul GitHub `BOOKEASY_CRON_SECRET` nu este configurat încă, deci workflow-ul de alerte la 15 minute nu este activ.
-- Originalul imaginii din R2 și Worker-ul Cloudflare rămân disponibile temporar pentru revenire. Ramura GitHub `codex/mobile-ux` conține versiunea publicată, iar `main` încă are codul vechi; înainte de viitoare deployuri din Git, integrează această ramură în `main` sau setează-o drept ramură Production în Vercel.
+- Variabilele Production pentru Meta, Google și Resend sunt prezente în Vercel. Webhook-ul Meta a fost verificat pe domeniul live cu noul `META_VERIFY_TOKEN`. Conexiunile Meta și Google din aplicație trebuie refăcute deoarece `ENCRYPTION_KEY` a fost schimbată; funcționalitatea completă a furnizorilor încă necesită testare în conturile lor. Secretul GitHub `BOOKEASY_CRON_SECRET` încă trebuie configurat pentru alertele la 15 minute.
+- Originalul imaginii din R2 și Worker-ul Cloudflare rămân disponibile temporar pentru revenire.
 
 ## Variabile Production în Vercel
 
@@ -33,10 +33,10 @@ Nu configura noile chei Stripe, Netopia, EuPlătesc sau BT iPay pentru checkout.
 
 Vercel execută zilnic `check-tokens`, `sync-google-reviews` și `billing`, conform `vercel.json`. Alertele de reconfirmare au nevoie de un interval mai scurt decât permite Hobby. Workflow-ul `.github/workflows/reconfirmation-alerts.yml` apelează `/api/cron/reminders` la fiecare 15 minute. El funcționează numai după ce fișierul ajunge pe ramura implicită GitHub și după configurarea secretului repo `BOOKEASY_CRON_SECRET` egal cu `CRON_SECRET` din Vercel. GitHub poate întârzia sau omite rulări programate; monitorizează execuțiile din Actions.
 
-## Verificare înainte de comutare
+## Verificare după comutare
 
 1. Confirmă că variabilele Production sunt prezente în Vercel (numai numele, fără valori afișate).
-2. Publică build-ul pe `bookeasy-dun.vercel.app`. Verifică loginul, calendarul, o rezervare de test viitoare, mesajele Meta, Google Calendar și accesul la imaginea migrată în Blob și la un document privat de test.
+2. Pe `bookeasy.ro`, verifică loginul, calendarul, o rezervare de test viitoare, mesajele Meta, Google Calendar și accesul la imaginea migrată în Blob și la un document privat de test.
 3. Verifică răspunsul HTTP 410 la checkout-urile vechi. Confirmă că factura rămâne descărcabilă și statusul plății poate fi actualizat manual.
 4. Configurează secretul GitHub și verifică o rulare manuală `workflow_dispatch` a alertelor.
 5. Domeniile `bookeasy.ro` și `www.bookeasy.ro` sunt deja atașate proiectului Vercel. În zona Cloudflare, înlocuiește înregistrările vechi pentru `@` și `www` cu câte un CNAME către `a59c52ed3fdcb6c3.vercel-dns-017.com`, ambele cu **Proxy status: DNS only**. Alternativ, folosește Domain Connect din pagina Vercel a fiecărui domeniu. Verifică apoi certificatul HTTPS și ambele domenii.

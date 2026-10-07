@@ -23,4 +23,4 @@ jobs:
         run: |
           curl --fail-with-body --silent --show-error --retry 2 --max-time 120 \
             --header "Authorization: Bearer $CRON_SECRET" \
-            https://bookeasy-dun.vercel.app/api/cron/reminders
+            https://bookeasy.ro/api/cron/reminders
