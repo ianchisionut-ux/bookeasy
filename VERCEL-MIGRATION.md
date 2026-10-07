@@ -7,6 +7,13 @@
 - Baza de date rămâne în Neon. Unica imagine existentă în R2 a fost copiată și verificată în Vercel Blob privat. Referințele `r2://` din baza de date rămân valide ca identificatori logici; originalul R2 rămâne pentru rollback.
 - Checkout-ul online pentru avans și abonament este oprit. Webhook-urile vechi rămân pentru tranzacțiile în curs.
 
+## Stare verificată pe 7 octombrie 2026
+
+- Deploymentul Vercel răspunde 200 pentru homepage, login, lista publică din Neon și pagina de rezervare a clinicii. Imaginea migrată în Blob răspunde 200 și are 302404 bytes. Checkout-ul online răspunde 410.
+- DNS-ul public încă indică spre Cloudflare. Sesiunea Cloudflare disponibilă prin CLI are acces la citirea zonei, fără drept de modificare DNS. Comutarea DNS necesită aplicare din contul Cloudflare.
+- Lipsesc în Vercel cheile pentru Meta, Google și Resend; aceste integrări trebuie reconectate. Secretul GitHub `BOOKEASY_CRON_SECRET` nu este configurat încă, deci workflow-ul de alerte la 15 minute nu este activ.
+- Originalul imaginii din R2 și Worker-ul Cloudflare rămân disponibile pentru revenire până la confirmarea funcționării domeniului pe Vercel.
+
 ## Variabile Production în Vercel
 
 Configurează direct în Vercel, fără a pune valorile în Git sau în chat. Pentru funcționarea de bază sunt obligatorii:
@@ -32,6 +39,6 @@ Vercel execută zilnic `check-tokens`, `sync-google-reviews` și `billing`, conf
 2. Publică build-ul pe `bookeasy-dun.vercel.app`. Verifică loginul, calendarul, o rezervare de test viitoare, mesajele Meta, Google Calendar și accesul la imaginea migrată în Blob și la un document privat de test.
 3. Verifică răspunsul HTTP 410 la checkout-urile vechi. Confirmă că factura rămâne descărcabilă și statusul plății poate fi actualizat manual.
 4. Configurează secretul GitHub și verifică o rulare manuală `workflow_dispatch` a alertelor.
-5. Adaugă `bookeasy.ro` și `www.bookeasy.ro` proiectului Vercel și urmează exact valorile DNS afișate de Vercel. În zona Cloudflare, schimbă înregistrările A/CNAME către Vercel și setează-le **DNS only**; o înregistrare proxiată ar putea trimite în continuare cererile prin Worker-ul vechi. Verifică certificatul HTTPS și ambele domenii.
+5. Domeniile `bookeasy.ro` și `www.bookeasy.ro` sunt deja atașate proiectului Vercel. În zona Cloudflare, înlocuiește înregistrările vechi pentru `@` și `www` cu câte un CNAME către `a59c52ed3fdcb6c3.vercel-dns-017.com`, ambele cu **Proxy status: DNS only**. Alternativ, folosește Domain Connect din pagina Vercel a fiecărui domeniu. Verifică apoi certificatul HTTPS și ambele domenii.
 6. După comutare, actualizează callback-urile OAuth/webhook-urile Meta și Google doar dacă URL-ul efectiv diferă de `https://bookeasy.ro`; în mod normal rămân aceleași.
 7. Ține Worker-ul vechi neșters până la verificarea fluxurilor și păstrează posibilitatea de rollback DNS. Nu rula două cron-uri active pentru aceeași sarcină.
