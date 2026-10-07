@@ -24,7 +24,8 @@ export async function GET(req: NextRequest) {
     if (!response.ok || !token.access_token) throw new Error(token.error_description ?? 'Google nu a returnat accesul.')
     const profile = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${token.access_token}` } }).then((r) => r.json())
     const existing = await prisma.googleCalendarConnection.findUnique({ where: { practitionerId: practitioner.id } })
-    const calendar = existing ? { id: existing.calendarId, name: existing.calendarName } : await createBookEasyCalendar(token.access_token, practitioner.name, practitioner.business.timezone)
+    const calendarLabel = practitioner.business.teamSize > 1 ? practitioner.business.name + ' – ' + practitioner.name : practitioner.business.name
+    const calendar = existing ? { id: existing.calendarId, name: existing.calendarName } : await createBookEasyCalendar(token.access_token, calendarLabel, practitioner.business.timezone)
     await prisma.googleCalendarConnection.upsert({ where: { practitionerId: practitioner.id }, create: {
       businessId: state.businessId, practitionerId: practitioner.id, googleEmail: profile.email ?? null, calendarId: calendar.id, calendarName: calendar.name,
       accessToken: encrypt(token.access_token), refreshToken: token.refresh_token ? encrypt(token.refresh_token) : null, expiresAt: new Date(Date.now() + Number(token.expires_in ?? 3600) * 1000),
