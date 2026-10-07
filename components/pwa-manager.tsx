@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Download, Share, WifiOff, X } from 'lucide-react'
 
@@ -10,10 +11,12 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function PwaManager() {
+  const pathname = usePathname()
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [iosInstallable, setIosInstallable] = useState(false)
   const [online, setOnline] = useState(true)
   const [dismissed, setDismissed] = useState(true)
+  const [manualInstall, setManualInstall] = useState(false)
 
   useEffect(() => {
     setOnline(navigator.onLine)
@@ -54,6 +57,15 @@ export default function PwaManager() {
     }
   }, [])
 
+  useEffect(() => {
+    const onInstallRequest = () => {
+      if (installPrompt) void install()
+      else { setManualInstall(true); setDismissed(false) }
+    }
+    window.addEventListener('bookeasy-install-request', onInstallRequest)
+    return () => window.removeEventListener('bookeasy-install-request', onInstallRequest)
+  }, [installPrompt])
+
   async function install() {
     if (!installPrompt) return
     await installPrompt.prompt()
@@ -66,8 +78,8 @@ export default function PwaManager() {
     setDismissed(true)
   }
 
-  // Public/onboarding pages still use the shared site manifest.
-  const showInstallCard = online && !dismissed && Boolean(installPrompt || iosInstallable)
+  const isClientPage = /^\/(descopera|harta)(\/|$)/.test(pathname) || /^\/[^/]+\/(rezerva|recenzie)(\/|$)/.test(pathname)
+  const showInstallCard = online && !dismissed && Boolean(installPrompt || iosInstallable || manualInstall)
 
   return (
     <>
@@ -77,16 +89,16 @@ export default function PwaManager() {
         </div>
       )}
       {showInstallCard && (
-        <div className="fixed left-3 right-3 bottom-3 sm:left-auto sm:right-5 sm:w-96 z-[99] card p-4 shadow-xl border border-[var(--border-soft)]" role="dialog" aria-label="Instalează BookEasy">
+        <div className={`fixed left-3 right-3 ${pathname === '/descopera' ? 'bottom-20' : 'bottom-3'} sm:bottom-3 sm:left-auto sm:right-5 sm:w-96 z-[99] card p-4 shadow-xl border border-[var(--border-soft)]`} role="dialog" aria-label="Instalează BookEasy">
           <button onClick={dismiss} className="absolute right-3 top-3 text-gray-400" aria-label="Închide"><X size={17} /></button>
           <div className="flex items-start gap-3 pr-6">
             <Image src="/pwa-icon-192-white-v2.png" width={44} height={44} alt="" className="h-11 w-11 rounded-xl" />
             <div>
-              <p className="font-medium">Instalează BookEasy</p>
+              <p className="font-medium">Instalează {isClientPage ? 'BookEasy pentru clienți' : 'BookEasy'}</p>
               {installPrompt ? (
                 <p className="text-xs text-gray-500 mt-0.5">Acces rapid din ecranul principal, ca o aplicație.</p>
               ) : (
-                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1"><Share size={13} /> În Safari: Partajează → Adăugați la ecranul principal.</p>
+                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1"><Share size={13} /> {iosInstallable ? 'În Safari: Partajează → Adăugați la ecranul principal.' : 'Din meniul browserului: Instalează aplicația sau Adaugă pe ecranul principal.'}</p>
               )}
             </div>
           </div>
