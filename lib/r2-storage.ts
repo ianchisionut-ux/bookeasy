@@ -10,23 +10,9 @@ type StoredBody = {
   writeHttpMetadata(headers: Headers): void
 }
 
-type FilesBucket = {
-  put(key: string, value: ReadableStream, options: { httpMetadata: { contentType: string } }): Promise<unknown>
-  get(key: string): Promise<StoredBody | null>
-  delete(key: string): Promise<void>
-}
-
-async function bucket() {
-  const { getCloudflareContext } = await import('@opennextjs/cloudflare')
-  const { env } = await getCloudflareContext({ async: true })
-  const store = (env as unknown as { BOOKEASY_FILES?: FilesBucket }).BOOKEASY_FILES
-  if (!store) throw new Error('Bucketul Cloudflare R2 BOOKEASY_FILES nu este configurat.')
-  return store
-}
-
 function s3Config() {
   const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME } = process.env
-  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) return null
+  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET_NAME) throw new Error('Accesul R2 nu este configurat în Vercel.')
   return {
     bucketName: R2_BUCKET_NAME,
     client: new S3Client({
@@ -56,20 +42,12 @@ export function r2Key(value: string | null | undefined) {
 
 export async function putR2File(key: string, file: File) {
   const s3 = s3Config()
-  if (s3) {
-    await s3.client.send(new PutObjectCommand({ Bucket: s3.bucketName, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: file.type || 'application/octet-stream' }))
-    return key
-  }
-  const store = await bucket()
-  await store.put(key, file.stream(), {
-    httpMetadata: { contentType: file.type || 'application/octet-stream' },
-  })
+  await s3.client.send(new PutObjectCommand({ Bucket: s3.bucketName, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: file.type || 'application/octet-stream' }))
   return key
 }
 
 export async function getR2File(key: string) {
   const s3 = s3Config()
-  if (!s3) return (await bucket()).get(key)
   try {
     const object = await s3.client.send(new GetObjectCommand({ Bucket: s3.bucketName, Key: key }))
     if (!object.Body) return null
@@ -93,10 +71,6 @@ export async function deleteR2File(value: string | null | undefined) {
   const key = r2Key(value)
   if (!key) return false
   const s3 = s3Config()
-  if (s3) {
-    await s3.client.send(new DeleteObjectCommand({ Bucket: s3.bucketName, Key: key }))
-    return true
-  }
-  await (await bucket()).delete(key)
+  await s3.client.send(new DeleteObjectCommand({ Bucket: s3.bucketName, Key: key }))
   return true
 }

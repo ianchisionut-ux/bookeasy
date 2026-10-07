@@ -1,0 +1,26 @@
+name: BookEasy reconfirmation alerts
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check scheduler secret
+        env:
+          CRON_SECRET: ${{ secrets.BOOKEASY_CRON_SECRET }}
+        run: test -n "$CRON_SECRET"
+      - name: Check unconfirmed bookings on Vercel
+        env:
+          CRON_SECRET: ${{ secrets.BOOKEASY_CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --retry 2 --max-time 120 \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            https://bookeasy-dun.vercel.app/api/cron/reminders

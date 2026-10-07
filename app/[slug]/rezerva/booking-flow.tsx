@@ -13,8 +13,6 @@ type Service = {
   name: string
   durationMin: number | null
   price: number | null
-  requiresDeposit: boolean
-  depositAmount: number | null
 }
 
 type DaySlot = { time: string; available: boolean }
@@ -47,7 +45,6 @@ export default function BookingFlow({
   category,
   isMultiPractitioner,
   services,
-  canPayOnline,
   accentColor,
   accentSoftColor,
 }: {
@@ -56,7 +53,6 @@ export default function BookingFlow({
   category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
   isMultiPractitioner: boolean
   services: Service[]
-  canPayOnline: boolean
   accentColor: string
   accentSoftColor: string
 }) {
@@ -75,7 +71,6 @@ export default function BookingFlow({
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'ONLINE'>('CASH')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
@@ -178,18 +173,12 @@ export default function BookingFlow({
           startAt,
           customerName: name,
           customerPhone: phone,
-          paymentMethod,
         }),
       })
       const data = await res.json()
 
       if (!res.ok) {
         setError(data.error ?? 'A apărut o eroare. Te rugăm încearcă din nou.')
-        return
-      }
-
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl
         return
       }
 
@@ -390,30 +379,6 @@ export default function BookingFlow({
         </div>
         <p className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-400"><ShieldCheck size={13} /> Primești confirmarea la numărul introdus.</p>
       </div>
-
-      {/* Plată, dacă e cazul */}
-      {canPayOnline && service?.requiresDeposit && (
-        <div>
-          <h2 className="font-semibold mb-3">Plată</h2>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => setPaymentMethod('CASH')}
-              className="p-3.5 rounded-2xl border text-left flex items-center justify-between"
-              style={{ borderColor: paymentMethod === 'CASH' ? accentColor : 'var(--border-soft)' }}
-            >
-              <span className="font-medium">Numerar la locație</span>
-            </button>
-            <button
-              onClick={() => setPaymentMethod('ONLINE')}
-              className="p-3.5 rounded-2xl border text-left flex items-center justify-between"
-              style={{ borderColor: paymentMethod === 'ONLINE' ? accentColor : 'var(--border-soft)' }}
-            >
-              <span className="font-medium">Card online</span>
-              <span className="text-sm text-gray-500">Avans {service.depositAmount} lei</span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

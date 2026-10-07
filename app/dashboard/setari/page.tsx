@@ -6,7 +6,6 @@ import { PublicPageLinkCard } from './public-page-link-card'
 import { SubscriptionCard } from './subscription-card'
 import BrandColorCard from './brand-color-card'
 import PasswordForm from './password-form'
-import { isPlatformIpayConfigured } from '@/lib/billing-ipay'
 
 // Luni primul, Duminică ultima — ordinea de afișare a programului de lucru
 // (valorile 'weekday' rămân 0=Duminică...6=Sâmbătă, standardul JS getDay(), doar ordinea vizuală se schimbă)
@@ -56,10 +55,8 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
           dueAt={business.billingDueAt?.toISOString() ?? null}
           invoiceName={business.billingInvoiceName}
           paidAt={business.billingPaidAt?.toISOString() ?? null}
-          ipayConfigured={isPlatformIpayConfigured()}
           paymentState={business.billingIpayPaymentState}
           paymentError={business.billingIpayPaymentError}
-          canPay={!(session as any).isSuperAdmin && (session as any).role === 'OWNER'}
           paymentResult={query.payment}
         />
 

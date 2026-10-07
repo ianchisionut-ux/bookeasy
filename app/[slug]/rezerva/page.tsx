@@ -97,18 +97,13 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
               name: resource.name,
               durationMin: 60,
               price: resource.basePrice ? Number(resource.basePrice) : null,
-              requiresDeposit: service.requiresDeposit,
-              depositAmount: service.depositAmount ? Number(service.depositAmount) : null,
             })) : business.services.map((service) => ({
               id: service.id,
               resourceId: null,
               name: service.name,
               durationMin: service.durationMin,
               price: service.price ? Number(service.price) : null,
-              requiresDeposit: service.requiresDeposit,
-              depositAmount: service.depositAmount ? Number(service.depositAmount) : null,
             })))}
-            canPayOnline={!!business.paymentProcessor}
           />
         </section>
       </main>
