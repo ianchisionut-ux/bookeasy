@@ -7,6 +7,7 @@ import { OnboardingProgress } from '@/components/onboarding-progress'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { ROMANIAN_CITIES } from '@/lib/romanian-cities'
 
 const CATEGORY_LABEL: Record<string, string> = {
   SALON: 'Salon',
@@ -16,18 +17,13 @@ const CATEGORY_LABEL: Record<string, string> = {
   CLINICA: 'Clinică medicală/stomatologică',
 }
 
-// Categoriile active se pot alege chiar aici, în onboarding — Hotel și Pensiune
-// sunt stabilite de admin la crearea contului și nu se schimbă aici,
-// ca să nu riști să strici din greșeală o categorie deja setată corect
-const SELECTABLE = ['SALON', 'EVENT_VENUE', 'CLINICA']
-
-export default function Step1Form({ currentCategory }: { currentCategory: string }) {
+export default function Step1Form({ currentCategory, categoryLocked }: { currentCategory: string; categoryLocked: boolean }) {
   const router = useRouter()
-  const categoryIsFixed = !SELECTABLE.includes(currentCategory)
+  const categoryIsFixed = categoryLocked || !['SALON', 'EVENT_VENUE', 'CLINICA'].includes(currentCategory)
 
   const [form, setForm] = useState({
     name: '',
-    category: (SELECTABLE.includes(currentCategory) ? currentCategory : 'SALON') as 'SALON' | 'EVENT_VENUE' | 'CLINICA',
+    category: (['SALON', 'EVENT_VENUE', 'CLINICA'].includes(currentCategory) ? currentCategory : 'SALON') as 'SALON' | 'EVENT_VENUE' | 'CLINICA',
     contactPhone: '',
     city: '',
     address: '',
@@ -44,8 +40,7 @@ export default function Step1Form({ currentCategory }: { currentCategory: string
       const res = await fetchWithTimeout('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // dacă e o categorie fixă (Clinică etc.), nu trimitem deloc categoria — rămâne
-        // exact ce a setat admin-ul, ca să nu fie suprascrisă din greșeală
+        // Categoria stabilită de superadmin se păstrează pe server.
         body: JSON.stringify({ step: 1, data: categoryIsFixed ? { ...form, category: undefined } : form }),
       })
 
@@ -155,7 +150,10 @@ export default function Step1Form({ currentCategory }: { currentCategory: string
           </div>
           <div>
             <label className="text-sm text-gray-500 block mb-1.5">Oraș</label>
-            <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} required />
+            <select className="input-field w-full" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} required>
+              <option value="" disabled>Alege orașul</option>
+              {ROMANIAN_CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
+            </select>
           </div>
         </div>
 

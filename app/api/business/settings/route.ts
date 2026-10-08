@@ -3,13 +3,14 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { geocodeAddress } from '@/lib/geocode'
 import { z } from 'zod'
+import { canonicalCity } from '@/lib/romanian-cities'
 
 const timeValue = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
 
 const schema = z.object({
   name: z.string().min(2),
   contactPhone: z.string().optional(),
-  city: z.string().optional(),
+  city: z.string().min(1),
   address: z.string().optional(),
   publicListed: z.boolean(),
   teamSize: z.number().min(1).max(200).optional(),
@@ -54,7 +55,11 @@ export async function PATCH(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
+  const city = canonicalCity(parsed.data.city)
+  if (!city) return NextResponse.json({ error: 'Alege un oraș din listă.' }, { status: 400 })
+
   const { workingHours, ...businessData } = parsed.data
+  businessData.city = city
 
   // re-geocodificăm doar dacă adresa sau orașul chiar s-au schimbat față de ce era
   // salvat — evită apeluri API inutile la fiecare simplă salvare de setări
@@ -62,8 +67,8 @@ export async function PATCH(req: NextRequest) {
   const addressChanged = current && (current.address !== businessData.address || current.city !== businessData.city)
 
   let coords: { lat: number; lng: number } | null = null
-  if (addressChanged && businessData.address && businessData.city) {
-    coords = await geocodeAddress(businessData.address, businessData.city)
+  if (addressChanged && businessData.city) {
+    coords = await geocodeAddress(businessData.address || '', businessData.city)
   }
 
   await prisma.$transaction(async (tx) => {
@@ -71,7 +76,7 @@ export async function PATCH(req: NextRequest) {
       where: { id: businessId },
       data: {
         ...businessData,
-        ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
+        ...(addressChanged ? { latitude: coords?.lat ?? null, longitude: coords?.lng ?? null } : {}),
       },
     })
     await tx.workingHours.deleteMany({ where: { businessId } })

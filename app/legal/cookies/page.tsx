@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: 'Politică de cookie-uri | BookEasy',
 
 export default function CookiesPage() {
   return (
-    <LegalPage title="Politică de cookie-uri" updatedAt="5 octombrie 2026" version="1.0" description="Informații despre cookie-uri, localStorage, sessionStorage și gestionarea preferințelor.">
+    <LegalPage title="Politică de cookie-uri" updatedAt="8 octombrie 2026" version="1.1" description="Informații despre cookie-uri, localStorage, sessionStorage și gestionarea preferințelor.">
       <h2>1. Ce sunt cookie-urile?</h2><p>Cookie-urile sunt fișiere de mici dimensiuni salvate de browser. BookEasy folosește și <strong>localStorage</strong> sau <strong>sessionStorage</strong> pentru preferințe locale. Aceste tehnologii nu sunt folosite pentru publicitate comportamentală.</p>
       <h2>2. Cookie-uri strict necesare</h2><p>Acestea asigură autentificarea, securitatea și navigarea. Nu pot fi dezactivate din banner deoarece Platforma nu ar putea funcționa corect.</p>
       <table><thead><tr><th>Nume/categorie</th><th>Scop</th><th>Durată orientativă</th></tr></thead><tbody>
@@ -22,6 +22,7 @@ export default function CookiesPage() {
         <tr><td><code>bookeasy_customer_info</code></td><td>localStorage, opțional</td><td>Memorarea locală a numelui și telefonului completate la rezervare, numai după acord</td></tr>
         <tr><td>Preferința numelui operatorului</td><td>localStorage, utilizator autentificat</td><td>Afișarea operatorului în conversațiile gestionate din dashboard</td></tr>
         <tr><td><code>bookeasy-install-dismissed</code></td><td>sessionStorage</td><td>Ascunderea bannerului de instalare PWA pentru sesiunea curentă</td></tr>
+        <tr><td><code>bookeasy-client-preferred-city-v1</code></td><td>localStorage</td><td>Orașul ales manual în pagina de descoperire; coordonatele GPS nu sunt stocate</td></tr>
         <tr><td><code>bookeasy-client-install-dismissed-v1</code></td><td>localStorage</td><td>Ascunderea permanentă pe acest dispozitiv a bannerului de instalare pentru clienți, după închiderea cu X</td></tr>
         <tr><td><code>bookeasy-client-installed-v1</code></td><td>localStorage</td><td>Ascunderea bannerului după instalarea aplicației pe dispozitiv</td></tr>
       </tbody></table>

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import ClientInstallBanner from '@/components/client-install-banner'
+import { cityNearLocation } from '@/lib/client-location'
+import { canonicalCity, normalizeCity } from '@/lib/romanian-cities'
 import { ArrowRight, Building2, Heart, LayoutGrid, MapPin, Menu, Search, Scissors, Star, Stethoscope, X } from 'lucide-react'
 
 type Category = 'ALL' | 'SALON' | 'CLINICA' | 'EVENT_VENUE'
@@ -27,10 +29,13 @@ const categories = [
 ] as const
 const categoryLabels: Record<string, string> = { SALON: 'Salon', CLINICA: 'Clinică', EVENT_VENUE: 'Evenimente' }
 const favoritesKey = 'bookeasy-client-favorites-v1'
+const preferredCityKey = 'bookeasy-client-preferred-city-v1'
 
 export default function MarketplaceClient({ businesses }: { businesses: Business[] }) {
   const [category, setCategory] = useState<Category>('ALL')
   const [city, setCity] = useState('ALL')
+  const [locating, setLocating] = useState(false)
+  const cityChoiceRef = useRef(false)
   const [query, setQuery] = useState('')
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [favorites, setFavorites] = useState<string[]>([])
@@ -38,7 +43,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
   const [ready, setReady] = useState(false)
   const resultsRef = useRef<HTMLElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
-  const cities = useMemo(() => [...new Set(businesses.map((business) => business.city).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, 'ro')), [businesses])
+  const cities = useMemo(() => [...new Set(businesses.map((business) => business.city && (canonicalCity(business.city) ?? business.city)).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, 'ro')), [businesses])
 
   useEffect(() => {
     try {
@@ -47,6 +52,40 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
     } catch { /* Device storage can be unavailable. */ }
     setReady(true)
   }, [])
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(preferredCityKey)
+      if (saved && (saved === 'ALL' || cities.includes(saved))) {
+        cityChoiceRef.current = true
+        setCity(saved)
+        return
+      }
+    } catch { /* Device storage can be unavailable. */ }
+    detectCity()
+  // The available cities are fixed for this page load.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cities])
+
+  function detectCity() {
+    if (!navigator.geolocation) return
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nearbyCity = cityNearLocation(position.coords.latitude, position.coords.longitude, cities)
+        if (nearbyCity && !cityChoiceRef.current) setCity(nearbyCity)
+        setLocating(false)
+      },
+      () => setLocating(false),
+      { timeout: 10000, maximumAge: 5 * 60 * 1000 }
+    )
+  }
+
+  function chooseCity(value: string) {
+    cityChoiceRef.current = true
+    setCity(value)
+    try { localStorage.setItem(preferredCityKey, value) } catch { /* Keep in-memory selection. */ }
+  }
 
   function toggleFavorite(slug: string) {
     const next = favorites.includes(slug) ? favorites.filter((item) => item !== slug) : [...favorites, slug]
@@ -89,7 +128,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
     const normalized = query.trim().toLocaleLowerCase('ro-RO')
     return businesses.filter((business) =>
       (category === 'ALL' || business.category === category) &&
-      (city === 'ALL' || business.city === city) &&
+      (city === 'ALL' || (business.city && normalizeCity(business.city) === normalizeCity(city))) &&
       (!favoritesOnly || favorites.includes(business.slug)) &&
       (!normalized || [business.name, business.city, business.address].some((value) => value?.toLocaleLowerCase('ro-RO').includes(normalized)))
     )
@@ -124,7 +163,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
 
       <div className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6">
         <div className="grid gap-2 rounded-[22px] border border-[var(--border-soft)] bg-white p-3 shadow-[0_12px_32px_rgba(17,38,58,.12)] sm:grid-cols-[180px_minmax(0,1fr)_140px] sm:items-center sm:gap-3 sm:p-4">
-          <label className="flex min-h-12 items-center gap-2 rounded-xl border border-[var(--border-soft)] px-3"><MapPin size={19} className="shrink-0 text-[var(--brand-teal-dark)]" /><span className="sr-only">Oraș</span><select value={city} onChange={(event) => setCity(event.target.value)} className="w-full bg-transparent text-sm font-medium outline-none"><option value="ALL">Toate orașele</option>{cities.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <div className="flex min-h-12 items-center gap-2 rounded-xl border border-[var(--border-soft)] px-3"><MapPin size={19} className="shrink-0 text-[var(--brand-teal-dark)]" /><label className="sr-only" htmlFor="client-city">Oraș</label><select id="client-city" value={city} onChange={(event) => chooseCity(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"><option value="ALL">Toate orașele</option>{cities.map((item) => <option key={item} value={item}>{item}</option>)}</select><button type="button" onClick={() => { cityChoiceRef.current = false; try { localStorage.removeItem(preferredCityKey) } catch { /* Storage may be unavailable. */ } detectCity() }} disabled={locating} aria-label="Detectează orașul meu" title="Detectează orașul meu" className="shrink-0 text-[var(--brand-teal-dark)] disabled:opacity-50"><MapPin size={17} /></button></div>
           <label className="flex min-h-12 items-center gap-2 rounded-xl border border-[var(--border-soft)] px-3"><Search size={19} className="shrink-0 text-[var(--brand-teal-dark)]" /><span className="sr-only">Caută</span><input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') showResults() }} placeholder="Caută salon, clinică sau oraș..." type="search" className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400" /></label>
           <button onClick={showResults} className="btn-primary min-h-12 px-7 text-base">Caută</button>
         </div>

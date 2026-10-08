@@ -17,6 +17,7 @@ model Business {
   name               String
   slug               String       @unique
   category           BusinessType
+  categoryLocked     Boolean      @default(false)
   contactPhone       String?
   city               String?
   latitude           Float?

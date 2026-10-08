@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Time10Select } from '@/components/working-date-time-picker'
+import { canonicalCity, ROMANIAN_CITIES } from '@/lib/romanian-cities'
 
 const WEEKDAY_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
 
@@ -41,7 +42,8 @@ export default function SettingsForm({
   isClinic: boolean
   isEventVenue: boolean
 }) {
-  const [form, setForm] = useState(business)
+  const [form, setForm] = useState({ ...business, city: canonicalCity(business.city) ?? '' })
+  const [saveError, setSaveError] = useState('')
   const usesAppointments = !isEventVenue
   const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null)
 
@@ -93,6 +95,12 @@ export default function SettingsForm({
   async function handleSave() {
     setSaving(true)
     setGeocoded(false)
+    setSaveError('')
+    if (!form.city) {
+      setSaveError('Alege orașul din listă înainte de salvare.')
+      setSaving(false)
+      return
+    }
     try {
       const res = await fetch('/api/business/settings', {
         method: 'PATCH',
@@ -113,7 +121,11 @@ export default function SettingsForm({
         const data = await res.json()
         setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' }))
         setGeocoded(!!data.geocoded)
+      } else {
+        setSaveError('Setările nu au putut fi salvate. Verifică orașul selectat.')
       }
+    } catch {
+      setSaveError('Conexiune eșuată. Încearcă din nou.')
     } finally {
       setSaving(false)
     }
@@ -161,7 +173,11 @@ export default function SettingsForm({
             </div>
             <div>
               <label className="text-sm text-gray-500 block mb-1.5">Oraș</label>
-              <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+              <select className="input-field w-full" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}>
+                <option value="" disabled>Alege orașul</option>
+                {ROMANIAN_CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
+              </select>
+              {business.city && !canonicalCity(business.city) && <p className="mt-1 text-xs text-amber-700">Orașul anterior ({business.city}) trebuie ales din listă.</p>}
             </div>
           </div>
           <div>
@@ -169,6 +185,7 @@ export default function SettingsForm({
             <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </div>
         </div>
+        {saveError && <p role="alert" className="mt-2 text-sm text-red-600">{saveError}</p>}
       </Card>
 
       <Card className="mb-5 break-inside-avoid">
