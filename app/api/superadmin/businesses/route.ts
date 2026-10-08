@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   if (emailTaken) return NextResponse.json({ error: 'Există deja un cont cu acest email.' }, { status: 409 })
 
   const business = await prisma.business.create({
-    data: { slug, name, category, publicListed: false, onboardingStep: 1, onboardingDone: false },
+    data: { slug, name, category, categoryLocked: true, publicListed: false, onboardingStep: 1, onboardingDone: false },
   })
 
   // parolă temporară, aleatorie, imposibil de folosit — clientul o setează singur prin

@@ -4,13 +4,14 @@ import { auth } from '@/lib/auth'
 import { geocodeAddress } from '@/lib/geocode'
 import { ensureVenueService } from '@/lib/venue-services'
 import { z } from 'zod'
+import { canonicalCity } from '@/lib/romanian-cities'
 
 const stepSchemas = {
   1: z.object({
     name: z.string().min(2),
     category: z.enum(['SALON', 'EVENT_VENUE', 'CLINICA']).optional(),
     contactPhone: z.string(),
-    city: z.string(),
+    city: z.string().min(1),
     address: z.string().optional(),
   }),
   2: z.object({
@@ -61,7 +62,17 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
   const businessId = (session as any).businessId
-  await saveOnboardingStep(businessId, step, parsed.data)
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { categoryLocked: true } })
+  if (!business) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
+  if (step === 1) {
+    const stepData = parsed.data as { city: string; category?: string }
+    const city = canonicalCity(stepData.city)
+    if (!city) return NextResponse.json({ error: 'Alege un oraș din listă.' }, { status: 400 })
+    await saveOnboardingStep(businessId, step, { ...stepData, city, ...(business.categoryLocked ? { category: undefined } : {}) })
+  } else {
+    await saveOnboardingStep(businessId, step, parsed.data)
+  }
 
   await prisma.business.update({
     where: { id: businessId },
@@ -77,7 +88,7 @@ export async function POST(req: NextRequest) {
 
 async function saveOnboardingStep(businessId: string, step: number, data: any) {
   if (step === 1) {
-    const coords = data.address ? await geocodeAddress(data.address, data.city) : null
+    const coords = await geocodeAddress(data.address || '', data.city)
     await prisma.business.update({
       where: { id: businessId },
       data: { ...data, ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}) },

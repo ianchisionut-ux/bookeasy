@@ -8,8 +8,8 @@ export default async function OnboardingStep1Page() {
   const businessId = (session as any)?.businessId
   if (!businessId) redirect('/login')
 
-  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { category: true } })
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { category: true, categoryLocked: true } })
   if (!business) redirect('/login')
 
-  return <Step1Form currentCategory={business.category} />
+  return <Step1Form currentCategory={business.category} categoryLocked={business.categoryLocked} />
 }
