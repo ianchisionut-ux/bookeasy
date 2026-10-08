@@ -340,7 +340,7 @@ export default function CalendarClient({
   )
 
   return (
-    <div className="calendar-page h-[calc(100dvh-138px)] min-h-[420px] md:h-[calc(100vh-56px)] lg:h-screen p-3 lg:p-5 flex flex-col">
+    <div className="calendar-page dashboard-page h-[calc(100dvh-138px)] min-h-[420px] md:h-[calc(100vh-56px)] lg:h-screen flex flex-col">
       <div className="mb-3 space-y-2 md:hidden screen-only">
         <div className="flex items-center justify-between gap-2">
           <h1 className="min-w-0 text-lg font-semibold">Calendar {bookingPlural}</h1>

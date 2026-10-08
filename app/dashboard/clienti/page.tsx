@@ -38,7 +38,7 @@ export default async function ClientiPage({
   const label = isClinic ? 'Pacienți' : 'Clienți'
 
   return (
-    <div className="p-4 lg:p-8">
+    <div className="dashboard-page">
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <h1 className="text-2xl font-semibold mr-1">{label}</h1>
         <span className="text-sm text-gray-500 mr-1 whitespace-nowrap">{customers.length} {label.toLowerCase()}</span>

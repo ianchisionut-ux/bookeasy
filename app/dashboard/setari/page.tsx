@@ -41,7 +41,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
   })
 
   return (
-    <div className="p-4 lg:p-8 max-w-5xl">
+    <div className="dashboard-page">
       <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold mb-1">Setări</h1>
@@ -50,7 +50,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
         <div id="settings-save-slot" className="flex items-center gap-3 shrink-0" />
       </div>
 
-      <div className="columns-1 lg:columns-2 gap-5">
+      <div className="columns-1 gap-5 md:columns-2 2xl:columns-3">
         <PublicPageLinkCard slug={business.slug} isClinic={business.category === 'CLINICA'} usesAppointments={business.category === 'SALON' || business.category === 'CLINICA'} />
 
         <SubscriptionCard

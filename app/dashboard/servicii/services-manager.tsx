@@ -96,7 +96,7 @@ export default function ServicesManager({
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-2xl">
+    <section className="min-w-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
         <h1 className="text-2xl font-semibold">{isSalon ? 'Servicii' : 'Săli'}</h1>
         <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : `+ Adaugă ${isSalon ? 'serviciu' : 'sală'}`}</Button>
@@ -113,7 +113,7 @@ export default function ServicesManager({
               <Input type="number" placeholder="Capacitate" value={newItem.capacity} onChange={(e) => setNewItem({ ...newItem, capacity: e.target.value })} />
             )}
           </div>
-          <div className="grid grid-cols-[1fr_auto] gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
             <Input type="number" placeholder="Preț (lei)" value={newItem.price} onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} />
             <Button variant="secondary" onClick={createItem} disabled={saving}>
               Salvează
@@ -122,7 +122,7 @@ export default function ServicesManager({
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
         {items.map((item) => (
           <CardInteractive key={item.id}>
             {editingId === item.id ? (
@@ -135,7 +135,7 @@ export default function ServicesManager({
                     <Input type="number" placeholder="Capacitate" value={draft.capacity} onChange={(e) => setDraft({ ...draft, capacity: e.target.value })} />
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
                   <Input type="number" placeholder="Preț (lei)" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} />
                   <Button variant="secondary" onClick={() => saveEdit(item.id)} disabled={saving}>
                     Salvează
@@ -179,6 +179,6 @@ export default function ServicesManager({
           <p className="text-sm text-gray-500">Niciun {isSalon ? 'serviciu' : 'sală'} adăugat încă.</p>
         )}
       </div>
-    </div>
+    </section>
   )
 }

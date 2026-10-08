@@ -197,7 +197,7 @@ export default function InboxManager({ businessId, category, isClinic, isAppoint
   const anyNeedsOperator = conversations.some((c) => c.needsOperator)
 
   return (
-    <div className="h-[calc(100vh-56px)] lg:h-screen min-h-0 p-3 lg:p-5 flex flex-col">
+    <div className="dashboard-page h-[calc(100vh-56px)] lg:h-screen min-h-0 flex flex-col">
       <div className="mb-4 shrink-0">
         <h1 className="text-xl lg:text-2xl font-semibold">Mesaje</h1>
         <p className="mt-1 text-sm text-gray-500">Toate conversațiile de pe Messenger, Instagram și WhatsApp, într-un singur loc.</p>

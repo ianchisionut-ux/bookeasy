@@ -113,7 +113,7 @@ export default function ReviewsManager({
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-2xl">
+    <div className="dashboard-page">
       <div className="flex items-center justify-between gap-2 mb-1">
         <h1 className="text-2xl font-semibold">Recenzii</h1>
         {googleConnected && (
@@ -133,7 +133,7 @@ export default function ReviewsManager({
         )}
       </p>
 
-      <div className="flex flex-col gap-3">
+      <div className="dashboard-card-grid">
         {reviews.map((r) => (
           <Card key={r.id}>
             <div className="flex items-center justify-between mb-1">

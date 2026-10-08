@@ -45,7 +45,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-2xl">
+    <div className="dashboard-page">
       <div className="mb-4 screen-only">
         <BackLink href="/dashboard/clienti" label={`Înapoi la ${isClinic ? 'pacienți' : 'clienți'}`} />
       </div>

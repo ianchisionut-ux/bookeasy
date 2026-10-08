@@ -91,7 +91,7 @@ export default function PractitionersManager({
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-3xl">
+    <div className="dashboard-page">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
         <h1 className="text-2xl font-semibold">{labelPlural}</h1>
         <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : `+ Adaugă ${label}`}</Button>
@@ -113,7 +113,7 @@ export default function PractitionersManager({
         </Card>
       )}
 
-      <div className="flex flex-col gap-3">
+      <div className={expandedId ? 'grid grid-cols-1 gap-3' : 'dashboard-card-grid'}>
         {practitioners.map((p) => (
           <CardInteractive key={p.id} onClick={() => setExpandedId(expandedId === p.id ? null : p.id)} className="p-4">
             <div className="flex items-center justify-between">

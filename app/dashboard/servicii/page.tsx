@@ -20,30 +20,30 @@ export default async function ServiciiPage() {
   if (!business) redirect('/login')
 
   return (
-    <>
-      <div className="px-4 lg:px-8 pt-4 lg:pt-8 max-w-2xl">
+    <div className="dashboard-page">
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(360px,0.9fr)_minmax(0,1.35fr)]">
         <BusinessPhotosUploader
           heroImageUrl={business.heroImageUrl}
           gallery={business.photos.map((p) => ({ id: p.id, url: p.url }))}
         />
-      </div>
 
-      <ServicesManager
-        category={business.category}
-        services={business.services.map((s) => ({
-          id: s.id,
-          name: s.name,
-          durationMin: s.durationMin,
-          price: s.price ? Number(s.price) : null,
-          active: s.active,
-        }))}
-        resources={business.resources.map((r) => ({
-          id: r.id,
-          name: r.name,
-          capacity: r.capacity,
-          basePrice: r.basePrice ? Number(r.basePrice) : null,
-        }))}
-      />
-    </>
+        <ServicesManager
+          category={business.category}
+          services={business.services.map((s) => ({
+            id: s.id,
+            name: s.name,
+            durationMin: s.durationMin,
+            price: s.price ? Number(s.price) : null,
+            active: s.active,
+          }))}
+          resources={business.resources.map((r) => ({
+            id: r.id,
+            name: r.name,
+            capacity: r.capacity,
+            basePrice: r.basePrice ? Number(r.basePrice) : null,
+          }))}
+        />
+      </div>
+    </div>
   )
 }

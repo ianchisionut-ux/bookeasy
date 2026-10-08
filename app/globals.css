@@ -113,6 +113,32 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
+/* Cadru unic pentru toate paginile de administrare: fluid pe telefon,
+   centrat și suficient de lat pe desktop ca să nu rămână conținutul lipit în stânga. */
+.dashboard-page {
+  width: 100%;
+  max-width: 1560px;
+  margin-inline: auto;
+  padding: 1rem;
+}
+
+.dashboard-card-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-page {
+    padding: 2rem;
+  }
+
+  .dashboard-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+
 .themed-static-bg,
 .app-shell-theme {
   position: relative;

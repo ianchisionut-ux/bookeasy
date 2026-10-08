@@ -338,7 +338,7 @@ export default function ProgramariManager({
   }
 
   return (
-    <div className="p-4 lg:p-8">
+    <div className="dashboard-page">
       <div className="flex flex-col gap-3 mb-4 md:flex-row md:flex-wrap md:items-center md:gap-2 md:mb-5">
         <h1 className="text-2xl font-semibold mr-1">{appointmentBased ? 'Programări' : 'Rezervări'}</h1>
         <span className="text-sm text-gray-500 mr-1 whitespace-nowrap">{bookings.length} {bookingPlural}</span>

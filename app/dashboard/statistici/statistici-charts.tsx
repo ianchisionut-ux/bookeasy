@@ -90,7 +90,7 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-[1500px] mx-auto">
+    <div className="dashboard-page">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="text-xl lg:text-2xl font-semibold mb-1">Statistici</h1>

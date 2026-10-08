@@ -70,7 +70,7 @@ export default function BusinessPhotosUploader({
   }
 
   return (
-    <Card className="mb-6">
+    <Card className="mb-0 min-w-0">
       <h2 className="font-medium mb-1">Poze profil</h2>
       <p className="text-sm text-gray-500 mb-4">
         Poza de copertă apare pe pagina ta publică. Poți adăuga și câteva poze suplimentare (galerie).
