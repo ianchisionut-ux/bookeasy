@@ -56,6 +56,8 @@ type Business = {
   billingCity: string | null
   billingPostalCode: string | null
   billingEmail: string | null
+  contractRepresentativeName: string | null
+  contractRepresentativeRole: string | null
 }
 
 export default function BusinessAdminPanel({ business, channels, practitioners, metaAppId, metaWhatsappConfigId, instagramOAuthEnabled }: { business: Business; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string; instagramOAuthEnabled: boolean }) {
@@ -326,6 +328,8 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
           initialCity={business.billingCity}
           initialPostalCode={business.billingPostalCode}
           initialEmail={business.billingEmail ?? business.ownerEmail}
+          initialRepresentativeName={business.contractRepresentativeName}
+          initialRepresentativeRole={business.contractRepresentativeRole}
         />
       </div>
 

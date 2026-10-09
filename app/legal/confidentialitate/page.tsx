@@ -17,7 +17,7 @@ const processors = [
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Politică de confidențialitate" updatedAt="8 octombrie 2026" version="2.2" description="Cum colectează, utilizează, protejează și șterge BookEasy datele cu caracter personal.">
+    <LegalPage title="Politică de confidențialitate" updatedAt="9 octombrie 2026" version="2.3" description="Cum colectează, utilizează, protejează și șterge BookEasy datele cu caracter personal.">
       <h2>1. Identitatea operatorului</h2><p>Operatorul platformei este <strong>{company.legalName}</strong>, CUI {company.cui}, {company.tradeRegistryNumber}, cu sediul în {company.registeredAddress}. Pentru întrebări sau exercitarea drepturilor: <a href={`mailto:${company.privacyEmail}`}>{company.privacyEmail}</a>.</p>
       <h2>2. Rolurile privind datele</h2><p>BookEasy acționează ca operator pentru datele necesare administrării conturilor, facturării, securității, suportului și relației contractuale. Pentru datele clienților sau pacienților introduse de o afacere, afacerea stabilește scopurile și mijloacele principale, iar BookEasy acționează ca persoană împuternicită, conform <Link href="/dpa">DPA</Link>.</p>
       <h2>3. Date, scopuri, temeiuri și retenție</h2>
@@ -26,6 +26,7 @@ export default function PrivacyPage() {
         <tr><td>Date despre afacere și echipă</td><td>Configurarea serviciilor, programului, personalului și paginii publice</td><td>Durata contractului și perioada de export/ștergere</td></tr>
         <tr><td>Programări și clienți</td><td>Furnizarea serviciului în numele afacerii; temeiul este stabilit de afacere</td><td>Conform instrucțiunilor afacerii și obligațiilor sale</td></tr>
         <tr><td>Facturi și plăți</td><td>Executarea contractului și obligații financiar-contabile</td><td>Conform termenelor legale financiar-contabile</td></tr>
+        <tr><td>Contracte și semnături electronice</td><td>Încheierea și dovedirea contractelor cu afacerile: datele juridice ale părților, numele și imaginea semnăturii desenate, contul folosit, momentul semnării, adresa IP, agentul browserului și amprenta documentului. Temei: executarea contractului și interesul legitim de a proba acordul și integritatea documentului.</td><td>Pe durata raportului contractual și ulterior cât este necesar pentru obligații legale sau apărarea drepturilor, potrivit termenelor aplicabile; datele de probă sunt accesibile numai persoanelor autorizate.</td></tr>
         <tr><td>Oraș preferat și locație opțională</td><td>Filtrarea afacerilor din apropiere; coordonatele sunt folosite doar în browser și nu sunt trimise de BookEasy către server sau către integrările externe. Orașul ales manual rămâne în stocarea locală a browserului.</td><td>Orașul ales rămâne până la ștergerea datelor din browser sau la reluarea detectării.</td></tr>
         <tr><td>Jurnale tehnice, IP, dispozitiv</td><td>Securitate, prevenirea abuzului și diagnosticare; interes legitim</td><td>Perioada necesară investigației și politicilor furnizorilor</td></tr>
         <tr><td>Solicitări și mesaje</td><td>Răspuns, suport și gestionarea comunicării</td><td>Cât timp este necesar scopului și apărării drepturilor</td></tr>

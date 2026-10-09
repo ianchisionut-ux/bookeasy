@@ -2,10 +2,12 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import { BackLink } from '@/components/ui/back-link'
 import BusinessAdminPanel from './business-admin-panel'
+import { ContractAdminSection } from './contract-admin-section'
+import { buildContractDocument, documentHash } from '@/lib/business-contracts'
 
 export default async function SuperAdminBusinessDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const [business, revenueAgg] = await Promise.all([
+  const [business, revenueAgg, signatures] = await Promise.all([
     prisma.business.findUnique({
       where: { id },
       include: {
@@ -29,6 +31,7 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
       WHERE booking."businessId" = ${id}
         AND booking.status IN ('CONFIRMED', 'COMPLETED')
     `,
+    prisma.contractSignature.findMany({ where: { businessId: id }, orderBy: { customerSignedAt: 'desc' }, select: { id: true, type: true, documentHash: true, customerSignerName: true, customerSignedAt: true, providerSignedAt: true } }),
   ])
 
   if (!business) notFound()
@@ -73,6 +76,8 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
           billingCity: business.billingCity,
           billingPostalCode: business.billingPostalCode,
           billingEmail: business.billingEmail ?? business.users[0]?.email ?? null,
+          contractRepresentativeName: business.contractRepresentativeName,
+          contractRepresentativeRole: business.contractRepresentativeRole,
         }}
         metaAppId={process.env.META_APP_ID ?? ''}
         metaWhatsappConfigId={process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_V4_CONFIG_ID ?? process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ?? ''}
@@ -91,6 +96,9 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
           googleCalendar: practitioner.googleCalendar,
         }))}
       />
+      <ContractAdminSection businessId={id}
+        currentHashes={{ SERVICES: documentHash(buildContractDocument(business, 'SERVICES')), DPA: documentHash(buildContractDocument(business, 'DPA')) }}
+        signatures={signatures.map((signed) => ({ id: signed.id, type: signed.type, hash: signed.documentHash, customerSignerName: signed.customerSignerName, customerSignedAt: signed.customerSignedAt.toISOString(), providerSignedAt: signed.providerSignedAt?.toISOString() ?? null }))} />
     </div>
   )
 }

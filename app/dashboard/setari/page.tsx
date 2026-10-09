@@ -8,6 +8,9 @@ import BrandColorCard from './brand-color-card'
 import PasswordForm from './password-form'
 import MessengerBotToggle from '@/components/messenger-bot-toggle'
 import IntegrationsCard from './integrations-card'
+import { buildContractDocument, contractMissingFields, documentHash } from '@/lib/business-contracts'
+import { LegalDetailsForm } from './legal-details-form'
+import { ContractCenter } from './contract-center'
 
 // Luni primul, Duminică ultima — ordinea de afișare a programului de lucru
 // (valorile 'weekday' rămân 0=Duminică...6=Sâmbătă, standardul JS getDay(), doar ordinea vizuală se schimbă)
@@ -19,7 +22,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
   const businessId = (session as any)?.businessId
   if (!businessId) redirect('/login')
 
-  const [business, channels, practitioners] = await Promise.all([
+  const [business, channels, practitioners, signatures] = await Promise.all([
     prisma.business.findUnique({
       where: { id: businessId },
       include: { workingHours: true },
@@ -38,6 +41,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
       },
       orderBy: { createdAt: 'asc' },
     }),
+    prisma.contractSignature.findMany({ where: { businessId }, orderBy: { customerSignedAt: 'desc' }, select: { id: true, type: true, documentHash: true, customerSignedAt: true, providerSignedAt: true } }),
   ])
   if (!business) redirect('/login')
   const messengerChannel = channels.find((channel) => channel.type === 'FACEBOOK' && channel.status === 'ACTIVE')
@@ -127,6 +131,34 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
           <p className="text-sm text-gray-500 mb-3">Schimbă parola pentru contul curent.</p>
           <PasswordForm />
         </div>
+      </div>
+      <div className="mt-5">
+        <LegalDetailsForm canEdit={(session as any).role === 'OWNER' && !(session as any).isSuperAdmin} initial={{
+          billingClientType: business.billingClientType,
+          billingLegalName: business.billingLegalName ?? '',
+          billingCif: business.billingCif ?? '',
+          billingRegCom: business.billingRegCom ?? '',
+          billingAddress: business.billingAddress ?? '',
+          billingCounty: business.billingCounty ?? '',
+          billingCity: business.billingCity ?? business.city ?? '',
+          billingPostalCode: business.billingPostalCode ?? '',
+          billingEmail: business.billingEmail ?? (session as any).user?.email ?? '',
+          contractRepresentativeName: business.contractRepresentativeName ?? '',
+          contractRepresentativeRole: business.contractRepresentativeRole ?? '',
+        }} />
+        <ContractCenter
+          canSign={(session as any).role === 'OWNER' && !(session as any).isSuperAdmin}
+          representativeName={business.contractRepresentativeName ?? ''}
+          entries={(['SERVICES', 'DPA'] as const).map((type) => {
+            const document = buildContractDocument(business, type)
+            const latest = signatures.find((signature) => signature.type === type)
+            return { type, document, hash: documentHash(document), missing: contractMissingFields(business, type), signed: latest ? {
+              id: latest.id, hash: latest.documentHash,
+              customerSignedAt: latest.customerSignedAt.toISOString(),
+              providerSignedAt: latest.providerSignedAt?.toISOString() ?? null,
+            } : null }
+          })}
+        />
       </div>
     </div>
   )

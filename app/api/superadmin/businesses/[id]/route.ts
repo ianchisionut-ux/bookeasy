@@ -23,6 +23,8 @@ const patchSchema = z.object({
   billingCity: z.string().max(100).nullable().optional(),
   billingPostalCode: z.string().max(20).nullable().optional(),
   billingEmail: z.string().email().nullable().optional(),
+  contractRepresentativeName: z.string().max(120).nullable().optional(),
+  contractRepresentativeRole: z.string().max(120).nullable().optional(),
   publicListed: z.boolean().optional(),
   accountActive: z.boolean().optional(),
   teamSize: z.number().min(1).max(200).optional(),
@@ -99,6 +101,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const business = await prisma.business.findUnique({ where: { id: businessId } })
   if (!business) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
+  const signedContracts = await prisma.contractSignature.count({ where: { businessId } })
+  if (signedContracts) return NextResponse.json({ error: 'Businessul are contracte semnate. Arhivează documentele contractuale înainte de ștergerea definitivă a contului.' }, { status: 409 })
 
   const users = await prisma.user.findMany({ where: { businessId } })
   const userIds = users.map((u) => u.id)
