@@ -25,6 +25,18 @@ assert.match(JSON.stringify(dpa), /date privind sănătatea/)
 assert.doesNotMatch(allText, /Daily Menu|dailym\.ro|restaurant|livrator|SQLite/)
 assert.notEqual(documentHash(service), documentHash(dpa))
 
+// JSONB poate întoarce cheile în altă ordine; amprenta trebuie să rămână identică.
+const jsonbOrderedService = {
+  sections: service.sections.map((section) => ({ paragraphs: section.paragraphs, heading: section.heading })),
+  customer: service.customer,
+  provider: service.provider,
+  subtitle: service.subtitle,
+  title: service.title,
+  version: service.version,
+  type: service.type,
+} as typeof service
+assert.equal(documentHash(service), documentHash(jsonbOrderedService))
+
 const changed = { ...business, billingSubtotal: new Prisma.Decimal(199) }
 assert.notEqual(documentHash(service), documentHash(buildContractDocument(changed, 'SERVICES')))
 assert.deepEqual(contractMissingFields({ ...business, billingCif: null }, 'SERVICES'), ['CUI/CIF'])

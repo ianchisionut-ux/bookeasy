@@ -160,6 +160,24 @@ export function buildContractDocument(business: ContractBusiness, type: Contract
   return type === 'DPA' ? dpaDocument(business) : serviceDocument(business)
 }
 
+// PostgreSQL stochează câmpul `document` ca JSONB și nu garantează păstrarea
+// ordinii cheilor. Hash-ul trebuie calculat dintr-o reprezentare cu ordine
+// deterministă, altfel același document poate părea modificat după citirea din DB.
+function canonicalContractDocument(document: ContractDocument): ContractDocument {
+  return {
+    type: document.type,
+    version: document.version,
+    title: document.title,
+    subtitle: document.subtitle,
+    provider: [...document.provider],
+    customer: [...document.customer],
+    sections: document.sections.map((section) => ({
+      heading: section.heading,
+      paragraphs: [...section.paragraphs],
+    })),
+  }
+}
+
 export function documentHash(document: ContractDocument) {
-  return createHash('sha256').update(JSON.stringify(document)).digest('hex')
+  return createHash('sha256').update(JSON.stringify(canonicalContractDocument(document))).digest('hex')
 }
