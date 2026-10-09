@@ -1,10 +1,14 @@
 ALTER TABLE "Business"
-  ADD COLUMN "contractRepresentativeName" TEXT,
-  ADD COLUMN "contractRepresentativeRole" TEXT;
+  ADD COLUMN IF NOT EXISTS "contractRepresentativeName" TEXT,
+  ADD COLUMN IF NOT EXISTS "contractRepresentativeRole" TEXT;
 
-CREATE TYPE "ContractDocumentType" AS ENUM ('SERVICES', 'DPA');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ContractDocumentType') THEN
+    CREATE TYPE "ContractDocumentType" AS ENUM ('SERVICES', 'DPA');
+  END IF;
+END $$;
 
-CREATE TABLE "ContractSignature" (
+CREATE TABLE IF NOT EXISTS "ContractSignature" (
   "id" TEXT NOT NULL,
   "businessId" TEXT NOT NULL,
   "type" "ContractDocumentType" NOT NULL,
@@ -28,11 +32,15 @@ CREATE TABLE "ContractSignature" (
   CONSTRAINT "ContractSignature_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "ContractSignature_businessId_type_customerSignedAt_idx"
+CREATE INDEX IF NOT EXISTS "ContractSignature_businessId_type_customerSignedAt_idx"
   ON "ContractSignature"("businessId", "type", "customerSignedAt");
 
-CREATE UNIQUE INDEX "ContractSignature_businessId_type_documentHash_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "ContractSignature_businessId_type_documentHash_key"
   ON "ContractSignature"("businessId", "type", "documentHash");
 
-ALTER TABLE "ContractSignature" ADD CONSTRAINT "ContractSignature_businessId_fkey"
-  FOREIGN KEY ("businessId") REFERENCES "Business"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ContractSignature_businessId_fkey') THEN
+    ALTER TABLE "ContractSignature" ADD CONSTRAINT "ContractSignature_businessId_fkey"
+      FOREIGN KEY ("businessId") REFERENCES "Business"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  END IF;
+END $$;
