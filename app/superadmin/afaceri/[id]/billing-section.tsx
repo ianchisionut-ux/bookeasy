@@ -18,6 +18,7 @@ type Props = {
   initialClientType: string; initialCif: string | null; initialRegCom: string | null
   initialAddress: string | null; initialCounty: string | null; initialCity: string | null
   initialPostalCode: string | null; initialEmail: string | null
+  initialRepresentativeName: string | null; initialRepresentativeRole: string | null
 }
 
 export default function BillingSection(p: Props) {
@@ -27,6 +28,7 @@ export default function BillingSection(p: Props) {
   const [legalName, setLegalName] = useState(p.initialLegalName), [clientType, setClientType] = useState(p.initialClientType === 'PF' ? 'PF' : 'PJ')
   const [cif, setCif] = useState(p.initialCif ?? ''), [regCom, setRegCom] = useState(p.initialRegCom ?? ''), [address, setAddress] = useState(p.initialAddress ?? '')
   const [county, setCounty] = useState(p.initialCounty ?? ''), [city, setCity] = useState(p.initialCity ?? ''), [postalCode, setPostalCode] = useState(p.initialPostalCode ?? ''), [email, setEmail] = useState(p.initialEmail ?? '')
+  const [representativeName, setRepresentativeName] = useState(p.initialRepresentativeName ?? ''), [representativeRole, setRepresentativeRole] = useState(p.initialRepresentativeRole ?? '')
   const [file, setFile] = useState<File | null>(null), [invoiceName, setInvoiceName] = useState(p.invoiceName), [dragging, setDragging] = useState(false)
   const [saving, setSaving] = useState(false), [message, setMessage] = useState('')
   const estimatedTotal = subtotal ? Number(subtotal) * (1 + Number(vatRate) / 100) : 0
@@ -39,6 +41,7 @@ export default function BillingSection(p: Props) {
       billingLegalName: legalName || null, billingClientType: clientType, billingCif: cif || null,
       billingRegCom: regCom || null, billingAddress: address || null, billingCounty: county || null,
       billingCity: city || null, billingPostalCode: postalCode || null, billingEmail: email || null,
+      contractRepresentativeName: representativeName || null, contractRepresentativeRole: representativeRole || null,
     }) })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Datele nu au putut fi salvate.')
@@ -112,6 +115,8 @@ export default function BillingSection(p: Props) {
       <div><label className="text-sm text-gray-500 block mb-1.5">Județ</label><Input value={county} onChange={(e) => setCounty(e.target.value)} /></div>
       <div><label className="text-sm text-gray-500 block mb-1.5">Localitate</label><Input value={city} onChange={(e) => setCity(e.target.value)} /></div>
       <div><label className="text-sm text-gray-500 block mb-1.5">Cod poștal</label><Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} /></div>
+      <div><label className="text-sm text-gray-500 block mb-1.5">Reprezentant pentru contracte</label><Input value={representativeName} onChange={(e) => setRepresentativeName(e.target.value)} /></div>
+      <div><label className="text-sm text-gray-500 block mb-1.5">Funcția reprezentantului</label><Input value={representativeRole} onChange={(e) => setRepresentativeRole(e.target.value)} /></div>
     </div>
     <label className="text-sm text-gray-500 block mb-1.5">Notă internă (opțional)</label><Input placeholder="ex: abonament septembrie" value={note} onChange={(e) => setNote(e.target.value)} className="mb-3" />
     <div className="flex flex-wrap items-center gap-3">

@@ -82,6 +82,8 @@ model Business {
   billingCity        String?
   billingPostalCode  String?
   billingEmail       String?
+  contractRepresentativeName String?
+  contractRepresentativeRole String?
   billingDueNotifiedAt DateTime?
   billingSuspendedAt DateTime?    // setat doar de automatizarea de neplată; nu confundăm cu dezactivarea manuală
   onboardingStep     Int          @default(1)
@@ -114,6 +116,39 @@ model Business {
   blockedSlots       BlockedSlot[]
   subscription       Subscription?
   missedMessageAlerts MissedMessageAlert[]
+  contractSignatures ContractSignature[]
+}
+
+enum ContractDocumentType {
+  SERVICES
+  DPA
+}
+
+model ContractSignature {
+  id                   String               @id @default(cuid())
+  businessId           String
+  business             Business             @relation(fields: [businessId], references: [id])
+  type                 ContractDocumentType
+  version              String
+  document             Json
+  documentHash         String
+  customerSignature    String               @db.Text
+  customerSignerName   String
+  customerUserId       String
+  customerEmail        String?
+  customerSignedAt     DateTime             @default(now())
+  customerIp           String?
+  customerUserAgent    String?
+  providerSignature    String?              @db.Text
+  providerSignerName   String?
+  providerUserId       String?
+  providerEmail        String?
+  providerSignedAt     DateTime?
+  providerIp           String?
+  providerUserAgent    String?
+
+  @@index([businessId, type, customerSignedAt])
+  @@unique([businessId, type, documentHash])
 }
 
 enum BillingStatus {
