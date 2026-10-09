@@ -111,6 +111,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
           businessName={business.name}
           businessCategory={business.category}
           isIndividual={business.teamSize <= 1}
+          instagramOAuthEnabled={process.env.META_INSTAGRAM_OAUTH_ENABLED === 'true'}
           metaAppId={process.env.META_APP_ID ?? ''}
           metaV4ConfigId={process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_V4_CONFIG_ID ?? process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ?? ''}
         />

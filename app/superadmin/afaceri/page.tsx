@@ -53,7 +53,7 @@ export default async function SuperAdminBusinesses({
   })
 
   return (
-    <div className="p-4 lg:p-8">
+    <div className="dashboard-page">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
         <h1 className="text-2xl font-semibold">Afaceri</h1>
         <CreateBusinessButton />

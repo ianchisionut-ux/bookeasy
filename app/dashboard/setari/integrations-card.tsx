@@ -141,6 +141,7 @@ export default function IntegrationsCard({
   businessName,
   businessCategory,
   isIndividual,
+  instagramOAuthEnabled,
   metaAppId,
   metaV4ConfigId,
 }: {
@@ -149,6 +150,7 @@ export default function IntegrationsCard({
   businessName: string
   businessCategory: string
   isIndividual: boolean
+  instagramOAuthEnabled: boolean
   metaAppId: string
   metaV4ConfigId: string
 }) {
@@ -169,7 +171,8 @@ export default function IntegrationsCard({
         Conectează conturile direct la Meta și Google. BookEasy nu vede și nu salvează parolele tale.
       </p>
 
-      {connected === 'meta' && <p className="mb-3 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-700">Contul Meta a fost autorizat.</p>}
+      {connected === 'messenger' && <p className="mb-3 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-700">Messenger a fost conectat.</p>}
+      {connected === 'instagram' && <p className="mb-3 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-700">Instagram a fost conectat.</p>}
       {googleStatus === 'connected' && <p className="mb-3 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-700">Google Calendar a fost conectat și sincronizat.</p>}
       {(oauthError || (googleStatus && googleStatus !== 'connected')) && (
         <p className="mb-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -181,14 +184,31 @@ export default function IntegrationsCard({
         <section className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-sm font-semibold">Messenger și Instagram</p>
-              <p className="mt-1 text-xs text-gray-500">Selectează Pagina Facebook a afacerii. Instagram trebuie să fie un cont profesional asociat acelei pagini.</p>
+              <p className="text-sm font-semibold">Messenger</p>
+              <p className="mt-1 text-xs text-gray-500">Selectează Pagina Facebook a afacerii. Se solicită numai permisiunile necesare pentru Messenger.</p>
             </div>
-            <div className="flex gap-1.5"><ConnectionStatus connected={Boolean(facebook)} /><ConnectionStatus connected={Boolean(instagram)} /></div>
+            <ConnectionStatus connected={Boolean(facebook)} />
           </div>
-          <a href="/api/oauth/meta/start" className="btn-secondary mt-3 inline-flex text-sm">
-            {facebook || instagram ? 'Reconectează Meta' : 'Conectează Meta'}
+          <a href="/api/oauth/meta/start?source=settings&channel=messenger" className="btn-secondary mt-3 inline-flex text-sm">
+            {facebook ? 'Reconectează Messenger' : 'Conectează Messenger'}
           </a>
+        </section>
+
+        <section className="rounded-2xl border border-pink-100 bg-pink-50 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold text-pink-950">Instagram</p>
+              <p className="mt-1 text-xs text-pink-800">Conectare separată pentru contul profesional Instagram asociat unei Pagini Facebook.</p>
+            </div>
+            <ConnectionStatus connected={Boolean(instagram)} />
+          </div>
+          {instagramOAuthEnabled ? (
+            <a href="/api/oauth/meta/start?source=settings&channel=instagram" className="btn-secondary mt-3 inline-flex text-sm">
+              {instagram ? 'Reconectează Instagram' : 'Conectează Instagram'}
+            </a>
+          ) : (
+            <p className="mt-3 text-xs font-medium text-amber-700">Înainte de conectare trebuie activate permisiunile Instagram în aplicația Meta.</p>
+          )}
         </section>
 
         <section className="rounded-2xl border border-green-100 bg-green-50 p-4">

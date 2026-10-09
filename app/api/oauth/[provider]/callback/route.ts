@@ -55,11 +55,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   }
 
   if (provider === 'meta') {
+    const metaChannel = state.metaChannel ?? 'messenger'
     const longLived = await fetch(
       `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.META_APP_ID}&client_secret=${process.env.META_APP_SECRET}&fb_exchange_token=${tokenData.access_token}`
     ).then((r) => r.json())
 
-    const pageFields = encodeURIComponent('id,name,access_token,instagram_business_account{id,username}')
+    const pageFields = encodeURIComponent(metaChannel === 'instagram' ? 'id,name,access_token,instagram_business_account{id,username}' : 'id,name,access_token')
     const pages = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=${pageFields}&access_token=${longLived.access_token}`).then((r) =>
       r.json()
     )
@@ -75,35 +76,44 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     }
 
     const page = pages.data[0]
-    const subscription = await fetch(`https://graph.facebook.com/v21.0/${page.id}/subscribed_apps?subscribed_fields=messages,messaging_postbacks,message_deliveries,message_reads&access_token=${page.access_token}`, { method: 'POST' })
+    const instagramAccountId = page.instagram_business_account?.id as string | undefined
+    if (metaChannel === 'instagram' && !instagramAccountId) {
+      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent('Pagina selectată nu are asociat un cont Instagram profesional.'))
+    }
+
+    const subscribedObjectId = metaChannel === 'instagram' ? instagramAccountId! : page.id
+    const subscribedFields = metaChannel === 'instagram' ? 'messages,messaging_postbacks' : 'messages,messaging_postbacks,message_deliveries,message_reads'
+    const subscription = await fetch(`https://graph.facebook.com/v21.0/${subscribedObjectId}/subscribed_apps?subscribed_fields=${subscribedFields}&access_token=${page.access_token}`, { method: 'POST' })
     const subscriptionData = await subscription.json()
     if (!subscription.ok || subscriptionData.error) {
       const message = subscriptionData.error?.message ?? 'Abonarea paginii la webhook a eșuat.'
       return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
     }
 
-    await prisma.channel.upsert({
-      where: { type_externalId: { type: 'FACEBOOK', externalId: page.id } },
-      create: {
-        businessId,
-        type: 'FACEBOOK',
-        externalId: page.id,
-        accessToken: encrypt(page.access_token),
-        expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-      },
-      update: { businessId, accessToken: encrypt(page.access_token), status: 'ACTIVE' },
-    })
+    if (metaChannel === 'messenger') {
+      await prisma.channel.upsert({
+        where: { type_externalId: { type: 'FACEBOOK', externalId: page.id } },
+        create: {
+          businessId,
+          type: 'FACEBOOK',
+          externalId: page.id,
+          accessToken: encrypt(page.access_token),
+          expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+        },
+        update: { businessId, accessToken: encrypt(page.access_token), status: 'ACTIVE' },
+      })
+    }
 
     // Același acord Meta conectează și contul Instagram profesional asociat
     // Paginii selectate. Dacă pagina nu are Instagram Business/Creator, Messenger
     // rămâne conectat, iar utilizatorul vede Instagram ca neconectat în Setări.
-    if (page.instagram_business_account?.id) {
+    if (metaChannel === 'instagram' && instagramAccountId) {
       await prisma.channel.upsert({
-        where: { type_externalId: { type: 'INSTAGRAM', externalId: page.instagram_business_account.id } },
+        where: { type_externalId: { type: 'INSTAGRAM', externalId: instagramAccountId } },
         create: {
           businessId,
           type: 'INSTAGRAM',
-          externalId: page.instagram_business_account.id,
+          externalId: instagramAccountId,
           accessToken: encrypt(page.access_token),
           expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
         },
@@ -171,5 +181,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     }
   }
 
-  return NextResponse.redirect(`${process.env.APP_URL}${redirectTo ?? '/dashboard/canale'}?connected=${provider}`)
+  const connected = provider === 'meta' ? (state.metaChannel ?? 'messenger') : provider
+  return NextResponse.redirect(`${process.env.APP_URL}${redirectTo ?? '/dashboard/canale'}?connected=${connected}`)
 }

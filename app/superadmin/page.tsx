@@ -40,7 +40,7 @@ export default async function SuperAdminOverview() {
   const byCategory = overview?.categoryCounts ?? []
 
   return (
-    <div className="p-4 lg:p-8">
+    <div className="dashboard-page">
       <h1 className="text-2xl font-semibold mb-1">Prezentare generală</h1>
       <p className="text-sm text-gray-500 mb-6">Toate afacerile de pe platformă</p>
 
@@ -63,7 +63,7 @@ export default async function SuperAdminOverview() {
         </Card>
       </div>
 
-      <Card className="max-w-md">
+      <Card>
         <h2 className="font-medium mb-3">Pe categorie</h2>
         <ul className="text-sm flex flex-col gap-2">
           {byCategory.map((c) => (

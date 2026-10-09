@@ -58,7 +58,7 @@ type Business = {
   billingEmail: string | null
 }
 
-export default function BusinessAdminPanel({ business, channels, practitioners, metaAppId, metaWhatsappConfigId }: { business: Business; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string }) {
+export default function BusinessAdminPanel({ business, channels, practitioners, metaAppId, metaWhatsappConfigId, instagramOAuthEnabled }: { business: Business; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string; instagramOAuthEnabled: boolean }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(business.name)
@@ -173,9 +173,9 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
   }
 
   return (
-    <div className="lg:grid lg:grid-cols-[1fr_380px] gap-5 items-start flex flex-col lg:flex">
+    <div className="grid grid-cols-1 gap-5 items-start xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.9fr)]">
       {/* Header — nume, status, stats — pe toată lățimea */}
-      <Card className="lg:col-span-2">
+      <Card className="xl:col-span-2">
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -331,13 +331,13 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
 
       {/* Coloana dreaptă — integrări unificate, plată */}
       <div className="flex flex-col gap-5">
-        <IntegrationsCard businessId={business.id} individual={business.teamSize <= 1} channels={channels} practitioners={practitioners} metaAppId={metaAppId} metaWhatsappConfigId={metaWhatsappConfigId} />
+        <IntegrationsCard businessId={business.id} individual={business.teamSize <= 1} channels={channels} practitioners={practitioners} metaAppId={metaAppId} metaWhatsappConfigId={metaWhatsappConfigId} instagramOAuthEnabled={instagramOAuthEnabled} />
       </div>
     </div>
   )
 }
 
-function IntegrationsCard({ businessId, individual, channels, practitioners, metaAppId, metaWhatsappConfigId }: { businessId: string; individual: boolean; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string }) {
+function IntegrationsCard({ businessId, individual, channels, practitioners, metaAppId, metaWhatsappConfigId, instagramOAuthEnabled }: { businessId: string; individual: boolean; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string; instagramOAuthEnabled: boolean }) {
   const searchParams = useSearchParams()
   const oauthError = searchParams.get('error')
   const [tab, setTab] = useState<'FACEBOOK' | 'INSTAGRAM' | 'WHATSAPP' | 'GOOGLE_CALENDAR'>('FACEBOOK')
@@ -360,7 +360,7 @@ function IntegrationsCard({ businessId, individual, channels, practitioners, met
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 mb-4">
         <p className="text-sm font-medium text-blue-950">Înrolare asistată Meta</p>
         <p className="text-xs text-blue-800 mt-1 mb-3">Clientul se conectează cu propriul cont Meta și selectează numai pagina afacerii sale. Messenger se configurează și se abonează automat.</p>
-        <a href={'/api/oauth/meta/start?businessId=' + businessId} className="btn-secondary inline-flex text-sm">Autorizează Messenger</a>
+        <a href={'/api/oauth/meta/start?channel=messenger&businessId=' + businessId} className="btn-secondary inline-flex text-sm">Autorizează Messenger</a>
       </div>
       <div className="flex gap-1.5 mb-4 flex-wrap">
         {tabs.map((t) => {
@@ -392,14 +392,25 @@ function IntegrationsCard({ businessId, individual, channels, practitioners, met
         />
       )}
       {tab === 'INSTAGRAM' && (
-        <ChannelFields
-          businessId={businessId}
-          type="INSTAGRAM"
-          channel={channels.find((c) => c.type === 'INSTAGRAM') ?? null}
-          idLabel="Instagram Business Account ID"
-          idPlaceholder="ex: 178414000000000"
-          helpText="Contul Instagram trebuie să fie profesional (Business/Creator) și legat de aceeași Pagină de Facebook ca Messenger."
-        />
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-pink-100 bg-pink-50 p-4">
+            <p className="text-sm font-semibold text-pink-950">Autorizare Instagram</p>
+            <p className="mt-1 text-xs text-pink-800">Flux separat de Messenger, pentru contul profesional asociat Paginii Facebook.</p>
+            {instagramOAuthEnabled ? (
+              <a href={'/api/oauth/meta/start?channel=instagram&businessId=' + businessId} className="btn-secondary mt-3 inline-flex text-sm">Autorizează Instagram</a>
+            ) : (
+              <p className="mt-3 text-xs font-medium text-amber-700">Activează mai întâi permisiunile Instagram în aplicația Meta.</p>
+            )}
+          </div>
+          <ChannelFields
+            businessId={businessId}
+            type="INSTAGRAM"
+            channel={channels.find((c) => c.type === 'INSTAGRAM') ?? null}
+            idLabel="Instagram Business Account ID"
+            idPlaceholder="ex: 178414000000000"
+            helpText="Contul Instagram trebuie să fie profesional (Business/Creator) și legat de aceeași Pagină de Facebook ca Messenger."
+          />
+        </div>
       )}
       {tab === 'WHATSAPP' && <WhatsAppFields businessId={businessId} channel={channels.find((c) => c.type === 'WHATSAPP') ?? null} metaAppId={metaAppId} configId={metaWhatsappConfigId} />}
       {tab === 'GOOGLE_CALENDAR' && <GoogleCalendarCard businessId={businessId} individual={individual} practitioners={practitioners} />}

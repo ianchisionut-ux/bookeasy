@@ -34,7 +34,7 @@ export default function TicketsManager({ tickets }: { tickets: Ticket[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   return (
-    <div className="p-4 lg:p-8 max-w-3xl">
+    <div className="dashboard-page">
       <h1 className="text-2xl font-semibold mb-1">Tichete suport</h1>
       <p className="text-sm text-gray-500 mb-6">{tickets.length} tichete, de la administratorii afacerilor.</p>
 

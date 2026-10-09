@@ -2,6 +2,7 @@ import crypto from 'crypto'
 
 export type OAuthState = {
   provider: 'google' | 'meta'
+  metaChannel?: 'messenger' | 'instagram'
   businessId: string
   redirectTo: string
   nonce: string

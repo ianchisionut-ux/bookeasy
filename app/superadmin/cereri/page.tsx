@@ -30,7 +30,7 @@ export default async function AccessRequestsPage() {
   const requests = await prisma.accessRequest.findMany({ orderBy: { createdAt: 'desc' } })
 
   return (
-    <div className="p-4 lg:p-8">
+    <div className="dashboard-page">
       <h1 className="text-2xl font-semibold mb-1">Cereri de acces</h1>
       <p className="text-sm text-gray-500 mb-6">{requests.length} cereri primite din formularul de pe homepage</p>
 

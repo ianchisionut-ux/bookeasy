@@ -36,7 +36,7 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
   const totalRevenue = Number(revenueAgg[0]?.totalRevenue ?? 0)
 
   return (
-    <div className="p-4 lg:p-8 max-w-6xl">
+    <div className="dashboard-page">
       <div className="mb-4">
         <BackLink href="/superadmin/afaceri" label="Înapoi la afaceri" />
       </div>
@@ -76,6 +76,7 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
         }}
         metaAppId={process.env.META_APP_ID ?? ''}
         metaWhatsappConfigId={process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_V4_CONFIG_ID ?? process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ?? ''}
+        instagramOAuthEnabled={process.env.META_INSTAGRAM_OAUTH_ENABLED === 'true'}
         channels={business.channels.map((c) => ({
           id: c.id,
           type: c.type,
