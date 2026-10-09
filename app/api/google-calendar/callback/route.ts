@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     const session = await auth()
     const state = verifyCalendarState(req.nextUrl.searchParams.get('state') ?? '')
     if (state.initiatedBySuperAdmin) backPath = `/superadmin/afaceri/${state.businessId}`
+    else if (state.returnTo === 'settings') backPath = '/dashboard/setari'
     const ownsBusiness = (session as any)?.businessId === state.businessId
     const isSuperAdmin = Boolean((session as any)?.isSuperAdmin)
     if (!ownsBusiness && !(state.initiatedBySuperAdmin && isSuperAdmin)) return back('unauthorized')

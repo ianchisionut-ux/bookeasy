@@ -34,7 +34,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
       select: {
         id: true,
         name: true,
-        googleCalendar: { select: { googleEmail: true, calendarName: true, syncEnabled: true, lastError: true } },
+        googleCalendar: { select: { googleEmail: true, calendarName: true, syncEnabled: true, includeCustomerDetails: true, lastSyncAt: true, lastError: true } },
       },
       orderBy: { createdAt: 'asc' },
     }),
@@ -108,6 +108,9 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
         <IntegrationsCard
           channels={channels}
           practitioners={practitioners}
+          businessName={business.name}
+          businessCategory={business.category}
+          isIndividual={business.teamSize <= 1}
           metaAppId={process.env.META_APP_ID ?? ''}
           metaV4ConfigId={process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_V4_CONFIG_ID ?? process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ?? ''}
         />

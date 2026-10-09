@@ -16,6 +16,7 @@ export function verifyCalendarState(state: string) {
     practitionerId: string
     expiresAt: number
     initiatedBySuperAdmin?: boolean
+    returnTo?: 'settings' | 'practitioners'
   }
   if (parsed.expiresAt < Date.now()) throw new Error('Conectarea a expirat.')
   return parsed
