@@ -417,7 +417,81 @@ body {
   margin: 8mm;
 }
 
+@page contract {
+  size: A4 portrait;
+  margin: 14mm 15mm 16mm;
+}
+
 @media print {
+  .contract-print-page {
+    page: contract;
+  }
+  .contract-document {
+    width: 100% !important;
+    max-width: none !important;
+    color: #111827 !important;
+    font-size: 9.5pt !important;
+    line-height: 1.42 !important;
+  }
+  .contract-header {
+    margin-bottom: 6mm !important;
+    padding-bottom: 4mm !important;
+    break-inside: avoid-page;
+  }
+  .contract-header h1 {
+    font-size: 17pt !important;
+    line-height: 1.2 !important;
+  }
+  .contract-parties {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9mm !important;
+    margin-bottom: 6mm !important;
+    break-inside: avoid-page;
+  }
+  .contract-section {
+    margin-bottom: 3.5mm !important;
+    break-inside: auto !important;
+  }
+  .contract-section h2 {
+    margin-bottom: 1.5mm !important;
+    font-size: 10.5pt !important;
+    break-after: avoid-page;
+  }
+  .contract-section p {
+    margin-bottom: 1.5mm !important;
+    text-align: justify;
+    orphans: 3;
+    widows: 3;
+  }
+  .contract-signatures {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12mm !important;
+    margin-top: 7mm !important;
+    padding-top: 4mm !important;
+    break-inside: avoid-page;
+  }
+  .contract-signatures img {
+    height: 19mm !important;
+    margin-block: 2mm !important;
+  }
+  .contract-signature-note {
+    margin-top: 5mm !important;
+    font-size: 7.5pt !important;
+    break-inside: avoid-page;
+  }
+  .contract-audit {
+    width: 100% !important;
+    max-width: none !important;
+    padding-top: 4mm !important;
+    border-top: 0.2mm solid #d1d5db;
+    color: #4b5563 !important;
+    font-size: 7pt !important;
+    line-height: 1.35 !important;
+    overflow-wrap: anywhere;
+    break-inside: avoid-page;
+  }
   html,
   body {
     width: 100% !important;

@@ -19,8 +19,8 @@ export default function ClientBottomNav() {
 
   return (
     <>
-      <div aria-hidden="true" className="h-[calc(4rem+env(safe-area-inset-bottom))] md:hidden" />
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[var(--border-soft)] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(17,38,58,.07)] md:hidden" aria-label="Navigare aplicație client">
+      <div aria-hidden="true" className="screen-only h-[calc(4rem+env(safe-area-inset-bottom))] md:hidden" />
+      <nav className="screen-only fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[var(--border-soft)] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(17,38,58,.07)] md:hidden" aria-label="Navigare aplicație client">
         {items.map(({ href, label, icon: Icon, active }) => <Link key={label} href={href} onClick={() => window.dispatchEvent(new CustomEvent('bookeasy-client-nav', { detail: href }))} aria-current={active ? 'page' : undefined} className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] ${active ? 'font-semibold text-[var(--brand-teal-dark)]' : 'text-[var(--brand-ink)]'}`}><Icon size={21} />{label}</Link>)}
       </nav>
     </>

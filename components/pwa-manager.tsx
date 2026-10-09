@@ -105,12 +105,12 @@ export default function PwaManager() {
   return (
     <>
       {!online && (
-        <div className="fixed left-1/2 bottom-4 -translate-x-1/2 z-[100] flex items-center gap-2 rounded-full bg-gray-900 px-4 py-2 text-sm text-white shadow-lg" role="status">
+        <div className="screen-only fixed left-1/2 bottom-4 -translate-x-1/2 z-[100] flex items-center gap-2 rounded-full bg-gray-900 px-4 py-2 text-sm text-white shadow-lg" role="status">
           <WifiOff size={15} /> Ești offline. Modificările necesită internet.
         </div>
       )}
       {showInstallCard && (
-        <div className={`fixed left-3 right-3 ${isClientPage ? 'bottom-[calc(5rem+env(safe-area-inset-bottom))]' : 'bottom-3'} sm:bottom-3 sm:left-auto sm:right-5 sm:w-96 z-[99] card p-4 shadow-xl border border-[var(--border-soft)]`} role="dialog" aria-label="Instalează BookEasy">
+        <div className={`screen-only fixed left-3 right-3 ${isClientPage ? 'bottom-[calc(5rem+env(safe-area-inset-bottom))]' : 'bottom-3'} sm:bottom-3 sm:left-auto sm:right-5 sm:w-96 z-[99] card p-4 shadow-xl border border-[var(--border-soft)]`} role="dialog" aria-label="Instalează BookEasy">
           <button onClick={dismiss} className="absolute right-3 top-3 text-gray-400" aria-label="Închide"><X size={17} /></button>
           <div className="flex items-start gap-3 pr-6">
             <Image src="/pwa-icon-192-white-v2.png" width={44} height={44} alt="" className="h-11 w-11 rounded-xl" />
