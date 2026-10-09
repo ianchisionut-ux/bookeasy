@@ -7,28 +7,40 @@ import { SubscriptionCard } from './subscription-card'
 import BrandColorCard from './brand-color-card'
 import PasswordForm from './password-form'
 import MessengerBotToggle from '@/components/messenger-bot-toggle'
+import IntegrationsCard from './integrations-card'
 
 // Luni primul, Duminică ultima — ordinea de afișare a programului de lucru
 // (valorile 'weekday' rămân 0=Duminică...6=Sâmbătă, standardul JS getDay(), doar ordinea vizuală se schimbă)
 const WEEKDAYS_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
-export default async function SetariPage({ searchParams }: { searchParams: Promise<{ payment?: string }> }) {
+export default async function SetariPage({ searchParams }: { searchParams: Promise<{ payment?: string; connected?: string; error?: string; google?: string }> }) {
   const session = await auth()
   const query = await searchParams
   const businessId = (session as any)?.businessId
   if (!businessId) redirect('/login')
 
-  const [business, messengerChannel] = await Promise.all([
+  const [business, channels, practitioners] = await Promise.all([
     prisma.business.findUnique({
       where: { id: businessId },
       include: { workingHours: true },
     }),
-    prisma.channel.findFirst({
-      where: { businessId, type: 'FACEBOOK', status: 'ACTIVE' },
-      select: { id: true, enabledByOwner: true },
+    prisma.channel.findMany({
+      where: { businessId },
+      select: { id: true, type: true, status: true, externalId: true, enabledByOwner: true },
+      orderBy: { connectedAt: 'desc' },
+    }),
+    prisma.practitioner.findMany({
+      where: { businessId, active: true },
+      select: {
+        id: true,
+        name: true,
+        googleCalendar: { select: { googleEmail: true, calendarName: true, syncEnabled: true, lastError: true } },
+      },
+      orderBy: { createdAt: 'asc' },
     }),
   ])
   if (!business) redirect('/login')
+  const messengerChannel = channels.find((channel) => channel.type === 'FACEBOOK' && channel.status === 'ACTIVE')
 
   const workingHours = WEEKDAYS_DISPLAY_ORDER.map((weekday) => {
     const existing = business.workingHours.find((wh) => wh.weekday === weekday)
@@ -93,6 +105,12 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
         />
 
         <BrandColorCard initialColor={business.brandColor} usesAppointments={business.category === 'SALON' || business.category === 'CLINICA'} />
+        <IntegrationsCard
+          channels={channels}
+          practitioners={practitioners}
+          metaAppId={process.env.META_APP_ID ?? ''}
+          metaV4ConfigId={process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_V4_CONFIG_ID ?? process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ?? ''}
+        />
         {messengerChannel && (
           <div className="card p-5 mb-5 break-inside-avoid">
             <h2 className="font-medium mb-3">Messenger</h2>

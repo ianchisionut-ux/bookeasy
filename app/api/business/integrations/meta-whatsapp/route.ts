@@ -9,13 +9,14 @@ const schema = z.object({
   phoneNumberId: z.string().min(1),
 })
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session || !(session as any).isSuperAdmin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const businessId = (session as any)?.businessId as string | undefined
+  if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
-  const { id: businessId } = await params
   const parsed = schema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: 'Datele primite de la Meta sunt incomplete.' }, { status: 400 })
+
   try {
     const result = await connectMetaWhatsApp({ businessId, ...parsed.data })
     return NextResponse.json({ success: true, ...result })
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (error instanceof MetaOnboardingError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
     }
-    console.error('[superadmin/meta-whatsapp]', error)
+    console.error('[business/meta-whatsapp]', error)
     return NextResponse.json({ error: 'Conectarea WhatsApp nu a putut fi finalizată.' }, { status: 500 })
   }
 }

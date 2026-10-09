@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
 import BillingSection from './billing-section'
 import MessengerBotToggle from '@/components/messenger-bot-toggle'
+import MetaEmbeddedSignupV4Button from '@/components/meta-embedded-signup-v4-button'
 
 const CATEGORY_LABEL: Record<string, string> = {
   SALON: 'Salon',
@@ -635,66 +636,6 @@ function WhatsAppFields({ businessId, channel, metaAppId, configId }: { business
   const [saving, setSaving] = useState(false)
   const [subscribing, setSubscribing] = useState(false)
   const [message, setMessage] = useState('')
-  const [embeddedLoading, setEmbeddedLoading] = useState(false)
-
-  async function startEmbeddedSignup() {
-    if (!metaAppId || !configId) return
-    setEmbeddedLoading(true)
-    setMessage('')
-    try {
-      const sdk = await new Promise<any>((resolve, reject) => {
-        if ((window as any).FB) return resolve((window as any).FB)
-        ;(window as any).fbAsyncInit = () => {
-          ;(window as any).FB.init({ appId: metaAppId, cookie: true, xfbml: false, version: 'v21.0' })
-          resolve((window as any).FB)
-        }
-        const existing = document.getElementById('facebook-jssdk')
-        if (!existing) {
-          const script = document.createElement('script')
-          script.id = 'facebook-jssdk'
-          script.src = 'https://connect.facebook.net/ro_RO/sdk.js'
-          script.async = true
-          script.onerror = () => reject(new Error('SDK-ul Meta nu s-a putut încărca.'))
-          document.body.appendChild(script)
-        }
-      })
-
-      let sessionData: { waba_id: string; phone_number_id: string } | null = null
-      let authorizationCode = ''
-      const finish = async () => {
-        if (!sessionData || !authorizationCode) return
-        const res = await fetch('/api/superadmin/businesses/' + businessId + '/meta-whatsapp', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: authorizationCode, wabaId: sessionData.waba_id, phoneNumberId: sessionData.phone_number_id }),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error ?? 'Conectarea WhatsApp a eșuat.')
-        setMessage('WhatsApp conectat automat: ' + data.phone)
-        setEmbeddedLoading(false)
-        router.refresh()
-      }
-      const listener = (event: MessageEvent) => {
-        if (!['https://www.facebook.com', 'https://web.facebook.com'].includes(event.origin)) return
-        try {
-          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
-          if (data?.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
-            sessionData = data.data
-            window.removeEventListener('message', listener)
-            void finish()
-          }
-        } catch {}
-      }
-      window.addEventListener('message', listener)
-      sdk.login((response: any) => {
-        authorizationCode = response?.authResponse?.code ?? ''
-        if (!authorizationCode) { window.removeEventListener('message', listener); setMessage('Autorizarea WhatsApp a fost anulată.'); setEmbeddedLoading(false); return }
-        void finish()
-      }, { config_id: configId, response_type: 'code', override_default_response_type: true, extras: { setup: {}, sessionInfoVersion: '3' } })
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Conectarea WhatsApp a eșuat.')
-      setEmbeddedLoading(false)
-    }
-  }
 
   async function save() {
     setSaving(true)
@@ -727,12 +668,14 @@ function WhatsAppFields({ businessId, channel, metaAppId, configId }: { business
   return (
     <div>
       <div className="rounded-2xl border border-green-100 bg-green-50 p-3 mb-4">
-        <p className="text-sm font-medium text-green-950">Înrolare WhatsApp Business</p>
+        <p className="text-sm font-medium text-green-950">Meta Embedded Signup v4</p>
         <p className="text-xs text-green-800 mt-1 mb-3">Clientul își autorizează propriul portofoliu Meta; WABA, numărul și tokenul se salvează automat.</p>
-        <Button variant="secondary" onClick={startEmbeddedSignup} disabled={embeddedLoading || !metaAppId || !configId}>
-          {embeddedLoading ? 'Se deschide Meta...' : 'Conectează WhatsApp cu clientul'}
-        </Button>
-        {(!metaAppId || !configId) && <p className="text-xs text-amber-700 mt-2">Configurează META_APP_ID și NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID în Vercel pentru a activa butonul.</p>}
+        <MetaEmbeddedSignupV4Button
+          appId={metaAppId}
+          configId={configId}
+          endpoint={`/api/superadmin/businesses/${businessId}/meta-whatsapp`}
+          label="Conectează WhatsApp cu clientul"
+        />
       </div>
       {channel && (
         <div className="mb-3">

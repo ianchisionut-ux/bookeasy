@@ -25,7 +25,9 @@ Configurează direct în Vercel, fără a pune valorile în Git sau în chat. Pe
 - `BLOB_READ_WRITE_TOKEN` — creat automat prin conectarea magazinului privat Vercel Blob la proiect.
 - `CRON_SECRET` — aceeași valoare configurată și ca secret GitHub `BOOKEASY_CRON_SECRET`.
 
-Pentru integrările folosite, copiază și: `META_APP_ID`, `META_APP_SECRET`, `META_VERIFY_TOKEN`, `NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `GOOGLE_MAPS_SERVER_API_KEY`, `RESEND_API_KEY`, `ADMIN_NOTIFICATION_EMAIL`, `SIGNAL_BILLING_API_URL`, `SIGNAL_BILLING_API_KEY`.
+Pentru integrările folosite, copiază și: `META_APP_ID`, `META_APP_SECRET`, `META_VERIFY_TOKEN`, `NEXT_PUBLIC_META_EMBEDDED_SIGNUP_V4_CONFIG_ID`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `GOOGLE_MAPS_SERVER_API_KEY`, `RESEND_API_KEY`, `ADMIN_NOTIFICATION_EMAIL`, `SIGNAL_BILLING_API_URL`, `SIGNAL_BILLING_API_KEY`.
+
+`NEXT_PUBLIC_META_EMBEDDED_SIGNUP_V4_CONFIG_ID` trebuie să fie ID-ul configurației create în Meta la **Facebook Login for Business → Configurations → WhatsApp Embedded Signup v4**. Variabila veche `NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID` este acceptată numai ca fallback temporar în timpul migrării.
 
 Nu configura noile chei Stripe, Netopia, EuPlătesc sau BT iPay pentru checkout. Pentru tranzacții deja începute, păstrează temporar credențialele relevante și verifică reconcilierea înainte de eliminarea lor.
 
