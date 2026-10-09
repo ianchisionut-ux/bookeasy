@@ -417,15 +417,7 @@ body {
   margin: 8mm;
 }
 
-@page contract {
-  size: A4 portrait;
-  margin: 14mm 15mm 16mm;
-}
-
 @media print {
-  .contract-print-page {
-    page: contract;
-  }
   .contract-document {
     width: 100% !important;
     max-width: none !important;
@@ -441,6 +433,10 @@ body {
   .contract-header h1 {
     font-size: 17pt !important;
     line-height: 1.2 !important;
+  }
+  .contract-logo {
+    width: 27mm !important;
+    height: auto !important;
   }
   .contract-parties {
     display: grid !important;

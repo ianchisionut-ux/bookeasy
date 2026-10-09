@@ -9,9 +9,14 @@ export function ContractDocumentView({ document, customerSignature, providerSign
 }) {
   return <article className="contract-document mx-auto max-w-4xl bg-white p-6 text-sm leading-relaxed text-gray-900 sm:p-10 print:max-w-none print:p-0">
     <header className="contract-header mb-8 border-b border-gray-300 pb-5">
-      <p className="text-xs uppercase tracking-widest text-gray-500">BookEasy · versiunea {document.version}</p>
-      <h1 className="mt-2 text-2xl font-bold">{document.title}</h1>
-      <p className="mt-1 text-gray-600">{document.subtitle}</p>
+      <div className="flex items-start justify-between gap-5">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-gray-500">BookEasy · versiunea {document.version}</p>
+          <h1 className="mt-2 text-2xl font-bold">{document.title}</h1>
+          <p className="mt-1 text-gray-600">{document.subtitle}</p>
+        </div>
+        <img src="/logo.png" alt="bookeasy.ro" className="contract-logo h-auto w-24 shrink-0 object-contain sm:w-28" />
+      </div>
     </header>
     <div className="contract-parties mb-8 grid gap-5 sm:grid-cols-2">
       <div><h2 className="mb-2 font-bold">Furnizor / persoană împuternicită</h2>{document.provider.map((line, index) => <p key={index}>{line}</p>)}</div>

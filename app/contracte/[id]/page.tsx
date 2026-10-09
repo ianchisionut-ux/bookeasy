@@ -27,6 +27,7 @@ export default async function SignedContractPage({ params }: { params: Promise<{
   }
 
   return <main className="contract-print-page min-h-screen bg-gray-100 p-4 sm:p-8 print:bg-white print:p-0">
+    <style media="print">{'@page { size: A4 portrait; margin: 14mm 15mm 16mm; }'}</style>
     <div className="mx-auto mb-4 flex max-w-4xl items-center justify-between gap-3 print:hidden">
       <a href={(session as any).isSuperAdmin ? `/superadmin/afaceri/${signed.businessId}` : '/dashboard/setari'} className="text-sm underline">Înapoi la setări</a>
       <PrintButton />
