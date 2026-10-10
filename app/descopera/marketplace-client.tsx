@@ -6,7 +6,7 @@ import Image from 'next/image'
 import ClientInstallBanner from '@/components/client-install-banner'
 import { cityNearLocation } from '@/lib/client-location'
 import { canonicalCity, normalizeCity } from '@/lib/romanian-cities'
-import { ArrowRight, Building2, Heart, LayoutGrid, MapPin, Menu, Search, Scissors, Star, Stethoscope, X } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Building2, CalendarDays, Check, Heart, LayoutGrid, MapPin, Menu, Navigation, Search, Scissors, Star, Stethoscope, X } from 'lucide-react'
 
 type Category = 'ALL' | 'SALON' | 'CLINICA' | 'EVENT_VENUE'
 type Business = {
@@ -140,55 +140,200 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
     .filter((group) => group.businesses.length > 0), [visible])
 
   return (
-    <main className="min-h-screen bg-[var(--surface-muted)] font-sans text-[var(--brand-ink)]">
-      <header className="relative z-30 border-b border-[var(--border-soft)] bg-white">
-        <div className="mx-auto flex h-[66px] max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Link href="/descopera" className="flex min-w-0 items-center gap-2" aria-label="BookEasy — acasă">
-            <Image src="/logo-mark-square.png" width={34} height={34} alt="" className="rounded-lg" /><span className="text-xl font-bold tracking-tight text-[var(--brand-ink)]">bookeasy<span className="text-[var(--brand-teal-dark)]">.ro</span></span>
+    <main className="marketplace-page min-h-screen font-sans text-[var(--brand-ink)]">
+      <header className="marketplace-header">
+        <div className="marketplace-container flex h-[76px] items-center justify-between gap-4">
+          <Link href="/descopera" className="flex shrink-0 items-center gap-2.5 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--brand-teal-dark)]" aria-label="BookEasy — pagina principală">
+            <Image src="/logo-mark-square.png" width={38} height={38} alt="" className="rounded-xl" />
+            <span className="text-[21px] font-extrabold tracking-[-0.055em] text-[var(--brand-ink)]">bookeasy<span className="text-[var(--brand-teal-dark)]">.ro</span></span>
           </Link>
-          <nav className="hidden items-center gap-6 text-sm font-medium lg:flex" aria-label="Categorii">
-            <button onClick={() => chooseCategory('SALON')} className="hover:text-[var(--brand-teal-dark)]">Saloane</button>
-            <button onClick={() => chooseCategory('CLINICA')} className="hover:text-[var(--brand-teal-dark)]">Clinici</button>
-            <button onClick={() => chooseCategory('EVENT_VENUE')} className="hover:text-[var(--brand-teal-dark)]">Evenimente</button>
-            <Link href="/harta" className="hover:text-[var(--brand-teal-dark)]">Hartă</Link>
+
+          <nav className="hidden items-center gap-1.5 lg:flex" aria-label="Navigare categorii">
+            <button type="button" onClick={() => chooseCategory('SALON')} className={'marketplace-nav-link' + (category === 'SALON' && !favoritesOnly ? ' is-active' : '')}>Saloane</button>
+            <button type="button" onClick={() => chooseCategory('CLINICA')} className={'marketplace-nav-link' + (category === 'CLINICA' && !favoritesOnly ? ' is-active' : '')}>Clinici</button>
+            <button type="button" onClick={() => chooseCategory('EVENT_VENUE')} className={'marketplace-nav-link' + (category === 'EVENT_VENUE' && !favoritesOnly ? ' is-active' : '')}>Evenimente</button>
+            <Link href="/harta" className="marketplace-nav-link">Explorează harta</Link>
           </nav>
-          <div className="hidden items-center gap-3 sm:flex"><Link href="/dashboard" className="text-sm font-medium hover:text-[var(--brand-teal-dark)]">Intră în cont</Link><Link href="/pentru-afaceri#cere-acces" className="btn-primary inline-flex min-h-11 items-center justify-center px-4">Adaugă afacerea ta</Link></div>
-          <div className="flex items-center gap-1 sm:hidden"><button aria-label="Caută" onClick={startSearch} className="grid h-11 w-11 place-items-center"><Search size={22} /></button><button aria-label={menuOpen ? 'Închide meniul' : 'Deschide meniul'} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)} className="grid h-11 w-11 place-items-center">{menuOpen ? <X size={23} /> : <Menu size={23} />}</button></div>
+
+          <div className="hidden items-center gap-4 sm:flex">
+            <Link href="/dashboard" className="text-[13px] font-bold transition-colors hover:text-[var(--brand-teal-dark)] focus-visible:underline">Intră în cont</Link>
+            <Link href="/pentru-afaceri#cere-acces" className="marketplace-header-cta inline-flex min-h-11 items-center gap-2 px-5 text-[13px] font-bold">
+              Adaugă afacerea <ArrowUpRight size={16} aria-hidden="true" />
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-1 sm:hidden">
+            <button type="button" aria-label="Caută" onClick={startSearch} className="marketplace-icon-button"><Search size={21} /></button>
+            <button type="button" aria-label={menuOpen ? 'Închide meniul' : 'Deschide meniul'} aria-expanded={menuOpen} aria-controls="marketplace-mobile-menu" onClick={() => setMenuOpen(!menuOpen)} className="marketplace-icon-button">
+              {menuOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
         </div>
-        {menuOpen && <nav className="absolute inset-x-0 top-full border-b border-[var(--border-soft)] bg-white p-4 shadow-lg sm:hidden" aria-label="Meniu mobil"><div className="grid gap-2 text-sm font-medium"><Link onClick={() => setMenuOpen(false)} href="/harta" className="rounded-xl p-3 hover:bg-[var(--brand-teal-soft)]">Hartă</Link><Link onClick={() => setMenuOpen(false)} href="/dashboard" className="rounded-xl p-3 hover:bg-[var(--brand-teal-soft)]">Intră în cont</Link><Link onClick={() => setMenuOpen(false)} href="/pentru-afaceri#cere-acces" className="rounded-xl p-3 hover:bg-[var(--brand-teal-soft)]">Adaugă afacerea ta</Link></div></nav>}
+
+        {menuOpen && (
+          <nav id="marketplace-mobile-menu" className="marketplace-mobile-menu sm:hidden" aria-label="Meniu mobil">
+            {categories.filter((item) => item.value !== 'ALL').map((item) => (
+              <button key={item.value} type="button" onClick={() => chooseCategory(item.value)} className="flex min-h-11 items-center gap-3 rounded-xl px-4 text-left text-sm font-semibold hover:bg-[var(--brand-teal-soft)]"><item.icon size={18} />{item.label}</button>
+            ))}
+            <Link onClick={() => setMenuOpen(false)} href="/harta" className="flex min-h-11 items-center gap-3 rounded-xl px-4 text-sm font-semibold hover:bg-[var(--brand-teal-soft)]"><MapPin size={18} />Hartă</Link>
+            <div className="my-2 border-t border-[var(--border-soft)]" />
+            <Link onClick={() => setMenuOpen(false)} href="/dashboard" className="min-h-11 rounded-xl px-4 py-3 text-sm font-semibold">Intră în cont</Link>
+            <Link onClick={() => setMenuOpen(false)} href="/pentru-afaceri#cere-acces" className="marketplace-header-cta mx-3 my-1 rounded-xl px-4 py-3 text-center text-sm font-bold">Adaugă afacerea ta</Link>
+          </nav>
+        )}
       </header>
 
-      <section className="relative isolate h-[310px] overflow-hidden bg-[var(--brand-ink)] sm:h-[350px] lg:h-[390px]">
-        <Image src="/client-marketplace-hero-v3.jpg" alt="Laptop, tabletă și telefon cu interfețe de programări BookEasy" fill priority sizes="100vw" className="object-cover object-center" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[var(--brand-ink)]/95 via-[var(--brand-ink)]/70 to-[var(--brand-ink)]/20" />
-        <div className="relative mx-auto flex h-full max-w-7xl items-center px-5 pb-8 sm:px-8 lg:pb-10">
-          <div className="max-w-2xl text-white"><p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">Rezervă simplu, oriunde</p><h1 className="text-[32px] font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-[56px]">Descoperă locuri<br />și experiențe<br /><span className="text-[var(--brand-teal)]">în orașul tău</span></h1><p className="mt-4 max-w-lg text-sm leading-relaxed text-white/90 sm:text-base">Saloane, clinici și spații de evenimente. Alegi locul potrivit și rezervi direct.</p></div>
+      <section className="marketplace-hero" aria-labelledby="marketplace-hero-heading">
+        <div className="marketplace-container marketplace-hero-inner">
+          <div className="marketplace-hero-copy">
+            <div className="marketplace-eyebrow"><span className="marketplace-eyebrow-dot" /> BOOKEASY · DESCOPERĂ ȘI REZERVĂ</div>
+            <h1 id="marketplace-hero-heading" className="marketplace-headline">
+              Locuri de descoperit.<br /><span>Momente de trăit.</span>
+            </h1>
+            <p className="marketplace-hero-description">Găsește saloane, clinici și spații de evenimente din orașul tău. Alegi ce ți se potrivește și rezervi direct, fără complicații.</p>
+            <div className="marketplace-hero-perks" aria-label="Avantajele BookEasy">
+              <span><Check size={16} aria-hidden="true" /> Alegi locul potrivit</span>
+              <span><Check size={16} aria-hidden="true" /> Rezervi online</span>
+            </div>
+          </div>
+          <div className="marketplace-showcase">
+            <Image src="/client-marketplace-hero-v3.jpg" alt="Interfața BookEasy afișată pe laptop, tabletă și telefon" fill priority sizes="(max-width: 1023px) 100vw, 46vw" className="object-cover object-center" />
+            <div className="marketplace-showcase-shade" />
+            <div className="marketplace-showcase-label"><span className="marketplace-showcase-label-icon"><CalendarDays size={22} aria-hidden="true" /></span><span><strong>Totul într-un singur loc</strong><small>Descoperă. Alege. Rezervă.</small></span></div>
+          </div>
         </div>
       </section>
 
-      <div className="relative z-10 mx-auto -mt-8 max-w-7xl px-4 sm:px-6">
-        <div className="grid gap-2 rounded-[22px] border border-[var(--border-soft)] bg-white p-3 shadow-[0_12px_32px_rgba(17,38,58,.12)] sm:grid-cols-[180px_minmax(0,1fr)_140px] sm:items-center sm:gap-3 sm:p-4">
-          <div className="flex min-h-12 items-center gap-2 rounded-xl border border-[var(--border-soft)] px-3"><MapPin size={19} className="shrink-0 text-[var(--brand-teal-dark)]" /><label className="sr-only" htmlFor="client-city">Oraș</label><select id="client-city" value={city} onChange={(event) => chooseCity(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"><option value="ALL">Toate orașele</option>{cities.map((item) => <option key={item} value={item}>{item}</option>)}</select><button type="button" onClick={() => { cityChoiceRef.current = false; try { localStorage.removeItem(preferredCityKey) } catch { /* Storage may be unavailable. */ } detectCity() }} disabled={locating} aria-label="Detectează orașul meu" title="Detectează orașul meu" className="shrink-0 text-[var(--brand-teal-dark)] disabled:opacity-50"><MapPin size={17} /></button></div>
-          <label className="flex min-h-12 items-center gap-2 rounded-xl border border-[var(--border-soft)] px-3"><Search size={19} className="shrink-0 text-[var(--brand-teal-dark)]" /><span className="sr-only">Caută</span><input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') showResults() }} placeholder="Caută salon, clinică sau oraș..." type="search" className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400" /></label>
-          <button onClick={showResults} className="btn-primary min-h-12 px-7 text-base">Caută</button>
+      <section className="marketplace-container marketplace-search-section" aria-label="Caută locuri și experiențe">
+        <form className="marketplace-search-card" onSubmit={(event) => { event.preventDefault(); setFavoritesOnly(false); showResults() }} role="search">
+          <div className="marketplace-search-field">
+            <div className="marketplace-search-icon"><MapPin size={21} aria-hidden="true" /></div>
+            <div className="min-w-0 flex-1">
+              <label htmlFor="client-city" className="marketplace-field-label">ORAȘUL</label>
+              <select id="client-city" value={city} onChange={(event) => chooseCity(event.target.value)} className="marketplace-input">
+                <option value="ALL">Toate orașele</option>
+                {cities.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </div>
+            <button type="button" onClick={() => { cityChoiceRef.current = false; try { localStorage.removeItem(preferredCityKey) } catch { /* Storage may be unavailable. */ } detectCity() }} disabled={locating} aria-label="Detectează orașul meu" title="Detectează orașul meu" className="marketplace-location-button">
+              <Navigation size={19} aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="marketplace-search-field marketplace-query-field">
+            <div className="marketplace-search-icon"><Search size={22} aria-hidden="true" /></div>
+            <div className="min-w-0 flex-1">
+              <label htmlFor="marketplace-query" className="marketplace-field-label">CE CAUȚI?</label>
+              <input id="marketplace-query" ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Salon, clinică, eveniment..." type="search" className="marketplace-input" />
+            </div>
+          </div>
+
+          <button type="submit" className="marketplace-search-submit">Caută locuri <ArrowRight size={19} aria-hidden="true" /></button>
+        </form>
+      </section>
+
+      <section className="marketplace-container marketplace-categories" aria-labelledby="marketplace-categories-heading">
+        <div className="marketplace-section-intro">
+          <div>
+            <p className="marketplace-kicker">ALEGE CE ȚI SE POTRIVEȘTE</p>
+            <h2 id="marketplace-categories-heading" className="marketplace-section-title">Ce vrei să descoperi?</h2>
+          </div>
+          <p className="marketplace-section-description">Explorează serviciile și locațiile disponibile.</p>
         </div>
-      </div>
-
-      <section className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 sm:pt-5" aria-label="Alege categoria">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">{categories.map((item) => <button key={item.value} onClick={() => chooseCategory(item.value)} aria-pressed={category === item.value && !favoritesOnly} className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-[var(--radius-card)] border text-sm shadow-sm transition hover:-translate-y-0.5 sm:min-h-24 ${category === item.value && !favoritesOnly ? 'border-[var(--brand-teal)] bg-[var(--brand-teal-soft)] font-semibold text-[var(--brand-teal-dark)]' : 'border-[var(--border-soft)] bg-white text-[var(--brand-ink)]'}`}><item.icon size={23} /><span>{item.label}</span></button>)}</div>
+        <div className="marketplace-category-grid">
+          {categories.map((item) => {
+            const selected = category === item.value && !favoritesOnly
+            const description = item.value === 'ALL' ? 'Toate experiențele' : item.value === 'SALON' ? 'Frumusețe & îngrijire' : item.value === 'CLINICA' ? 'Sănătate & servicii' : 'Spații & locații'
+            return (
+              <button type="button" key={item.value} onClick={() => chooseCategory(item.value)} aria-pressed={selected} className={'marketplace-category-card' + (selected ? ' is-active' : '')}>
+                <span className="marketplace-category-icon"><item.icon size={24} strokeWidth={1.8} aria-hidden="true" /></span>
+                <span className="marketplace-category-text"><strong>{item.label}</strong><small>{description}</small></span>
+                <ArrowUpRight size={17} className="marketplace-category-arrow" aria-hidden="true" />
+              </button>
+            )
+          })}
+        </div>
       </section>
 
-      <section ref={resultsRef} className="mx-auto max-w-7xl scroll-mt-6 px-4 py-8 sm:px-6 sm:py-10">
-        <div className="mb-4 flex items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-teal-dark)]">Alege locul potrivit</p><h2 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">{favoritesOnly ? 'Locurile tale favorite' : city === 'ALL' ? 'Descoperă pe BookEasy' : `Recomandate în ${city}`}</h2></div><span className="text-sm text-gray-500">{visible.length} {visible.length === 1 ? 'loc' : 'locuri'}</span></div>
-        {visible.length === 0 ? <div className="rounded-2xl border border-[var(--border-soft)] bg-white p-9 text-center text-sm text-gray-600">{businesses.length === 0 ? 'Momentan nu sunt afaceri disponibile.' : favoritesOnly && favorites.length === 0 ? 'Nu ai salvat încă locuri favorite.' : 'Nu am găsit locuri pentru această căutare.'}</div> : <div className="space-y-8">{visibleGroups.map((group) => <section key={group.value} aria-labelledby={`category-${group.value}`} className="rounded-[var(--radius-card)] border border-[var(--border-soft)] bg-white/60 p-4 sm:p-5">
-          <div className="mb-4 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--brand-teal-soft)] text-[var(--brand-teal-dark)]"><group.icon size={21} /></span><h3 id={`category-${group.value}`} className="text-lg font-bold sm:text-xl">{group.label}</h3><span className="ml-auto text-sm text-gray-500">{group.businesses.length} {group.businesses.length === 1 ? 'loc' : 'locuri'}</span></div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{group.businesses.map((business) => {
-            const isFavorite = ready && favorites.includes(business.slug)
-            return <article key={business.id} className="card card-interactive overflow-hidden transition hover:-translate-y-0.5"><div className="relative h-44 bg-[var(--brand-teal-soft)] sm:h-40">{business.heroImageUrl ? <Image src={business.heroImageUrl} alt="" fill sizes="(max-width:640px) 100vw, (max-width:1024px) 50vw, 25vw" className="object-cover" unoptimized={business.heroImageUrl.startsWith('/api/storage/public/')} /> : <div className="grid h-full place-items-center bg-gradient-to-br from-[var(--brand-teal-soft)] to-[var(--brand-green-soft)] text-4xl font-bold text-[var(--brand-teal-dark)]">{business.name.slice(0, 1).toLocaleUpperCase('ro-RO')}</div>}<span className="absolute left-3 top-3 rounded-lg bg-white/95 px-2.5 py-1 text-xs font-semibold text-[var(--brand-teal-dark)]">{categoryLabels[business.category] || business.category}</span><button type="button" onClick={() => toggleFavorite(business.slug)} aria-label={isFavorite ? `Elimină ${business.name} din favorite` : `Salvează ${business.name} la favorite`} aria-pressed={isFavorite} className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-white/95 text-[var(--brand-teal-dark)] shadow"><Heart size={21} fill={isFavorite ? 'currentColor' : 'none'} /></button></div><div className="p-4"><div className="flex items-start justify-between gap-2"><h4 className="font-bold leading-tight">{business.name}</h4>{business.rating !== null && business.reviewCount ? <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-[#db8e00]"><Star size={15} fill="currentColor" />{business.rating.toFixed(1)}</span> : null}</div><p className="mt-2 flex items-center gap-1 text-xs text-gray-500"><MapPin size={13} />{business.city || business.address || 'România'}</p><div className="mt-4 flex gap-2"><Link href={`/${business.slug}/rezerva`} className="btn-primary flex min-h-11 flex-1 items-center justify-center gap-1 px-3 text-sm">Rezervă <ArrowRight size={15} /></Link><Link href={`/${business.slug}`} className="btn-secondary flex min-h-11 items-center justify-center px-3 text-sm">Detalii</Link></div></div></article>
-          })}</div>
-        </section>)}</div>}
+      <section ref={resultsRef} id="rezultate" className="marketplace-container marketplace-results" aria-labelledby="marketplace-results-title">
+        <div className="marketplace-results-heading">
+          <div>
+            <p className="marketplace-kicker">LOCURI PENTRU TINE</p>
+            <h2 id="marketplace-results-title" className="marketplace-section-title">
+              {favoritesOnly ? 'Locurile tale favorite' : city === 'ALL' ? 'Descoperă pe BookEasy' : 'Recomandate în ' + city}
+            </h2>
+            <p className="marketplace-results-summary">{visible.length} {visible.length === 1 ? 'loc disponibil' : 'locuri disponibile'} {city === 'ALL' ? 'pe platformă' : 'în ' + city}</p>
+          </div>
+          <button type="button" onClick={() => { if (favoritesOnly) { setFavoritesOnly(false); showResults() } else { showFavorites() } }} aria-pressed={favoritesOnly} className={'marketplace-favorites-filter' + (favoritesOnly ? ' is-active' : '')}>
+            <Heart size={17} fill={favoritesOnly ? 'currentColor' : 'none'} aria-hidden="true" />
+            <span>Favorite{favorites.length ? ' (' + favorites.length + ')' : ''}</span>
+          </button>
+        </div>
+
+        {visible.length === 0 ? (
+          <div className="marketplace-empty">
+            <span className="marketplace-empty-icon"><Search size={27} aria-hidden="true" /></span>
+            <h3>{businesses.length === 0 ? 'Locuri noi în curând' : favoritesOnly && favorites.length === 0 ? 'Nu ai încă locuri favorite' : 'Nu am găsit rezultate'}</h3>
+            <p>{businesses.length === 0 ? 'Momentan nu sunt afaceri disponibile.' : favoritesOnly && favorites.length === 0 ? 'Salvează locurile preferate apăsând pe inimă.' : 'Încearcă alt oraș, o altă categorie sau o căutare mai generală.'}</p>
+            {businesses.length > 0 && <button type="button" className="marketplace-reset-button" onClick={() => { setCategory('ALL'); chooseCity('ALL'); setQuery(''); setFavoritesOnly(false) }}>Vezi toate locurile <ArrowRight size={17} /></button>}
+          </div>
+        ) : (
+          <div className="marketplace-groups">
+            {visibleGroups.map((group) => (
+              <section key={group.value} aria-labelledby={'category-' + group.value} className="marketplace-group">
+                <div className="marketplace-group-heading">
+                  <span className="marketplace-group-icon"><group.icon size={20} aria-hidden="true" /></span>
+                  <h3 id={'category-' + group.value}>{group.label}</h3>
+                  <span className="marketplace-group-count">{group.businesses.length} {group.businesses.length === 1 ? 'loc' : 'locuri'}</span>
+                </div>
+                <div className="marketplace-business-grid">
+                  {group.businesses.map((business) => {
+                    const isFavorite = ready && favorites.includes(business.slug)
+                    return (
+                      <article key={business.id} className="marketplace-business-card">
+                        <div className="marketplace-business-image">
+                          {business.heroImageUrl ? (
+                            <Image src={business.heroImageUrl} alt={'Fotografie ' + business.name} fill sizes="(max-width: 640px) 100vw, (max-width: 1023px) 50vw, 33vw" className="object-cover" unoptimized={business.heroImageUrl.startsWith('/api/storage/public/')} />
+                          ) : (
+                            <div className="marketplace-business-placeholder" aria-hidden="true">{business.name.slice(0, 1).toLocaleUpperCase('ro-RO')}</div>
+                          )}
+                          <span className="marketplace-business-tag">{categoryLabels[business.category] || business.category}</span>
+                          <button type="button" onClick={() => toggleFavorite(business.slug)} aria-label={isFavorite ? 'Elimină ' + business.name + ' din favorite' : 'Salvează ' + business.name + ' la favorite'} aria-pressed={isFavorite} className={'marketplace-favorite-heart' + (isFavorite ? ' is-active' : '')}>
+                            <Heart size={20} fill={isFavorite ? 'currentColor' : 'none'} aria-hidden="true" />
+                          </button>
+                        </div>
+                        <div className="marketplace-business-body">
+                          <div className="flex items-start justify-between gap-3">
+                            <h4 className="marketplace-business-name">{business.name}</h4>
+                            {business.rating !== null && Boolean(business.reviewCount) && <span className="marketplace-rating"><Star size={15} fill="currentColor" aria-hidden="true" />{business.rating.toFixed(1)}</span>}
+                          </div>
+                          <p className="marketplace-business-address"><MapPin size={16} className="shrink-0" aria-hidden="true" /><span>{business.city || business.address || 'România'}</span></p>
+                          <div className="marketplace-business-actions">
+                            <Link href={'/' + business.slug + '/rezerva'} className="marketplace-book-button">Rezervă acum <ArrowRight size={17} aria-hidden="true" /></Link>
+                            <Link href={'/' + business.slug} className="marketplace-details-button">Detalii <ArrowUpRight size={15} aria-hidden="true" /></Link>
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
       </section>
 
+      <section className="marketplace-container marketplace-how-it-works" aria-labelledby="marketplace-how-title">
+        <div className="marketplace-how-heading">
+          <p className="marketplace-kicker">FĂRĂ COMPLICAȚII</p>
+          <h2 id="marketplace-how-title" className="marketplace-section-title">De la căutare la rezervare</h2>
+        </div>
+        <div className="marketplace-steps">
+          <div><span className="marketplace-step-number">01</span><strong>Descoperi</strong><p>Explorezi locurile și serviciile disponibile.</p></div>
+          <div><span className="marketplace-step-number">02</span><strong>Alegi</strong><p>Găsești afacerea potrivită pentru tine.</p></div>
+          <div><span className="marketplace-step-number">03</span><strong>Rezervi</strong><p>Faci rezervarea direct de pe telefon sau desktop.</p></div>
+        </div>
+      </section>
       <ClientInstallBanner />
     </main>
   )
