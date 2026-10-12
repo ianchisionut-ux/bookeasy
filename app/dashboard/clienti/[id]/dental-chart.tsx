@@ -99,33 +99,14 @@ function DentalModel({ chart, selected, onSelect }: { chart: DentalChartData; se
         if (!(material instanceof THREE.MeshStandardMaterial)) continue
         if (crown) {
           material.color.set(STATUS[status].color)
-          if (tooth === hovered) material.color.set('#67e8f9')
+          if (tooth === hovered) material.color.set('#a9b0b2')
           else if (tooth === selected) material.color.lerp(new THREE.Color('#2dd4bf'), 0.62)
         }
         const isSelected = crown && tooth === selected
-        const isHovered = crown && tooth === hovered
-        material.emissive.set(isHovered ? '#22d3ee' : isSelected ? '#14b8a6' : '#000000')
-        material.emissiveIntensity = isHovered ? 1.15 : isSelected ? 0.82 : 0
+        material.emissive.set(isSelected && tooth !== hovered ? '#14b8a6' : '#000000')
+        material.emissiveIntensity = isSelected && tooth !== hovered ? 0.82 : 0
       }
     })
-
-    if (!hovered) return
-    const hoveredMesh = model.getObjectByName(`Tooth_${hovered}`)
-    if (!(hoveredMesh instanceof THREE.Mesh)) return
-
-    const outline = new THREE.LineSegments(
-      new THREE.EdgesGeometry(hoveredMesh.geometry, 18),
-      new THREE.LineBasicMaterial({ color: '#22d3ee', transparent: true, opacity: 0.95, depthTest: false }),
-    )
-    outline.name = 'BookEasy_Hover_Outline'
-    outline.renderOrder = 1000
-    outline.raycast = () => {}
-    hoveredMesh.add(outline)
-    return () => {
-      hoveredMesh.remove(outline)
-      outline.geometry.dispose()
-      ;(outline.material as THREE.Material).dispose()
-    }
   }, [chart, hovered, model, selected])
 
   useEffect(() => {
