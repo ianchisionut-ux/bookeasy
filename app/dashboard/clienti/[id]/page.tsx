@@ -21,7 +21,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       where: { id, businessId },
       include: { bookings: { include: { service: true, practitioner: true }, orderBy: { startAt: 'desc' } } },
     }),
-    prisma.business.findUnique({ where: { id: businessId }, select: { category: true } }),
+    prisma.business.findUnique({ where: { id: businessId }, select: { category: true, dentalClinic: true } }),
   ])
 
   if (!customer) notFound()
@@ -58,6 +58,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           patientName={patientName}
           simpleInitial={simpleInitial}
           medicalRecordInitial={medicalRecord}
+          dentalClinic={business?.dentalClinic === true}
           documents={documents.map((d) => ({
             id: d.id,
             url: `/api/business/patients/${customer.id}/documents/${d.id}`,

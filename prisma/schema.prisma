@@ -18,6 +18,7 @@ model Business {
   slug               String       @unique
   category           BusinessType
   categoryLocked     Boolean      @default(false)
+  dentalClinic       Boolean      @default(false) // activează odontograma 3D numai pentru clinicile stomatologice
   contactPhone       String?
   city               String?
   latitude           Float?

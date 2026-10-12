@@ -30,6 +30,7 @@ type Business = {
   slug: string
   name: string
   category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  dentalClinic: boolean
   accountActive: boolean
   publicListed: boolean
   ownerEmail: string | null
@@ -69,6 +70,8 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
   const [teamMode, setTeamMode] = useState(business.teamSize > 1)
   const [savingTeam, setSavingTeam] = useState(false)
   const [teamSaved, setTeamSaved] = useState(false)
+  const [dentalClinic, setDentalClinic] = useState(business.dentalClinic)
+  const [savingDentalClinic, setSavingDentalClinic] = useState(false)
   const [demoLinkCopied, setDemoLinkCopied] = useState(false)
   const [openingDashboard, setOpeningDashboard] = useState(false)
   const teamModeChanged = teamMode !== (business.teamSize > 1)
@@ -86,6 +89,26 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
       router.refresh()
     } finally {
       setSavingTeam(false)
+    }
+  }
+
+  async function saveDentalClinic(nextValue: boolean) {
+    setSavingDentalClinic(true)
+    try {
+      const response = await fetch(`/api/superadmin/businesses/${business.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dentalClinic: nextValue }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        alert(data.error ?? 'Setarea nu a putut fi salvată.')
+        return
+      }
+      setDentalClinic(nextValue)
+      router.refresh()
+    } finally {
+      setSavingDentalClinic(false)
     }
   }
 
@@ -306,6 +329,34 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
           )}
           {teamSaved && !teamModeChanged && <p className="text-xs text-green-700">✓ Salvat</p>}
         </Card>
+
+        {business.category === 'CLINICA' && (
+          <Card>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="font-medium">Clinică stomatologică</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Activează odontograma 3D interactivă în fișa fiecărui pacient. Dinții pot fi selectați,
+                  marcați ca tratați, cariați, cu coroană/implant sau extrași și pot avea istoric și notițe.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={dentalClinic}
+                aria-label="Activează clinica stomatologică"
+                disabled={savingDentalClinic}
+                onClick={() => saveDentalClinic(!dentalClinic)}
+                className={`relative mt-1 h-7 w-12 shrink-0 rounded-full transition ${dentalClinic ? 'bg-[var(--accent)]' : 'bg-gray-300'}`}
+              >
+                <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${dentalClinic ? 'left-6' : 'left-1'}`} />
+              </button>
+            </div>
+            <p className={`mt-3 text-xs font-medium ${dentalClinic ? 'text-green-700' : 'text-gray-500'}`}>
+              {savingDentalClinic ? 'Se salvează…' : dentalClinic ? '✓ Modul stomatologic este activ' : 'Modul stomatologic este oprit'}
+            </p>
+          </Card>
+        )}
 
         <BillingSection
           businessId={business.id}

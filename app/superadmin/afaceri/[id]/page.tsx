@@ -50,6 +50,7 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
           slug: business.slug,
           name: business.name,
           category: business.category,
+          dentalClinic: business.dentalClinic,
           accountActive: business.accountActive,
           publicListed: business.publicListed,
           ownerEmail: business.users[0]?.email ?? null,

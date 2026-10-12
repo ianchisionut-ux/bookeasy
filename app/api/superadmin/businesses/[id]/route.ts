@@ -28,6 +28,7 @@ const patchSchema = z.object({
   publicListed: z.boolean().optional(),
   accountActive: z.boolean().optional(),
   teamSize: z.number().min(1).max(200).optional(),
+  dentalClinic: z.boolean().optional(),
 })
 
 async function requireSuperAdmin() {
@@ -45,14 +46,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = patchSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const current = await prisma.business.findUnique({ where: { id }, select: { billingSuspendedAt: true, billingDueAt: true, billingInvoiceUrl: true, billingAmount: true, billingSubtotal: true, billingStatus: true } })
+  const current = await prisma.business.findUnique({ where: { id }, select: { category: true, billingSuspendedAt: true, billingDueAt: true, billingInvoiceUrl: true, billingAmount: true, billingSubtotal: true, billingStatus: true } })
   if (!current) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
+
+  const targetCategory = parsed.data.category ?? current.category
+  if (parsed.data.dentalClinic === true && targetCategory !== 'CLINICA') {
+    return NextResponse.json({ error: 'Odontograma poate fi activată numai pentru o clinică.' }, { status: 400 })
+  }
 
   const { billingDueAt, ...input } = parsed.data
   const data: any = {
     ...input,
     ...(billingDueAt !== undefined ? { billingDueAt: billingDueAt ? new Date(billingDueAt) : null } : {}),
   }
+  if (parsed.data.category && parsed.data.category !== 'CLINICA') data.dentalClinic = false
   const billingChanged =
     (parsed.data.billingAmount !== undefined && Number(current.billingAmount) !== parsed.data.billingAmount) ||
     (parsed.data.billingSubtotal !== undefined && Number(current.billingSubtotal) !== parsed.data.billingSubtotal) ||
