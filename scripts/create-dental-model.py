@@ -142,6 +142,7 @@ for datablocks in (bpy.data.meshes, bpy.data.curves, bpy.data.materials, bpy.dat
 
 scene = bpy.context.scene
 scene.name = "BookEasy Dental Chart"
+bpy.context.preferences.filepaths.save_version = 0
 render_engines = [item.identifier for item in bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items]
 scene.render.engine = next((engine for engine in render_engines if "EEVEE" in engine), scene.render.engine)
 scene.render.resolution_x = 1200
