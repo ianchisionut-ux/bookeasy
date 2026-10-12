@@ -2,8 +2,11 @@
 .marketplace-page{--marketplace-bg:#f6f8f7;--marketplace-ink:#193c3e;--marketplace-line:#e2eae8;background:var(--marketplace-bg);color:var(--marketplace-ink)}
 .marketplace-container{width:min(100% - 40px,1240px);margin-inline:auto}
 .marketplace-header{position:relative;z-index:35;background:#fff;border-bottom:1px solid #e9eeec}
-.marketplace-nav-link{padding:11px 16px;border-radius:999px;color:#526365;font-size:13px;font-weight:700;transition:background .2s,color .2s}
-.marketplace-nav-link:hover,.marketplace-nav-link.is-active{background:#eef7f5;color:#147f83}
+.marketplace-nav-link{position:relative;display:inline-flex;align-items:center;min-height:44px;padding:11px 16px;border-radius:999px;color:#526365;font-size:13px;font-weight:700;transition:background .2s,color .2s}
+.marketplace-nav-link::after{content:"";position:absolute;right:16px;bottom:7px;left:16px;height:2px;border-radius:2px;background:#168d8d;transform:scaleX(0);transform-origin:left;transition:transform .25s ease}
+.marketplace-nav-link:hover,.marketplace-nav-link.is-active,.marketplace-nav-link:focus-visible{background:#eef7f5;color:#147f83}
+.marketplace-nav-link:hover::after,.marketplace-nav-link.is-active::after,.marketplace-nav-link:focus-visible::after{transform:scaleX(1)}
+.marketplace-login-link{white-space:nowrap}
 .marketplace-header-cta{border-radius:999px;background:#168b8b;color:#fff;box-shadow:0 7px 15px #0a6e7022;transition:background .2s,transform .2s}
 .marketplace-header-cta:hover{background:#0e7476;transform:translateY(-1px)}
 .marketplace-icon-button{display:grid;place-items:center;width:44px;height:44px;border-radius:12px}
@@ -65,27 +68,29 @@
 .marketplace-favorites-filter:hover,.marketplace-favorites-filter.is-active{border-color:#69b9ae;color:#128b86;background:#eef8f5}
 .marketplace-groups{display:grid;gap:52px}
 .marketplace-group{min-width:0}
+.marketplace-group+.marketplace-group{border-top:1px solid #d5e6e1;padding-top:48px}
 .marketplace-group-heading{display:flex;align-items:center;gap:12px;margin-bottom:19px}
 .marketplace-group-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:12px;background:#ddf2ee;color:#168d8b}
 .marketplace-group-heading h3{font-size:19px;font-weight:800;letter-spacing:-.03em}
 .marketplace-group-count{margin-left:auto;font-size:12px;color:#869594}
-.marketplace-business-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
-.marketplace-business-card{min-width:0;background:#fff;border:1px solid #e6ece9;border-radius:23px;overflow:hidden;box-shadow:0 7px 25px #17383a0b;transition:transform .25s,box-shadow .25s,border-color .25s}
-.marketplace-business-card:hover{transform:translateY(-5px);border-color:#b5dcd5;box-shadow:0 18px 42px #17383a1c}
+.marketplace-business-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}
+.marketplace-business-card{position:relative;min-width:0;background:#fff;border:2px solid #d3e6e1;border-radius:23px;overflow:hidden;box-shadow:0 7px 25px #17383a0b;transition:transform .25s,box-shadow .25s,border-color .25s}
+.marketplace-business-card:hover,.marketplace-business-card:focus-within{transform:translateY(-5px);border-color:#60b7ac;box-shadow:0 18px 42px #17383a1c}
+.marketplace-business-card-link{position:absolute;inset:0;z-index:1;cursor:pointer}
 .marketplace-business-image{position:relative;height:220px;overflow:hidden;background:#d9eeeb}
 .marketplace-business-image img{transition:transform .4s}
 .marketplace-business-card:hover .marketplace-business-image img{transform:scale(1.04)}
 .marketplace-business-placeholder{display:grid;place-items:center;width:100%;height:100%;background:linear-gradient(125deg,#d5f1eb,#edf7ee);font-size:70px;font-weight:800;color:#55a9a0}
 .marketplace-business-tag{position:absolute;left:15px;top:15px;display:inline-block;background:#fff;padding:8px 12px;border-radius:10px;box-shadow:0 3px 10px #00000010;color:#208985;font-size:11px;font-weight:800}
-.marketplace-favorite-heart{position:absolute;right:14px;top:13px;display:grid;place-items:center;width:41px;height:41px;border-radius:50%;color:#1a8181;background:#fffffff2;box-shadow:0 4px 15px #00000019;transition:transform .2s}
+.marketplace-favorite-heart{position:absolute;z-index:2;right:14px;top:13px;display:grid;place-items:center;width:41px;height:41px;border-radius:50%;color:#1a8181;background:#fffffff2;box-shadow:0 4px 15px #00000019;transition:transform .2s}
 .marketplace-favorite-heart:hover{transform:scale(1.08)}
 .marketplace-favorite-heart.is-active{color:#d64b65}
-.marketplace-business-body{padding:22px}
+.marketplace-business-body{border-top:1px solid #dcebe7;padding:22px}
 .marketplace-business-name{font-size:17px;font-weight:800;line-height:1.4;letter-spacing:-.025em}
 .marketplace-rating{flex-shrink:0;display:flex;align-items:center;gap:4px;color:#e6a02a;font-size:12px;font-weight:800}
 .marketplace-business-address{display:flex;align-items:center;gap:7px;margin-top:11px;min-height:20px;font-size:12px;color:#8a9794}
 .marketplace-business-address svg{color:#6d9993}
-.marketplace-business-actions{display:flex;gap:9px;align-items:center;margin-top:24px}
+.marketplace-business-actions{position:relative;z-index:2;display:flex;gap:9px;align-items:center;margin-top:24px}
 .marketplace-book-button,.marketplace-details-button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 12px;border-radius:11px;font-weight:800;font-size:12px;transition:background .2s}
 .marketplace-book-button{flex:1;background:#168d8d;color:white}
 .marketplace-book-button:hover{background:#0c7174}
@@ -153,11 +158,12 @@
 .marketplace-section-title{font-size:25px}
 .marketplace-favorites-filter{min-height:39px;padding-inline:10px}
 .marketplace-favorites-filter span{font-size:11px}
-.marketplace-business-grid{grid-template-columns:1fr;gap:16px}
+.marketplace-business-grid{grid-template-columns:1fr;gap:24px}
 .marketplace-business-image{height:220px}
 .marketplace-business-body{padding:19px}
 .marketplace-business-actions{margin-top:20px}
 .marketplace-groups{gap:34px}
+.marketplace-group+.marketplace-group{padding-top:30px}
 .marketplace-how-it-works{padding:23px;margin-bottom:42px}
 .marketplace-steps{grid-template-columns:1fr;gap:18px}
 .marketplace-steps>div{padding-bottom:15px;border-bottom:1px solid #cfe8e1}

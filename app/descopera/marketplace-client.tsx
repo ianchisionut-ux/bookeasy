@@ -157,7 +157,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
           </nav>
 
           <div className="hidden items-center gap-4 sm:flex">
-            <Link href="/dashboard" className="text-[13px] font-bold transition-colors hover:text-[var(--brand-teal-dark)] focus-visible:underline">Intră în cont</Link>
+            <Link href="/dashboard" className="marketplace-nav-link marketplace-login-link">Intră în cont</Link>
             <Link href="/pentru-afaceri#cere-acces" className="marketplace-header-cta inline-flex min-h-11 items-center gap-2 px-5 text-[13px] font-bold">
               Adaugă afacerea <ArrowUpRight size={16} aria-hidden="true" />
             </Link>
@@ -292,6 +292,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
                     const isFavorite = ready && favorites.includes(business.slug)
                     return (
                       <article key={business.id} className="marketplace-business-card">
+                        <Link href={'/' + business.slug} className="marketplace-business-card-link" aria-label={'Vezi afacerea ' + business.name} />
                         <div className="marketplace-business-image">
                           {business.heroImageUrl ? (
                             <Image src={business.heroImageUrl} alt={'Fotografie ' + business.name} fill sizes="(max-width: 640px) 100vw, (max-width: 1023px) 50vw, 33vw" className="object-cover" unoptimized={business.heroImageUrl.startsWith('/api/storage/public/')} />
