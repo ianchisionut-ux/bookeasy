@@ -61,6 +61,7 @@ function findTooth(object: THREE.Object3D | null): string | null {
 
 function DentalModel({ chart, selected, onSelect }: { chart: DentalChartData; selected: string; onSelect: (tooth: string) => void }) {
   const gltf = useGLTF('/models/bookeasy-dental-chart.glb')
+  const [hovered, setHovered] = useState<string | null>(null)
   const model = useMemo(() => {
     const clone = gltf.scene.clone(true)
     clone.traverse((object) => {
@@ -87,12 +88,25 @@ function DentalModel({ chart, selected, onSelect }: { chart: DentalChartData; se
       const materials = Array.isArray(object.material) ? object.material : [object.material]
       for (const material of materials) {
         if (!(material instanceof THREE.MeshStandardMaterial)) continue
-        if (crown) material.color.set(STATUS[status].color)
-        material.emissive.set(crown && tooth === selected ? '#0e9aa7' : '#000000')
-        material.emissiveIntensity = crown && tooth === selected ? 0.22 : 0
+        if (crown) {
+          material.color.set(STATUS[status].color)
+          if (tooth === selected) material.color.lerp(new THREE.Color('#5eead4'), 0.42)
+          else if (tooth === hovered) material.color.lerp(new THREE.Color('#67e8f9'), 0.34)
+        }
+        const isSelected = crown && tooth === selected
+        const isHovered = crown && tooth === hovered
+        material.emissive.set(isSelected ? '#14b8a6' : isHovered ? '#22d3ee' : '#000000')
+        material.emissiveIntensity = isSelected ? 0.72 : isHovered ? 0.5 : 0
       }
     })
-  }, [chart, model, selected])
+  }, [chart, hovered, model, selected])
+
+  useEffect(() => {
+    document.body.style.cursor = hovered ? 'pointer' : ''
+    return () => {
+      document.body.style.cursor = ''
+    }
+  }, [hovered])
 
   function handlePointer(event: ThreeEvent<PointerEvent>) {
     const tooth = findTooth(event.object)
@@ -101,7 +115,19 @@ function DentalModel({ chart, selected, onSelect }: { chart: DentalChartData; se
     onSelect(tooth)
   }
 
-  return <primitive object={model} onPointerDown={handlePointer} />
+  function handlePointerMove(event: ThreeEvent<PointerEvent>) {
+    const tooth = findTooth(event.object)
+    if (!tooth) return
+    event.stopPropagation()
+    setHovered((current) => current === tooth ? current : tooth)
+  }
+
+  function handlePointerOut(event: ThreeEvent<PointerEvent>) {
+    if (!findTooth(event.object)) return
+    setHovered(null)
+  }
+
+  return <primitive object={model} onPointerDown={handlePointer} onPointerMove={handlePointerMove} onPointerOut={handlePointerOut} />
 }
 
 function ToothRow({ label, teeth, chart, selected, onSelect }: { label: string; teeth: string[]; chart: DentalChartData; selected: string; onSelect: (tooth: string) => void }) {
