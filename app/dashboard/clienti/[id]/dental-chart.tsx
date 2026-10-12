@@ -60,7 +60,7 @@ function findTooth(object: THREE.Object3D | null): string | null {
 }
 
 function DentalModel({ chart, selected, onSelect }: { chart: DentalChartData; selected: string; onSelect: (tooth: string) => void }) {
-  const gltf = useGLTF('/models/bookeasy-dental-chart.glb')
+  const gltf = useGLTF('/models/bookeasy-dental-chart.glb?v=20261012-2')
   const [hovered, setHovered] = useState<string | null>(null)
   const model = useMemo(() => {
     const clone = gltf.scene.clone(true)
@@ -78,6 +78,15 @@ function DentalModel({ chart, selected, onSelect }: { chart: DentalChartData; se
     model.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) return
       if (object.name.startsWith('Gingiva_')) {
+        const materials = Array.isArray(object.material) ? object.material : [object.material]
+        for (const material of materials) {
+          if (!(material instanceof THREE.MeshStandardMaterial)) continue
+          material.color.set('#d98791')
+          material.emissive.set('#000000')
+          material.emissiveIntensity = 0
+          material.metalness = 0
+          material.roughness = 0.48
+        }
         return
       }
       const tooth = findTooth(object)
@@ -90,15 +99,32 @@ function DentalModel({ chart, selected, onSelect }: { chart: DentalChartData; se
         if (!(material instanceof THREE.MeshStandardMaterial)) continue
         if (crown) {
           material.color.set(STATUS[status].color)
-          if (tooth === selected) material.color.lerp(new THREE.Color('#5eead4'), 0.42)
-          else if (tooth === hovered) material.color.lerp(new THREE.Color('#67e8f9'), 0.34)
+          if (tooth === hovered) material.color.set('#67e8f9')
+          else if (tooth === selected) material.color.lerp(new THREE.Color('#2dd4bf'), 0.62)
         }
         const isSelected = crown && tooth === selected
         const isHovered = crown && tooth === hovered
-        material.emissive.set(isSelected ? '#14b8a6' : isHovered ? '#22d3ee' : '#000000')
-        material.emissiveIntensity = isSelected ? 0.72 : isHovered ? 0.5 : 0
+        material.emissive.set(isHovered ? '#22d3ee' : isSelected ? '#14b8a6' : '#000000')
+        material.emissiveIntensity = isHovered ? 1.15 : isSelected ? 0.82 : 0
       }
     })
+
+    if (!hovered) return
+    const hoveredMesh = model.getObjectByName(`Tooth_${hovered}`)
+    if (!(hoveredMesh instanceof THREE.Mesh)) return
+
+    const outline = new THREE.LineSegments(
+      new THREE.EdgesGeometry(hoveredMesh.geometry, 18),
+      new THREE.LineBasicMaterial({ color: '#22d3ee', transparent: true, opacity: 0.95, depthTest: false }),
+    )
+    outline.name = 'BookEasy_Hover_Outline'
+    outline.renderOrder = 1000
+    hoveredMesh.add(outline)
+    return () => {
+      hoveredMesh.remove(outline)
+      outline.geometry.dispose()
+      ;(outline.material as THREE.Material).dispose()
+    }
   }, [chart, hovered, model, selected])
 
   useEffect(() => {
@@ -323,4 +349,4 @@ export default function DentalChart({ customerId, patientName, initialChart }: {
   )
 }
 
-useGLTF.preload('/models/bookeasy-dental-chart.glb')
+useGLTF.preload('/models/bookeasy-dental-chart.glb?v=20261012-2')

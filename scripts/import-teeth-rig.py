@@ -137,8 +137,10 @@ for gum in [obj for obj in model_objects if obj.name.startswith("Gingiva_")]:
         if material and material.use_nodes:
             shader = next((node for node in material.node_tree.nodes if node.type == "BSDF_PRINCIPLED"), None)
             if shader:
-                shader.inputs["Base Color"].default_value = (0.62, 0.13, 0.16, 1.0)
-                shader.inputs["Roughness"].default_value = 0.34
+                # Blender stores Base Color in scene-linear space. These values
+                # are the linear equivalent of the clinical pink #d98791.
+                shader.inputs["Base Color"].default_value = (0.694, 0.242, 0.283, 1.0)
+                shader.inputs["Roughness"].default_value = 0.48
 
 # Remove the source rig and old lighting once the visible pose is baked.
 for obj in list(bpy.data.objects):
