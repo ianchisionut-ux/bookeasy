@@ -52,7 +52,7 @@ export function contractMissingFields(business: ContractBusiness, type: Contract
 
 function customerLines(b: ContractBusiness) {
   return [
-    `${b.billingLegalName || b.name} (${b.billingClientType === 'PF' ? 'persoană fizică' : 'persoană juridică'})`,
+    `${b.billingLegalName || '[denumire legală necompletată]'} (${b.billingClientType === 'PF' ? 'persoană fizică' : 'persoană juridică'})`,
     b.billingCif ? `${b.billingClientType === 'PF' ? 'Identificator fiscal declarat' : 'CUI/CIF'}: ${b.billingCif}` : '',
     b.billingClientType === 'PJ' && b.billingRegCom ? `Registrul Comerțului: ${b.billingRegCom}` : '',
     `Adresă: ${[b.billingAddress, b.billingCity, b.billingCounty, b.billingPostalCode].filter(Boolean).join(', ')}`,

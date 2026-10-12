@@ -52,7 +52,8 @@ export default function CreateBusinessButton() {
 
         <div className="flex flex-col gap-2">
           <Input placeholder="Slug (ex: salon-bella)" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} />
-          <Input placeholder="Nume afacere" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <Input placeholder="Nume afișat public (brand)" aria-label="Nume afișat public (brand)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <p className="text-xs text-gray-500">Denumirea legală și datele de facturare se completează separat în profilul afacerii.</p>
           <select
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value as 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' })}

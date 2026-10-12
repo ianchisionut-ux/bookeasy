@@ -140,9 +140,9 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
           billingRegCom: business.billingRegCom ?? '',
           billingAddress: business.billingAddress ?? '',
           billingCounty: business.billingCounty ?? '',
-          billingCity: business.billingCity ?? business.city ?? '',
+          billingCity: business.billingCity ?? '',
           billingPostalCode: business.billingPostalCode ?? '',
-          billingEmail: business.billingEmail ?? (session as any).user?.email ?? '',
+          billingEmail: business.billingEmail ?? '',
           contractRepresentativeName: business.contractRepresentativeName ?? '',
           contractRepresentativeRole: business.contractRepresentativeRole ?? '',
         }} />

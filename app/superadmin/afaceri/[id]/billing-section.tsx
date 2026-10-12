@@ -104,9 +104,10 @@ export default function BillingSection(p: Props) {
       <div><label className="text-sm text-gray-500 block mb-1.5">Scadență</label><Input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} /></div>
       <div><label className="text-sm text-gray-500 block mb-1.5">Total estimat</label><Input value={`${estimatedTotal.toFixed(2)} RON`} disabled /></div>
     </div>
-    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Date client</p>
+    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Date juridice și de facturare</p>
+    <p className="mb-3 text-sm text-gray-500">Se folosesc pe factură și în contracte. Numele brandului afișat în marketplace se editează separat, sus.</p>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-      <div className="sm:col-span-2"><label className="text-sm text-gray-500 block mb-1.5">Denumire / nume</label><Input value={legalName} onChange={(e) => setLegalName(e.target.value)} /></div>
+      <div className="sm:col-span-2"><label className="text-sm text-gray-500 block mb-1.5">{clientType === 'PJ' ? 'Denumirea legală de pe factură' : 'Numele persoanei de pe factură'}</label><Input value={legalName} onChange={(e) => setLegalName(e.target.value)} /></div>
       <div><label className="text-sm text-gray-500 block mb-1.5">Tip client</label><select value={clientType} onChange={(e) => setClientType(e.target.value)} className="input-field w-full"><option value="PJ">Persoană juridică</option><option value="PF">Persoană fizică</option></select></div>
       <div><label className="text-sm text-gray-500 block mb-1.5">{clientType === 'PJ' ? 'CIF' : 'CNP (opțional)'}</label><Input value={cif} onChange={(e) => setCif(e.target.value)} /></div>
       {clientType === 'PJ' && <div><label className="text-sm text-gray-500 block mb-1.5">Nr. Registrul Comerțului</label><Input value={regCom} onChange={(e) => setRegCom(e.target.value)} /></div>}
