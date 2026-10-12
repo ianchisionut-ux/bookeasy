@@ -44,30 +44,36 @@ def superellipse(angle, exponent):
 def anterior_crown_mesh(name, width, depth, height, kind, upper, side):
     chewing_sign = -1 if upper else 1
     if kind == "canine":
-        # Cervical constriction, strong labial ridge and one true canine cusp.
-        profiles = [
-            (-0.50, 0.57, 0.66),
-            (-0.36, 0.78, 0.84),
-            (-0.15, 0.95, 0.97),
-            (0.04, 1.00, 1.00),
-            (0.23, 0.87, 0.88),
-            (0.39, 0.52, 0.58),
-            (0.51, 0.05, 0.08),
-        ]
-        exponent = 2.55
+        # Maxillary canine is bulkier with a stronger labial ridge; the
+        # mandibular canine is narrower mesiodistally and slightly longer.
+        profiles = (
+            [(-0.50, 0.54, 0.63), (-0.36, 0.76, 0.82), (-0.15, 0.96, 0.98),
+             (0.03, 1.00, 1.00), (0.22, 0.86, 0.88), (0.39, 0.50, 0.56), (0.51, 0.035, 0.055)]
+            if upper else
+            [(-0.50, 0.50, 0.58), (-0.35, 0.71, 0.77), (-0.13, 0.92, 0.94),
+             (0.06, 1.00, 1.00), (0.25, 0.83, 0.84), (0.41, 0.46, 0.51), (0.52, 0.03, 0.05)]
+        )
+        exponent = 2.48 if upper else 2.72
     else:
-        # Incisors are spatulate, not cylindrical: flat incisal edge, rounded corners,
-        # convex labial face and a shallow lingual fossa.
-        profiles = [
-            (-0.50, 0.60, 0.69),
-            (-0.37, 0.78, 0.85),
-            (-0.17, 0.93, 0.96),
-            (0.04, 1.00, 1.00),
-            (0.27, 0.99, 0.91),
-            (0.45, 0.95, 0.75),
-            (0.51, 0.91, 0.69),
-        ]
-        exponent = 4.6 if kind == "central" else 4.0
+        # Four separate canonical incisor silhouettes. Upper central is broad
+        # and almost rectangular; upper lateral is rounder. Lower central is
+        # the smallest and most symmetrical, while lower lateral twists distal.
+        if upper and kind == "central":
+            profiles = [(-0.50, 0.58, 0.66), (-0.36, 0.76, 0.83), (-0.16, 0.92, 0.95),
+                        (0.04, 1.00, 1.00), (0.28, 1.00, 0.91), (0.46, 0.97, 0.73), (0.51, 0.94, 0.66)]
+            exponent = 5.1
+        elif upper:
+            profiles = [(-0.50, 0.56, 0.64), (-0.36, 0.74, 0.82), (-0.16, 0.91, 0.95),
+                        (0.05, 1.00, 1.00), (0.28, 0.98, 0.90), (0.45, 0.91, 0.72), (0.51, 0.84, 0.64)]
+            exponent = 3.65
+        elif kind == "central":
+            profiles = [(-0.50, 0.53, 0.61), (-0.34, 0.72, 0.79), (-0.13, 0.91, 0.93),
+                        (0.07, 1.00, 1.00), (0.30, 0.99, 0.90), (0.47, 0.96, 0.70), (0.51, 0.93, 0.64)]
+            exponent = 5.2
+        else:
+            profiles = [(-0.50, 0.52, 0.61), (-0.35, 0.72, 0.80), (-0.14, 0.91, 0.94),
+                        (0.06, 1.00, 1.00), (0.29, 0.99, 0.91), (0.46, 0.94, 0.72), (0.51, 0.88, 0.66)]
+            exponent = 4.5
 
     ring_vertices = 40
     vertices = []
@@ -78,11 +84,14 @@ def anterior_crown_mesh(name, width, depth, height, kind, upper, side):
             x_unit, y_unit = superellipse(angle, exponent)
             # Distal corners are more rounded and the crown leans subtly distally.
             distal_side = x_unit * side
-            x_factor = 1.0 - 0.045 * max(0.0, distal_side)
-            x = width * 0.5 * x_scale * x_unit * x_factor + side * width * 0.025 * (q + 0.5)
+            distal_rounding = 0.075 if kind == "lateral" else 0.045
+            x_factor = 1.0 - distal_rounding * max(0.0, distal_side)
+            distal_twist = side * width * (0.040 if (not upper and kind == "lateral") else 0.022) * (q + 0.5)
+            x = width * 0.5 * x_scale * x_unit * x_factor + distal_twist
             if y_unit < 0:
                 # Labial convexity and canine labial ridge.
-                bulge = 1.0 + (0.07 if kind == "canine" else 0.045) * math.exp(-((q - 0.02) / 0.30) ** 2)
+                labial_ridge = 0.115 if kind == "canine" and upper else (0.085 if kind == "canine" else 0.042)
+                bulge = 1.0 + labial_ridge * math.exp(-((q - 0.02) / 0.30) ** 2) * (1.0 - 0.22 * abs(x_unit))
                 y = depth * 0.5 * y_scale * y_unit * bulge
             else:
                 # Lingual surface tapers inward; incisors retain a real fossa.
@@ -106,42 +115,118 @@ def anterior_crown_mesh(name, width, depth, height, kind, upper, side):
     return mesh
 
 
-def cusp_layout(kind, upper, tooth_index):
+def cusp_layout(kind, upper, tooth_index, side):
+    mesial = -side
+    distal = side
     if kind == "premolar":
         if not upper and tooth_index == 5:
             # Lower second premolar: common three-cusp Y pattern.
-            return [(-0.02, -0.56, 0.24), (-0.30, 0.46, 0.17), (0.30, 0.46, 0.16)]
-        lingual_height = 0.21 if upper else 0.14
-        return [(0.0, -0.56, 0.26), (0.0, 0.49, lingual_height)]
+            return [(0.0, -0.56, 0.23), (mesial * 0.27, 0.46, 0.17), (distal * 0.27, 0.44, 0.15)]
+        if upper and tooth_index == 4:
+            return [(mesial * 0.03, -0.56, 0.25), (distal * 0.03, 0.49, 0.20)]
+        if upper:
+            return [(0.0, -0.54, 0.22), (0.0, 0.50, 0.21)]
+        # Mandibular P1 has a dominant buccal cusp and a tiny, non-functional lingual cusp.
+        return [(mesial * 0.02, -0.57, 0.27), (distal * 0.05, 0.42, 0.095)]
     if upper:
         if tooth_index == 8:
-            return [(-0.43, -0.57, 0.22), (0.39, -0.54, 0.18), (-0.16, 0.47, 0.20)]
+            return [(mesial * 0.39, -0.55, 0.20), (distal * 0.34, -0.51, 0.16), (mesial * 0.13, 0.45, 0.18)]
+        if tooth_index == 7:
+            return [(mesial * 0.43, -0.57, 0.22), (distal * 0.41, -0.53, 0.19),
+                    (mesial * 0.37, 0.47, 0.24), (distal * 0.32, 0.43, 0.13)]
         # Maxillary molars are rhomboid: mesiopalatal is the largest cusp,
         # distopalatal the smallest, with two distinct buccal lobes.
-        return [(-0.46, -0.58, 0.24), (0.45, -0.56, 0.21), (-0.40, 0.48, 0.26), (0.38, 0.46, 0.17)]
+        return [(mesial * 0.45, -0.58, 0.24), (distal * 0.43, -0.55, 0.20),
+                (mesial * 0.39, 0.48, 0.27), (distal * 0.35, 0.44, 0.16)]
     if tooth_index == 6:
         # Lower first molar: characteristic five-cusp pattern.
-        return [(-0.50, -0.55, 0.22), (0.0, -0.61, 0.24), (0.49, -0.51, 0.19), (-0.36, 0.49, 0.23), (0.36, 0.49, 0.22)]
+        return [(mesial * 0.48, -0.54, 0.22), (0.0, -0.61, 0.23), (distal * 0.49, -0.49, 0.17),
+                (mesial * 0.37, 0.49, 0.23), (distal * 0.36, 0.47, 0.21)]
     if tooth_index == 8:
-        return [(-0.43, -0.55, 0.20), (0.42, -0.54, 0.19), (-0.38, 0.48, 0.20), (0.38, 0.47, 0.18), (0.0, 0.02, 0.10)]
-    return [(-0.46, -0.57, 0.23), (0.46, -0.56, 0.22), (-0.41, 0.49, 0.23), (0.41, 0.48, 0.21)]
+        return [(mesial * 0.41, -0.54, 0.19), (distal * 0.40, -0.52, 0.18),
+                (mesial * 0.35, 0.46, 0.19), (distal * 0.35, 0.44, 0.17), (0.0, 0.02, 0.09)]
+    # Lower second molar: four similarly sized cusps and a cruciform groove.
+    return [(mesial * 0.44, -0.56, 0.22), (distal * 0.44, -0.55, 0.21),
+            (mesial * 0.39, 0.48, 0.22), (distal * 0.39, 0.47, 0.20)]
+
+
+def posterior_outline(angle, kind, upper, tooth_index, side):
+    """Return the canonical occlusal outline for a permanent posterior tooth.
+
+    The model deliberately uses a separate outline for every premolar/molar
+    archetype instead of scaling one generic rounded box.  X is mesiodistal,
+    Y is buccolingual and ``side`` keeps mesial/distal anatomy mirrored.
+    """
+    if kind == "premolar":
+        if upper and tooth_index == 4:
+            exponent = 2.55  # angular maxillary P1, shallow mesial concavity
+        elif upper:
+            exponent = 2.25  # rounder maxillary P2
+        elif tooth_index == 4:
+            exponent = 1.72  # diamond-like mandibular P1
+        else:
+            exponent = 2.72  # broader mandibular P2
+    elif upper:
+        exponent = {6: 2.48, 7: 2.34, 8: 2.02}[tooth_index]
+    else:
+        exponent = {6: 2.46, 7: 2.68, 8: 2.30}[tooth_index]
+
+    x, y = superellipse(angle, exponent)
+    mesial = max(0.0, -x * side)
+    distal = max(0.0, x * side)
+
+    if kind == "premolar":
+        if upper and tooth_index == 4:
+            # Maxillary first premolar: hexagonal outline and mesial groove.
+            x *= 1.0 - 0.055 * max(0.0, y) * mesial
+            y *= 1.0 - 0.045 * distal
+        elif upper:
+            x *= 1.0 - 0.025 * distal
+            y *= 1.0 - 0.025 * abs(x)
+        elif tooth_index == 4:
+            # Mandibular first premolar narrows markedly lingually.
+            lingual = max(0.0, y)
+            x *= 1.0 - 0.23 * lingual
+            y *= 1.0 - 0.055 * distal
+        else:
+            y *= 1.0 - 0.035 * distal
+    elif upper:
+        # Maxillary molars have a rhomboid outline.  The distal-palatal corner
+        # progressively reduces from M1 to M3; M3 becomes heart-shaped.
+        x += -side * 0.075 * y
+        distopalatal = distal * max(0.0, y)
+        reduction = {6: 0.055, 7: 0.15, 8: 0.36}[tooth_index]
+        x *= 1.0 - reduction * distopalatal
+        y *= 1.0 - (reduction * 0.72) * distopalatal
+        if tooth_index == 8:
+            x *= 1.0 - 0.10 * max(0.0, y)
+    else:
+        # Mandibular M1 is pentagonal with a small distal lobe, M2 rectangular,
+        # and M3 rounder with a reduced distal half.
+        if tooth_index == 6:
+            x *= 1.0 - 0.055 * distal
+            y *= 1.0 - 0.040 * distal
+        elif tooth_index == 8:
+            x *= 1.0 - 0.13 * distal
+            y *= 1.0 - 0.065 * distal
+
+    return x, y
 
 
 def posterior_crown_mesh(name, width, depth, height, kind, upper, tooth_index, side):
     chewing_sign = -1 if upper else 1
     ring_vertices = 48
     radial_rings = 13
-    exponent = 3.6 if kind == "molar" else 2.75
     side_profiles = [
-        (-0.50, 0.55, 0.62),
-        (-0.38, 0.73, 0.79),
-        (-0.19, 0.93, 0.94),
+        (-0.50, 0.57, 0.64),
+        (-0.38, 0.76, 0.81),
+        (-0.19, 0.94, 0.95),
         (0.02, 1.00, 1.00),
-        (0.16, 0.95, 0.94),
+        (0.16, 0.94, 0.93),
     ]
     vertices = []
     faces = []
-    cusps = cusp_layout(kind, upper, tooth_index)
+    cusps = cusp_layout(kind, upper, tooth_index, side)
 
     def cusp_relief(x_norm, y_norm, spread=0.34):
         relief = 0.0
@@ -150,12 +235,19 @@ def posterior_crown_mesh(name, width, depth, height, kind, upper, tooth_index, s
             relief += amplitude * math.exp(-distance * 1.18)
         return relief
 
+    outline_blend = (0.08, 0.18, 0.34, 0.58, 0.82)
     for profile_index, (q, x_scale, y_scale) in enumerate(side_profiles):
         for segment in range(ring_vertices):
             angle = 2 * math.pi * segment / ring_vertices
-            x_unit, y_unit = superellipse(angle, exponent)
-            distal_taper = 1.0 - 0.035 * max(0.0, x_unit * side)
-            x = width * 0.5 * x_scale * x_unit * distal_taper
+            outline_x, outline_y = posterior_outline(angle, kind, upper, tooth_index, side)
+            # The occlusal table may be rhomboid/rectangular, but a real crown's
+            # axial walls are convex and rounded. Blend from an ellipse at the
+            # cervical margin into the type-specific outline near the cusps.
+            round_x, round_y = superellipse(angle, 2.05 if kind == "molar" else 2.15)
+            blend = outline_blend[profile_index]
+            x_unit = round_x * (1.0 - blend) + outline_x * blend
+            y_unit = round_y * (1.0 - blend) + outline_y * blend
+            x = width * 0.5 * x_scale * x_unit
             y = depth * 0.5 * y_scale * y_unit
             if y_unit < -0.12:
                 # Developmental grooves divide the convex buccal surface into
@@ -195,7 +287,7 @@ def posterior_crown_mesh(name, width, depth, height, kind, upper, tooth_index, s
         ring = []
         for segment in range(ring_vertices):
             angle = 2 * math.pi * segment / ring_vertices
-            x_unit, y_unit = superellipse(angle, exponent)
+            x_unit, y_unit = posterior_outline(angle, kind, upper, tooth_index, side)
             x_norm, y_norm = x_unit * radius, y_unit * radius
             ring.append(len(vertices))
             vertices.append((width * 0.5 * x_norm, depth * 0.5 * y_norm, height * occlusal_height(x_norm, y_norm, radius) * chewing_sign))
@@ -222,6 +314,91 @@ def posterior_crown_mesh(name, width, depth, height, kind, upper, tooth_index, s
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
     return mesh
+
+
+def add_gingival_arch(name, upper, material):
+    """Build a broad, flattened gingival saddle around the cervical crowns.
+
+    This is intentionally a band rather than the old circular tube: the crown
+    margin is thin and scalloped while the root side gains the larger volume
+    visible in a natural open-mouth model.
+    """
+    tooth_order = list(range(8, 0, -1)) + list(range(1, 9))
+    side_order = [-1] * 8 + [1] * 8
+    centres = []
+    for side, index in zip(side_order, tooth_order):
+        x, y, _ = arch_point(side, index, upper)
+        centres.append(Vector((x, y, 0.0)))
+
+    # Catmull-Rom interpolation follows the dental arch without the polygonal
+    # corners produced by simply joining tooth centres.
+    path = []
+    margin_scallops = []
+    samples_per_tooth = 5
+    for point_index in range(len(centres) - 1):
+        p0 = centres[max(0, point_index - 1)]
+        p1 = centres[point_index]
+        p2 = centres[point_index + 1]
+        p3 = centres[min(len(centres) - 1, point_index + 2)]
+        for sample in range(samples_per_tooth):
+            t = sample / samples_per_tooth
+            t2, t3 = t * t, t * t * t
+            point = 0.5 * ((2.0 * p1) + (-p0 + p2) * t
+                           + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2
+                           + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3)
+            path.append(point)
+            margin_scallops.append(math.cos(2.0 * math.pi * t))
+    path.append(centres[-1])
+    margin_scallops.append(1.0)
+
+    margin_z = 1.02 if upper else -1.02
+    root_z = 1.67 if upper else -1.67
+    direction = 1.0 if upper else -1.0
+    # Flat facial wall plus a short palatal/lingual return.  This avoids the
+    # "pink tube" look while preserving the substantial gum volume requested.
+    cross_section = [
+        (-0.56, margin_z),
+        (0.40, margin_z),
+        (0.47, root_z - direction * 0.04),
+        (0.18, root_z + direction * 0.035),
+        (-0.57, root_z + direction * 0.015),
+    ]
+    vertices = []
+    faces = []
+    section_size = len(cross_section)
+    for point_index, point in enumerate(path):
+        previous = path[max(0, point_index - 1)]
+        following = path[min(len(path) - 1, point_index + 1)]
+        tangent = (following - previous).normalized()
+        normal = Vector((-tangent.y, tangent.x, 0.0)).normalized()
+        # Subtle papilla scalloping keeps the margin from looking machine-cut.
+        scallop = direction * 0.055 * margin_scallops[point_index]
+        posterior_scale = 1.0 + 0.08 * max(0.0, point.y / 1.55)
+        for offset, z_value in cross_section:
+            vertex = point + normal * offset * posterior_scale
+            vertices.append((vertex.x, vertex.y, z_value + (scallop if abs(z_value - margin_z) < 0.22 else 0.0)))
+
+    for path_index in range(len(path) - 1):
+        current = path_index * section_size
+        following = (path_index + 1) * section_size
+        for section_index in range(section_size):
+            next_section = (section_index + 1) % section_size
+            faces.append((current + section_index, current + next_section,
+                          following + next_section, following + section_index))
+    faces.append(tuple(range(section_size - 1, -1, -1)))
+    last = (len(path) - 1) * section_size
+    faces.append(tuple(last + index for index in range(section_size)))
+
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    gum = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(gum)
+    gum.data.materials.append(material)
+    gum["interactive"] = False
+    gum["anatomical_part"] = "gingiva"
+    finish_surface(gum, bevel=0.025, subdivision=1)
+    return gum
 
 
 def tooth_dimensions(upper, index):
@@ -289,14 +466,18 @@ scene.render.filepath = PREVIEW_PATH
 scene.world.color = (0.025, 0.035, 0.04)
 
 enamel = make_material("Natural enamel", (0.93, 0.91, 0.83, 1.0), 0.20)
+gingiva = make_material("Healthy gingiva", (0.62, 0.13, 0.16, 1.0), 0.31)
 
 kinds = {1: "central", 2: "lateral", 3: "canine", 4: "premolar", 5: "premolar", 6: "molar", 7: "molar", 8: "molar"}
 for quadrant, side, upper in ((1, -1, True), (2, 1, True), (3, 1, False), (4, -1, False)):
     for index in range(1, 9):
         add_tooth(f"{quadrant}{index}", side, upper, index, kinds[index], enamel)
 
+add_gingival_arch("Gingiva_Upper", True, gingiva)
+add_gingival_arch("Gingiva_Lower", False, gingiva)
+
 # Clinical studio preview retained in the editable .blend file.
-bpy.ops.object.camera_add(location=(8.0, -12.2, 6.2))
+bpy.ops.object.camera_add(location=(7.4, -12.8, 3.8))
 camera = bpy.context.object
 camera.name = "BookEasy_Clinical_Camera"
 camera.data.lens = 60
