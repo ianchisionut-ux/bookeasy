@@ -20,6 +20,13 @@ def look_at(obj, target):
     obj.rotation_euler = (Vector(target) - obj.location).to_track_quat("-Z", "Y").to_euler()
 
 
+def bounds_center_world(obj):
+    points = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
+    minimum = Vector((min(point.x for point in points), min(point.y for point in points), min(point.z for point in points)))
+    maximum = Vector((max(point.x for point in points), max(point.y for point in points), max(point.z for point in points)))
+    return (minimum + maximum) * 0.5
+
+
 def bake_rig(obj):
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
@@ -96,9 +103,12 @@ def assign_arch(jaw_name, upper):
         third_molar = second_molar.copy()
         third_molar.data = second_molar.data.copy()
         bpy.context.collection.objects.link(third_molar)
-        direction = second_molar.location - first_molar.location
-        third_molar.location = second_molar.location + direction * 0.88
-        third_molar.scale = second_molar.scale * 0.84
+        direction = bounds_center_world(second_molar) - bounds_center_world(first_molar)
+        third_molar.matrix_world = second_molar.matrix_world.copy()
+        third_molar.matrix_world.translation += direction * 0.88
+        local_center = sum((Vector(corner) for corner in third_molar.bound_box), Vector()) / 8.0
+        for vertex in third_molar.data.vertices:
+            vertex.co = local_center + (vertex.co - local_center) * 0.84
         code = f"{quadrant}8"
         third_molar.name = f"Tooth_{code}"
         third_molar["fdi"] = code
@@ -117,6 +127,18 @@ if armature and armature.pose.bones.get("LowerJaw"):
     bpy.context.view_layer.update()
 
 model_objects = assign_arch("UpperJaw", True) + assign_arch("LowerJaw", False)
+
+# Replace the source's saturated red gum material with BookEasy's previous
+# healthy gingival pink, while leaving the enamel material untouched.
+for gum in [obj for obj in model_objects if obj.name.startswith("Gingiva_")]:
+    used_materials = {polygon.material_index for polygon in gum.data.polygons}
+    for material_index in used_materials:
+        material = gum.data.materials[material_index]
+        if material and material.use_nodes:
+            shader = next((node for node in material.node_tree.nodes if node.type == "BSDF_PRINCIPLED"), None)
+            if shader:
+                shader.inputs["Base Color"].default_value = (0.62, 0.13, 0.16, 1.0)
+                shader.inputs["Roughness"].default_value = 0.34
 
 # Remove the source rig and old lighting once the visible pose is baked.
 for obj in list(bpy.data.objects):
