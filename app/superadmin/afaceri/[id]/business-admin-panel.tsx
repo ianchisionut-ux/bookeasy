@@ -656,29 +656,58 @@ function WhatsAppFields({ businessId, channel, metaAppId, configId }: { business
   async function save() {
     setSaving(true)
     setMessage('')
-    const response = await fetch(`/api/superadmin/businesses/${businessId}/channels`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'WHATSAPP', externalId, wabaId, accessToken: accessToken || undefined }),
-    })
-    const data = await response.json()
-    if (!response.ok) {
-      setMessage(typeof data.error === 'string' ? data.error : 'Datele WhatsApp nu sunt valide.')
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 15_000)
+
+    try {
+      const response = await fetch(`/api/superadmin/businesses/${businessId}/channels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'WHATSAPP', externalId, wabaId, accessToken: accessToken || undefined }),
+        signal: controller.signal,
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.error === 'string' ? data.error : 'Datele WhatsApp nu au putut fi salvate.'
+        )
+      }
+
+      setAccessToken('')
+      setMessage('Datele WhatsApp au fost salvate.')
+      router.refresh()
+    } catch (error) {
+      setMessage(
+        error instanceof DOMException && error.name === 'AbortError'
+          ? 'Salvarea a durat prea mult. Încearcă din nou.'
+          : error instanceof Error
+            ? error.message
+            : 'Datele WhatsApp nu au putut fi salvate.'
+      )
+    } finally {
+      window.clearTimeout(timeoutId)
       setSaving(false)
-      return
     }
-    setAccessToken('')
-    setSaving(false)
-    router.refresh()
   }
 
   async function subscribe() {
     setSubscribing(true)
     setMessage('')
-    const res = await fetch(`/api/superadmin/businesses/${businessId}/whatsapp-subscribe`, { method: 'POST' })
-    const data = await res.json()
-    setMessage(res.ok ? 'Abonat cu succes — webhook-ul WhatsApp e activ.' : data.error)
-    setSubscribing(false)
+    try {
+      const res = await fetch(`/api/superadmin/businesses/${businessId}/whatsapp-subscribe`, { method: 'POST' })
+      const data = await res.json().catch(() => null)
+      setMessage(
+        res.ok
+          ? 'Abonat cu succes — webhook-ul WhatsApp e activ.'
+          : typeof data?.error === 'string'
+            ? data.error
+            : 'Aplicația nu a putut fi abonată la WhatsApp.'
+      )
+    } catch {
+      setMessage('Aplicația nu a putut fi abonată la WhatsApp.')
+    } finally {
+      setSubscribing(false)
+    }
   }
 
   return (
