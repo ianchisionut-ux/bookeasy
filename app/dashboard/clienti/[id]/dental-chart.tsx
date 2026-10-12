@@ -206,7 +206,7 @@ export default function DentalChart({ customerId, patientName, initialChart }: {
         <div className="space-y-4">
           <Card className="overflow-hidden p-0">
             <div className="h-[420px] bg-gradient-to-b from-slate-900 to-slate-800 sm:h-[560px]">
-              <Canvas camera={{ position: [0, -10.5, 3.8], fov: 38 }} dpr={[1, 1.6]} gl={{ antialias: true }}>
+              <Canvas camera={{ position: [0, -11.5, 1.2], fov: 34 }} dpr={[1, 1.6]} gl={{ antialias: true }}>
                 <color attach="background" args={['#172126']} />
                 <ambientLight intensity={1.45} />
                 <directionalLight position={[-5, -5, 8]} intensity={2.2} />

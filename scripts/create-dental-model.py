@@ -250,10 +250,10 @@ def add_tooth(code, side, upper, index, kind, enamel):
     width, depth, height = tooth_dimensions(upper, index)
     x, y, angle = arch_point(side, index, upper)
     if kind in ("central", "lateral", "canine"):
-        z = 1.33 if upper else -1.31
+        z = 0.78 if upper else -0.78
         mesh = anterior_crown_mesh(code, width, depth, height, kind, upper, side)
     else:
-        z = 1.10 if upper else -1.08
+        z = 0.62 if upper else -0.62
         mesh = posterior_crown_mesh(code, width, depth, height, kind, upper, index, side)
     tooth = bpy.data.objects.new(f"Tooth_{code}", mesh)
     bpy.context.collection.objects.link(tooth)
@@ -266,47 +266,6 @@ def add_tooth(code, side, upper, index, kind, enamel):
     tooth["tooth_kind"] = kind
     tooth["upper"] = upper
     return tooth
-
-
-def add_gum_arch(name, z_center, upper, gum):
-    segments = 72
-    ring_segments = 18
-    half_width = 0.36 if upper else 0.34
-    z_radius = 0.24 if upper else 0.23
-    vertices = []
-    faces = []
-    centers = []
-    width = 3.00 if upper else 2.78
-    depth = 4.60 if upper else 4.22
-    front_y = -2.72 if upper else -2.58
-    for index in range(segments + 1):
-        t = -math.pi / 2 + math.pi * index / segments
-        centers.append(Vector((width * math.sin(t), front_y + depth * (abs(t) / (math.pi / 2)) ** 1.56, z_center)))
-    for index, center in enumerate(centers):
-        tangent = (centers[min(segments, index + 1)] - centers[max(0, index - 1)]).normalized()
-        normal = Vector((-tangent.y, tangent.x, 0)).normalized()
-        for ring in range(ring_segments):
-            phi = 2 * math.pi * ring / ring_segments
-            # A flattened anatomical ridge is less toy-like than a circular tube.
-            lateral = half_width * math.cos(phi)
-            vertical = z_radius * math.sin(phi) * (0.88 + 0.12 * math.cos(phi))
-            vertices.append(tuple(center + normal * lateral + Vector((0, 0, vertical))))
-    for index in range(segments):
-        current = index * ring_segments
-        following = (index + 1) * ring_segments
-        for ring in range(ring_segments):
-            next_ring = (ring + 1) % ring_segments
-            faces.append((current + ring, following + ring, following + next_ring, current + next_ring))
-    faces.extend((tuple(range(ring_segments - 1, -1, -1)), tuple(segments * ring_segments + ring for ring in range(ring_segments))))
-    mesh = bpy.data.meshes.new(f"{name}_Mesh")
-    mesh.from_pydata(vertices, [], faces)
-    mesh.update()
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.collection.objects.link(obj)
-    obj.data.materials.append(gum)
-    finish_surface(obj, bevel=0.025, subdivision=0)
-    obj["interactive"] = False
-    return obj
 
 
 def look_at(obj, target):
@@ -330,9 +289,6 @@ scene.render.filepath = PREVIEW_PATH
 scene.world.color = (0.025, 0.035, 0.04)
 
 enamel = make_material("Natural enamel", (0.93, 0.91, 0.83, 1.0), 0.20)
-gum = make_material("Healthy gingiva", (0.69, 0.19, 0.22, 1.0), 0.36)
-add_gum_arch("Gingiva_Upper", 1.62, True, gum)
-add_gum_arch("Gingiva_Lower", -1.58, False, gum)
 
 kinds = {1: "central", 2: "lateral", 3: "canine", 4: "premolar", 5: "premolar", 6: "molar", 7: "molar", 8: "molar"}
 for quadrant, side, upper in ((1, -1, True), (2, 1, True), (3, 1, False), (4, -1, False)):
@@ -366,7 +322,7 @@ bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)
 
 for obj in scene.objects:
     obj.select_set(obj.type == "MESH")
-bpy.context.view_layer.objects.active = bpy.data.objects.get("Gingiva_Upper")
+bpy.context.view_layer.objects.active = bpy.data.objects.get("Tooth_11")
 bpy.ops.export_scene.gltf(
     filepath=GLB_PATH,
     export_format="GLB",
