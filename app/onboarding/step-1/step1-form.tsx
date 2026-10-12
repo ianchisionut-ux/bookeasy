@@ -68,7 +68,7 @@ export default function Step1Form({ currentCategory, categoryLocked }: { current
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
-          <label className="text-sm text-gray-500 block mb-1.5">Nume afacere</label>
+          <label className="text-sm text-gray-500 block mb-1.5">Nume afișat public (brand)</label>
           <Input
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}

@@ -182,7 +182,7 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
           <div>
             <div className="flex items-center gap-2 mb-1">
               {editing ? (
-                <Input value={name} onChange={(e) => setName(e.target.value)} className="w-56" />
+                <Input aria-label="Nume afișat public (brand)" value={name} onChange={(e) => setName(e.target.value)} className="w-56" />
               ) : (
                 <h1 className="text-xl font-semibold">{business.name}</h1>
               )}
@@ -195,6 +195,7 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
             <p className="text-sm text-gray-500">
               {business.ownerEmail ?? 'fără cont owner'} · {business.planName ?? 'fără abonament'}
             </p>
+            <p className="mt-1 text-xs text-gray-500">Nume afișat public (brand). Datele juridice și de facturare se editează separat mai jos.</p>
             <a
               href={`/${business.slug}`}
               target="_blank"
@@ -230,7 +231,7 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
           {editing ? (
             <>
               <Button variant="secondary" onClick={saveName} disabled={loading}>
-                Salvează numele
+                Salvează brandul
               </Button>
               <Button variant="secondary" onClick={() => setEditing(false)}>
                 Anulează
@@ -319,7 +320,7 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
           paymentState={business.billingIpayPaymentState}
           paymentError={business.billingIpayPaymentError}
           paidAt={business.billingPaidAt}
-          initialLegalName={business.billingLegalName ?? business.name}
+          initialLegalName={business.billingLegalName ?? ''}
           initialClientType={business.billingClientType}
           initialCif={business.billingCif}
           initialRegCom={business.billingRegCom}
@@ -327,7 +328,7 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
           initialCounty={business.billingCounty}
           initialCity={business.billingCity}
           initialPostalCode={business.billingPostalCode}
-          initialEmail={business.billingEmail ?? business.ownerEmail}
+          initialEmail={business.billingEmail}
           initialRepresentativeName={business.contractRepresentativeName}
           initialRepresentativeRole={business.contractRepresentativeRole}
         />

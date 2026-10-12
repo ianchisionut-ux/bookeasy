@@ -14,7 +14,7 @@ const schema = z.object({
   billingCity: z.string().trim().min(2).max(100),
   billingPostalCode: z.string().trim().max(20).optional(),
   billingEmail: z.string().trim().email().max(200),
-  contractRepresentativeName: z.string().trim().min(3).max(120),
+  contractRepresentativeName: z.string().trim().max(120),
   contractRepresentativeRole: z.string().trim().max(120).optional(),
 }).superRefine((data, ctx) => {
   if (data.billingClientType === 'PJ' && !data.billingCif) ctx.addIssue({ code: 'custom', path: ['billingCif'], message: 'CUI/CIF este obligatoriu pentru persoana juridică.' })
@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest) {
     billingCity: data.billingCity,
     billingPostalCode: data.billingPostalCode || null,
     billingEmail: data.billingEmail,
-    contractRepresentativeName: data.contractRepresentativeName,
+    contractRepresentativeName: data.contractRepresentativeName || null,
     contractRepresentativeRole: data.contractRepresentativeRole || null,
   } })
   return NextResponse.json({ success: true })

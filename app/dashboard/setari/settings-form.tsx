@@ -160,10 +160,11 @@ export default function SettingsForm({
   return (
     <>
       <Card className="mb-5 break-inside-avoid">
-        <h2 className="font-medium mb-4">Date profil</h2>
+        <h2 className="font-medium mb-1">Profil public</h2>
+        <p className="mb-4 text-sm text-gray-500">Numele brandului apare în marketplace, pe pagina publică și în rezervări. Datele de facturare se completează separat mai jos.</p>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="text-sm text-gray-500 block mb-1.5">Nume profil</label>
+            <label className="text-sm text-gray-500 block mb-1.5">Nume afișat public (brand)</label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

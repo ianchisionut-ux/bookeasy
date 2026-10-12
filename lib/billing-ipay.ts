@@ -99,7 +99,7 @@ export function validateIpayInvoice(business: BillingBusiness, ownerEmail?: stri
   const invoiceReference = getInvoiceReference(business)
   const email = String(business.billingEmail || ownerEmail || '').trim().toLowerCase()
   const phone = normalizePhone(business.contactPhone)
-  const contact = ascii(business.billingLegalName || business.name, 40)
+  const contact = ascii(business.billingLegalName, 40)
   const city = ascii(business.billingCity, 50)
   const address = ascii(business.billingAddress, 50)
   if (!amountMinor) throw new Error('Factura nu are o sumă validă.')
