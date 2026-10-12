@@ -59,7 +59,7 @@ function findTooth(object: THREE.Object3D | null): string | null {
   return null
 }
 
-function DentalModel({ chart, selected, showAnatomy, onSelect }: { chart: DentalChartData; selected: string; showAnatomy: boolean; onSelect: (tooth: string) => void }) {
+function DentalModel({ chart, selected, onSelect }: { chart: DentalChartData; selected: string; onSelect: (tooth: string) => void }) {
   const gltf = useGLTF('/models/bookeasy-dental-chart.glb')
   const model = useMemo(() => {
     const clone = gltf.scene.clone(true)
@@ -77,51 +77,22 @@ function DentalModel({ chart, selected, showAnatomy, onSelect }: { chart: Dental
     model.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) return
       if (object.name.startsWith('Gingiva_')) {
-        const materials = Array.isArray(object.material) ? object.material : [object.material]
-        for (const material of materials) {
-          if (!(material instanceof THREE.MeshStandardMaterial)) continue
-          material.transparent = showAnatomy
-          material.opacity = showAnatomy ? 0.2 : 1
-          material.depthWrite = !showAnatomy
-        }
         return
       }
       const tooth = findTooth(object)
       if (!tooth) return
       const status = chart.teeth[tooth]?.status ?? 'HEALTHY'
-      const internal = /^(Dentin|Pulp|PulpHorn|Canal|Ligament|Nerve|Artery|Vein)_/.test(object.name)
-      const root = object.name.startsWith('Root_')
       const crown = object.name.startsWith('Tooth_')
-      const dentin = object.name.startsWith('Dentin_')
-      const ligament = object.name.startsWith('Ligament_')
-      const canal = object.name.startsWith('Canal_')
-      const pulp = /^(Pulp|PulpHorn)_/.test(object.name)
-      object.visible = status !== 'MISSING' && (crown || (showAnatomy && tooth === selected && (internal || root)))
+      object.visible = status !== 'MISSING'
       const materials = Array.isArray(object.material) ? object.material : [object.material]
       for (const material of materials) {
         if (!(material instanceof THREE.MeshStandardMaterial)) continue
         if (crown) material.color.set(STATUS[status].color)
-        const anatomyShell = showAnatomy && tooth === selected && (crown || root || dentin || ligament || canal || pulp)
-        material.transparent = anatomyShell
-        material.opacity = crown && showAnatomy && tooth === selected
-          ? 0.16
-          : ligament
-            ? 0.14
-            : root
-              ? 0.32
-              : dentin
-                ? 0.30
-                : canal
-                  ? 0.26
-                  : pulp
-                    ? 0.56
-                    : 1
-        material.depthWrite = !anatomyShell
         material.emissive.set(crown && tooth === selected ? '#0e9aa7' : '#000000')
         material.emissiveIntensity = crown && tooth === selected ? 0.22 : 0
       }
     })
-  }, [chart, model, selected, showAnatomy])
+  }, [chart, model, selected])
 
   function handlePointer(event: ThreeEvent<PointerEvent>) {
     const tooth = findTooth(event.object)
@@ -165,7 +136,6 @@ export default function DentalChart({ customerId, patientName, initialChart }: {
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
-  const [showAnatomy, setShowAnatomy] = useState(false)
 
   useEffect(() => setDraft(chart.teeth[selected] ?? emptyEntry()), [chart.teeth, selected])
 
@@ -229,10 +199,7 @@ export default function DentalChart({ customerId, patientName, initialChart }: {
           <h2 className="text-xl font-semibold">Odontogramă 3D · {patientName}</h2>
           <p className="mt-1 text-sm text-gray-500">Selectează un dinte din model sau după codul FDI. Rotește cu degetul/mouse-ul și apropie prin zoom.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => setShowAnatomy((value) => !value)}>{showAnatomy ? 'Ascunde anatomia internă' : 'Arată anatomia internă'}</Button>
-          <Button onClick={save} disabled={saving || !dirty}>{saving ? 'Se salvează…' : dirty ? 'Salvează odontograma' : 'Odontogramă salvată'}</Button>
-        </div>
+        <Button onClick={save} disabled={saving || !dirty}>{saving ? 'Se salvează…' : dirty ? 'Salvează odontograma' : 'Odontogramă salvată'}</Button>
       </div>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
@@ -245,17 +212,12 @@ export default function DentalChart({ customerId, patientName, initialChart }: {
                 <directionalLight position={[-5, -5, 8]} intensity={2.2} />
                 <directionalLight position={[6, 1, 4]} intensity={1.3} />
                 <Suspense fallback={<Html center><span className="rounded-full bg-white/90 px-3 py-1 text-sm text-gray-700">Se încarcă modelul…</span></Html>}>
-                  <DentalModel chart={chart} selected={selected} showAnatomy={showAnatomy} onSelect={selectTooth} />
+                  <DentalModel chart={chart} selected={selected} onSelect={selectTooth} />
                 </Suspense>
                 <OrbitControls target={[0, -0.25, 0]} enablePan={false} minDistance={6.5} maxDistance={15} minPolarAngle={0.35} maxPolarAngle={Math.PI - 0.35} />
               </Canvas>
             </div>
             <div className="grid gap-3 border-t p-4">
-              {showAnatomy && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                  Secțiune pentru dintele {selected}: <strong className="text-amber-700">dentină și cement</strong>, <strong className="text-red-700">cameră pulpară și canale</strong>, <strong className="text-yellow-700">nerv</strong>, vase și ligament periodontal. Selectează alt dinte pentru a-i vedea interiorul.
-                </div>
-              )}
               <ToothRow label="Arcadă superioară" teeth={UPPER} chart={chart} selected={selected} onSelect={selectTooth} />
               <ToothRow label="Arcadă inferioară" teeth={LOWER} chart={chart} selected={selected} onSelect={selectTooth} />
             </div>
