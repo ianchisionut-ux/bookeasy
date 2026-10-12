@@ -119,6 +119,7 @@ function DentalModel({ chart, selected, onSelect }: { chart: DentalChartData; se
     )
     outline.name = 'BookEasy_Hover_Outline'
     outline.renderOrder = 1000
+    outline.raycast = () => {}
     hoveredMesh.add(outline)
     return () => {
       hoveredMesh.remove(outline)
