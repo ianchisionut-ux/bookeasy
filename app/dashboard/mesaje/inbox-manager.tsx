@@ -281,7 +281,7 @@ export default function InboxManager({ businessId, category, isClinic, isAppoint
                   </button>
                 )}
                 <button onClick={markResolved} className="btn-secondary !px-3 !py-2 text-xs flex items-center gap-1.5 whitespace-nowrap">
-                  <RotateCcw size={14} /> Repornește botul
+                  <RotateCcw size={14} /> {selected.channel === 'WHATSAPP' ? 'Încheie conversația' : 'Repornește botul'}
                 </button>
               </div>
             </div>
