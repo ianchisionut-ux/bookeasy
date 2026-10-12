@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { processIncomingMessage } from '@/lib/bot-engine'
 import { syncBookingToGoogle } from '@/lib/google-calendar'
-import { sendMessage } from '@/lib/channel-senders'
+import { sendMessage, sendWhatsAppButtons } from '@/lib/channel-senders'
 
 export async function GET(req: NextRequest) {
   const mode = req.nextUrl.searchParams.get('hub.mode')
@@ -50,11 +50,8 @@ async function handleWhatsAppEntry(entry: any) {
   const message = value?.messages?.[0]
   if (!message) return
 
-  // Botul conversațional WhatsApp este dezactivat. Procesăm exclusiv răspunsurile
-  // la cererile de reconfirmare trimise manual din BookEasy.
-  const action = message.interactive?.button_reply?.id ?? ''
+  const action = message.interactive?.button_reply?.id ?? message.interactive?.list_reply?.id ?? ''
   const match = /^(REMINDER_CONFIRM|REMINDER_RESCHEDULE|REMINDER_CANCEL)_(.+)$/.exec(action)
-  if (!match) return
   if (message.id && !(await markMessageProcessed(message.id))) return
 
   const phoneNumberId = value.metadata?.phone_number_id
@@ -63,6 +60,13 @@ async function handleWhatsAppEntry(entry: any) {
     where: { type_externalId: { type: 'WHATSAPP', externalId: phoneNumberId } },
   })
   if (!channel) return
+
+  // Botul conversațional WhatsApp rămâne dezactivat. Păstrăm doar meniul scurt
+  // care trimite clientul la un operator sau la formularul public de programare.
+  if (!match) {
+    await handleWhatsAppStaticMenu({ channel, message, action })
+    return
+  }
 
   const payload = match[2]
   const separator = payload.lastIndexOf('.')
@@ -126,6 +130,108 @@ async function handleWhatsAppEntry(entry: any) {
     })
   }
 }
+
+async function handleWhatsAppStaticMenu({
+  channel,
+  message,
+  action,
+}: {
+  channel: { id: string; businessId: string }
+  message: any
+  action: string
+}) {
+  const incomingText = whatsappIncomingLogText(message, action)
+  const incomingMessage = await prisma.chatMessage.create({
+    data: {
+      businessId: channel.businessId,
+      channel: 'WHATSAPP',
+      externalUserId: message.from,
+      direction: 'IN',
+      text: incomingText,
+    },
+  })
+
+  const conversation = await prisma.conversation.findFirst({
+    where: { businessId: channel.businessId, channel: 'WHATSAPP', externalUserId: message.from },
+    orderBy: { updatedAt: 'desc' },
+  })
+
+  if (action === 'OPERATOR') {
+    const operatorRequestedAt = conversation?.needsOperator && conversation.operatorRequestedAt
+      ? conversation.operatorRequestedAt
+      : incomingMessage.createdAt
+
+    if (conversation) {
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { state: { step: 'IDLE' }, needsOperator: true, operatorRequestedAt },
+      })
+    } else {
+      await prisma.conversation.create({
+        data: {
+          businessId: channel.businessId,
+          channel: 'WHATSAPP',
+          externalUserId: message.from,
+          state: { step: 'IDLE' },
+          needsOperator: true,
+          operatorRequestedAt,
+        },
+      })
+    }
+
+    const responseText = 'Am anunțat un operator. Vei primi răspuns aici cât mai curând.'
+    await sendMessage({ channel: 'WHATSAPP', channelId: channel.id, to: message.from, text: responseText })
+    await logWhatsAppOutgoing(channel.businessId, message.from, responseText)
+    return
+  }
+
+  // Cât timp un operator a preluat conversația, mesajele clientului ajung în inbox
+  // fără răspunsuri automate care să întrerupă discuția.
+  if (conversation?.needsOperator) return
+
+  if (action === 'LINK_REZERVARE') {
+    const business = await prisma.business.findUnique({
+      where: { id: channel.businessId },
+      select: { slug: true },
+    })
+    if (!business) return
+
+    const appUrl = (process.env.APP_URL ?? 'https://bookeasy.ro').replace(/\/$/, '')
+    const responseText = `Poți face programarea online aici: ${appUrl}/${business.slug}/rezerva`
+    await sendMessage({ channel: 'WHATSAPP', channelId: channel.id, to: message.from, text: responseText })
+    await logWhatsAppOutgoing(channel.businessId, message.from, responseText)
+    return
+  }
+
+  const bodyText = 'Bună! Cum te putem ajuta?'
+  await sendWhatsAppButtons({
+    channelId: channel.id,
+    to: message.from,
+    bodyText,
+    options: [
+      { id: 'OPERATOR', title: 'Operator' },
+      { id: 'LINK_REZERVARE', title: 'Programare pe site' },
+    ],
+  })
+  await logWhatsAppOutgoing(
+    channel.businessId,
+    message.from,
+    `${bodyText}\n[opțiuni: Operator / Programare pe site]`,
+  )
+}
+
+async function logWhatsAppOutgoing(businessId: string, externalUserId: string, text: string) {
+  await prisma.chatMessage.create({
+    data: { businessId, channel: 'WHATSAPP', externalUserId, direction: 'OUT', text },
+  })
+}
+
+function whatsappIncomingLogText(message: any, action: string) {
+  if (action === 'OPERATOR') return '[a apăsat: Operator]'
+  if (action === 'LINK_REZERVARE') return '[a apăsat: Programare pe site]'
+  return message.text?.body ?? extractNonTextContent(message)
+}
+
 async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') {
   const messaging = entry.messaging?.[0]
   // Mesajele expediate de operator/pagină revin ca ecouri prin webhook.
