@@ -39,31 +39,46 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'WABA ID trebuie să conțină numai cifre.' }, { status: 400 })
   }
 
-  const existing = await prisma.channel.findUnique({ where: { type_externalId: { type, externalId } } })
-  if (!existing && !accessToken) {
-    return NextResponse.json({ error: 'Access Token e obligatoriu la prima conectare a canalului.' }, { status: 400 })
+  try {
+    const existing = await prisma.channel.findUnique({ where: { type_externalId: { type, externalId } } })
+    if (!existing && !accessToken) {
+      return NextResponse.json({ error: 'Access Token e obligatoriu la prima conectare a canalului.' }, { status: 400 })
+    }
+
+    const expiresAt = expiresInDays
+      ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
+      : undefined
+
+    const channel = existing
+      ? await prisma.channel.update({
+          where: { id: existing.id },
+          data: {
+            businessId,
+            ...(wabaId !== undefined ? { wabaId: wabaId || null } : {}),
+            ...(accessToken ? { accessToken: encrypt(accessToken) } : {}),
+            status: 'ACTIVE',
+            ...(expiresAt ? { expiresAt } : {}),
+          },
+        })
+      : await prisma.channel.create({
+          data: {
+            businessId,
+            type,
+            externalId,
+            wabaId: wabaId || null,
+            accessToken: encrypt(accessToken!),
+            status: 'ACTIVE',
+            enabledByOwner: true,
+            expiresAt: expiresAt ?? null,
+          },
+        })
+
+    return NextResponse.json({ success: true, channelId: channel.id })
+  } catch (error) {
+    console.error('Nu s-au putut salva datele canalului.', error)
+    return NextResponse.json(
+      { error: 'Datele canalului nu au putut fi salvate. Încearcă din nou.' },
+      { status: 500 }
+    )
   }
-
-  const channel = await prisma.channel.upsert({
-    where: { type_externalId: { type, externalId } },
-    create: {
-      businessId,
-      type,
-      externalId,
-      wabaId: wabaId || null,
-      accessToken: encrypt(accessToken!),
-      status: 'ACTIVE',
-      enabledByOwner: true,
-      expiresAt: expiresInDays ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000) : null,
-    },
-    update: {
-      businessId,
-      ...(wabaId ? { wabaId } : {}),
-      ...(accessToken ? { accessToken: encrypt(accessToken) } : {}),
-      status: 'ACTIVE',
-      ...(expiresInDays ? { expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000) } : {}),
-    },
-  })
-
-  return NextResponse.json({ success: true, channelId: channel.id })
 }
