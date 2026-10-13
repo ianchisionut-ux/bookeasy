@@ -17,7 +17,7 @@ async function main() {
         const response = await fetch(`${base}${path}`, { redirect: 'manual', signal: AbortSignal.timeout(30000) })
         const html = response.headers.get('content-type')?.includes('text/html') ? await response.text() : ''
         const canonical = html.match(/<link[^>]*rel="canonical"[^>]*href="([^"]+)"/)?.[1] ?? null
-        return { path, status: response.status, ok: expected.includes(response.status), ms: Date.now() - started, canonical, noindex: response.headers.get('x-robots-tag')?.includes('noindex') ?? false, recoveryLinks: html.includes('Continuă navigarea'), redirectedTo: response.headers.get('location') }
+        return { path, status: response.status, ok: expected.includes(response.status), ms: Date.now() - started, canonical, noindex: response.headers.get('x-robots-tag')?.includes('noindex') ?? false, recoveryLinks: /<nav[^>]*aria-label="Continuă navigarea"/.test(html), redirectedTo: response.headers.get('location') }
       } catch (error) { return { path, ok: false, error: error.message } }
     })))
   }

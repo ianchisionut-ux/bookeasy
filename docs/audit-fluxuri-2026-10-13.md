@@ -23,6 +23,7 @@ Aceste probleme nu au fost remediate de modificările de navigare și SEO. Repro
 ## Corecții de navigare și SEO
 
 - Butoane Acasă și Contul meu pe recuperare/resetare parolă, signup, offline și rezultat de plată; intrare explicită în contul clientului din loginul business.
+- „Intră în cont” din meniul principal desktop și mobil a fost corectat din `/dashboard` în `/cont`, pentru a deschide contul clientului.
 - Pagini 404 și eroare cu ieșiri clare; erorile nu afișează detalii interne.
 - După rezervare și recenzie: legături spre afacere, Acasă și Cont. Recenzia fără programare eligibilă oferă rezervare; alegerea unei recenzii se poate schimba.
 - Mesajul rezervării a fost corectat: cerere înregistrată, în așteptarea confirmării. Serverul o salvează ca PENDING și nu garantează trimiterea unui SMS.
@@ -48,6 +49,8 @@ Aceste probleme nu au fost remediate de modificările de navigare și SEO. Repro
 | Navigare/SEO | Build, test-seo, browser la link invalid și mobil fără overflow; audit HTTP înainte/după publicare | Nu s-a rulat Lighthouse în Chrome; timpii HTTP nu sunt scoruri Core Web Vitals. Search Console nu a fost configurat în acest audit. |
 
 Rezultatul HTTP inițial: **31/33** verificări reușite. `/robots.txt` și `/sitemap.xml` răspundeau 404; canonical lipsea pe paginile publice verificate. Raportul inițial este în `output/live-public-audit-before.json`; verificarea de după publicare este în `output/live-public-audit.json`.
+
+După publicarea navigării și SEO, **33/33** verificări HTTP au trecut. Profilul public verificat în browser are title cu nume/oraș, canonical propriu și JSON-LD LocalBusiness fără rating inventat; pagina 404 are butoane Acasă și Contul meu, iar navigarea Acasă a fost exercitată. Screenshotul mobil nu prezintă overflow. Un ultim control a identificat linkul principal spre dashboard și a determinat corecția separată a meniului client.
 
 Teste: `test-customer-auth.cjs`, `test-client-profiles.cjs`, `test-business-connections.cjs`, `test-service-worker.cjs`, `test-ipay.ts`, `test-business-contracts.ts`, `test-platform-email-webhook.ts`, `test-seo.cjs`. Testele pentru contracte și email au necesitat rulare în afara sandboxului Windows din cauza unei erori uv_os_get_passwd; au trecut la rerulare. Testele istorice Cloudflare nu au fost aplicate deploymentului Vercel.
 

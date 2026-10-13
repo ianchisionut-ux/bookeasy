@@ -197,7 +197,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
           </nav>
 
           <div className="hidden items-center gap-4 sm:flex">
-            <Link href="/dashboard" className="marketplace-nav-link marketplace-login-link">Intră în cont</Link>
+            <Link href="/cont" className="marketplace-nav-link marketplace-login-link">Intră în cont</Link>
             <Link href="/pentru-afaceri#cere-acces" className="marketplace-header-cta inline-flex min-h-11 items-center gap-2 px-5 text-[13px] font-bold">
               Adaugă afacerea <ArrowUpRight size={16} aria-hidden="true" />
             </Link>
@@ -217,7 +217,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
             {PUBLIC_CATEGORY_GROUPS.map((group) => <button key={group.id} type="button" onClick={() => chooseGroup(group.id)} className="min-h-11 rounded-xl px-4 text-left text-sm font-semibold hover:bg-[var(--brand-teal-soft)]">{group.label}</button>)}
             <Link onClick={() => setMenuOpen(false)} href="/harta" className="flex min-h-11 items-center gap-3 rounded-xl px-4 text-sm font-semibold hover:bg-[var(--brand-teal-soft)]"><MapPin size={18} />Hartă</Link>
             <div className="my-2 border-t border-[var(--border-soft)]" />
-            <Link onClick={() => setMenuOpen(false)} href="/dashboard" className="min-h-11 rounded-xl px-4 py-3 text-sm font-semibold">Intră în cont</Link>
+            <Link onClick={() => setMenuOpen(false)} href="/cont" className="min-h-11 rounded-xl px-4 py-3 text-sm font-semibold">Intră în cont</Link>
             <Link onClick={() => setMenuOpen(false)} href="/pentru-afaceri#cere-acces" className="marketplace-header-cta mx-3 my-1 rounded-xl px-4 py-3 text-center text-sm font-bold">Adaugă afacerea ta</Link>
           </nav>
         )}
