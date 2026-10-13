@@ -1,3 +1,3 @@
-import { redirect } from 'next/navigation'
+import { permanentRedirect } from 'next/navigation'
 
-export default function LegacyTermsPage() { redirect('/legal/termeni') }
+export default function LegacyTermsPage() { permanentRedirect('/legal/termeni') }

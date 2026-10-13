@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import MarketplaceClient from './marketplace-client'
 import { PublicFooter } from '@/components/ui/public-footer'
 import { PUBLIC_CATEGORIES } from '@/lib/business-categories'
+import { SITE_URL, jsonLd } from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,7 @@ export default async function DiscoverPage() {
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd({ '@context': 'https://schema.org', '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: 'BookEasy', url: SITE_URL, inLanguage: 'ro-RO' }) }} />
       <MarketplaceClient businesses={businesses.map((business) => ({
         ...business,
         rating: business.rating === null ? null : Number(business.rating),

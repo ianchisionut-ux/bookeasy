@@ -3,6 +3,7 @@ import { PublicHeader } from '@/components/ui/public-header'
 import { PublicFooter } from '@/components/ui/public-footer'
 import CustomerAccount from './customer-account'
 import { getClientProfile } from '@/lib/client-profile'
+import ClientPageLinks from '@/components/client-page-links'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,7 @@ export default async function CustomerAccountPage({ searchParams }: { searchPara
           oauthError={Boolean(query.error)}
           profile={profile}
         />
+        <ClientPageLinks className="mt-6" />
       </main>
       <PublicFooter />
     </div>

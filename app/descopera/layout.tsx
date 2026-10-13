@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
+import { publicMetadata, SITE_DESCRIPTION } from '@/lib/seo'
 
 export const metadata: Metadata = {
-  title: 'Descoperă și rezervă | BookEasy',
-  description: 'Alege o categorie sau o afacere favorită și rezervă online.',
+  ...publicMetadata('Descoperă și rezervă online', SITE_DESCRIPTION, '/descopera'),
   manifest: '/bookeasy-client.webmanifest',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'BookEasy Client' },
 }

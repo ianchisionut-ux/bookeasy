@@ -8,6 +8,7 @@ import { hasFunctionalConsent } from '@/lib/cookie-consent'
 import { CalendarDays, Check, Clock3, ShieldCheck, UserRound } from 'lucide-react'
 import { isAppointmentCategory, type BusinessCategory } from '@/lib/business-categories'
 import type { ClientProfileData } from '@/lib/client-profile'
+import ClientPageLinks from '@/components/client-page-links'
 
 type Service = {
   id: string
@@ -204,9 +205,9 @@ export default function BookingFlow({
     return (
       <div className="py-10 text-center">
         <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full text-white shadow-lg" style={{ background: accentColor }}><Check size={28} /></div>
-        <h2 className="text-2xl font-semibold">{category === 'CLINICA' ? 'Programare confirmată!' : 'Rezervare confirmată!'}</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">Te așteptăm — vei primi confirmarea și pe telefonul indicat.</p>
-        <a href={`/${businessSlug}`} className="btn-secondary mt-6 inline-flex">Înapoi la pagina afacerii</a>
+        <h2 className="text-2xl font-semibold">Cererea ta a fost înregistrată!</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">{category === 'CLINICA' ? 'Programarea' : 'Rezervarea'} este în așteptarea confirmării afacerii. Afacerea te poate contacta la numărul indicat.</p>
+        <ClientPageLinks businessSlug={businessSlug} className="mt-6" />
       </div>
     )
   }

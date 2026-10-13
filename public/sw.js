@@ -1,4 +1,4 @@
-const VERSION = 'bookeasy-pwa-v6'
+const VERSION = 'bookeasy-pwa-v7'
 const STATIC_CACHE = `${VERSION}-static`
 const STATIC_ASSETS = [
   '/favicon.ico',
@@ -19,7 +19,7 @@ function unavailablePage() {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>BookEasy — Conectare întreruptă</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f3f8f7;color:#263b3f;font:16px system-ui}main{max-width:420px;margin:24px;padding:32px;border-radius:20px;background:white;text-align:center;box-shadow:0 18px 50px #263b3f18}h1{font-size:22px}p{line-height:1.6;color:#626c6e}button{border:0;border-radius:24px;padding:14px 24px;background:#178f92;color:white;font:inherit;cursor:pointer}</style>
-<main><h1>Nu putem contacta BookEasy momentan</h1><p>Conexiunea sau serverul este temporar indisponibil. Programările și datele clienților nu sunt păstrate offline.</p><button onclick="location.reload()">Încearcă din nou</button></main></html>`, {
+<main><h1>Nu putem contacta BookEasy momentan</h1><p>Conexiunea sau serverul este temporar indisponibil. Programările și datele clienților nu sunt păstrate offline.</p><button onclick="location.reload()">Încearcă din nou</button><nav aria-label="Continuă navigarea" style="margin-top:20px;display:flex;justify-content:center;gap:24px"><a href="/descopera" style="color:#147f83">Acasă</a><a href="/cont" style="color:#147f83">Contul meu</a></nav></main></html>`, {
     status: 503,
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
   })

@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LegalPage } from '@/components/ui/legal-page'
 import { company } from '@/lib/company'
+import { publicMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = { title: 'Termeni și condiții | BookEasy', description: 'Condițiile de utilizare a platformei SaaS BookEasy.' }
+export const metadata: Metadata = publicMetadata('Termeni și condiții', 'Condițiile de utilizare a platformei SaaS BookEasy.', '/legal/termeni')
 
 export default function TermsPage() {
   return (
@@ -20,7 +21,7 @@ export default function TermsPage() {
       <h2 id="cap-8">8. Utilizare acceptabilă</h2><p>Este interzisă folosirea Platformei pentru activități ilegale, fraudă, spam, malware, acces neautorizat, colectare automată agresivă, eludarea controalelor de securitate, încălcarea drepturilor terților ori prelucrarea datelor fără un temei legal.</p>
       <h2 id="cap-9">9. Proprietate intelectuală</h2><p>Software-ul, marca, designul și documentația BookEasy aparțin Furnizorului sau licențiatorilor săi. Clientul primește un drept limitat, neexclusiv și netransferabil de utilizare pe durata abonamentului. Clientul rămâne titularul conținutului propriu și permite prelucrarea lui exclusiv pentru furnizarea serviciului.</p>
       <h2 id="cap-10">10. Modificarea termenilor</h2><p>Modificările importante vor fi comunicate, de regulă, cu cel puțin 15 zile înainte. Schimbările impuse de lege, securitate sau remedierea urgentă a unui risc pot intra în vigoare mai repede. Versiunea curentă este publicată pe această pagină.</p>
-      <h2 id="cap-11">11. Lege aplicabilă și contact</h2><p>Contractul este guvernat de legea română și normele obligatorii ale Uniunii Europene. Părțile vor încerca soluționarea amiabilă înaintea sesizării instanțelor competente. Consumatorii pot sesiza <a href="https://anpc.ro/" target="_blank" rel="nofollow noopener noreferrer">ANPC</a> sau platforma <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="nofollow noopener noreferrer">SOL</a>.</p><p>Contact: <a href={`mailto:${company.legalEmail}`}>{company.legalEmail}</a>. Prelucrarea datelor este descrisă în <Link href="/legal/confidentialitate">Politica de confidențialitate</Link> și în <Link href="/dpa">DPA</Link>.</p>
+      <h2 id="cap-11">11. Lege aplicabilă și contact</h2><p>Contractul este guvernat de legea română și normele obligatorii ale Uniunii Europene. Părțile vor încerca soluționarea amiabilă înaintea sesizării instanțelor competente. Consumatorii pot sesiza <a href="https://anpc.ro/" target="_blank" rel="nofollow noopener noreferrer">ANPC</a> și pot consulta informațiile UE despre soluționarea litigiilor pe <a href="https://consumer-redress.ec.europa.eu/index_ro" target="_blank" rel="nofollow noopener noreferrer">portalul Comisiei Europene</a>.</p><p>Contact: <a href={`mailto:${company.legalEmail}`}>{company.legalEmail}</a>. Prelucrarea datelor este descrisă în <Link href="/legal/confidentialitate">Politica de confidențialitate</Link> și în <Link href="/dpa">DPA</Link>.</p>
     </LegalPage>
   )
 }

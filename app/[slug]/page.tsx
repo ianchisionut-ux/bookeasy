@@ -10,6 +10,15 @@ import { PublicFooter } from '@/components/ui/public-footer'
 import { BackLink } from '@/components/ui/back-link'
 import { ArrowRight, CalendarCheck2, CheckCircle2, Clock3, MapPin, Phone, ShieldCheck, Star } from 'lucide-react'
 import { CATEGORY_LABEL } from '@/lib/business-categories'
+import { publicMetadata, SITE_URL, jsonLd } from '@/lib/seo'
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const business = await prisma.business.findUnique({ where: { slug }, select: { name: true, city: true, category: true, publicListed: true, accountActive: true } })
+  if (!business || !business.publicListed || !business.accountActive || ['HOTEL', 'PENSIUNE'].includes(business.category)) return { title: 'Pagină indisponibilă', robots: { index: false } }
+  const location = business.city ? ` în ${business.city}` : ''
+  return publicMetadata(`${business.name}${business.city ? ` — ${business.city}` : ''}`, `${business.name}${location}: ${CATEGORY_LABEL[business.category]}. Vezi serviciile și recenziile, verifică disponibilitatea și rezervă online.`, `/${encodeURIComponent(slug)}`)
+}
 
 export default async function PublicBusinessPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -22,7 +31,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
     },
   })
 
-  if (!business || !business.publicListed) notFound()
+  if (!business || !business.publicListed || !business.accountActive) notFound()
   if (business.category === 'HOTEL' || business.category === 'PENSIUNE') notFound()
 
   const accent = business.brandColor || 'var(--accent)'
@@ -32,15 +41,25 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
   const hasCoordinates = business.latitude !== null && business.longitude !== null
     && Number.isFinite(business.latitude) && Number.isFinite(business.longitude)
     && Math.abs(business.latitude) <= 90 && Math.abs(business.longitude) <= 180
+  const businessUrl = `${SITE_URL}/${encodeURIComponent(business.slug)}`
+  const rating = business.rating === null ? null : Number(business.rating)
+  const structuredBusiness = {
+    '@context': 'https://schema.org', '@type': 'LocalBusiness', '@id': `${businessUrl}#business`, name: business.name, url: businessUrl,
+    ...(business.contactPhone ? { telephone: business.contactPhone } : {}),
+    ...(business.address && business.city ? { address: { '@type': 'PostalAddress', streetAddress: business.address, addressLocality: business.city, addressCountry: 'RO' } } : {}),
+    ...(hasCoordinates ? { geo: { '@type': 'GeoCoordinates', latitude: business.latitude, longitude: business.longitude } } : {}),
+    ...(rating && rating >= 1 && rating <= 5 && business.reviewCount && business.reviewCount > 0 ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: rating, reviewCount: business.reviewCount, bestRating: 5, worstRating: 1 } } : {}),
+  }
 
   return (
     <div className="themed-static-bg min-h-screen">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(structuredBusiness) }} />
       <PublicHeader />
 
       <div className="px-3 pt-4 sm:px-6 sm:pt-8">
         <section className="relative mx-auto min-h-[260px] max-w-6xl overflow-hidden rounded-[22px] shadow-xl sm:min-h-[340px] sm:rounded-[26px]">
           {business.heroImageUrl && (
-            <Image src={business.heroImageUrl} unoptimized={business.heroImageUrl.startsWith('/api/storage/public/')} alt={business.name} fill className="object-cover" priority quality={95} />
+            <Image src={business.heroImageUrl} unoptimized={business.heroImageUrl.startsWith('/api/storage/public/')} alt={business.name} fill sizes="(min-width: 1280px) 1152px, (min-width: 640px) calc(100vw - 48px), calc(100vw - 24px)" className="object-cover" priority quality={75} />
           )}
           <div className="absolute inset-0" style={{ background: business.heroImageUrl ? 'linear-gradient(90deg, rgba(38,59,63,.94) 0%, rgba(38,59,63,.72) 52%, rgba(38,59,63,.2) 100%)' : `linear-gradient(125deg, var(--brand-ink) 0%, ${accent} 150%)` }} />
           <div className="relative flex min-h-[260px] max-w-3xl flex-col justify-end p-5 text-white sm:min-h-[340px] sm:p-9 lg:p-11">
@@ -97,7 +116,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {business.photos.map((photo, index) => (
                   <div key={photo.id} className={`relative overflow-hidden rounded-xl ${index === 0 ? 'col-span-2 aspect-[2/1] sm:col-span-2' : 'aspect-square'}`}>
-                    <Image src={photo.url} unoptimized={photo.url.startsWith('/api/storage/public/')} alt={`${business.name} – fotografie ${index + 1}`} fill className="object-cover transition duration-300 hover:scale-[1.03]" quality={90} />
+                    <Image src={photo.url} unoptimized={photo.url.startsWith('/api/storage/public/')} alt={`${business.name} – fotografie ${index + 1}`} fill sizes={index === 0 ? '(min-width: 1280px) 576px, (min-width: 640px) 50vw, 100vw' : '(min-width: 1280px) 288px, (min-width: 640px) 25vw, 50vw'} className="object-cover transition duration-300 hover:scale-[1.03]" quality={75} />
                   </div>
                 ))}
               </div>

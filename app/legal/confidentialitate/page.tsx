@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LegalPage } from '@/components/ui/legal-page'
 import { company } from '@/lib/company'
+import { publicMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = { title: 'Politică de confidențialitate | BookEasy', description: 'Prelucrarea datelor cu caracter personal în BookEasy, conform GDPR.' }
+export const metadata: Metadata = publicMetadata('Politică de confidențialitate', 'Prelucrarea datelor cu caracter personal în BookEasy, conform GDPR.', '/legal/confidentialitate')
 
 const processors = [
   ['Vercel Inc.', 'Hosting principal, CDN și funcții serverless', 'UE/SUA, conform configurației și garanțiilor furnizorului'],

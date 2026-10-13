@@ -4,11 +4,9 @@ import { Building2, Cookie, FileCheck2, FileText, LockKeyhole, Scale, ShieldChec
 import { PublicHeader } from '@/components/ui/public-header'
 import { PublicFooter } from '@/components/ui/public-footer'
 import { company } from '@/lib/company'
+import { publicMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = {
-  title: 'Informații legale | BookEasy',
-  description: 'Datele operatorului și documentele juridice aplicabile platformei BookEasy.',
-}
+export const metadata: Metadata = publicMetadata('Informații legale', 'Datele operatorului și documentele juridice aplicabile platformei BookEasy.', '/legal')
 
 const documents = [
   { href: '/legal/termeni', icon: FileText, title: 'Termeni și condiții', description: 'Condițiile de utilizare a platformei BookEasy și regulile abonamentelor SaaS.' },
@@ -56,7 +54,7 @@ export default function LegalHubPage() {
           </div>
         </section>
         <section className="mt-10 rounded-[22px] bg-[var(--brand-ink)] p-6 text-white sm:p-8">
-          <div className="flex items-start gap-3"><Scale className="mt-0.5 text-[var(--brand-green)]" size={22} /><div><h2 className="text-lg font-semibold">Drepturile consumatorilor</h2><p className="mt-2 text-sm leading-relaxed text-white/65">Dacă ești consumator și ai o reclamație nesoluționată, poți sesiza Autoritatea Națională pentru Protecția Consumatorilor sau platforma europeană SOL.</p><div className="mt-4 flex flex-wrap gap-3"><a href="https://anpc.ro/" target="_blank" rel="nofollow noopener noreferrer" className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-[var(--brand-ink)]">ANPC - anpc.ro</a><a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="nofollow noopener noreferrer" className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold">Platforma SOL</a></div></div></div>
+          <div className="flex items-start gap-3"><Scale className="mt-0.5 text-[var(--brand-green)]" size={22} /><div><h2 className="text-lg font-semibold">Drepturile consumatorilor</h2><p className="mt-2 text-sm leading-relaxed text-white/65">Dacă ești consumator și ai o reclamație nesoluționată, poți sesiza Autoritatea Națională pentru Protecția Consumatorilor. Portalul Comisiei Europene oferă informații despre soluționarea litigiilor în UE.</p><div className="mt-4 flex flex-wrap gap-3"><a href="https://anpc.ro/" target="_blank" rel="nofollow noopener noreferrer" className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-[var(--brand-ink)]">ANPC - anpc.ro</a><a href="https://consumer-redress.ec.europa.eu/index_ro" target="_blank" rel="nofollow noopener noreferrer" className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold">Soluționarea litigiilor în UE</a></div></div></div>
         </section>
         <p className="mt-6 flex items-center justify-center gap-2 text-center text-xs text-gray-400"><ShieldCheck size={14} /> Documente actualizate la 5 octombrie 2026.</p>
       </main>

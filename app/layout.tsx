@@ -4,12 +4,16 @@ import type { Metadata, Viewport } from 'next'
 import PwaManager from '@/components/pwa-manager'
 import CookieConsent from '@/components/cookie-consent'
 import ClientBottomNav from '@/components/client-bottom-nav'
+import { SITE_URL, SITE_DESCRIPTION } from '@/lib/seo'
 
 const manrope = Manrope({ subsets: ['latin', 'latin-ext'], variable: '--font-manrope' })
 
 export const metadata: Metadata = {
-  title: 'bookeasy.ro',
-  description: 'Platformă pentru programări și rezervări, într-un singur calendar.',
+  metadataBase: new URL(SITE_URL),
+  title: { default: 'BookEasy — programări și rezervări online', template: '%s | BookEasy' },
+  description: SITE_DESCRIPTION,
+  openGraph: { title: 'BookEasy — programări și rezervări online', description: SITE_DESCRIPTION, siteName: 'BookEasy', locale: 'ro_RO', type: 'website', images: [{ url: '/hero-bookeasy.png', alt: 'BookEasy — programări și rezervări online' }] },
+  twitter: { card: 'summary_large_image', images: ['/hero-bookeasy.png'] },
   manifest: '/bookeasy-v2.webmanifest',
   applicationName: 'BookEasy',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'BookEasy' },

@@ -3,8 +3,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LegalPage } from '@/components/ui/legal-page'
 import { company } from '@/lib/company'
+import { publicMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = { title: 'Politică de cookie-uri | BookEasy', description: 'Cookie-urile și stocarea locală folosite de BookEasy.' }
+export const metadata: Metadata = publicMetadata('Politică de cookie-uri', 'Cookie-urile și stocarea locală folosite de BookEasy.', '/legal/cookies')
 
 export default function CookiesPage() {
   return (

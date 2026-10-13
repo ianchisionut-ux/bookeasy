@@ -3,6 +3,9 @@ import Link from 'next/link'
 import MapClient from '../harta/map-client'
 import AccessRequestForm from '@/components/access-request-form'
 import { PublicFooter } from '@/components/ui/public-footer'
+import { publicMetadata } from '@/lib/seo'
+
+export const metadata = publicMetadata('Programări și administrare pentru afaceri', 'Organizează programările, echipa, clienții și mesajele afacerii într-un singur loc. Descoperă platforma BookEasy și solicită acces.', '/pentru-afaceri')
 import {
   ArrowRight,
   Bell,
@@ -38,7 +41,7 @@ const STEPS = [
 ]
 
 const FEATURES = [
-  { icon: Bell, title: 'Mai puține neprezentări', desc: 'Reamintiri automate înaintea programării.' },
+  { icon: Bell, title: 'Mai puține neprezentări', desc: 'Reamintiri și cereri de reconfirmare trimise de echipă.' },
   { icon: Users, title: 'Echipă sincronizată', desc: 'Program separat pentru fiecare medic sau membru.' },
   { icon: Clock3, title: 'Disponibilitate reală', desc: 'Ore calculate după program și durata serviciului.' },
 ]

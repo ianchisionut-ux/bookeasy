@@ -3,11 +3,9 @@ import Link from 'next/link'
 import { Download } from 'lucide-react'
 import { LegalPage } from '@/components/ui/legal-page'
 import { company } from '@/lib/company'
+import { publicMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = {
-  title: 'DPA – Acord de prelucrare a datelor | BookEasy',
-  description: 'Acordul privind prelucrarea datelor cu caracter personal, conform Art. 28 GDPR.',
-}
+export const metadata: Metadata = publicMetadata('DPA – Acord de prelucrare a datelor', 'Acordul privind prelucrarea datelor cu caracter personal, conform Art. 28 GDPR.', '/dpa')
 
 export default function DpaPage() {
   return (

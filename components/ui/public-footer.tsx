@@ -9,6 +9,12 @@ export function PublicFooter() {
       <div className="mx-auto grid max-w-6xl gap-5 border-b border-white/10 pb-5 md:grid-cols-[1.2fr_1fr_1fr]">
         <div>
           <p className="max-w-sm text-sm leading-relaxed text-white/65">Platformă SaaS pentru programări, clienți, echipe și comunicare automată.</p>
+          <nav aria-label="Navigare site" className="mt-3 flex flex-wrap gap-x-4 gap-y-3 text-sm text-white/80">
+            <Link href="/descopera" className="hover:text-white">Acasă</Link>
+            <Link href="/harta" className="hover:text-white">Hartă</Link>
+            <Link href="/cont" className="hover:text-white">Contul meu</Link>
+            <Link href="/pentru-afaceri" className="hover:text-white">Pentru afaceri</Link>
+          </nav>
           <p className="mt-2 text-xs text-white/50">{company.legalName} · CUI {company.cui}<br />{company.tradeRegistryNumber}</p>
         </div>
         <div>
@@ -24,10 +30,10 @@ export function PublicFooter() {
         </div>
         <div>
           <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--brand-green)]">Drepturi consumatori</h2>
-          <p className="mt-2 text-xs leading-relaxed text-white/65">Pentru reclamații nesoluționate poți apela la ANPC sau la platforma europeană SOL.</p>
+          <p className="mt-2 text-xs leading-relaxed text-white/65">Pentru reclamații nesoluționate poți apela la ANPC. Informații despre soluționarea litigiilor în UE sunt disponibile pe portalul Comisiei Europene.</p>
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
             <a href="https://anpc.ro/" target="_blank" rel="nofollow noopener noreferrer" className="rounded-full border border-white/15 px-3 py-1.5 text-white/80 hover:border-white/35 hover:text-white">ANPC</a>
-            <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="nofollow noopener noreferrer" className="rounded-full border border-white/15 px-3 py-1.5 text-white/80 hover:border-white/35 hover:text-white">SOL - Litigii online</a>
+            <a href="https://consumer-redress.ec.europa.eu/index_ro" target="_blank" rel="nofollow noopener noreferrer" className="rounded-full border border-white/15 px-3 py-1.5 text-white/80 hover:border-white/35 hover:text-white">Soluționarea litigiilor în UE</a>
           </div>
         </div>
       </div>
@@ -48,19 +54,13 @@ export function PublicFooter() {
           />
         </a>
         <a
-          href="https://ec.europa.eu/consumers/odr"
+          href="https://consumer-redress.ec.europa.eu/index_ro"
           target="_blank"
           rel="nofollow noopener noreferrer"
-          aria-label="Soluționarea Online a Litigiilor"
+          aria-label="Informații UE despre soluționarea litigiilor"
           className="rounded-xl bg-white p-1.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
         >
-          <Image
-            src="/legal/anpc-sol.png"
-            alt="Soluționarea Online a Litigiilor"
-            width={500}
-            height={124}
-            className="h-auto w-[155px]"
-          />
+          <span className="block px-3 py-2 text-xs font-semibold text-[var(--brand-ink)]">Drepturile consumatorilor în UE</span>
         </a>
       </div>
       <div className="mx-auto mt-4 flex max-w-6xl flex-col items-center justify-between gap-2 text-center text-xs text-white/45 sm:flex-row sm:text-left">

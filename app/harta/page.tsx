@@ -1,10 +1,8 @@
 import MapClient from './map-client'
 import { PublicHeader } from '@/components/ui/public-header'
+import { publicMetadata } from '@/lib/seo'
 
-export const metadata = {
-  title: 'Afaceri pe bookeasy.ro — Hartă',
-  description: 'Descoperă afacerile disponibile pe bookeasy.ro, aproape de tine',
-}
+export const metadata = publicMetadata('Hartă — afaceri și servicii aproape de tine', 'Găsește saloane, clinici și alte afaceri pe hartă. Vezi profilurile, recenziile și opțiunile de rezervare online.', '/harta')
 
 export default function HartaPage() {
   return (

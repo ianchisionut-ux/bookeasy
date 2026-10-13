@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import ClientPageLinks from '@/components/client-page-links'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -58,8 +59,9 @@ export default function ForgotPasswordPage() {
         </Card>
 
         <Link href="/login" className="text-sm text-gray-500">
-          ← Înapoi la login
+          ← Autentificare afacere
         </Link>
+        <ClientPageLinks />
       </div>
     </main>
   )

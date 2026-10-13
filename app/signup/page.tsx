@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import ClientPageLinks from '@/components/client-page-links'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -80,6 +81,8 @@ export default function SignupPage() {
             </Button>
           </form>
         </Card>
+        <Link href="/login" className="text-sm text-[var(--accent-hover)] hover:underline">Ai deja o afacere? Intră în cont</Link>
+        <ClientPageLinks />
       </div>
     </main>
   )

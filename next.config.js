@@ -11,6 +11,7 @@ const nextConfig = {
   },
   async headers() {
     return [
+      ...['/api/:path*', '/dashboard/:path*', '/superadmin/:path*', '/onboarding/:path*', '/contracte/:path*', '/demo/:path*', '/cont', '/login', '/signup', '/forgot-password', '/reset-password', '/offline', '/cont-suspendat', '/plata-confirmata', '/plata-anulata', '/harta-test', '/:slug/rezerva', '/:slug/recenzie'].map((source) => ({ source, headers: [{ key: 'X-Robots-Tag', value: 'noindex' }] })),
       {
         source: '/(.*)',
         headers: [

@@ -5,6 +5,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import CustomerGoogleAccount from '@/components/customer-google-account'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import Link from 'next/link'
+import ClientPageLinks from '@/components/client-page-links'
 
 type EligibleBooking = { id: string; serviceName: string; date: string }
 
@@ -80,7 +82,7 @@ export default function ReviewForm({ slug, googleEmail, googleAvailable }: { slu
     </Card>
   )
 
-  if (step === 'DONE') return <Card><p className="text-sm text-green-700">Mulțumim! Recenzia ta verificată a fost publicată.</p></Card>
+  if (step === 'DONE') return <Card><p className="text-sm text-green-700">Mulțumim! Recenzia ta verificată a fost publicată.</p><ClientPageLinks businessSlug={slug} className="mt-5" /></Card>
 
   return (
     <div className="space-y-4">
@@ -89,6 +91,7 @@ export default function ReviewForm({ slug, googleEmail, googleAvailable }: { slu
       {step === 'EMPTY' && <Card>
         <p className="text-sm text-gray-700">{error || 'Nu ai încă o programare eligibilă pentru recenzie la această afacere.'}</p>
         {!error && <p className="mt-2 text-sm text-gray-500">Sunt eligibile programările create cu acest cont Google, confirmate sau finalizate, după încheierea lor. Fiecare programare poate primi o singură recenzie.</p>}
+        <Link href={`/${slug}/rezerva`} className="btn-primary mt-4 inline-flex min-h-11 items-center">Fă o rezervare</Link>
       </Card>}
       {step === 'PICK' && <Card>
         <p className="mb-3 text-sm text-gray-500">Pentru care programare lași recenzia?</p>
@@ -108,6 +111,7 @@ export default function ReviewForm({ slug, googleEmail, googleAvailable }: { slu
         <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Scrie câteva cuvinte (opțional)..." className="input-field mb-3 min-h-[100px] w-full" maxLength={1000} aria-label="Comentariu" />
         {error && <p className="mb-2 text-sm text-red-600" role="alert">{error}</p>}
         <Button onClick={submit} disabled={loading}>{loading ? 'Se trimite...' : 'Trimite recenzia'}</Button>
+        {bookings.length > 1 && <button type="button" disabled={loading} onClick={() => { setSelected(null); setError(''); setStep('PICK') }} className="btn-secondary mt-3 min-h-11">Alege altă programare</button>}
       </Card>}
     </div>
   )

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import ClientPageLinks from '@/components/client-page-links'
 
 export default function OfflinePage() {
   return (
@@ -8,7 +9,8 @@ export default function OfflinePage() {
         <Image src="/pwa-icon-192-white.png" width={72} height={72} alt="BookEasy" className="mx-auto rounded-2xl mb-4" />
         <h1 className="text-xl font-semibold mb-2">Nu există conexiune la internet</h1>
         <p className="text-sm text-gray-500 mb-5">BookEasy nu păstrează offline programări sau date despre clienți, pentru siguranța informațiilor. Reconectează-te și încearcă din nou.</p>
-        <Link href="/dashboard" className="btn-primary inline-flex">Încearcă din nou</Link>
+        <Link href="/descopera" className="btn-primary inline-flex">Încearcă din nou</Link>
+        <ClientPageLinks className="mt-4" />
       </div>
     </main>
   )

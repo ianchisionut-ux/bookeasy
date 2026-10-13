@@ -1,3 +1,3 @@
-import { redirect } from 'next/navigation'
+import { permanentRedirect } from 'next/navigation'
 
-export default function LegacyPrivacyPage() { redirect('/legal/confidentialitate') }
+export default function LegacyPrivacyPage() { permanentRedirect('/legal/confidentialitate') }

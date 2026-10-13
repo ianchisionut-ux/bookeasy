@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import ClientPageLinks from '@/components/client-page-links'
 
 export default function PlataConfirmata() {
   return (
@@ -15,6 +16,7 @@ export default function PlataConfirmata() {
         <Link href="/" className="btn-secondary">
           Înapoi la bookeasy.ro
         </Link>
+        <ClientPageLinks />
       </div>
     </main>
   )

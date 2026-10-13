@@ -108,6 +108,7 @@ export default function LoginPage() {
               </Button>
             </form>
           </Card>
+          <Link href="/cont" className="mt-5 block text-center text-sm text-[var(--accent-hover)] hover:underline">Ești client? Intră în contul tău</Link>
 
           <p className="mt-6 text-center text-xs leading-relaxed text-[var(--foreground-muted)]">
             Prin autentificare accepți <Link href="/termeni-si-conditii" className="underline underline-offset-2 hover:text-[var(--accent-hover)]">Termenii</Link> și <Link href="/politica-de-confidentialitate" className="underline underline-offset-2 hover:text-[var(--accent-hover)]">Politica de confidențialitate</Link>.

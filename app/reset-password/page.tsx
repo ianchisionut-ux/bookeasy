@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import ClientPageLinks from '@/components/client-page-links'
 
 function ResetPasswordForm() {
   const params = useSearchParams()
@@ -83,6 +84,7 @@ function ResetPasswordForm() {
           </form>
         </>
       )}
+      {(!token || error) && <Link href="/forgot-password" className="btn-secondary mt-4 inline-flex min-h-11 items-center">Cere un link nou</Link>}
     </Card>
   )
 }
@@ -97,6 +99,7 @@ export default function ResetPasswordPage() {
         <Suspense fallback={<p className="text-sm text-gray-500">Se încarcă...</p>}>
           <ResetPasswordForm />
         </Suspense>
+        <ClientPageLinks />
       </div>
     </main>
   )
