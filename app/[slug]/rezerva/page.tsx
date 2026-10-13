@@ -9,6 +9,7 @@ import { CalendarCheck2, Check, Clock3, ShieldCheck } from 'lucide-react'
 import { CATEGORY_LABEL } from '@/lib/business-categories'
 import { auth } from '@/lib/auth'
 import CustomerGoogleAccount from '@/components/customer-google-account'
+import { getClientProfile } from '@/lib/client-profile'
 
 const WEEKDAY_SHORT = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
 
@@ -46,6 +47,7 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
   const accent = business.brandColor || 'var(--accent)'
   const accentSoft = business.brandColor ? `${business.brandColor}1a` : 'var(--accent-soft)'
   const session = await auth()
+  const clientProfile = await getClientProfile(session)
   const googleEmail = (session as any)?.role === 'CUSTOMER' && (session as any)?.googleSub ? session?.user?.email ?? null : null
   const googleAvailable = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
 
@@ -87,6 +89,7 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
             <CustomerGoogleAccount email={googleEmail} available={googleAvailable} returnTo={`/${slug}/rezerva`} />
           </div>
           <BookingFlow
+            clientProfile={clientProfile}
             businessId={business.id}
             businessSlug={business.slug}
             category={business.category}

@@ -2,12 +2,14 @@ import { auth } from '@/lib/auth'
 import { PublicHeader } from '@/components/ui/public-header'
 import { PublicFooter } from '@/components/ui/public-footer'
 import CustomerAccount from './customer-account'
+import { getClientProfile } from '@/lib/client-profile'
 
 export const dynamic = 'force-dynamic'
 
 export default async function CustomerAccountPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const [session, query] = await Promise.all([auth(), searchParams])
   const customer = (session as any)?.role === 'CUSTOMER'
+  const profile = await getClientProfile(session)
   return (
     <div className="themed-static-bg min-h-screen">
       <PublicHeader />
@@ -17,11 +19,12 @@ export default async function CustomerAccountPage({ searchParams }: { searchPara
         <p className="mt-2 mb-6 text-sm text-gray-600">Conectează-te cu Google sau creează un cont cu email și parolă.</p>
         <CustomerAccount
           email={customer ? session?.user?.email ?? null : null}
-          name={customer ? session?.user?.name ?? null : null}
+          name={profile ? [profile.firstName, profile.lastName].filter(Boolean).join(' ') || null : null}
           googleAccount={customer && Boolean((session as any)?.googleSub)}
           businessSession={Boolean(session && !customer)}
           googleAvailable={Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)}
           oauthError={Boolean(query.error)}
+          profile={profile}
         />
       </main>
       <PublicFooter />

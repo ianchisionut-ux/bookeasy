@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation'
 import { signIn, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { LogOut, UserRound } from 'lucide-react'
+import ClientProfileForm from '@/components/client-profile-form'
+import type { ClientProfileData } from '@/lib/client-profile'
 
-type Props = { email: string | null; name: string | null; googleAccount: boolean; businessSession: boolean; googleAvailable: boolean; oauthError: boolean }
+type Props = { email: string | null; name: string | null; googleAccount: boolean; businessSession: boolean; googleAvailable: boolean; oauthError: boolean; profile: ClientProfileData | null }
 
-export default function CustomerAccount({ email, name, googleAccount, businessSession, googleAvailable, oauthError }: Props) {
+export default function CustomerAccount({ email, name, googleAccount, businessSession, googleAvailable, oauthError, profile }: Props) {
   const router = useRouter()
   const [register, setRegister] = useState(false)
   const [address, setAddress] = useState('')
@@ -56,6 +58,7 @@ export default function CustomerAccount({ email, name, googleAccount, businessSe
         <div className="min-w-0"><h2 className="font-semibold">{name || 'Bine ai revenit!'}</h2><p className="break-all text-sm text-gray-600">{email}</p></div>
       </div>
       <p className="mb-5 text-sm text-gray-600">{googleAccount ? 'Ești conectat cu Google. Folosește acest cont la rezervare pentru recenzii verificate după vizită.' : 'Ești conectat cu email și parolă. Alege o afacere și rezervă serviciul dorit.'}</p>
+      {profile && <ClientProfileForm profile={profile} />}
       <Link href="/descopera" className="btn-primary flex min-h-11 items-center justify-center">Descoperă și rezervă</Link>
       <button type="button" onClick={() => signOut({ callbackUrl: '/cont' })} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 text-sm text-gray-600"><LogOut size={17} /> Deconectare</button>
     </section>

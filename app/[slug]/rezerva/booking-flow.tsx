@@ -7,6 +7,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { hasFunctionalConsent } from '@/lib/cookie-consent'
 import { CalendarDays, Check, Clock3, ShieldCheck, UserRound } from 'lucide-react'
 import { isAppointmentCategory, type BusinessCategory } from '@/lib/business-categories'
+import type { ClientProfileData } from '@/lib/client-profile'
 
 type Service = {
   id: string
@@ -48,6 +49,7 @@ export default function BookingFlow({
   services,
   accentColor,
   accentSoftColor,
+  clientProfile,
 }: {
   businessId: string
   businessSlug: string
@@ -56,6 +58,7 @@ export default function BookingFlow({
   services: Service[]
   accentColor: string
   accentSoftColor: string
+  clientProfile?: ClientProfileData | null
 }) {
   const isAppointment = isAppointmentCategory(category)
   const isVenue = category === 'EVENT_VENUE'
@@ -70,8 +73,9 @@ export default function BookingFlow({
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
   const [venueDurationHours, setVenueDurationHours] = useState(1)
   const [loadingSlots, setLoadingSlots] = useState(false)
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
+  const [name, setName] = useState(clientProfile ? [clientProfile.firstName, clientProfile.lastName].filter(Boolean).join(' ') : '')
+  const [phone, setPhone] = useState(clientProfile?.phone ?? '')
+  const [email, setEmail] = useState(clientProfile?.email ?? '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
@@ -82,7 +86,7 @@ export default function BookingFlow({
   }
 
   useEffect(() => {
-    if (!hasFunctionalConsent()) return
+    if (clientProfile || !hasFunctionalConsent()) return
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
@@ -93,7 +97,7 @@ export default function BookingFlow({
     } catch {
       // localStorage indisponibil (mod privat etc.) — pornim de la câmpuri goale
     }
-  }, [])
+  }, [clientProfile])
 
   // când businessul are mai multe persoane, la schimbarea serviciului reîncărcăm lista
   // de persoane eligibile pentru acel serviciu
@@ -143,15 +147,19 @@ export default function BookingFlow({
       setError('Alege o oră disponibilă.')
       return
     }
-    if (!name.trim() || phone.trim().length < 6) {
+    if (!name.trim() || !/^\d{7,15}$/.test(phone.replace(/[^\d]/g, ''))) {
       setError('Completează numele și un număr de telefon valid.')
+      return
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Completează un email valid.')
       return
     }
 
     setSubmitting(true)
     setError('')
 
-    if (hasFunctionalConsent()) {
+    if (!clientProfile && hasFunctionalConsent()) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ name, phone }))
       } catch {
@@ -174,6 +182,7 @@ export default function BookingFlow({
           startAt,
           customerName: name,
           customerPhone: phone,
+          customerEmail: email || undefined,
         }),
       })
       const data = await res.json()
@@ -375,15 +384,17 @@ export default function BookingFlow({
       <div>
         <h2 className="font-semibold mb-3">Detaliile tale</h2>
         <div className="grid gap-2 sm:grid-cols-2">
-          <Input placeholder="Numele tău" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder="Telefon" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <div className="min-w-0"><label htmlFor="booking-name" className="mb-1 block text-sm">Nume și prenume</label><Input id="booking-name" autoComplete="name" placeholder="Numele tău" maxLength={181} value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div className="min-w-0"><label htmlFor="booking-phone" className="mb-1 block text-sm">Telefon</label><Input id="booking-phone" autoComplete="tel" placeholder="Telefon" type="tel" inputMode="tel" maxLength={30} value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
+          <div className="min-w-0 sm:col-span-2"><label htmlFor="booking-email" className="mb-1 block text-sm">Email{!clientProfile && ' (opțional)'}</label><Input id="booking-email" autoComplete="email" type="email" placeholder="Email" readOnly={Boolean(clientProfile)} value={email} onChange={(e) => setEmail(e.target.value)} /></div>
         </div>
         <p className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-400"><ShieldCheck size={13} /> Primești confirmarea la numărul introdus.</p>
+        {clientProfile && <p className="mt-2 text-xs text-gray-500">Datele se păstrează în cont și se completează la următoarea rezervare.</p>}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-10 rounded-2xl border border-white/80 bg-white/90 p-2.5 shadow-xl backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+      <div className="relative rounded-2xl border border-white/80 bg-white p-2.5 sm:border-0 sm:bg-transparent sm:p-0">
         {service && selectedSlot && <p className="mb-2 text-center text-xs text-gray-500">{service.name} · {new Date(selectedSlot).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })}</p>}
         <Button
           onClick={submitBooking}

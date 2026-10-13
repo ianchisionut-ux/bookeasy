@@ -16,6 +16,7 @@ import { getNextSequenceNumber } from '@/lib/booking-number'
 import { syncBookingToGoogle } from '@/lib/google-calendar'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { z } from 'zod'
+import { clientIdentity, saveBookingClientProfile } from '@/lib/client-profile'
 
 const schema = z.object({
   businessId: z.string(),
@@ -24,8 +25,9 @@ const schema = z.object({
   resourceId: z.string().optional(),
   durationMinutes: z.number().int().min(60).max(720).optional(),
   startAt: z.string(),
-  customerName: z.string().min(1),
-  customerPhone: z.string().min(6),
+  customerName: z.string().trim().min(1).max(181),
+  customerPhone: z.string().trim().max(30).refine((value) => /^\d{7,15}$/.test(value.replace(/[^\d]/g, ''))),
+  customerEmail: z.string().trim().email().max(254).optional(),
   paymentMethod: z.enum(['CASH', 'ONLINE']).optional(),
 })
 
@@ -141,14 +143,17 @@ export async function POST(req: NextRequest) {
 
   // clientul de pe web e identificat după telefon, la fel ca pe WhatsApp — dacă a mai
   // rezervat vreodată (indiferent de canal), îl recunoaștem pe același număr
+  const session = await auth()
+  const identity = clientIdentity(session)
+  const customerEmail = identity?.email ?? parsed.data.customerEmail
+  const profile = identity ? await saveBookingClientProfile(identity, customerName, customerPhone) : null
   const customer = await prisma.customer.upsert({
     where: { businessId_phone: { businessId, phone: customerPhone } },
-    create: { businessId, name: customerName, phone: customerPhone },
-    update: { name: customerName },
+    create: { businessId, name: customerName, phone: customerPhone, email: customerEmail },
+    update: { name: customerName, ...(customerEmail ? { email: customerEmail } : {}) },
   })
 
   const sequenceNumber = await getNextSequenceNumber(businessId, startAt)
-  const session = await auth()
   const reviewerGoogleSub = (session as any)?.role === 'CUSTOMER' && typeof (session as any)?.googleSub === 'string'
     ? (session as any).googleSub as string
     : null
@@ -158,6 +163,7 @@ export async function POST(req: NextRequest) {
       businessId,
       customerId: customer.id,
       reviewerGoogleSub,
+      clientProfileId: profile?.id ?? null,
       serviceId,
       resourceId,
       practitionerId: practitionerId ?? null,

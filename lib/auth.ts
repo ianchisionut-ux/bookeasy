@@ -51,17 +51,23 @@ const nextAuth = NextAuth({
       if (account?.provider === 'google') return profile?.email_verified === true && typeof profile?.sub === 'string'
       return true
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, profile }) {
       if (account?.provider === 'google' && account.providerAccountId) {
         token.id = `google:${account.providerAccountId}`
         token.googleSub = account.providerAccountId
         token.businessId = null
         token.role = 'CUSTOMER'
+        token.firstName = typeof profile?.given_name === 'string' ? profile.given_name : ''
+        token.lastName = typeof profile?.family_name === 'string' ? profile.family_name : ''
+        token.customerPhone = typeof profile?.phone_number === 'string' ? profile.phone_number : ''
       } else if (user) {
         token.id = (user as any).id
         token.businessId = (user as any).businessId
         token.role = (user as any).role
         token.googleSub = null
+        token.firstName = ''
+        token.lastName = ''
+        token.customerPhone = ''
       }
       return token
     },
@@ -70,6 +76,9 @@ const nextAuth = NextAuth({
       ;(session as any).businessId = token.businessId
       ;(session as any).role = token.role
       ;(session as any).googleSub = token.googleSub
+      ;(session as any).firstName = token.firstName
+      ;(session as any).lastName = token.lastName
+      ;(session as any).customerPhone = token.customerPhone
       ;(session as any).isSuperAdmin = token.role === 'SUPER_ADMIN'
       return session
     },

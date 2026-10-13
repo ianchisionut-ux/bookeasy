@@ -212,6 +212,17 @@ enum Role {
   CUSTOMER
 }
 
+model ClientProfile {
+  id        String    @id @default(cuid())
+  ownerKey  String    @unique
+  firstName String    @default("")
+  lastName  String    @default("")
+  email     String
+  phone     String    @default("")
+  bookings  Booking[]
+  updatedAt DateTime  @updatedAt
+}
+
 // ─────────────────────────────────────────────
 // Resources: staff (SALON) / resources (EVENT_VENUE)
 // ─────────────────────────────────────────────
@@ -320,6 +331,8 @@ model Booking {
   googleCalendarSyncedAt DateTime?
   googleCalendarSyncError String?
   reviewerGoogleSub String? // contul Google conectat când clientul a făcut rezervarea
+  clientProfileId String?
+  clientProfile ClientProfile? @relation(fields: [clientProfileId], references: [id])
   review          Review?
 
   // interogările reale (calendar, disponibilitate, reminder-e, statistici) filtrează
@@ -330,6 +343,7 @@ model Booking {
   @@index([businessId, confirmationSeenByAdmin])
   @@index([customerId])
   @@index([reviewerGoogleSub, endAt])
+  @@index([clientProfileId, startAt])
   @@index([practitionerId])
 }
 
