@@ -35,8 +35,8 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen bg-white lg:grid-cols-[1.12fr_0.88fr]">
-      <section className="relative isolate min-h-[260px] overflow-hidden lg:min-h-screen">
+    <main className="business-login grid min-h-svh bg-[var(--surface-muted)] lg:grid-cols-[1.12fr_0.88fr]">
+      <section className="relative isolate min-h-[180px] overflow-hidden lg:min-h-svh">
         <Image
           src="/hero-bookeasy.png"
           alt="Calendarul și mesajele BookEasy"
@@ -53,7 +53,6 @@ export default function LoginPage() {
 
         <div className="relative z-10 hidden h-full min-h-screen items-end p-10 lg:flex xl:p-14">
           <div className="max-w-xl text-white">
-            <Image src="/logo.png" alt="bookeasy.ro" width={180} height={120} className="mb-6 h-auto w-[150px]" />
             <h2 className="text-4xl font-semibold leading-tight tracking-[-0.035em]">Programările afacerii tale, mereu la îndemână.</h2>
             <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/80">
               <span className="flex items-center gap-1.5"><Check size={15} className="text-[var(--brand-green)]" /> Calendar unic</span>
@@ -77,41 +76,41 @@ export default function LoginPage() {
         </div>
       </section>
 
-      <section className="flex items-center justify-center bg-[var(--surface-muted)] px-5 py-10 sm:px-8 lg:px-12">
+      <section className="themed-static-bg flex items-center justify-center px-5 py-8 sm:px-8 sm:py-10 lg:px-12">
         <div className="w-full max-w-md">
-          <Link href="/" className="mb-8 inline-block lg:hidden">
-            <Image src="/logo.png" alt="bookeasy.ro" width={170} height={113} priority className="h-auto w-[145px]" />
+          <Link href="/" aria-label="BookEasy — pagina principală" className="mx-auto mb-6 block w-fit rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]">
+            <Image src="/logo.png" alt="bookeasy.ro" width={170} height={113} priority className="h-auto w-[140px] sm:w-[150px]" />
           </Link>
           <div className="mb-6">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--accent-hover)]">Bine ai revenit</p>
             <h1 className="text-3xl font-semibold tracking-tight">Intră în cont</h1>
-            <p className="mt-2 text-sm text-gray-500">Accesează calendarul, clienții și programările echipei tale.</p>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--foreground-muted)]">Accesează calendarul, clienții și programările echipei tale.</p>
           </div>
 
           <Card className="w-full p-5 sm:p-6">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
-                <label className="text-sm text-gray-600 block mb-1.5">Email</label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+                <label htmlFor="business-email" className="mb-1.5 block text-sm font-medium">Email</label>
+                <Input id="business-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" className="min-h-12" />
               </div>
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-sm text-gray-600">Parolă</label>
+                  <label htmlFor="business-password" className="text-sm font-medium">Parolă</label>
                   <Link href="/forgot-password" className="text-xs font-medium text-[var(--accent-hover)] hover:underline">Ai uitat parola?</Link>
                 </div>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+                <Input id="business-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" className="min-h-12" />
               </div>
 
-              {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+              {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
-              <Button type="submit" disabled={loading} className="mt-1 w-full">
+              <Button type="submit" disabled={loading} className="mt-1 min-h-12 w-full">
                 {loading ? 'Se conectează...' : 'Intră în cont'}
               </Button>
             </form>
           </Card>
 
-          <p className="mt-6 text-center text-xs text-gray-400">
-            Prin autentificare accepți <Link href="/termeni-si-conditii" className="hover:text-gray-700">Termenii</Link> și <Link href="/politica-de-confidentialitate" className="hover:text-gray-700">Politica de confidențialitate</Link>.
+          <p className="mt-6 text-center text-xs leading-relaxed text-[var(--foreground-muted)]">
+            Prin autentificare accepți <Link href="/termeni-si-conditii" className="underline underline-offset-2 hover:text-[var(--accent-hover)]">Termenii</Link> și <Link href="/politica-de-confidentialitate" className="underline underline-offset-2 hover:text-[var(--accent-hover)]">Politica de confidențialitate</Link>.
           </p>
         </div>
       </section>

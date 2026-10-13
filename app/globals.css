@@ -113,6 +113,19 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
+.business-login .input-field:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+}
+.business-login .input-field:-webkit-autofill:focus {
+  box-shadow: 0 0 0 1000px var(--surface) inset, 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.business-login .themed-static-bg::before,
+.business-login .themed-static-bg::after {
+  position: absolute;
+}
+
 /* Cadru unic pentru toate paginile de administrare: fluid pe telefon,
    centrat și suficient de lat pe desktop ca să nu rămână conținutul lipit în stânga. */
 .dashboard-page {
