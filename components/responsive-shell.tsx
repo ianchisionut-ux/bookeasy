@@ -19,6 +19,7 @@ import {
   Building2,
   Inbox,
   LifeBuoy,
+  Mail,
 } from 'lucide-react'
 import { SidebarClock } from './sidebar-clock'
 import { CookiePreferencesButton } from './cookie-preferences-button'
@@ -38,6 +39,7 @@ const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   afaceri: Building2,
   cereri: Inbox,
   tichete: LifeBuoy,
+  email: Mail,
 }
 
 // amestecă o culoare hex cu alb, la un procent dat — produce o culoare SOLIDĂ (nu transparentă).
