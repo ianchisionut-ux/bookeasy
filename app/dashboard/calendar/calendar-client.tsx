@@ -13,6 +13,7 @@ import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import type { BookingDetail } from '@/components/booking-edit-modal'
 import { Lock, CheckCircle2, X, Search, Users, AlertTriangle, Clock3 } from 'lucide-react'
 import { PrintButton } from '@/components/print-button'
+import { isAppointmentCategory, type BusinessCategory } from '@/lib/business-categories'
 
 const locales = { ro }
 const localizer = dateFnsLocalizer({
@@ -77,7 +78,7 @@ export default function CalendarClient({
   slotIntervalMinutes,
   practitioners,
 }: {
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  category: BusinessCategory
   events: Event[]
   blockedSlots: BlockedSlot[]
   minTime: string
@@ -88,7 +89,7 @@ export default function CalendarClient({
   practitioners: { id: string; name: string; minTime: string; maxTime: string; workingHours: { weekday: number; startTime: string; endTime: string }[]; breaks: BreakRange[] }[]
 }) {
   const isClinic = category === 'CLINICA'
-  const isAppointmentBased = category === 'SALON' || category === 'CLINICA'
+  const isAppointmentBased = isAppointmentCategory(category)
   const bookingPlural = isAppointmentBased ? 'programări' : 'rezervări'
   const bookingSingular = isAppointmentBased ? 'programare' : 'rezervare'
   const customerPlural = isClinic ? 'pacienți' : 'clienți'

@@ -10,14 +10,7 @@ import { Pill } from '@/components/ui/input'
 import BillingSection from './billing-section'
 import MessengerBotToggle from '@/components/messenger-bot-toggle'
 import MetaEmbeddedSignupV4Button from '@/components/meta-embedded-signup-v4-button'
-
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Salon',
-  EVENT_VENUE: 'Spații evenimente',
-  HOTEL: 'Hotel',
-  PENSIUNE: 'Pensiune',
-  CLINICA: 'Clinică',
-}
+import { CATEGORY_LABEL, type BusinessCategory } from '@/lib/business-categories'
 
 type Channel = { id: string; type: string; externalId: string; wabaId: string | null; status: string; enabledByOwner: boolean }
 type CalendarPractitioner = {
@@ -29,7 +22,7 @@ type Business = {
   id: string
   slug: string
   name: string
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  category: BusinessCategory
   dentalClinic: boolean
   accountActive: boolean
   publicListed: boolean

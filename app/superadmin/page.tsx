@@ -1,13 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { Card } from '@/components/ui/card'
-
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Saloane',
-  EVENT_VENUE: 'Spații evenimente',
-  HOTEL: 'Hoteluri',
-  PENSIUNE: 'Pensiuni',
-  CLINICA: 'Clinici',
-}
+import { CATEGORY_LABEL, type BusinessCategory } from '@/lib/business-categories'
 
 export default async function SuperAdminOverview() {
   const rows = await prisma.$queryRaw<Array<{
@@ -68,7 +61,7 @@ export default async function SuperAdminOverview() {
         <ul className="text-sm flex flex-col gap-2">
           {byCategory.map((c) => (
             <li key={c.category} className="flex justify-between">
-              <span className="text-gray-500">{CATEGORY_LABEL[c.category] ?? c.category}</span>
+              <span className="text-gray-500">{CATEGORY_LABEL[c.category as BusinessCategory] ?? c.category}</span>
               <span className="font-medium">{c.count}</span>
             </li>
           ))}

@@ -4,13 +4,14 @@ import { sendAccessRequestNotification } from '@/lib/email'
 import { withEmailTimeout } from '@/lib/password-tokens'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { z } from 'zod'
+import { BUSINESS_CATEGORIES } from '@/lib/business-categories'
 
 const schema = z.object({
   name: z.string().min(1),
   businessName: z.string().min(1),
   email: z.string().email(),
   phone: z.string().min(6),
-  category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE', 'CLINICA']).optional(),
+  category: z.enum(BUSINESS_CATEGORIES).optional(),
   message: z.string().max(1000).optional(),
 })
 

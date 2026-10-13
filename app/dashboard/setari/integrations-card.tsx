@@ -7,6 +7,7 @@ import { Pill } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import MetaEmbeddedSignupV4Button from '@/components/meta-embedded-signup-v4-button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { isAppointmentCategory } from '@/lib/business-categories'
 
 type Channel = {
   id: string
@@ -161,7 +162,7 @@ export default function IntegrationsCard({
   const facebook = channels.find((channel) => channel.type === 'FACEBOOK' && channel.status === 'ACTIVE')
   const instagram = channels.find((channel) => channel.type === 'INSTAGRAM' && channel.status === 'ACTIVE')
   const whatsapp = channels.find((channel) => channel.type === 'WHATSAPP' && channel.status === 'ACTIVE')
-  const profileLabel = businessCategory === 'CLINICA' ? 'un medic' : businessCategory === 'SALON' ? 'un membru al echipei' : 'un profil de echipă'
+  const profileLabel = businessCategory === 'CLINICA' ? 'un medic' : isAppointmentCategory(businessCategory) ? 'un membru al echipei' : 'un profil de echipă'
   const individualPractitioner = practitioners[0]
 
   return (

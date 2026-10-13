@@ -6,11 +6,12 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { BUSINESS_CATEGORIES, CATEGORY_LABEL, type BusinessCategory } from '@/lib/business-categories'
 
 export default function CreateBusinessButton() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ slug: '', name: '', email: '', category: 'SALON' as 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' })
+  const [form, setForm] = useState({ slug: '', name: '', email: '', category: 'SALON' as BusinessCategory })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -56,14 +57,10 @@ export default function CreateBusinessButton() {
           <p className="text-xs text-gray-500">Denumirea legală și datele de facturare se completează separat în profilul afacerii.</p>
           <select
             value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value as 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' })}
+            onChange={(e) => setForm({ ...form, category: e.target.value as BusinessCategory })}
             className="input-field"
           >
-            <option value="SALON">Salon</option>
-            <option value="EVENT_VENUE">Spații evenimente</option>
-            <option value="CLINICA">Clinică medicală/stomatologică</option>
-            <option value="HOTEL">Hotel (în dezvoltare, nu apare public)</option>
-            <option value="PENSIUNE">Pensiune (în dezvoltare, nu apare public)</option>
+            {BUSINESS_CATEGORIES.map((category) => <option key={category} value={category}>{CATEGORY_LABEL[category]}{category === 'HOTEL' || category === 'PENSIUNE' ? ' (în dezvoltare, nu apare public)' : ''}</option>)}
           </select>
           <Input placeholder="Email owner" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         </div>

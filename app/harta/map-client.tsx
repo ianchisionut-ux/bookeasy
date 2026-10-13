@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { CATEGORY_LABEL, PUBLIC_CATEGORIES, type PublicCategory } from '@/lib/business-categories'
 
 type Business = {
   id: string
   name: string
   slug: string
-  category: 'SALON' | 'EVENT_VENUE' | 'CLINICA'
+  category: PublicCategory
   city: string | null
   address: string | null
   latitude: number
@@ -22,13 +23,14 @@ declare global {
   }
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Salon',
-  EVENT_VENUE: 'Spații evenimente',
-  CLINICA: 'Clinică',
-}
 const CATEGORY_COLOR: Record<string, string> = {
   SALON: '#639922',
+  BARBER_SHOP: '#639922',
+  COSMETICA: '#639922',
+  NAILS: '#639922',
+  LASHES: '#639922',
+  MASAJ: '#639922',
+  STUDIO_BEAUTY: '#639922',
   EVENT_VENUE: '#0c2c53',
   CLINICA: '#0e9aa7',
 }
@@ -39,7 +41,7 @@ export default function MapClient() {
   const mapInstance = useRef<any>(null)
   const markersRef = useRef<any[]>([])
   const [businesses, setBusinesses] = useState<Business[]>([])
-  const [category, setCategory] = useState<'ALL' | 'SALON' | 'EVENT_VENUE' | 'CLINICA'>('ALL')
+  const [category, setCategory] = useState<'ALL' | PublicCategory>('ALL')
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [shouldLoad, setShouldLoad] = useState(false)
@@ -154,7 +156,7 @@ export default function MapClient() {
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
           scale: 8,
-          fillColor: CATEGORY_COLOR[b.category],
+          fillColor: CATEGORY_COLOR[b.category] ?? '#639922',
           fillOpacity: 1,
           strokeColor: '#ffffff',
           strokeWeight: 2,
@@ -165,7 +167,7 @@ export default function MapClient() {
         infoWindow.setContent(`
           <div style="font-family:var(--font-sans),sans-serif; padding:4px;">
             <p style="font-weight:600; margin:0 0 2px;">${b.name}</p>
-            <p style="font-size:11px; color:${CATEGORY_COLOR[b.category]}; font-weight:600; margin:0 0 4px;">${CATEGORY_LABEL[b.category]}</p>
+            <p style="font-size:11px; color:${CATEGORY_COLOR[b.category] ?? '#639922'}; font-weight:600; margin:0 0 4px;">${CATEGORY_LABEL[b.category]}</p>
             <p style="font-size:12px; color:#666; margin:0 0 4px;">${b.address ?? b.city ?? ''}</p>
             ${b.rating ? `<p style="font-size:12px; margin:0 0 6px;">★ ${b.rating} (${b.reviewCount ?? 0} recenzii)</p>` : ''}
             <a href="/${b.slug}" style="font-size:13px; color:#0c2c53;">Vezi profil →</a>
@@ -204,24 +206,10 @@ export default function MapClient() {
         >
           Toate
         </button>
-        <button
-          onClick={() => setCategory('SALON')}
-          className={`text-sm px-3 py-1.5 rounded-full border ${category === 'SALON' ? 'bg-gray-900 text-white' : ''}`}
-        >
-          Saloane
-        </button>
-        <button
-          onClick={() => setCategory('EVENT_VENUE')}
-          className={`text-sm px-3 py-1.5 rounded-full border ${category === 'EVENT_VENUE' ? 'bg-gray-900 text-white' : ''}`}
-        >
-          Spații evenimente
-        </button>
-        <button
-          onClick={() => setCategory('CLINICA')}
-          className={`text-sm px-3 py-1.5 rounded-full border ${category === 'CLINICA' ? 'bg-gray-900 text-white' : ''}`}
-        >
-          Clinici
-        </button>
+        {PUBLIC_CATEGORIES.map((item) => <button key={item} onClick={() => setCategory(item)}
+          className={`text-sm px-3 py-1.5 rounded-full border ${category === item ? 'bg-gray-900 text-white' : ''}`}>
+          {CATEGORY_LABEL[item]}
+        </button>)}
         <span className="text-sm text-gray-500 ml-auto self-center">{businesses.length} afaceri</span>
       </div>
 

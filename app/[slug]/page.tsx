@@ -8,12 +8,7 @@ import { PublicHeader } from '@/components/ui/public-header'
 import { PublicFooter } from '@/components/ui/public-footer'
 import { BackLink } from '@/components/ui/back-link'
 import { ArrowRight, CalendarCheck2, Clock3, MapPin, Phone, ShieldCheck, Star } from 'lucide-react'
-
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Salon',
-  EVENT_VENUE: 'Spațiu pentru evenimente',
-  CLINICA: 'Clinică medicală',
-}
+import { CATEGORY_LABEL } from '@/lib/business-categories'
 
 export default async function PublicBusinessPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -46,7 +41,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
           <div className="absolute inset-0" style={{ background: business.heroImageUrl ? 'linear-gradient(90deg, rgba(38,59,63,.94) 0%, rgba(38,59,63,.72) 52%, rgba(38,59,63,.2) 100%)' : `linear-gradient(125deg, var(--brand-ink) 0%, ${accent} 150%)` }} />
           <div className="relative flex min-h-[260px] max-w-3xl flex-col justify-end p-5 text-white sm:min-h-[340px] sm:p-9 lg:p-11">
             <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-white/20 bg-white/15 text-lg font-semibold shadow-inner backdrop-blur sm:h-16 sm:w-16 sm:text-xl">{initials}</div>
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/65">{CATEGORY_LABEL[business.category] ?? 'Servicii locale'}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/65">{CATEGORY_LABEL[business.category]}</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-4xl">{business.name}</h1>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-white/75">
               {(business.address || business.city) && <span className="flex items-center gap-1.5"><MapPin size={15} />{business.address ?? business.city}</span>}

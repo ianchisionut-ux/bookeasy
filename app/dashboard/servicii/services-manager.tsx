@@ -6,6 +6,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { CardInteractive, Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { isAppointmentCategory, type BusinessCategory } from '@/lib/business-categories'
 
 type Service = { id: string; name: string; durationMin: number | null; price: number | null; active: boolean }
 type Resource = { id: string; name: string; capacity: number | null; basePrice: number | null }
@@ -15,11 +16,11 @@ export default function ServicesManager({
   services,
   resources,
 }: {
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  category: BusinessCategory
   services: Service[]
   resources: Resource[]
 }) {
-  const isSalon = category === 'SALON' || category === 'CLINICA'
+  const isSalon = isAppointmentCategory(category)
   const router = useRouter()
 
   const [editingId, setEditingId] = useState<string | null>(null)
