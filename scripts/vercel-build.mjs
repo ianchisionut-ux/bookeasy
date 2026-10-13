@@ -12,6 +12,7 @@ if (process.env.VERCEL_ENV === 'production') {
     '../prisma/migrations/20261012170000_dental_clinic_chart/migration.sql',
     '../prisma/migrations/20261013110000_platform_email_inbox/migration.sql',
     '../prisma/migrations/20261013130000_platform_email_html/migration.sql',
+    '../prisma/migrations/20261013150000_beauty_categories/migration.sql',
   ]
   const migrations = await Promise.all(migrationFiles.map((file) => readFile(new URL(file, import.meta.url), 'utf8')))
   const client = new Client({ connectionString: process.env.DATABASE_URL })

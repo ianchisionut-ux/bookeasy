@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { MessageCircle, Send, CheckCircle2, FileText, X, CalendarPlus, RotateCcw } from 'lucide-react'
 import { WorkingRange } from '@/components/working-date-time-picker'
+import type { BusinessCategory } from '@/lib/business-categories'
 
 type ConversationSummary = {
   id: string
@@ -20,7 +21,6 @@ type Message = { id: string; direction: 'IN' | 'OUT'; text: string; createdAt: s
 type Template = { id: string; title: string; text: string }
 
 const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', INSTAGRAM: 'Instagram', FACEBOOK: 'Messenger' }
-type BusinessCategory = 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
 
 function getQuickReplies(category: BusinessCategory) {
   if (category === 'CLINICA') return [

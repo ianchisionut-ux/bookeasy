@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { hasFunctionalConsent } from '@/lib/cookie-consent'
 import { CalendarDays, Check, Clock3, ShieldCheck, UserRound } from 'lucide-react'
+import { isAppointmentCategory, type BusinessCategory } from '@/lib/business-categories'
 
 type Service = {
   id: string
@@ -50,13 +51,13 @@ export default function BookingFlow({
 }: {
   businessId: string
   businessSlug: string
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  category: BusinessCategory
   isMultiPractitioner: boolean
   services: Service[]
   accentColor: string
   accentSoftColor: string
 }) {
-  const isAppointment = category === 'SALON' || category === 'CLINICA'
+  const isAppointment = isAppointmentCategory(category)
   const isVenue = category === 'EVENT_VENUE'
   const days = useMemo(() => buildNextDays(30), [])
 

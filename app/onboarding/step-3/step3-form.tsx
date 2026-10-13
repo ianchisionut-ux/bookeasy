@@ -7,12 +7,13 @@ import { OnboardingProgress } from '@/components/onboarding-progress'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { isAppointmentCategory, type BusinessCategory } from '@/lib/business-categories'
 
 type Item = { name: string; durationMin?: string; price?: string; capacity?: string }
 
-export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' }) {
+export default function Step3Form({ category }: { category: BusinessCategory }) {
   const router = useRouter()
-  const isSalon = category === 'SALON' || category === 'CLINICA'
+  const isSalon = isAppointmentCategory(category)
   const [items, setItems] = useState<Item[]>([])
   const [draft, setDraft] = useState<Item>({ name: '', durationMin: '', price: '', capacity: '' })
   const [loading, setLoading] = useState(false)

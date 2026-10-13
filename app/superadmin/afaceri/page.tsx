@@ -4,14 +4,7 @@ import { Pill } from '@/components/ui/input'
 import Link from 'next/link'
 import BusinessRowActions from './business-row-actions'
 import CreateBusinessButton from './create-business-button'
-
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Salon',
-  EVENT_VENUE: 'Spații evenimente',
-  HOTEL: 'Hotel',
-  PENSIUNE: 'Pensiune',
-  CLINICA: 'Clinică',
-}
+import { CATEGORY_LABEL } from '@/lib/business-categories'
 
 const STATUS_LABEL: Record<string, string> = {
   GRATUIT: 'Gratuit',

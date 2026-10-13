@@ -6,14 +6,7 @@ import { BackLink } from '@/components/ui/back-link'
 import BookingFlow from './booking-flow'
 import { ensureVenueService } from '@/lib/venue-services'
 import { CalendarCheck2, Check, Clock3, ShieldCheck } from 'lucide-react'
-
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Salon',
-  EVENT_VENUE: 'Spații evenimente',
-  HOTEL: 'Hotel',
-  PENSIUNE: 'Pensiune',
-  CLINICA: 'Clinică medicală',
-}
+import { CATEGORY_LABEL } from '@/lib/business-categories'
 
 const WEEKDAY_SHORT = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
 

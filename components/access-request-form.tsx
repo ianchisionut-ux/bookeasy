@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { CATEGORY_LABEL, PUBLIC_CATEGORIES } from '@/lib/business-categories'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
@@ -56,9 +57,7 @@ export default function AccessRequestForm() {
         <Input type="tel" inputMode="tel" placeholder="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
       </div>
       <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field w-full">
-        <option value="SALON">Salon</option>
-        <option value="EVENT_VENUE">Spații evenimente</option>
-        <option value="CLINICA">Clinică medicală/stomatologică</option>
+        {PUBLIC_CATEGORIES.map((category) => <option key={category} value={category}>{CATEGORY_LABEL[category]}</option>)}
       </select>
       <textarea
         placeholder="Spune-ne câte ceva despre afacerea ta (opțional)"

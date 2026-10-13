@@ -8,8 +8,9 @@ import {
   CartesianGrid, PieChart, Pie, Cell,
 } from 'recharts'
 import { ArrowDownRight, ArrowUpRight, CalendarDays, Download, Gauge, RefreshCw, Users } from 'lucide-react'
+import { isAppointmentCategory, type BusinessCategory } from '@/lib/business-categories'
 
-type Category = 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+type Category = BusinessCategory
 type PeriodData = AdvancedPeriodStats & { bookingChange: number; revenueChange: number }
 type Analytics = { periods: Record<AnalyticsPeriod, PeriodData>; rating: number; reviewCount: number }
 
@@ -63,7 +64,7 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
   const data = analytics.periods[period]
   const isClinic = category === 'CLINICA'
   const isVenue = category === 'EVENT_VENUE'
-  const isAppointmentBased = category === 'SALON' || category === 'CLINICA'
+  const isAppointmentBased = isAppointmentCategory(category)
   const bookingLabel = isAppointmentBased ? 'Programări' : 'Rezervări'
   const operatorLabel = isVenue ? 'Performanță pe sală' : isClinic ? 'Performanță pe medic' : 'Performanță pe membru'
   const statusData = data.byStatus.filter((item) => item.count > 0)

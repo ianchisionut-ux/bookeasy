@@ -7,9 +7,10 @@ import ClientInstallBanner from '@/components/client-install-banner'
 import './marketplace.css'
 import { cityNearLocation } from '@/lib/client-location'
 import { canonicalCity, normalizeCity } from '@/lib/romanian-cities'
+import { CATEGORY_LABEL, type PublicCategory } from '@/lib/business-categories'
 import { ArrowRight, ArrowUpRight, Building2, CalendarDays, Check, Heart, LayoutGrid, MapPin, Menu, Navigation, Search, Scissors, Star, Stethoscope, X } from 'lucide-react'
 
-type Category = 'ALL' | 'SALON' | 'CLINICA' | 'EVENT_VENUE'
+type Category = 'ALL' | PublicCategory
 type Business = {
   id: string
   slug: string
@@ -25,10 +26,30 @@ type Business = {
 const categories = [
   { value: 'ALL', label: 'Toate', icon: LayoutGrid },
   { value: 'SALON', label: 'Saloane', icon: Scissors },
+  { value: 'COAFURA_FRIZERIE', label: 'Coafură & frizerie', icon: Scissors },
+  { value: 'BARBER_SHOP', label: 'Barber Shop', icon: Scissors },
+  { value: 'NAILS', label: 'Unghii', icon: Star },
+  { value: 'COSMETICA', label: 'Cosmetică & ten', icon: Star },
+  { value: 'LASHES', label: 'Gene & sprâncene', icon: Star },
+  { value: 'MAKE_UP', label: 'Make-up', icon: Star },
+  { value: 'EPILARE', label: 'Epilare', icon: Star },
+  { value: 'MASAJ', label: 'Masaj & terapii', icon: Heart },
+  { value: 'SPA_WELLNESS', label: 'Spa & wellness', icon: Heart },
+  { value: 'FITNESS', label: 'Fitness & personal training', icon: CalendarDays },
+  { value: 'NUTRITIE_WELLNESS', label: 'Nutriție & wellness', icon: Heart },
+  { value: 'ESTETICA_REMODELARE', label: 'Estetică & remodelare', icon: Star },
+  { value: 'TATUAJE_PIERCING', label: 'Tatuaje & piercing', icon: Star },
+  { value: 'MEDICAL_ESTETIC', label: 'Servicii medical-estetice', icon: Stethoscope },
+  { value: 'SPORT_BAZE', label: 'Sport / Baze sportive', icon: CalendarDays },
+  { value: 'MEDICAL', label: 'Medical', icon: Stethoscope },
+  { value: 'CURSURI', label: 'Cursuri', icon: CalendarDays },
+  { value: 'LOC_JOACA', label: 'Loc de joacă', icon: Heart },
+  { value: 'ACCES_CLUB', label: 'Acces club', icon: Heart },
+  { value: 'STUDIO_BEAUTY', label: 'Studio de beauty', icon: Scissors },
   { value: 'CLINICA', label: 'Clinici', icon: Stethoscope },
   { value: 'EVENT_VENUE', label: 'Evenimente', icon: Building2 },
 ] as const
-const categoryLabels: Record<string, string> = { SALON: 'Salon', CLINICA: 'Clinică', EVENT_VENUE: 'Evenimente' }
+const categoryLabels: Record<string, string> = CATEGORY_LABEL
 const favoritesKey = 'bookeasy-client-favorites-v1'
 const preferredCityKey = 'bookeasy-client-preferred-city-v1'
 
@@ -131,7 +152,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
       (category === 'ALL' || business.category === category) &&
       (city === 'ALL' || (business.city && normalizeCity(business.city) === normalizeCity(city))) &&
       (!favoritesOnly || favorites.includes(business.slug)) &&
-      (!normalized || [business.name, business.city, business.address].some((value) => value?.toLocaleLowerCase('ro-RO').includes(normalized)))
+      (!normalized || [business.name, business.city, business.address, CATEGORY_LABEL[business.category as keyof typeof CATEGORY_LABEL]].some((value) => value?.toLocaleLowerCase('ro-RO').includes(normalized)))
     )
   }, [businesses, category, city, favorites, favoritesOnly, query])
 
@@ -150,6 +171,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
           </Link>
 
           <nav className="hidden items-center gap-1.5 lg:flex" aria-label="Navigare categorii">
+            <a href="#categorii" className="marketplace-nav-link">Toate categoriile</a>
             <button type="button" onClick={() => chooseCategory('SALON')} className={'marketplace-nav-link' + (category === 'SALON' && !favoritesOnly ? ' is-active' : '')}>Saloane</button>
             <button type="button" onClick={() => chooseCategory('CLINICA')} className={'marketplace-nav-link' + (category === 'CLINICA' && !favoritesOnly ? ' is-active' : '')}>Clinici</button>
             <button type="button" onClick={() => chooseCategory('EVENT_VENUE')} className={'marketplace-nav-link' + (category === 'EVENT_VENUE' && !favoritesOnly ? ' is-active' : '')}>Evenimente</button>
@@ -191,7 +213,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
             <h1 id="marketplace-hero-heading" className="marketplace-headline">
               Locuri de descoperit.<br /><span>Momente de trăit.</span>
             </h1>
-            <p className="marketplace-hero-description">Găsește saloane, clinici și spații de evenimente din orașul tău. Alegi ce ți se potrivește și rezervi direct, fără complicații.</p>
+            <p className="marketplace-hero-description">Găsește servicii de beauty, clinici și spații de evenimente din orașul tău. Alegi ce ți se potrivește și rezervi direct, fără complicații.</p>
             <div className="marketplace-hero-perks" aria-label="Avantajele BookEasy">
               <span><Check size={16} aria-hidden="true" /> Alegi locul potrivit</span>
               <span><Check size={16} aria-hidden="true" /> Rezervi online</span>
@@ -233,7 +255,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
         </form>
       </section>
 
-      <section className="marketplace-container marketplace-categories" aria-labelledby="marketplace-categories-heading">
+      <section id="categorii" className="marketplace-container marketplace-categories" aria-labelledby="marketplace-categories-heading">
         <div className="marketplace-section-intro">
           <div>
             <p className="marketplace-kicker">ALEGE CE ȚI SE POTRIVEȘTE</p>
@@ -244,7 +266,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
         <div className="marketplace-category-grid">
           {categories.map((item) => {
             const selected = category === item.value && !favoritesOnly
-            const description = item.value === 'ALL' ? 'Toate experiențele' : item.value === 'SALON' ? 'Frumusețe & îngrijire' : item.value === 'CLINICA' ? 'Sănătate & servicii' : 'Spații & locații'
+            const description = item.value === 'ALL' ? 'Toate experiențele' : item.value === 'CLINICA' ? 'Sănătate & servicii' : item.value === 'EVENT_VENUE' ? 'Spații & locații' : 'Frumusețe & îngrijire'
             return (
               <button type="button" key={item.value} onClick={() => chooseCategory(item.value)} aria-pressed={selected} className={'marketplace-category-card' + (selected ? ' is-active' : '')}>
                 <span className="marketplace-category-icon"><item.icon size={24} strokeWidth={1.8} aria-hidden="true" /></span>

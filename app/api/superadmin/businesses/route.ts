@@ -5,12 +5,13 @@ import { createPasswordToken, sendPasswordSetupEmail, withEmailTimeout } from '@
 import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import { BUSINESS_CATEGORIES } from '@/lib/business-categories'
 
 const schema = z.object({
   slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug-ul poate conține doar litere mici, cifre și cratime.'),
   name: z.string().min(2),
   email: z.string().email(),
-  category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE', 'CLINICA']),
+  category: z.enum(BUSINESS_CATEGORIES),
 })
 
 export async function POST(req: NextRequest) {

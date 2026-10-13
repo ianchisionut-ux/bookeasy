@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { Business, ContractDocumentType } from '@prisma/client'
 import { company } from '@/lib/company'
+import { CATEGORY_LABEL } from '@/lib/business-categories'
 
 export const CONTRACT_VERSION = '2026-10-09.1'
 
@@ -31,11 +32,6 @@ const provider = [
   `E-mail contractual: ${company.legalEmail}`,
   `Reprezentant: ${company.representativeName}, ${company.representativeRole}`,
 ]
-
-const categoryLabel: Record<string, string> = {
-  SALON: 'salon', CLINICA: 'clinică', EVENT_VENUE: 'spațiu de evenimente',
-  HOTEL: 'hotel', PENSIUNE: 'pensiune',
-}
 
 export function contractMissingFields(business: ContractBusiness, type: ContractDocumentType) {
   const missing: string[] = []
@@ -76,7 +72,7 @@ function serviceDocument(b: ContractBusiness): ContractDocument {
     provider, customer: customerLines(b),
     sections: [
       { heading: '1. Obiectul și configurația serviciului', paragraphs: [
-        `BookEasy oferă Beneficiarului acces la platforma SaaS pentru administrarea activității ${categoryLabel[b.category] || 'afacerii'}, a programărilor sau rezervărilor, a clienților, a echipei și a comunicărilor activate în cont. Profilul comercial este „${b.name}”, la ${location || 'adresa din profil'}, cu pagina bookeasy.ro/${b.slug}.`,
+        `BookEasy oferă Beneficiarului acces la platforma SaaS pentru administrarea activității ${CATEGORY_LABEL[b.category] || 'afacerii'}, a programărilor sau rezervărilor, a clienților, a echipei și a comunicărilor activate în cont. Profilul comercial este „${b.name}”, la ${location || 'adresa din profil'}, cu pagina bookeasy.ro/${b.slug}.`,
         'Funcțiile efectiv disponibile sunt cele activate în cont și în planul comercial. Integrările cu mesageria, plățile sau furnizori externi se aplică numai dacă sunt configurate. Prestarea serviciului nu transferă codul sursă, domeniul bookeasy.ro sau proprietatea asupra platformei.',
       ] },
       { heading: '2. Durata și activarea', paragraphs: [

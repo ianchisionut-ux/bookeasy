@@ -3,14 +3,7 @@ import { Card } from '@/components/ui/card'
 import { Pill } from '@/components/ui/input'
 import RequestActions from './request-actions'
 import { Mail, Phone } from 'lucide-react'
-
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Salon',
-  EVENT_VENUE: 'Spații evenimente',
-  HOTEL: 'Hotel',
-  PENSIUNE: 'Pensiune',
-  CLINICA: 'Clinică',
-}
+import { CATEGORY_LABEL } from '@/lib/business-categories'
 
 const STATUS_LABEL: Record<string, string> = {
   NEW: 'Nouă',

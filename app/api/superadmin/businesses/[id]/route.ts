@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
+import { BUSINESS_CATEGORIES } from '@/lib/business-categories'
 import { resetIpayPaymentFields } from '@/lib/billing-ipay'
 
 const patchSchema = z.object({
   name: z.string().min(2).optional(),
-  category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE', 'CLINICA']).optional(),
+  category: z.enum(BUSINESS_CATEGORIES).optional(),
   planName: z.string().nullable().optional(),
   billingStatus: z.enum(['GRATUIT', 'NEPLATIT', 'PLATIT', 'RESTANT']).optional(),
   billingNote: z.string().nullable().optional(),

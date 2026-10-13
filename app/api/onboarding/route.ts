@@ -5,11 +5,12 @@ import { geocodeAddress } from '@/lib/geocode'
 import { ensureVenueService } from '@/lib/venue-services'
 import { z } from 'zod'
 import { canonicalCity } from '@/lib/romanian-cities'
+import { PUBLIC_CATEGORIES } from '@/lib/business-categories'
 
 const stepSchemas = {
   1: z.object({
     name: z.string().min(2),
-    category: z.enum(['SALON', 'EVENT_VENUE', 'CLINICA']).optional(),
+    category: z.enum(PUBLIC_CATEGORIES).optional(),
     contactPhone: z.string(),
     city: z.string().min(1),
     address: z.string().optional(),

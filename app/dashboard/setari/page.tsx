@@ -11,6 +11,7 @@ import IntegrationsCard from './integrations-card'
 import { buildContractDocument, contractMissingFields, documentHash } from '@/lib/business-contracts'
 import { LegalDetailsForm } from './legal-details-form'
 import { ContractCenter } from './contract-center'
+import { isAppointmentCategory } from '@/lib/business-categories'
 
 // Luni primul, Duminică ultima — ordinea de afișare a programului de lucru
 // (valorile 'weekday' rămân 0=Duminică...6=Sâmbătă, standardul JS getDay(), doar ordinea vizuală se schimbă)
@@ -67,7 +68,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
       </div>
 
       <div className="columns-1 gap-5 md:columns-2 2xl:columns-3">
-        <PublicPageLinkCard slug={business.slug} isClinic={business.category === 'CLINICA'} usesAppointments={business.category === 'SALON' || business.category === 'CLINICA'} />
+        <PublicPageLinkCard slug={business.slug} isClinic={business.category === 'CLINICA'} usesAppointments={isAppointmentCategory(business.category)} />
 
         <SubscriptionCard
           businessId={business.id}
@@ -108,7 +109,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
           workingHours={workingHours}
         />
 
-        <BrandColorCard initialColor={business.brandColor} usesAppointments={business.category === 'SALON' || business.category === 'CLINICA'} />
+        <BrandColorCard initialColor={business.brandColor} usesAppointments={isAppointmentCategory(business.category)} />
         <IntegrationsCard
           channels={channels}
           practitioners={practitioners}
