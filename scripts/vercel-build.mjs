@@ -10,6 +10,8 @@ if (process.env.VERCEL_ENV === 'production') {
   const migrationFiles = [
     '../prisma/migrations/20261009100000_business_contract_signatures/migration.sql',
     '../prisma/migrations/20261012170000_dental_clinic_chart/migration.sql',
+    '../prisma/migrations/20261013110000_platform_email_inbox/migration.sql',
+    '../prisma/migrations/20261013130000_platform_email_html/migration.sql',
   ]
   const migrations = await Promise.all(migrationFiles.map((file) => readFile(new URL(file, import.meta.url), 'utf8')))
   const client = new Client({ connectionString: process.env.DATABASE_URL })
@@ -19,7 +21,7 @@ if (process.env.VERCEL_ENV === 'production') {
     await client.query('SELECT pg_advisory_xact_lock(2142026109)')
     for (const sql of migrations) await client.query(sql)
     await client.query('COMMIT')
-    console.log('Schema BookEasy este pregătită (contracte și modul stomatologic).')
+    console.log('Schema BookEasy este pregătită (contracte, odontogramă și inbox).')
   } catch (error) {
     await client.query('ROLLBACK')
     throw error

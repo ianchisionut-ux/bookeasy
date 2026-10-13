@@ -35,12 +35,13 @@ export function r2Key(value: string | null | undefined) {
   return null
 }
 
-export async function putR2File(key: string, file: File) {
+export async function putR2File(key: string, file: File, options?: { allowOverwrite?: boolean }) {
   await put(key, file, {
     access: 'private',
     token: blobToken(),
     contentType: file.type || 'application/octet-stream',
     addRandomSuffix: false,
+    allowOverwrite: options?.allowOverwrite,
   })
   return key
 }

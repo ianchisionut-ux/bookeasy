@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: '/superadmin/afaceri', label: 'Afaceri', icon: 'afaceri' },
   { href: '/superadmin/cereri', label: 'Cereri de acces', icon: 'cereri' },
   { href: '/superadmin/tichete', label: 'Tichete suport', icon: 'tichete' },
+  { href: '/superadmin/email', label: 'Email', icon: 'email' },
 ]
 
 export default async function SuperAdminLayout({ children }: { children: React.ReactNode }) {
@@ -25,6 +26,7 @@ export default async function SuperAdminLayout({ children }: { children: React.R
   `
   const newRequestsCount = Number(badgeRows[0]?.newRequestsCount ?? 0)
   const newTicketsCount = Number(badgeRows[0]?.newTicketsCount ?? 0)
+  const newEmailsCount = await prisma.platformEmail.count({ where: { folder: 'inbox', isRead: false } }).catch(() => 0)
 
   const navItems = NAV_ITEMS.map((item) => ({
     ...item,
@@ -33,6 +35,8 @@ export default async function SuperAdminLayout({ children }: { children: React.R
         ? newRequestsCount
         : item.href === '/superadmin/tichete'
           ? newTicketsCount
+          : item.href === '/superadmin/email'
+            ? newEmailsCount
           : undefined,
   }))
 
