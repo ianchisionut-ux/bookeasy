@@ -3,6 +3,7 @@ import { isAuthorizedCronRequest } from '@/lib/cron-auth'
 import { prisma } from '@/lib/prisma'
 import { sendAlertEmail } from '@/lib/email'
 import { decrypt, encrypt } from '@/lib/crypto'
+import { refreshInstagramToken } from '@/lib/instagram-login'
 
 const WARNING_WINDOW_DAYS = 5
 
@@ -22,6 +23,16 @@ export async function GET(req: NextRequest) {
   const results = { expired: 0, expiringSoon: 0, autoRefreshed: 0 }
 
   for (const channel of channels) {
+    if (channel.type === 'INSTAGRAM' && channel.authProvider === 'instagram' && channel.expiresAt! > now) {
+      try {
+        const data = await refreshInstagramToken(channel.accessToken)
+        await prisma.channel.update({ where: { id: channel.id }, data })
+        results.autoRefreshed++
+        continue
+      } catch {
+        console.error('[check-tokens] Reconectare Instagram necesară:', channel.id)
+      }
+    }
     if (channel.type === 'GOOGLE_BUSINESS' && channel.refreshToken && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       try {
         const refreshed = await tryRefreshGoogleToken(channel.id, channel.refreshToken)

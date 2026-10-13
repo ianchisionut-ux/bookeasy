@@ -32,8 +32,7 @@ export default function ChannelsSection({ channels }: { channels: Channel[] }) {
     <Card>
       <h2 className="font-medium mb-1">Canale</h2>
       <p className="text-sm text-gray-500 mb-4">
-        Poți opri temporar un canal fără să pierzi conexiunea. Conectarea și cheile de acces sunt
-        administrate de echipa bookeasy.ro.
+        Conectează conturile proprii din Integrări. Poți opri temporar un canal fără să pierzi conexiunea.
       </p>
 
       <div className="flex flex-col gap-2">
@@ -45,7 +44,7 @@ export default function ChannelsSection({ channels }: { channels: Channel[] }) {
                 <p className="font-medium text-sm">{LABELS[type]}</p>
                 <div className="mt-1">
                   <Pill tone={channel ? STATUS_TONE[channel.status] : 'neutral'}>
-                    {channel ? STATUS_LABEL[channel.status] : 'Neconectat de admin'}
+                    {channel ? STATUS_LABEL[channel.status] : 'Neconectat'}
                   </Pill>
                 </div>
               </div>

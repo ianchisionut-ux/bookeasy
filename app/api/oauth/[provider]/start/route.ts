@@ -3,8 +3,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { signOAuthState } from '@/lib/oauth-state'
+import { instagramLoginConfigured, INSTAGRAM_SCOPE } from '@/lib/instagram-login'
 
 const OAUTH_CONFIG = {
+  instagram: {
+    authUrl: 'https://www.instagram.com/oauth/authorize',
+    clientId: process.env.INSTAGRAM_APP_ID!,
+    scope: INSTAGRAM_SCOPE,
+    extraParams: { enable_fb_login: 'false', force_reauth: 'true' },
+  },
   google: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -21,13 +28,19 @@ const OAUTH_CONFIG = {
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { provider: providerRaw } = await params
-  if (providerRaw !== 'google' && providerRaw !== 'meta') {
+  if (providerRaw !== 'google' && providerRaw !== 'meta' && providerRaw !== 'instagram') {
     return NextResponse.json({ error: 'invalid provider' }, { status: 400 })
   }
-  const provider = providerRaw as 'google' | 'meta'
+  const provider = providerRaw as 'google' | 'meta' | 'instagram'
 
   const session = await auth()
   if (!session) return NextResponse.redirect(new URL('/login', req.url))
+  if (!(session as any).isSuperAdmin && (session as any).role !== 'OWNER') return NextResponse.json({ error: 'Doar proprietarul poate conecta conturile afacerii.' }, { status: 403 })
+  if (provider === 'meta' && req.nextUrl.searchParams.get('channel') === 'instagram') {
+    const url = new URL('/api/oauth/instagram/start', req.url)
+    url.search = req.nextUrl.search
+    return NextResponse.redirect(url)
+  }
 
   // super adminul poate conecta un canal în numele oricărui business (?businessId=xxx);
   // altfel, folosim business-ul propriu din sesiune
@@ -40,10 +53,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
 
   const config = OAUTH_CONFIG[provider]
   const metaChannel = provider === 'meta' && req.nextUrl.searchParams.get('channel') === 'instagram' ? 'instagram' : 'messenger'
-  const instagramEnabled = process.env.META_INSTAGRAM_OAUTH_ENABLED === 'true'
-  if (provider === 'meta' && metaChannel === 'instagram' && !instagramEnabled) {
+  if (provider === 'instagram' && !instagramLoginConfigured()) {
     const redirectTo = isSuperAdmin && targetBusinessId ? `/superadmin/afaceri/${businessId}` : '/dashboard/setari'
-    return NextResponse.redirect(new URL(`${redirectTo}?error=${encodeURIComponent('Permisiunile Instagram trebuie activate în aplicația Meta înainte de conectare.')}`, req.url))
+    return NextResponse.redirect(new URL(`${redirectTo}?error=${encodeURIComponent('Conectarea Instagram este în curs de configurare. Contactează echipa BookEasy.')}`, req.url))
   }
   const redirectUri = `${process.env.APP_URL}/api/oauth/${provider}/callback`
 
@@ -53,7 +65,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
       ? '/dashboard/setari'
       : '/dashboard/canale'
 
-  const state = signOAuthState({ provider, businessId, redirectTo, ...(provider === 'meta' ? { metaChannel } : {}), nonce: crypto.randomUUID(), issuedAt: Date.now() })
+  const nonce = crypto.randomUUID()
+  const state = signOAuthState({ provider, userId: (session as any).userId, businessId, redirectTo, ...(provider === 'meta' ? { metaChannel } : {}), nonce, issuedAt: Date.now() })
 
   const url = new URL(config.authUrl)
   url.searchParams.set('client_id', config.clientId)
@@ -65,5 +78,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   url.searchParams.set('state', state)
   Object.entries(config.extraParams).forEach(([k, v]) => url.searchParams.set(k, String(v)))
 
-  return NextResponse.redirect(url.toString())
+  const response = NextResponse.redirect(url.toString())
+  response.cookies.set(`bookeasy_oauth_${provider}`, nonce, { httpOnly: true, secure: req.nextUrl.protocol === 'https:', sameSite: 'lax', path: `/api/oauth/${provider}`, maxAge: 600 })
+  return response
 }

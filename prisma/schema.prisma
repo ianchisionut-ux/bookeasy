@@ -378,6 +378,7 @@ model Channel {
   externalId     String
   wabaId         String?       // doar pentru WHATSAPP — WhatsApp Business Account ID, diferit de phone_number_id
   accessToken    String
+  authProvider   String        @default("meta")
   refreshToken   String?
   expiresAt      DateTime?
   status         ChannelStatus @default(ACTIVE)

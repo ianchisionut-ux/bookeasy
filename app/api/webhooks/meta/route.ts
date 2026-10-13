@@ -17,28 +17,32 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const appSecret = process.env.META_APP_SECRET
-  if (!appSecret) return NextResponse.json({ error: 'Meta nu este configurat.' }, { status: 503 })
+  const secrets = { meta: process.env.META_APP_SECRET, instagram: process.env.INSTAGRAM_APP_SECRET }
+  if (!Object.values(secrets).some(Boolean)) return NextResponse.json({ error: 'Meta nu este configurat.' }, { status: 503 })
 
   const rawBody = await req.text()
 
   const signature = req.headers.get('x-hub-signature-256')
-  const expected =
-    'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex')
-
-  if (signature !== expected) {
+  const signedBy = new Set(Object.entries(secrets).filter(([, secret]) => {
+    if (!secret || !signature) return false
+    const expected = Buffer.from('sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex'))
+    const supplied = Buffer.from(signature)
+    return supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected)
+  }).map(([provider]) => provider))
+  if (!signedBy.size) {
     return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
   }
 
-  const body = JSON.parse(rawBody)
+  let body
+  try { body = JSON.parse(rawBody) } catch { return NextResponse.json({ error: 'invalid JSON' }, { status: 400 }) }
 
   for (const entry of body.entry ?? []) {
-    if (body.object === 'whatsapp_business_account') {
+    if (body.object === 'whatsapp_business_account' && signedBy.has('meta')) {
       await handleWhatsAppEntry(entry)
     } else if (body.object === 'instagram') {
-      await handleMessengerEntry(entry, 'INSTAGRAM')
-    } else if (body.object === 'page') {
-      await handleMessengerEntry(entry, 'FACEBOOK')
+      await handleMessengerEntry(entry, 'INSTAGRAM', signedBy)
+    } else if (body.object === 'page' && signedBy.has('meta')) {
+      await handleMessengerEntry(entry, 'FACEBOOK', signedBy)
     }
   }
 
@@ -232,7 +236,13 @@ function whatsappIncomingLogText(message: any, action: string) {
   return message.text?.body ?? extractNonTextContent(message)
 }
 
-async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') {
+async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK', signedBy: Set<string>) {
+  for (const message of entry.messaging ?? []) {
+    await handleMessengerEvent({ ...entry, messaging: [message] }, type, signedBy)
+  }
+}
+
+async function handleMessengerEvent(entry: any, type: 'INSTAGRAM' | 'FACEBOOK', signedBy: Set<string>) {
   const messaging = entry.messaging?.[0]
   // Mesajele expediate de operator/pagină revin ca ecouri prin webhook.
   if (messaging?.message?.is_echo) return
@@ -241,12 +251,13 @@ async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') 
   const effectiveText = messaging?.postback?.payload ?? messaging?.message?.quick_reply?.payload ?? messaging?.message?.text
   if (!messaging || (!messaging.message && !messaging.postback)) return
 
-  const messageId = messaging.message?.mid ?? messaging.postback?.mid
-  if (messageId && !(await markMessageProcessed(messageId))) return
-
   const pageId = entry.id
   const channel = await prisma.channel.findUnique({ where: { type_externalId: { type, externalId: pageId } } })
-  if (!channel) return
+  if (!channel || channel.status === 'DISCONNECTED') return
+  const provider = type === 'INSTAGRAM' && channel.authProvider === 'instagram' ? 'instagram' : 'meta'
+  if (!signedBy.has(provider)) return
+  const messageId = messaging.message?.mid ?? messaging.postback?.mid
+  if (messageId && !(await markMessageProcessed(messageId))) return
 
   await processIncomingMessage({
     businessId: channel.businessId,

@@ -444,11 +444,11 @@ function IntegrationsCard({ businessId, individual, channels, practitioners, met
         <div className="space-y-3">
           <div className="rounded-2xl border border-pink-100 bg-pink-50 p-4">
             <p className="text-sm font-semibold text-pink-950">Autorizare Instagram</p>
-            <p className="mt-1 text-xs text-pink-800">Flux separat de Messenger, pentru contul profesional asociat Paginii Facebook.</p>
+            <p className="mt-1 text-xs text-pink-800">Autentificare directă cu contul profesional Instagram al afacerii.</p>
             {instagramOAuthEnabled ? (
-              <a href={'/api/oauth/meta/start?channel=instagram&businessId=' + businessId} className="btn-secondary mt-3 inline-flex text-sm">Autorizează Instagram</a>
+              <a href={'/api/oauth/instagram/start?businessId=' + businessId} className="btn-secondary mt-3 inline-flex text-sm">Autorizează Instagram</a>
             ) : (
-              <p className="mt-3 text-xs font-medium text-amber-700">Activează mai întâi permisiunile Instagram în aplicația Meta.</p>
+              <p className="mt-3 text-xs font-medium text-amber-700">Configurează Instagram App ID, App Secret și adresa OAuth de întoarcere.</p>
             )}
           </div>
           <ChannelFields

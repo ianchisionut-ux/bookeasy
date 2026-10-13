@@ -13,8 +13,10 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   const businessId = (session as any)?.businessId as string | undefined
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  if (!(session as any).isSuperAdmin && (session as any).role !== 'OWNER') return NextResponse.json({ error: 'Doar proprietarul poate conecta conturile afacerii.' }, { status: 403 })
+  if (req.headers.get('origin') !== req.nextUrl.origin) return NextResponse.json({ error: 'invalid origin' }, { status: 403 })
 
-  const parsed = schema.safeParse(await req.json())
+  const parsed = schema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Datele primite de la Meta sunt incomplete.' }, { status: 400 })
 
   try {

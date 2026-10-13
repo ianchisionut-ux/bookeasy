@@ -8,11 +8,21 @@ BookEasy conectează canalele afacerilor la inboxul din dashboard și la fluxuri
 - Există un draft App Review netrimis, cu zece permisiuni: `pages_show_list`, `pages_manage_metadata`, `pages_utility_messaging`, `pages_messaging`, `business_management`, `pages_read_engagement`, `instagram_manage_messages`, `instagram_basic`, `whatsapp_business_messaging`, `whatsapp_business_management`.
 - În Allowed usage, `pages_show_list`, `pages_manage_metadata` și `pages_messaging` au deja formulare salvate. Pentru `pages_messaging` există justificare, instrucțiuni, videoclip încărcat și apeluri de test marcate Completed. Celelalte șapte permisiuni afișează Get started. Formularele salvate nu reprezintă aprobarea Advanced Access.
 - Politica de confidențialitate configurată este `https://www.bookeasy.ro/politica-de-confidentialitate`; categoria aplicației este „Roboți Messenger pentru afaceri”.
-- Instagram folosește Facebook Login în implementarea curentă, cu Page access token și cont Instagram profesional legat la Pagină. Configurarea separată Instagram Login din consola Meta nu este fluxul folosit de cod.
-- Conectarea Instagram este controlată de `META_INSTAGRAM_OAUTH_ENABLED`; înainte de demonstrație trebuie activată pentru fluxul testat. Activarea nu acordă automat Advanced Access.
+- Inițial, Instagram folosea Facebook Login. La cererea proprietarului platformei, codul a fost modificat pentru Instagram Login direct: `/api/oauth/instagram/start` și `/api/oauth/instagram/callback`, cu `instagram_business_basic` și `instagram_business_manage_messages`. Nu necesită o Pagină Facebook asociată; conexiunile vechi prin Facebook rămân compatibile.
+- Noul flux necesită `INSTAGRAM_APP_ID` și `INSTAGRAM_APP_SECRET` în Vercel Production, din aplicația Instagram (ID `2092084291665124`, diferit de Meta App ID), plus redirect URI `https://www.bookeasy.ro/api/oauth/instagram/callback` în Set up Instagram business login. Butonul apare activ numai când credențialele există. Configurarea nu acordă automat Advanced Access.
+- Callbackurile OAuth sunt legate de utilizatorul inițiator, afacerea sa și un nonce în cookie HttpOnly. Numai OWNER sau Super Admin poate conecta. Reautorizarea nu transferă automat un canal de la altă afacere, inclusiv în cazul a două callbackuri simultane.
+- Mesajele Instagram Login sunt trimise prin `graph.instagram.com`; tokenurile se reînnoiesc automat înainte de expirare. Webhookul verifică semnătura pentru fluxul de autentificare al canalului și procesează toate evenimentele de mesagerie din lot.
 - WhatsApp folosește Embedded Signup configurat în Meta. Codul verifică apartenența numărului la WABA și abonează aplicația la webhook. Trebuie demonstrat că numărul este înregistrat și poate efectiv primi și trimite mesaje după onboarding.
 
 ## Permisiuni și demonstrații
+
+### Active identificate în consola Meta
+
+- Portofoliul verificat asociat aplicației: Bookeasy, ID `28175115378794775`. Nu are Pagini Facebook sau conturi Instagram adăugate.
+- Există un al doilea portofoliu numit Bookeasy, ID `3046095755726658`, cu Pagina Facebook Bookeasy, ID `1213465031855810`. Business Suite afișează „Conectează Instagram” pentru această Pagină; nu a fost identificat un cont Instagram profesional legat.
+- În portofoliul aplicației, WABA Bookeasy, ID `1424774532897262`, are statut Aprobat și verificarea afacerii Confirmată, dar fila Phone numbers arată că nu a fost adăugat niciun număr. Aceste stări nu confirmă livrarea mesajelor.
+- WABA `Test WhatsApp Business Account`, ID `1004556862618950`, conține numărul Meta de test `+1 555-668-9706`, afișat cu starea Neverificat. Nu este un număr real al afacerii identificat pentru producție.
+- Inventarul a fost doar citit. Nu au fost mutate active, legate conturi, schimbate permisiuni sau trimise mesaje. Înainte de demonstrație trebuie identificat contul Instagram propriu și ales numărul WhatsApp real al afacerii, plus expeditorii de test.
 
 | Permisiune | Funcția demonstrată în BookEasy |
 | --- | --- |
@@ -20,14 +30,14 @@ BookEasy conectează canalele afacerilor la inboxul din dashboard și la fluxuri
 | `pages_read_engagement` | Identificarea Paginii și a contului Instagram profesional asociat. |
 | `pages_manage_metadata` | Abonarea la webhook pentru evenimentele de mesagerie după conectare. |
 | `pages_messaging` | Mesaj Messenger primit de Pagină, afișat în inbox și răspuns trimis din BookEasy. |
-| `instagram_basic` | Identificarea contului Instagram profesional conectat la Pagină. |
-| `instagram_manage_messages` | Mesaj Instagram primit, afișat în inbox și răspuns livrat utilizatorului. |
+| `instagram_business_basic` | Identificarea contului profesional autorizat direct cu Instagram Login. Înlocuiește `instagram_basic` pentru noul flux. |
+| `instagram_business_manage_messages` | Mesaj Instagram primit, afișat în inbox și răspuns livrat utilizatorului, prin Instagram Login. Înlocuiește `instagram_manage_messages` pentru noul flux. |
 | `whatsapp_business_management` | Embedded Signup, identificarea WABA și a numărului și abonarea aplicației. |
 | `whatsapp_business_messaging` | Mesaj WhatsApp primit, meniu cu operator/programare și răspuns manual din inbox. |
 | `business_management` | Confirmați utilizarea efectivă în configurația Facebook Login for Business și în onboardingul activelor. Justificarea trebuie să corespundă operațiilor din demonstrație. |
 | `pages_utility_messaging` | Necesită un flux real de mesaje utility. În codul curent nu există trimiterea unor astfel de mesaje prin Messenger; decideți implementarea și demonstrarea funcției sau scoaterea permisiunii din cerere. |
 
-Pentru Instagram prin Facebook Login se folosesc `instagram_basic` și `instagram_manage_messages`. Permisiunile `instagram_business_basic` și `instagram_business_manage_messages` aparțin fluxului Instagram Login și nu trebuie confundate cu cele solicitate de codul curent.
+Draftul existent conține încă permisiunile vechi Instagram prin Facebook Login. Cererea și filmarea pentru noul flux trebuie să utilizeze `instagram_business_basic` și `instagram_business_manage_messages`. Nu solicitați permisiuni de comentarii sau publicare fără funcții implementate și demonstrate.
 
 ## Cele trei filmări
 
@@ -45,11 +55,11 @@ Formularul Meta pentru `pages_messaging` cere un cont Facebook real cu rol Teste
 
 ### Instagram
 
-1. Folosiți un cont Instagram Business/Creator legat la Pagina selectată.
-2. În Setări, conectați Instagram prin Facebook Login.
+1. Folosiți un cont Instagram Business/Creator dedicat testului.
+2. În Setări, conectați Instagram direct prin Instagram Login.
 3. Trimiteți un DM din contul clientului de test și arătați primirea în Mesaje.
 4. Răspundeți din BookEasy și arătați livrarea răspunsului în Instagram.
-5. Filmarea și justificările folosesc permisiunile fluxului Facebook Login.
+5. Filmarea și justificările folosesc permisiunile fluxului Instagram Login.
 
 ### WhatsApp
 
@@ -67,7 +77,7 @@ Open https://www.bookeasy.ro/login and use the dedicated business test account p
 
 Open Settings (Setări) to connect the relevant channel, then open Messages (Mesaje). Send a message from the designated test customer account to the connected business asset. The message appears in the BookEasy inbox. Open the conversation, enter a reply, and verify that the test customer receives the reply in Messenger, Instagram, or WhatsApp.
 
-For Instagram, use the Facebook Login flow and a professional Instagram account linked to the selected Facebook Page. For WhatsApp, the demonstrated experience is the operator/booking menu and manual business replies. The submitted screencasts show the exact assets and steps for each channel.
+For Instagram, use the separate Instagram Login flow and authorize a professional Instagram account. A linked Facebook Page is not required for this flow. For WhatsApp, the demonstrated experience is the operator/booking menu and manual business replies. The submitted screencasts show the exact assets and steps for each channel.
 
 ## Înainte de trimitere
 
@@ -83,6 +93,9 @@ For Instagram, use the Facebook Login flow and a professional Instagram account 
 ## Surse Meta
 
 - [Instagram cu Facebook Login](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/get-started/)
+- [Instagram Login: OAuth și tokenuri](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/business-login)
+- [Instagram Login: identificarea contului](https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/get-started)
+- [Configurarea webhookurilor](https://developers.facebook.com/documentation/instagram-platform/webhooks/setup)
 - [App Review Instagram](https://developers.facebook.com/docs/instagram-platform/app-review/)
 - [App Review](https://developers.facebook.com/docs/resp-plat-initiatives/appreview/)
 - [Exemplu oficial Meta pentru Tech Providers WhatsApp](https://github.com/fbsamples/business-messaging-sample-tech-provider-app)

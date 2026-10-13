@@ -1,7 +1,8 @@
 import crypto from 'crypto'
 
 export type OAuthState = {
-  provider: 'google' | 'meta'
+  provider: 'google' | 'meta' | 'instagram'
+  userId?: string
   metaChannel?: 'messenger' | 'instagram'
   businessId: string
   redirectTo: string
@@ -32,8 +33,10 @@ export function verifyOAuthState(value: string, provider: OAuthState['provider']
 
   try {
     const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString()) as OAuthState
-    const isFresh = Number.isFinite(payload.issuedAt) && Date.now() - payload.issuedAt < 10 * 60 * 1000
+    const age = Date.now() - payload.issuedAt
+    const isFresh = Number.isFinite(payload.issuedAt) && age >= 0 && age < 10 * 60 * 1000
     if (!isFresh || payload.provider !== provider || !payload.businessId || !payload.nonce) return null
+    if (!/^\/(dashboard\/(setari|canale)|superadmin\/afaceri\/[a-zA-Z0-9_-]+)$/.test(payload.redirectTo)) return null
     return payload
   } catch {
     return null

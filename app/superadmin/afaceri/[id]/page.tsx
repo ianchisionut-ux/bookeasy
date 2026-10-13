@@ -4,6 +4,7 @@ import { BackLink } from '@/components/ui/back-link'
 import BusinessAdminPanel from './business-admin-panel'
 import { ContractAdminSection } from './contract-admin-section'
 import { buildContractDocument, documentHash } from '@/lib/business-contracts'
+import { instagramLoginConfigured } from '@/lib/instagram-login'
 
 export default async function SuperAdminBusinessDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -82,7 +83,7 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
         }}
         metaAppId={process.env.META_APP_ID ?? ''}
         metaWhatsappConfigId={process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_V4_CONFIG_ID ?? process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ?? ''}
-        instagramOAuthEnabled={process.env.META_INSTAGRAM_OAUTH_ENABLED === 'true'}
+        instagramOAuthEnabled={instagramLoginConfigured()}
         channels={business.channels.map((c) => ({
           id: c.id,
           type: c.type,

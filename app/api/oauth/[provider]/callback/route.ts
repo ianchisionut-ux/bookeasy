@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { encrypt } from '@/lib/crypto'
 import { auth } from '@/lib/auth'
 import { verifyOAuthState } from '@/lib/oauth-state'
+import { connectInstagram, instagramLoginConfigured } from '@/lib/instagram-login'
+import { assertChannelOwnership, saveBusinessChannel, ChannelOwnershipError } from '@/lib/business-channel-connection'
 
 async function fetchGoogle(url: string, accessToken: string) {
   // Nu reîncercăm automat un 429: fiecare retry consumă aceeași cotă și prelungește blocarea.
@@ -11,17 +13,18 @@ async function fetchGoogle(url: string, accessToken: string) {
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { provider: providerRaw } = await params
-  if (providerRaw !== 'google' && providerRaw !== 'meta') {
+  if (providerRaw !== 'google' && providerRaw !== 'meta' && providerRaw !== 'instagram') {
     return NextResponse.json({ error: 'invalid provider' }, { status: 400 })
   }
-  const provider = providerRaw as 'google' | 'meta'
+  const provider = providerRaw as 'google' | 'meta' | 'instagram'
   const session = await auth()
   if (!session) return NextResponse.redirect(new URL('/login', req.url))
+  if (!(session as any).isSuperAdmin && (session as any).role !== 'OWNER') return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
   const code = req.nextUrl.searchParams.get('code')
   const stateRaw = req.nextUrl.searchParams.get('state')
   const state = stateRaw ? verifyOAuthState(stateRaw, provider) : null
-  if (!state) return NextResponse.redirect(process.env.APP_URL + '/dashboard/canale?error=invalid_state')
+  if (!state || state.userId !== (session as any).userId || req.cookies.get(`bookeasy_oauth_${provider}`)?.value !== state.nonce) return NextResponse.redirect(process.env.APP_URL + '/dashboard/canale?error=invalid_state')
   if (!code) {
     const message = req.nextUrl.searchParams.get('error_description') ?? 'Autorizarea a fost anulată.'
     return NextResponse.redirect(process.env.APP_URL + state.redirectTo + '?error=' + encodeURIComponent(message))
@@ -31,6 +34,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     return NextResponse.redirect(process.env.APP_URL + '/dashboard/canale?error=forbidden_business')
   }
   const redirectUri = `${process.env.APP_URL}/api/oauth/${provider}/callback`
+
+  try {
+  if (provider === 'instagram') {
+    if (!instagramLoginConfigured()) throw new Error('Conectarea Instagram este în curs de configurare.')
+    await connectInstagram(businessId, code, redirectUri)
+    const response = NextResponse.redirect(`${process.env.APP_URL}${redirectTo}?connected=instagram`)
+    response.cookies.set('bookeasy_oauth_instagram', '', { path: '/api/oauth/instagram', maxAge: 0 })
+    return response
+  }
 
   const tokenRes = await fetch(
     provider === 'google'
@@ -82,6 +94,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     }
 
     const subscribedObjectId = metaChannel === 'instagram' ? instagramAccountId! : page.id
+    await assertChannelOwnership(businessId, metaChannel === 'instagram' ? 'INSTAGRAM' : 'FACEBOOK', subscribedObjectId)
     const subscribedFields = metaChannel === 'instagram' ? 'messages,messaging_postbacks' : 'messages,messaging_postbacks,message_deliveries,message_reads'
     const subscription = await fetch(`https://graph.facebook.com/v21.0/${subscribedObjectId}/subscribed_apps?subscribed_fields=${subscribedFields}&access_token=${page.access_token}`, { method: 'POST' })
     const subscriptionData = await subscription.json()
@@ -91,39 +104,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     }
 
     if (metaChannel === 'messenger') {
-      await prisma.channel.upsert({
-        where: { type_externalId: { type: 'FACEBOOK', externalId: page.id } },
-        create: {
-          businessId,
-          type: 'FACEBOOK',
-          externalId: page.id,
-          accessToken: encrypt(page.access_token),
-          expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-        },
-        update: { businessId, accessToken: encrypt(page.access_token), status: 'ACTIVE' },
-      })
+      await saveBusinessChannel(businessId, 'FACEBOOK', page.id, { accessToken: encrypt(page.access_token), authProvider: 'meta', expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) })
     }
 
     // Același acord Meta conectează și contul Instagram profesional asociat
     // Paginii selectate. Dacă pagina nu are Instagram Business/Creator, Messenger
     // rămâne conectat, iar utilizatorul vede Instagram ca neconectat în Setări.
     if (metaChannel === 'instagram' && instagramAccountId) {
-      await prisma.channel.upsert({
-        where: { type_externalId: { type: 'INSTAGRAM', externalId: instagramAccountId } },
-        create: {
-          businessId,
-          type: 'INSTAGRAM',
-          externalId: instagramAccountId,
-          accessToken: encrypt(page.access_token),
-          expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-        },
-        update: {
-          businessId,
-          accessToken: encrypt(page.access_token),
-          status: 'ACTIVE',
-          enabledByOwner: true,
-        },
-      })
+      await saveBusinessChannel(businessId, 'INSTAGRAM', instagramAccountId, { accessToken: encrypt(page.access_token), authProvider: 'meta', expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) })
     }
   }
 
@@ -158,6 +146,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     const locationName = rawLocationName.startsWith('accounts/')
       ? rawLocationName
       : `${accountName}/${rawLocationName}`
+    await assertChannelOwnership(businessId, 'GOOGLE_BUSINESS', locationName)
 
     const existingGoogleChannel = await prisma.channel.findFirst({
       where: { businessId, type: 'GOOGLE_BUSINESS' },
@@ -165,6 +154,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     const tokenUpdate = {
       externalId: locationName,
       accessToken: encrypt(tokenData.access_token),
+      authProvider: 'google',
       ...(tokenData.refresh_token ? { refreshToken: encrypt(tokenData.refresh_token) } : {}),
       expiresAt: new Date(Date.now() + Number(tokenData.expires_in ?? 3600) * 1000),
       status: 'ACTIVE' as const,
@@ -182,5 +172,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   }
 
   const connected = provider === 'meta' ? (state.metaChannel ?? 'messenger') : provider
-  return NextResponse.redirect(`${process.env.APP_URL}${redirectTo ?? '/dashboard/canale'}?connected=${connected}`)
+  const response = NextResponse.redirect(`${process.env.APP_URL}${redirectTo ?? '/dashboard/canale'}?connected=${connected}`)
+  response.cookies.set(`bookeasy_oauth_${provider}`, '', { path: `/api/oauth/${provider}`, maxAge: 0 })
+  return response
+  } catch (error) {
+    const message = error instanceof ChannelOwnershipError ? error.message : error instanceof Error ? error.message : 'Conectarea nu a putut fi finalizată.'
+    return NextResponse.redirect(`${process.env.APP_URL}${redirectTo}?error=${encodeURIComponent(message)}`)
+  }
 }

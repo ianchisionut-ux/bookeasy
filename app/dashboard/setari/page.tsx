@@ -12,6 +12,7 @@ import { buildContractDocument, contractMissingFields, documentHash } from '@/li
 import { LegalDetailsForm } from './legal-details-form'
 import { ContractCenter } from './contract-center'
 import { isAppointmentCategory } from '@/lib/business-categories'
+import { instagramLoginConfigured } from '@/lib/instagram-login'
 
 // Luni primul, Duminică ultima — ordinea de afișare a programului de lucru
 // (valorile 'weekday' rămân 0=Duminică...6=Sâmbătă, standardul JS getDay(), doar ordinea vizuală se schimbă)
@@ -118,7 +119,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
           businessName={business.name}
           businessCategory={business.category}
           isIndividual={business.teamSize <= 1}
-          instagramOAuthEnabled={process.env.META_INSTAGRAM_OAUTH_ENABLED === 'true'}
+          instagramOAuthEnabled={instagramLoginConfigured()}
           metaAppId={process.env.META_APP_ID ?? ''}
           metaV4ConfigId={process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_V4_CONFIG_ID ?? process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ?? ''}
         />

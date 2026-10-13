@@ -1,0 +1,1 @@
+ALTER TABLE "Channel" ADD COLUMN IF NOT EXISTS "authProvider" TEXT NOT NULL DEFAULT 'meta';

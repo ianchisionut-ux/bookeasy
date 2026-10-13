@@ -1,7 +1,14 @@
 import { prisma } from './prisma'
 import { decrypt } from './crypto'
+import { INSTAGRAM_GRAPH } from './instagram-login'
 
 type Channel = 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
+
+function messagingUrl(channel: { type: string; externalId: string; authProvider: string }) {
+  return channel.type === 'INSTAGRAM' && channel.authProvider === 'instagram'
+    ? `${INSTAGRAM_GRAPH}/${channel.externalId}/messages`
+    : 'https://graph.facebook.com/v21.0/me/messages'
+}
 
 // WhatsApp cere formatul internațional complet, fără 0 la început, fără "+", fără
 // spații/liniuțe (ex: "40745895623", nu "0745895623" sau "+40 745 895 623"). Clienții
@@ -55,10 +62,9 @@ export async function sendMessage({
     return
   }
 
-  // Instagram și Facebook Messenger folosesc același Send API
-  await metaFetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
+  await metaFetch(messagingUrl(channelRecord), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ recipient: { id: to }, message: { text } }),
   })
 }
@@ -116,9 +122,9 @@ export async function sendMessengerButtons({
   if (!channelRecord) throw new Error('Channel not found')
   const accessToken = decrypt(channelRecord.accessToken)
 
-  await metaFetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
+  await metaFetch(messagingUrl(channelRecord), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       recipient: { id: to },
       message: {
@@ -215,9 +221,9 @@ export async function sendMessengerCarousel({
     buttons: [{ type: 'postback', title: c.buttonLabel.slice(0, 20), payload: c.id }],
   }))
 
-  await metaFetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
+  await metaFetch(messagingUrl(channelRecord), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       recipient: { id: to },
       message: { attachment: { type: 'template', payload: { template_type: 'generic', elements } } },
