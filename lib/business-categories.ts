@@ -10,6 +10,14 @@ export const BUSINESS_CATEGORIES = [...PUBLIC_CATEGORIES, 'HOTEL', 'PENSIUNE'] a
 export type BusinessCategory = typeof BUSINESS_CATEGORIES[number]
 export type PublicCategory = typeof PUBLIC_CATEGORIES[number]
 
+export const PUBLIC_CATEGORY_GROUPS = [
+  { id: 'beauty', label: 'Beauty & îngrijire', categories: ['SALON', 'COAFURA_FRIZERIE', 'BARBER_SHOP', 'NAILS', 'COSMETICA', 'LASHES', 'MAKE_UP', 'EPILARE', 'ESTETICA_REMODELARE', 'TATUAJE_PIERCING'] },
+  { id: 'wellness', label: 'Relaxare & wellness', categories: ['MASAJ', 'SPA_WELLNESS', 'NUTRITIE_WELLNESS'] },
+  { id: 'health', label: 'Sănătate', categories: ['MEDICAL', 'CLINICA', 'MEDICAL_ESTETIC'] },
+  { id: 'sport', label: 'Sport & mișcare', categories: ['FITNESS', 'SPORT_BAZE'] },
+  { id: 'experiences', label: 'Experiențe', categories: ['CURSURI', 'LOC_JOACA', 'EVENT_VENUE'] },
+] as const satisfies ReadonlyArray<{ id: string; label: string; categories: readonly PublicCategory[] }>
+
 export const CATEGORY_LABEL: Record<BusinessCategory, string> = {
   SALON: 'Salon',
   COAFURA_FRIZERIE: 'Coafură & frizerie',

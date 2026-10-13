@@ -27,5 +27,6 @@ export async function POST(req: NextRequest) {
     prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
   ])
 
-  return NextResponse.json({ success: true })
+  const user = await prisma.user.findUnique({ where: { id: record.userId }, select: { role: true } })
+  return NextResponse.json({ success: true, loginUrl: user?.role === 'CUSTOMER' ? '/cont' : '/login' })
 }

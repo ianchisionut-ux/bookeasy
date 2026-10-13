@@ -1,5 +1,6 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
+import Google from 'next-auth/providers/google'
 import { prisma } from './prisma'
 import bcrypt from 'bcryptjs'
 import { rateLimit } from './rate-limit'
@@ -16,7 +17,7 @@ const nextAuth = NextAuth({
   session: { strategy: 'jwt' },
   providers: [
     Credentials({
-      credentials: { email: {}, password: {} },
+      credentials: { email: {}, password: {}, accountType: {} },
       async authorize(credentials, request) {
         const email = (credentials?.email as string)?.toLowerCase()?.trim()
         if (!email) return null
@@ -32,18 +33,35 @@ const nextAuth = NextAuth({
 
         const user = await prisma.user.findUnique({ where: { email } })
         if (!user) return null
+        const customerLogin = credentials?.accountType === 'customer'
+        if (customerLogin !== (user.role === 'CUSTOMER')) return null
         const valid = await bcrypt.compare(credentials?.password as string, user.password)
         if (!valid) return null
         return { id: user.id, email: user.email, businessId: user.businessId, role: user.role } as any
       },
     }),
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? [Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: { params: { scope: 'openid email profile', prompt: 'select_account' } },
+    })] : []),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
+    async signIn({ account, profile }) {
+      if (account?.provider === 'google') return profile?.email_verified === true && typeof profile?.sub === 'string'
+      return true
+    },
+    async jwt({ token, user, account }) {
+      if (account?.provider === 'google' && account.providerAccountId) {
+        token.id = `google:${account.providerAccountId}`
+        token.googleSub = account.providerAccountId
+        token.businessId = null
+        token.role = 'CUSTOMER'
+      } else if (user) {
         token.id = (user as any).id
         token.businessId = (user as any).businessId
         token.role = (user as any).role
+        token.googleSub = null
       }
       return token
     },
@@ -51,11 +69,12 @@ const nextAuth = NextAuth({
       ;(session as any).userId = token.id
       ;(session as any).businessId = token.businessId
       ;(session as any).role = token.role
+      ;(session as any).googleSub = token.googleSub
       ;(session as any).isSuperAdmin = token.role === 'SUPER_ADMIN'
       return session
     },
   },
-  pages: { signIn: '/login' },
+  pages: { signIn: '/login', error: '/cont' },
 })
 
 export const { handlers, signIn, signOut } = nextAuth

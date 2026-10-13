@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Time10Select } from '@/components/working-date-time-picker'
 import { canonicalCity, ROMANIAN_CITIES } from '@/lib/romanian-cities'
+import BusinessLocationPicker from '@/components/business-location-picker'
 
 const WEEKDAY_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
 
@@ -24,6 +25,8 @@ export default function SettingsForm({
     contactPhone: string
     city: string
     address: string
+    latitude: number | null
+    longitude: number | null
     publicListed: boolean
     slotIntervalMinutes: number | null
     minLeadTimeMinutes: number
@@ -43,6 +46,8 @@ export default function SettingsForm({
   isEventVenue: boolean
 }) {
   const [form, setForm] = useState({ ...business, city: canonicalCity(business.city) ?? '' })
+  const [position, setPosition] = useState<{ lat: number; lng: number } | null>(business.latitude !== null && business.longitude !== null ? { lat: business.latitude, lng: business.longitude } : null)
+  const [manualPositionChanged, setManualPositionChanged] = useState(false)
   const [saveError, setSaveError] = useState('')
   const usesAppointments = !isEventVenue
   const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null)
@@ -107,6 +112,7 @@ export default function SettingsForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          ...(manualPositionChanged && position ? { manualLocation: position } : {}),
           slotIntervalMinutes: form.slotIntervalMinutes,
           workingHours: hours,
           break1Start: break1Enabled ? form.break1Start : null,
@@ -121,6 +127,8 @@ export default function SettingsForm({
         const data = await res.json()
         setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' }))
         setGeocoded(!!data.geocoded)
+        setPosition(data.location ?? null)
+        setManualPositionChanged(false)
       } else {
         setSaveError('Setările nu au putut fi salvate. Verifică orașul selectat.')
       }
@@ -184,6 +192,11 @@ export default function SettingsForm({
           <div>
             <label className="text-sm text-gray-500 block mb-1.5">Adresă</label>
             <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          </div>
+          <div className="border-t border-[var(--border-soft)] pt-3">
+            <p className="text-sm font-medium">Poziția pe hartă</p>
+            <p className="mt-1 text-xs text-gray-500">Dacă adresa nu este găsită corect, alege manual locul exact.</p>
+            <BusinessLocationPicker value={position} city={form.city} onChange={(next) => { setPosition(next); setManualPositionChanged(true); setGeocoded(false) }} />
           </div>
         </div>
         {saveError && <p role="alert" className="mt-2 text-sm text-red-600">{saveError}</p>}

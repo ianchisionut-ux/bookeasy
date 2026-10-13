@@ -14,7 +14,7 @@ export function PublicHeader() {
         >
           Descoperă
         </Link>
-        <Link href="/dashboard" className="btn-secondary text-xs sm:text-sm py-1.5 px-3 sm:px-4 whitespace-nowrap">
+        <Link href="/cont" className="btn-secondary text-xs sm:text-sm py-1.5 px-3 sm:px-4 whitespace-nowrap">
           Intră în cont
         </Link>
       </nav>

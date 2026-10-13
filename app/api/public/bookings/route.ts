@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
 import {
   getDaySlotsWithStatus,
   getPractitionerDaySlotsWithStatus,
@@ -147,11 +148,16 @@ export async function POST(req: NextRequest) {
   })
 
   const sequenceNumber = await getNextSequenceNumber(businessId, startAt)
+  const session = await auth()
+  const reviewerGoogleSub = (session as any)?.role === 'CUSTOMER' && typeof (session as any)?.googleSub === 'string'
+    ? (session as any).googleSub as string
+    : null
 
   const booking = await prisma.booking.create({
     data: {
       businessId,
       customerId: customer.id,
+      reviewerGoogleSub,
       serviceId,
       resourceId,
       practitionerId: practitionerId ?? null,

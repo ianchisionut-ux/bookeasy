@@ -1,16 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import CustomerGoogleAccount from '@/components/customer-google-account'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 type EligibleBooking = { id: string; serviceName: string; date: string }
 
-export default function ReviewForm({ slug }: { slug: string }) {
-  const [step, setStep] = useState<'PHONE' | 'PICK' | 'RATE' | 'DONE'>('PHONE')
-  const [phone, setPhone] = useState('')
+type Step = 'CHECKING' | 'PICK' | 'RATE' | 'EMPTY' | 'DONE'
+
+export default function ReviewForm({ slug, googleEmail, googleAvailable }: { slug: string; googleEmail: string | null; googleAvailable: boolean }) {
+  const [step, setStep] = useState<Step>('CHECKING')
   const [bookings, setBookings] = useState<EligibleBooking[]>([])
   const [selected, setSelected] = useState<EligibleBooking | null>(null)
   const [rating, setRating] = useState(5)
@@ -18,34 +19,36 @@ export default function ReviewForm({ slug }: { slug: string }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function lookup(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-    try {
-      const res = await fetchWithTimeout(`/api/public/reviews?slug=${slug}&phone=${encodeURIComponent(phone)}`)
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error ?? 'A apărut o eroare.')
-        return
+  useEffect(() => {
+    if (!googleEmail) return
+    let active = true
+    async function lookup() {
+      try {
+        const res = await fetchWithTimeout(`/api/public/reviews?slug=${encodeURIComponent(slug)}`)
+        const data = await res.json()
+        if (!active) return
+        if (!res.ok) {
+          setError(data.error ?? 'Nu am putut încărca rezervările.')
+          setStep('EMPTY')
+          return
+        }
+        const found = data.bookings as EligibleBooking[]
+        setBookings(found)
+        if (found.length === 0) setStep('EMPTY')
+        else if (found.length === 1) {
+          setSelected(found[0])
+          setStep('RATE')
+        } else setStep('PICK')
+      } catch {
+        if (active) {
+          setError('Conexiune eșuată. Reîncarcă pagina și încearcă din nou.')
+          setStep('EMPTY')
+        }
       }
-      if (data.bookings.length === 0) {
-        setError('Nu am găsit nicio programare confirmată sau finalizată, deja încheiată și nerecenzată, pe acest număr.')
-        return
-      }
-      setBookings(data.bookings)
-      if (data.bookings.length === 1) {
-        setSelected(data.bookings[0])
-        setStep('RATE')
-      } else {
-        setStep('PICK')
-      }
-    } catch {
-      setError('Conexiune eșuată. Încearcă din nou.')
-    } finally {
-      setLoading(false)
     }
-  }
+    void lookup()
+    return () => { active = false }
+  }, [googleEmail, slug])
 
   async function submit() {
     if (!selected) return
@@ -55,7 +58,7 @@ export default function ReviewForm({ slug }: { slug: string }) {
       const res = await fetchWithTimeout('/api/public/reviews/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: selected.id, phone, rating, comment }),
+        body: JSON.stringify({ bookingId: selected.id, rating, comment }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -70,88 +73,42 @@ export default function ReviewForm({ slug }: { slug: string }) {
     }
   }
 
-  if (step === 'DONE') {
-    return (
-      <Card>
-        <p className="text-sm text-green-700">Mulțumim! Recenzia ta a fost publicată.</p>
-      </Card>
-    )
-  }
+  if (!googleEmail) return (
+    <Card>
+      <p className="mb-4 text-sm leading-relaxed text-gray-600">Conectează-te cu același cont Google folosit la rezervare. Poți publica o recenzie după încheierea unei programări confirmate sau finalizate.</p>
+      <CustomerGoogleAccount email={null} available={googleAvailable} returnTo={`/${slug}/recenzie`} />
+    </Card>
+  )
 
-  if (step === 'PICK') {
-    return (
-      <Card>
-        <p className="text-sm text-gray-500 mb-3">Ai mai multe programări încheiate — pentru care lași recenzia?</p>
-        <div className="flex flex-col gap-2">
-          {bookings.map((b) => (
-            <button
-              key={b.id}
-              onClick={() => {
-                setSelected(b)
-                setStep('RATE')
-              }}
-              className="card card-interactive text-left p-3"
-            >
-              <p className="font-medium">{b.serviceName}</p>
-              <p className="text-xs text-gray-500">{new Date(b.date).toLocaleDateString('ro-RO', { dateStyle: 'medium', timeZone: 'Europe/Bucharest' })}</p>
-            </button>
-          ))}
-        </div>
-      </Card>
-    )
-  }
-
-  if (step === 'RATE' && selected) {
-    return (
-      <Card>
-        <p className="text-sm text-gray-500 mb-1">Recenzie pentru</p>
-        <p className="font-medium mb-4">
-          {selected.serviceName} · {new Date(selected.date).toLocaleDateString('ro-RO', { dateStyle: 'medium', timeZone: 'Europe/Bucharest' })}
-        </p>
-
-        <div className="flex gap-1 mb-4">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              onClick={() => setRating(n)}
-              className="min-h-11 min-w-11 text-3xl leading-none"
-              style={{ color: n <= rating ? '#eab308' : '#d1d5db' }}
-              aria-label={`${n} stele`}
-            >
-              ★
-            </button>
-          ))}
-        </div>
-
-        <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Scrie câteva cuvinte (opțional)..."
-          className="input-field w-full min-h-[100px] mb-3"
-          maxLength={1000}
-        />
-
-        {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
-
-        <Button onClick={submit} disabled={loading}>
-          {loading ? 'Se trimite...' : 'Trimite recenzia'}
-        </Button>
-      </Card>
-    )
-  }
+  if (step === 'DONE') return <Card><p className="text-sm text-green-700">Mulțumim! Recenzia ta verificată a fost publicată.</p></Card>
 
   return (
-    <Card>
-      <p className="text-sm text-gray-500 mb-3">
-        Introdu numărul de telefon folosit la programare. Poți lăsa o recenzie după încheierea unei programări confirmate sau finalizate. Publicăm doar prenumele și inițiala numelui.
-      </p>
-      <form onSubmit={lookup} className="flex flex-col gap-3">
-        <Input type="tel" inputMode="tel" placeholder="07XX XXX XXX" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <Button type="submit" disabled={loading}>
-          {loading ? 'Se caută...' : 'Continuă'}
-        </Button>
-      </form>
-    </Card>
+    <div className="space-y-4">
+      <CustomerGoogleAccount email={googleEmail} available={googleAvailable} returnTo={`/${slug}/recenzie`} />
+      {step === 'CHECKING' && <Card><p className="text-sm text-gray-600" role="status">Căutăm programările eligibile...</p></Card>}
+      {step === 'EMPTY' && <Card>
+        <p className="text-sm text-gray-700">{error || 'Nu ai încă o programare eligibilă pentru recenzie la această afacere.'}</p>
+        {!error && <p className="mt-2 text-sm text-gray-500">Sunt eligibile programările create cu acest cont Google, confirmate sau finalizate, după încheierea lor. Fiecare programare poate primi o singură recenzie.</p>}
+      </Card>}
+      {step === 'PICK' && <Card>
+        <p className="mb-3 text-sm text-gray-500">Pentru care programare lași recenzia?</p>
+        <div className="flex flex-col gap-2">
+          {bookings.map((b) => <button key={b.id} type="button" onClick={() => { setSelected(b); setStep('RATE') }} className="card card-interactive p-3 text-left">
+            <p className="font-medium">{b.serviceName}</p>
+            <p className="text-xs text-gray-500">{new Date(b.date).toLocaleDateString('ro-RO', { dateStyle: 'medium', timeZone: 'Europe/Bucharest' })}</p>
+          </button>)}
+        </div>
+      </Card>}
+      {step === 'RATE' && selected && <Card>
+        <p className="mb-1 text-sm text-gray-500">Recenzie pentru</p>
+        <p className="mb-4 font-medium">{selected.serviceName} · {new Date(selected.date).toLocaleDateString('ro-RO', { dateStyle: 'medium', timeZone: 'Europe/Bucharest' })}</p>
+        <div className="mb-4 flex gap-1" role="group" aria-label="Evaluare">
+          {[1, 2, 3, 4, 5].map((n) => <button key={n} type="button" onClick={() => setRating(n)} className="min-h-11 min-w-11 text-3xl leading-none" style={{ color: n <= rating ? '#eab308' : '#d1d5db' }} aria-label={`${n} stele`} aria-pressed={rating === n}>★</button>)}
+        </div>
+        <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Scrie câteva cuvinte (opțional)..." className="input-field mb-3 min-h-[100px] w-full" maxLength={1000} aria-label="Comentariu" />
+        {error && <p className="mb-2 text-sm text-red-600" role="alert">{error}</p>}
+        <Button onClick={submit} disabled={loading}>{loading ? 'Se trimite...' : 'Trimite recenzia'}</Button>
+      </Card>}
+    </div>
   )
 }

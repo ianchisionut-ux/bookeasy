@@ -10,14 +10,14 @@ const processors = [
   ['Cloudflare Inc.', 'DNS, securitate și stocarea fișierelor în R2', 'Rețea globală; stocare configurată de Furnizor'],
   ['Neon Inc.', 'Baza de date PostgreSQL', 'UE - Frankfurt'],
   ['Resend Inc.', 'E-mail tranzacțional', 'UE/SUA'],
-  ['Google LLC', 'Hărți, Calendar și Business Profile, numai dacă sunt activate', 'UE/SUA'],
+  ['Google LLC', 'Autentificare opțională a clienților, Hărți, Calendar și Business Profile', 'UE/SUA'],
   ['Meta Platforms Ireland', 'WhatsApp, Facebook și Instagram, numai dacă sunt activate', 'UE/SUA'],
   ['Banca Transilvania / BT iPay', 'Finalizarea eventualelor tranzacții inițiate anterior dezactivării plăților online', 'România/UE'],
 ]
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Politică de confidențialitate" updatedAt="9 octombrie 2026" version="2.3" description="Cum colectează, utilizează, protejează și șterge BookEasy datele cu caracter personal.">
+    <LegalPage title="Politică de confidențialitate" updatedAt="13 octombrie 2026" version="2.4" description="Cum colectează, utilizează, protejează și șterge BookEasy datele cu caracter personal.">
       <h2>1. Identitatea operatorului</h2><p>Operatorul platformei este <strong>{company.legalName}</strong>, CUI {company.cui}, {company.tradeRegistryNumber}, cu sediul în {company.registeredAddress}. Pentru întrebări sau exercitarea drepturilor: <a href={`mailto:${company.privacyEmail}`}>{company.privacyEmail}</a>.</p>
       <h2>2. Rolurile privind datele</h2><p>BookEasy acționează ca operator pentru datele necesare administrării conturilor, facturării, securității, suportului și relației contractuale. Pentru datele clienților sau pacienților introduse de o afacere, afacerea stabilește scopurile și mijloacele principale, iar BookEasy acționează ca persoană împuternicită, conform <Link href="/dpa">DPA</Link>.</p>
       <h2>3. Date, scopuri, temeiuri și retenție</h2>
@@ -25,9 +25,10 @@ export default function PrivacyPage() {
         <tr><td>Cont și contact</td><td>Crearea contului, autentificare, suport și executarea contractului</td><td>Durata contului + termenele legale aplicabile</td></tr>
         <tr><td>Date despre afacere și echipă</td><td>Configurarea serviciilor, programului, personalului și paginii publice</td><td>Durata contractului și perioada de export/ștergere</td></tr>
         <tr><td>Programări și clienți</td><td>Furnizarea serviciului în numele afacerii; temeiul este stabilit de afacere</td><td>Conform instrucțiunilor afacerii și obligațiilor sale</td></tr>
+        <tr><td>Autentificare Google și recenzii</td><td>Dacă alegi conectarea Google, folosim identificatorul contului și adresa de e-mail pentru a asocia programarea cu acel cont. După încheierea unei programări confirmate sau finalizate, acest cont poate publica o singură recenzie. Afișăm public doar numele abreviat, evaluarea, comentariul și marcajul de verificare.</td><td>Asocierea rămâne cât timp programarea este păstrată; recenzia până la ștergerea ei conform regulilor aplicabile.</td></tr>
         <tr><td>Facturi și plăți</td><td>Executarea contractului și obligații financiar-contabile</td><td>Conform termenelor legale financiar-contabile</td></tr>
         <tr><td>Contracte și semnături electronice</td><td>Încheierea și dovedirea contractelor cu afacerile: datele juridice ale părților, numele și imaginea semnăturii desenate, contul folosit, momentul semnării, adresa IP, agentul browserului și amprenta documentului. Temei: executarea contractului și interesul legitim de a proba acordul și integritatea documentului.</td><td>Pe durata raportului contractual și ulterior cât este necesar pentru obligații legale sau apărarea drepturilor, potrivit termenelor aplicabile; datele de probă sunt accesibile numai persoanelor autorizate.</td></tr>
-        <tr><td>Oraș preferat și locație opțională</td><td>Filtrarea afacerilor din apropiere; coordonatele sunt folosite doar în browser și nu sunt trimise de BookEasy către server sau către integrările externe. Orașul ales manual rămâne în stocarea locală a browserului.</td><td>Orașul ales rămâne până la ștergerea datelor din browser sau la reluarea detectării.</td></tr>
+        <tr><td>Oraș preferat și locație opțională</td><td>Filtrarea afacerilor din apropiere folosește locația în browser. Dacă soliciți direcții către o afacere și permiți accesul la locație, coordonatele de pornire sunt incluse în linkul deschis în Google Maps. Orașul ales manual rămâne în stocarea locală a browserului.</td><td>Orașul ales rămâne până la ștergerea datelor din browser sau la reluarea detectării.</td></tr>
         <tr><td>Jurnale tehnice, IP, dispozitiv</td><td>Securitate, prevenirea abuzului și diagnosticare; interes legitim</td><td>Perioada necesară investigației și politicilor furnizorilor</td></tr>
         <tr><td>Solicitări și mesaje</td><td>Răspuns, suport și gestionarea comunicării</td><td>Cât timp este necesar scopului și apărării drepturilor</td></tr>
       </tbody></table>

@@ -7,8 +7,8 @@ import ClientInstallBanner from '@/components/client-install-banner'
 import './marketplace.css'
 import { cityNearLocation } from '@/lib/client-location'
 import { canonicalCity, normalizeCity } from '@/lib/romanian-cities'
-import { CATEGORY_LABEL, type PublicCategory } from '@/lib/business-categories'
-import { ArrowRight, ArrowUpRight, Building2, CalendarDays, Check, Heart, LayoutGrid, MapPin, Menu, Navigation, Search, Scissors, Star, Stethoscope, X } from 'lucide-react'
+import { CATEGORY_LABEL, PUBLIC_CATEGORY_GROUPS, type PublicCategory } from '@/lib/business-categories'
+import { ArrowRight, ArrowUpRight, Building2, CalendarDays, Heart, LayoutGrid, MapPin, Menu, Navigation, Search, Scissors, ShieldCheck, Star, Stethoscope, X } from 'lucide-react'
 
 type Category = 'ALL' | PublicCategory
 type Business = {
@@ -50,6 +50,16 @@ const categories = [
   { value: 'EVENT_VENUE', label: 'Evenimente', icon: Building2 },
 ] as const
 const categoryLabels: Record<string, string> = CATEGORY_LABEL
+const featuredCategories: PublicCategory[] = ['COAFURA_FRIZERIE', 'NAILS', 'MASAJ', 'SPA_WELLNESS', 'CLINICA', 'SALON', 'BARBER_SHOP', 'EVENT_VENUE']
+type CategoryGroup = 'ALL' | typeof PUBLIC_CATEGORY_GROUPS[number]['id']
+function groupForCategory(value: string): CategoryGroup {
+  if (value === 'STUDIO_BEAUTY') return 'beauty'
+  if (value === 'ACCES_CLUB') return 'sport'
+  return PUBLIC_CATEGORY_GROUPS.find((group) => group.categories.some((item) => item === value))?.id ?? 'ALL'
+}
+function shortGroupLabel(label: string) {
+  return label === 'Beauty & îngrijire' ? 'Beauty' : label === 'Relaxare & wellness' ? 'Wellness' : label === 'Sport & mișcare' ? 'Sport' : label
+}
 const favoritesKey = 'bookeasy-client-favorites-v1'
 const preferredCityKey = 'bookeasy-client-preferred-city-v1'
 
@@ -62,6 +72,8 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [favorites, setFavorites] = useState<string[]>([])
   const [menuOpen, setMenuOpen] = useState(false)
+  const [activeGroup, setActiveGroup] = useState<CategoryGroup>('ALL')
+  const [showAllCategories, setShowAllCategories] = useState(false)
   const [ready, setReady] = useState(false)
   const resultsRef = useRef<HTMLElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -116,7 +128,9 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
   }
 
   function showResults() { resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
-  function chooseCategory(value: Category) { setCategory(value); setFavoritesOnly(false); setMenuOpen(false); showResults() }
+  function chooseCategory(value: Category) { setCategory(value); setActiveGroup(value === 'ALL' ? 'ALL' : groupForCategory(value)); setFavoritesOnly(false); setMenuOpen(false); showResults() }
+  function selectGroup(value: CategoryGroup) { setActiveGroup(value); setCategory('ALL'); setFavoritesOnly(false); setShowAllCategories(false) }
+  function chooseGroup(value: CategoryGroup) { selectGroup(value); setMenuOpen(false); document.getElementById('categorii')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
   function showFavorites() { setFavoritesOnly(true); setMenuOpen(false); showResults() }
   function startSearch() { setFavoritesOnly(false); searchRef.current?.focus(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
@@ -149,17 +163,23 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
   const visible = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('ro-RO')
     return businesses.filter((business) =>
-      (category === 'ALL' || business.category === category) &&
+      (activeGroup === 'ALL' || groupForCategory(business.category) === activeGroup) &&
+      (category === 'ALL' || business.category === category || (category === 'SALON' && business.category === 'STUDIO_BEAUTY')) &&
       (city === 'ALL' || (business.city && normalizeCity(business.city) === normalizeCity(city))) &&
       (!favoritesOnly || favorites.includes(business.slug)) &&
       (!normalized || [business.name, business.city, business.address, CATEGORY_LABEL[business.category as keyof typeof CATEGORY_LABEL]].some((value) => value?.toLocaleLowerCase('ro-RO').includes(normalized)))
     )
-  }, [businesses, category, city, favorites, favoritesOnly, query])
+  }, [activeGroup, businesses, category, city, favorites, favoritesOnly, query])
 
-  const visibleGroups = useMemo(() => categories
-    .filter((item) => item.value !== 'ALL')
-    .map((item) => ({ ...item, businesses: visible.filter((business) => business.category === item.value) }))
-    .filter((group) => group.businesses.length > 0), [visible])
+  const displayedCategories = (activeGroup === 'ALL'
+    ? showAllCategories ? PUBLIC_CATEGORY_GROUPS.flatMap((group) => group.categories) : featuredCategories
+    : PUBLIC_CATEGORY_GROUPS.find((group) => group.id === activeGroup)?.categories ?? []
+  ).map((value) => categories.find((item) => item.value === value)!)
+  const selectedGroup = PUBLIC_CATEGORY_GROUPS.find((group) => group.id === activeGroup)
+  const resultsTitle = favoritesOnly ? 'Locurile tale favorite'
+    : category !== 'ALL' ? `${CATEGORY_LABEL[category]}${city === 'ALL' ? '' : ' în ' + city}`
+    : selectedGroup ? `${selectedGroup.label}${city === 'ALL' ? '' : ' în ' + city}`
+    : city === 'ALL' ? 'Descoperă pe BookEasy' : 'Recomandate în ' + city
 
   return (
     <main className="marketplace-page min-h-screen font-sans text-[var(--brand-ink)]">
@@ -170,12 +190,10 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
             <span className="text-[21px] font-extrabold tracking-[-0.055em] text-[var(--brand-ink)]">bookeasy<span className="text-[var(--brand-teal-dark)]">.ro</span></span>
           </Link>
 
-          <nav className="hidden items-center gap-1.5 lg:flex" aria-label="Navigare categorii">
-            <a href="#categorii" className="marketplace-nav-link">Toate categoriile</a>
-            <button type="button" onClick={() => chooseCategory('SALON')} className={'marketplace-nav-link' + (category === 'SALON' && !favoritesOnly ? ' is-active' : '')}>Saloane</button>
-            <button type="button" onClick={() => chooseCategory('CLINICA')} className={'marketplace-nav-link' + (category === 'CLINICA' && !favoritesOnly ? ' is-active' : '')}>Clinici</button>
-            <button type="button" onClick={() => chooseCategory('EVENT_VENUE')} className={'marketplace-nav-link' + (category === 'EVENT_VENUE' && !favoritesOnly ? ' is-active' : '')}>Evenimente</button>
-            <Link href="/harta" className="marketplace-nav-link">Explorează harta</Link>
+          <nav className="hidden items-center gap-1.5 xl:flex" aria-label="Navigare principală">
+            <a href="#rezultate" className="marketplace-nav-link">Afaceri</a>
+            {PUBLIC_CATEGORY_GROUPS.map((group) => <button key={group.id} type="button" onClick={() => chooseGroup(group.id)} className="marketplace-nav-link">{shortGroupLabel(group.label)}</button>)}
+            <Link href="/harta" className="marketplace-nav-link">Hartă</Link>
           </nav>
 
           <div className="hidden items-center gap-4 sm:flex">
@@ -185,7 +203,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
             </Link>
           </div>
 
-          <div className="flex items-center gap-1 sm:hidden">
+          <div className="flex items-center gap-1 xl:hidden">
             <button type="button" aria-label="Caută" onClick={startSearch} className="marketplace-icon-button"><Search size={21} /></button>
             <button type="button" aria-label={menuOpen ? 'Închide meniul' : 'Deschide meniul'} aria-expanded={menuOpen} aria-controls="marketplace-mobile-menu" onClick={() => setMenuOpen(!menuOpen)} className="marketplace-icon-button">
               {menuOpen ? <X size={22} /> : <Menu size={22} />}
@@ -194,10 +212,9 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
         </div>
 
         {menuOpen && (
-          <nav id="marketplace-mobile-menu" className="marketplace-mobile-menu sm:hidden" aria-label="Meniu mobil">
-            {categories.filter((item) => item.value !== 'ALL').map((item) => (
-              <button key={item.value} type="button" onClick={() => chooseCategory(item.value)} className="flex min-h-11 items-center gap-3 rounded-xl px-4 text-left text-sm font-semibold hover:bg-[var(--brand-teal-soft)]"><item.icon size={18} />{item.label}</button>
-            ))}
+          <nav id="marketplace-mobile-menu" className="marketplace-mobile-menu xl:hidden" aria-label="Meniu mobil">
+            <a onClick={() => setMenuOpen(false)} href="#rezultate" className="flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold hover:bg-[var(--brand-teal-soft)]">Afaceri</a>
+            {PUBLIC_CATEGORY_GROUPS.map((group) => <button key={group.id} type="button" onClick={() => chooseGroup(group.id)} className="min-h-11 rounded-xl px-4 text-left text-sm font-semibold hover:bg-[var(--brand-teal-soft)]">{group.label}</button>)}
             <Link onClick={() => setMenuOpen(false)} href="/harta" className="flex min-h-11 items-center gap-3 rounded-xl px-4 text-sm font-semibold hover:bg-[var(--brand-teal-soft)]"><MapPin size={18} />Hartă</Link>
             <div className="my-2 border-t border-[var(--border-soft)]" />
             <Link onClick={() => setMenuOpen(false)} href="/dashboard" className="min-h-11 rounded-xl px-4 py-3 text-sm font-semibold">Intră în cont</Link>
@@ -209,20 +226,15 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
       <section className="marketplace-hero" aria-labelledby="marketplace-hero-heading">
         <div className="marketplace-container marketplace-hero-inner">
           <div className="marketplace-hero-copy">
-            <div className="marketplace-eyebrow"><span className="marketplace-eyebrow-dot" /> BOOKEASY · DESCOPERĂ ȘI REZERVĂ</div>
             <h1 id="marketplace-hero-heading" className="marketplace-headline">
-              Locuri de descoperit.<br /><span>Momente de trăit.</span>
+              Descoperă servicii locale. <span>Programează-te simplu.</span>
             </h1>
-            <p className="marketplace-hero-description">Găsește servicii de beauty, clinici și spații de evenimente din orașul tău. Alegi ce ți se potrivește și rezervi direct, fără complicații.</p>
-            <div className="marketplace-hero-perks" aria-label="Avantajele BookEasy">
-              <span><Check size={16} aria-hidden="true" /> Alegi locul potrivit</span>
-              <span><Check size={16} aria-hidden="true" /> Rezervi online</span>
+            <p className="marketplace-hero-description">Beauty, wellness, sănătate și experiențe în orașul tău.<br />Locuri de încredere. Rezervări online. Momente care contează.</p>
+            <div className="marketplace-hero-benefits" aria-label="Avantaje BookEasy">
+              <span><CalendarDays size={19} aria-hidden="true" />Rezervare rapidă</span>
+              <span><ShieldCheck size={19} aria-hidden="true" />Afaceri locale</span>
+              <span><Heart size={19} aria-hidden="true" />Totul într-un loc</span>
             </div>
-          </div>
-          <div className="marketplace-showcase">
-            <Image src="/client-marketplace-hero-v3.jpg" alt="Interfața BookEasy afișată pe laptop, tabletă și telefon" fill priority sizes="(max-width: 1023px) 100vw, 46vw" className="object-cover object-center" />
-            <div className="marketplace-showcase-shade" />
-            <div className="marketplace-showcase-label"><span className="marketplace-showcase-label-icon"><CalendarDays size={22} aria-hidden="true" /></span><span><strong>Totul într-un singur loc</strong><small>Descoperă. Alege. Rezervă.</small></span></div>
           </div>
         </div>
       </section>
@@ -246,44 +258,44 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
           <div className="marketplace-search-field marketplace-query-field">
             <div className="marketplace-search-icon"><Search size={22} aria-hidden="true" /></div>
             <div className="min-w-0 flex-1">
-              <label htmlFor="marketplace-query" className="marketplace-field-label">CE CAUȚI?</label>
-              <input id="marketplace-query" ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Salon, clinică, eveniment..." type="search" className="marketplace-input" />
+              <label htmlFor="marketplace-query" className="marketplace-field-label">CE VREI SĂ DESCOPERI?</label>
+              <input id="marketplace-query" ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Saloane, masaj, clinică, eveniment..." type="search" className="marketplace-input" />
             </div>
           </div>
 
-          <button type="submit" className="marketplace-search-submit">Caută locuri <ArrowRight size={19} aria-hidden="true" /></button>
+          <button type="submit" className="marketplace-search-submit">Descoperă servicii <ArrowRight size={19} aria-hidden="true" /></button>
         </form>
       </section>
 
-      <section id="categorii" className="marketplace-container marketplace-categories" aria-labelledby="marketplace-categories-heading">
-        <div className="marketplace-section-intro">
+      <section id="categorii" className="marketplace-container marketplace-categories" aria-labelledby="marketplace-categories-title">
+        <div className="marketplace-categories-heading">
           <div>
-            <p className="marketplace-kicker">ALEGE CE ȚI SE POTRIVEȘTE</p>
-            <h2 id="marketplace-categories-heading" className="marketplace-section-title">Ce vrei să descoperi?</h2>
+            <p className="marketplace-kicker">EXPLOREAZĂ PRIN CATEGORII</p>
+            <h2 id="marketplace-categories-title" className="marketplace-section-title">Ce vrei să descoperi?</h2>
           </div>
-          <p className="marketplace-section-description">Explorează serviciile și locațiile disponibile.</p>
+          <button type="button" onClick={() => { setShowAllCategories(!showAllCategories); setActiveGroup('ALL'); setCategory('ALL') }} className="marketplace-categories-toggle" aria-expanded={showAllCategories}>
+            {showAllCategories ? 'Vezi mai puține' : 'Vezi toate categoriile'} <ArrowRight size={16} aria-hidden="true" />
+          </button>
         </div>
-        <div className="marketplace-category-grid">
-          {categories.map((item) => {
-            const selected = category === item.value && !favoritesOnly
-            const description = item.value === 'ALL' ? 'Toate experiențele' : item.value === 'CLINICA' ? 'Sănătate & servicii' : item.value === 'EVENT_VENUE' ? 'Spații & locații' : 'Frumusețe & îngrijire'
-            return (
-              <button type="button" key={item.value} onClick={() => chooseCategory(item.value)} aria-pressed={selected} className={'marketplace-category-card' + (selected ? ' is-active' : '')}>
-                <span className="marketplace-category-icon"><item.icon size={24} strokeWidth={1.8} aria-hidden="true" /></span>
-                <span className="marketplace-category-text"><strong>{item.label}</strong><small>{description}</small></span>
-                <ArrowUpRight size={17} className="marketplace-category-arrow" aria-hidden="true" />
-              </button>
-            )
-          })}
+        <div className="marketplace-category-groups" aria-label="Grupe de categorii">
+          <button type="button" onClick={() => selectGroup('ALL')} aria-pressed={activeGroup === 'ALL'} className={'marketplace-category-group' + (activeGroup === 'ALL' ? ' is-active' : '')}>Recomandate</button>
+          {PUBLIC_CATEGORY_GROUPS.map((group) => <button key={group.id} type="button" onClick={() => selectGroup(group.id)} aria-pressed={activeGroup === group.id} className={'marketplace-category-group' + (activeGroup === group.id ? ' is-active' : '')}>{group.label}</button>)}
+        </div>
+        <div className={'marketplace-category-cards' + (showAllCategories ? ' is-expanded' : '')}>
+          {displayedCategories.map((item) => (
+            <button key={item.value} type="button" onClick={() => chooseCategory(item.value)} className="marketplace-category-card">
+              <span className="marketplace-category-image"><Image src={'/categories/' + item.value.toLowerCase() + '.webp'} alt="" fill sizes="(max-width: 640px) 44vw, 180px" /></span>
+              <span className="marketplace-category-card-label">{item.label}<ArrowRight size={15} aria-hidden="true" /></span>
+            </button>
+          ))}
         </div>
       </section>
 
       <section ref={resultsRef} id="rezultate" className="marketplace-container marketplace-results" aria-labelledby="marketplace-results-title">
         <div className="marketplace-results-heading">
           <div>
-            <p className="marketplace-kicker">LOCURI PENTRU TINE</p>
             <h2 id="marketplace-results-title" className="marketplace-section-title">
-              {favoritesOnly ? 'Locurile tale favorite' : city === 'ALL' ? 'Descoperă pe BookEasy' : 'Recomandate în ' + city}
+              {resultsTitle}
             </h2>
             <p className="marketplace-results-summary">{visible.length} {visible.length === 1 ? 'loc disponibil' : 'locuri disponibile'} {city === 'ALL' ? 'pe platformă' : 'în ' + city}</p>
           </div>
@@ -293,31 +305,41 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
           </button>
         </div>
 
+        <div className="marketplace-filter-bar" aria-label="Filtrează afacerile">
+          <span className="marketplace-filter-label">Afaceri</span>
+          <button type="button" onClick={() => selectGroup('ALL')} aria-pressed={activeGroup === 'ALL' && category === 'ALL' && !favoritesOnly}
+            className={'marketplace-filter-chip' + (activeGroup === 'ALL' && category === 'ALL' && !favoritesOnly ? ' is-active' : '')}>Toate</button>
+          {PUBLIC_CATEGORY_GROUPS.map((group) => (
+            <button key={group.id} type="button" onClick={() => selectGroup(group.id)} aria-pressed={activeGroup === group.id && category === 'ALL' && !favoritesOnly}
+              className={'marketplace-filter-chip' + (activeGroup === group.id && category === 'ALL' && !favoritesOnly ? ' is-active' : '')}>{shortGroupLabel(group.label)}</button>
+          ))}
+          <select aria-label="Subcategorie" className={'marketplace-filter-select' + (category !== 'ALL' && !favoritesOnly ? ' is-active' : '')}
+            value={category === 'ALL' ? '' : category}
+            onChange={(event) => event.target.value ? chooseCategory(event.target.value as Category) : setCategory('ALL')}>
+            <option value="">Subcategorie</option>
+            {PUBLIC_CATEGORY_GROUPS.filter((group) => activeGroup === 'ALL' || group.id === activeGroup).map((group) => <optgroup key={group.id} label={group.label}>
+              {group.categories.map((value) => <option key={value} value={value}>{CATEGORY_LABEL[value]}</option>)}
+            </optgroup>)}
+          </select>
+        </div>
+
         {visible.length === 0 ? (
           <div className="marketplace-empty">
             <span className="marketplace-empty-icon"><Search size={27} aria-hidden="true" /></span>
             <h3>{businesses.length === 0 ? 'Locuri noi în curând' : favoritesOnly && favorites.length === 0 ? 'Nu ai încă locuri favorite' : 'Nu am găsit rezultate'}</h3>
             <p>{businesses.length === 0 ? 'Momentan nu sunt afaceri disponibile.' : favoritesOnly && favorites.length === 0 ? 'Salvează locurile preferate apăsând pe inimă.' : 'Încearcă alt oraș, o altă categorie sau o căutare mai generală.'}</p>
-            {businesses.length > 0 && <button type="button" className="marketplace-reset-button" onClick={() => { setCategory('ALL'); chooseCity('ALL'); setQuery(''); setFavoritesOnly(false) }}>Vezi toate locurile <ArrowRight size={17} /></button>}
+            {businesses.length > 0 && <button type="button" className="marketplace-reset-button" onClick={() => { selectGroup('ALL'); chooseCity('ALL'); setQuery('') }}>Vezi toate locurile <ArrowRight size={17} /></button>}
           </div>
         ) : (
-          <div className="marketplace-groups">
-            {visibleGroups.map((group) => (
-              <section key={group.value} aria-labelledby={'category-' + group.value} className="marketplace-group">
-                <div className="marketplace-group-heading">
-                  <span className="marketplace-group-icon"><group.icon size={20} aria-hidden="true" /></span>
-                  <h3 id={'category-' + group.value}>{group.label}</h3>
-                  <span className="marketplace-group-count">{group.businesses.length} {group.businesses.length === 1 ? 'loc' : 'locuri'}</span>
-                </div>
-                <div className="marketplace-business-grid">
-                  {group.businesses.map((business) => {
+          <div className="marketplace-business-grid">
+                  {visible.map((business) => {
                     const isFavorite = ready && favorites.includes(business.slug)
                     return (
                       <article key={business.id} className="marketplace-business-card">
                         <Link href={'/' + business.slug} className="marketplace-business-card-link" aria-label={'Vezi afacerea ' + business.name} />
                         <div className="marketplace-business-image">
                           {business.heroImageUrl ? (
-                            <Image src={business.heroImageUrl} alt={'Fotografie ' + business.name} fill sizes="(max-width: 640px) 100vw, (max-width: 1023px) 50vw, 33vw" className="object-cover" unoptimized={business.heroImageUrl.startsWith('/api/storage/public/')} />
+                            <Image src={business.heroImageUrl} alt={'Fotografie ' + business.name} fill sizes="(max-width: 640px) 100vw, (max-width: 1023px) 50vw, 25vw" className="object-cover" unoptimized={business.heroImageUrl.startsWith('/api/storage/public/')} />
                           ) : (
                             <div className="marketplace-business-placeholder" aria-hidden="true">{business.name.slice(0, 1).toLocaleUpperCase('ro-RO')}</div>
                           )}
@@ -340,9 +362,6 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
                       </article>
                     )
                   })}
-                </div>
-              </section>
-            ))}
           </div>
         )}
       </section>

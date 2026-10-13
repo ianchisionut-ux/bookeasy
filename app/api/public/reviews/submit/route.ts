@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
 import { recalculateBusinessRating } from '@/lib/reviews'
 import { publicReviewName } from '@/lib/review-privacy'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
@@ -7,7 +8,6 @@ import { z } from 'zod'
 
 const schema = z.object({
   bookingId: z.string(),
-  phone: z.string().min(6),
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(1000).optional(),
 })
@@ -21,7 +21,10 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Date invalide.' }, { status: 400 })
 
-  const { bookingId, phone, rating, comment } = parsed.data
+  const { bookingId, rating, comment } = parsed.data
+  const session = await auth()
+  const googleSub = (session as any)?.role === 'CUSTOMER' ? (session as any)?.googleSub : null
+  if (typeof googleSub !== 'string' || !googleSub) return NextResponse.json({ error: 'Conectează-te cu Google înainte de a trimite recenzia.' }, { status: 401 })
 
   // reverificăm eligibilitatea direct pe server — nu ne bazăm pe ce a returnat lookup-ul
   // mai devreme, ca cineva să nu poată trimite o recenzie pentru o programare care nu e a lui
@@ -30,23 +33,31 @@ export async function POST(req: NextRequest) {
     include: { customer: true, review: true },
   })
 
-  if (!booking || !['CONFIRMED', 'COMPLETED'].includes(booking.status) || booking.endAt > new Date() || booking.customer.phone !== phone) {
+  if (!booking || !['CONFIRMED', 'COMPLETED'].includes(booking.status) || booking.endAt > new Date() || booking.reviewerGoogleSub !== googleSub) {
     return NextResponse.json({ error: 'Programarea nu a fost găsită sau nu poate fi recenzată.' }, { status: 400 })
   }
   if (booking.review) {
     return NextResponse.json({ error: 'Această programare a fost deja recenzată.' }, { status: 409 })
   }
 
-  await prisma.review.create({
-    data: {
-      businessId: booking.businessId,
-      bookingId: booking.id,
-      authorName: publicReviewName(booking.customer.name),
-      rating,
-      comment: comment || null,
-      source: 'bookeasy',
-    },
-  })
+  try {
+    await prisma.review.create({
+      data: {
+        businessId: booking.businessId,
+        bookingId: booking.id,
+        authorName: publicReviewName(booking.customer.name),
+        rating,
+        comment: comment || null,
+        source: 'bookeasy',
+        verifiedByGoogle: true,
+      },
+    })
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
+      return NextResponse.json({ error: 'Această programare a fost deja recenzată.' }, { status: 409 })
+    }
+    throw error
+  }
 
   await recalculateBusinessRating(booking.businessId)
 

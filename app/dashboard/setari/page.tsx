@@ -93,6 +93,8 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
             contactPhone: business.contactPhone ?? '',
             city: business.city ?? '',
             address: business.address ?? '',
+            latitude: business.latitude,
+            longitude: business.longitude,
             publicListed: business.publicListed,
             slotIntervalMinutes: business.slotIntervalMinutes,
             minLeadTimeMinutes: business.minLeadTimeMinutes,

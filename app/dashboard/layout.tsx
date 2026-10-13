@@ -28,6 +28,7 @@ const CLINIC_NAV_LABEL_OVERRIDES: Record<string, string> = {
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
   if (!session) redirect('/login')
+  if ((session as any).role === 'CUSTOMER') redirect('/cont')
 
   const isSuperAdmin = (session as any)?.isSuperAdmin
   const businessId = (session as any)?.businessId

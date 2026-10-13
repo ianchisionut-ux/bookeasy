@@ -7,6 +7,8 @@ import BookingFlow from './booking-flow'
 import { ensureVenueService } from '@/lib/venue-services'
 import { CalendarCheck2, Check, Clock3, ShieldCheck } from 'lucide-react'
 import { CATEGORY_LABEL } from '@/lib/business-categories'
+import { auth } from '@/lib/auth'
+import CustomerGoogleAccount from '@/components/customer-google-account'
 
 const WEEKDAY_SHORT = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
 
@@ -43,6 +45,9 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
   const openSummary = summarizeOpenDays(business.workingHours)
   const accent = business.brandColor || 'var(--accent)'
   const accentSoft = business.brandColor ? `${business.brandColor}1a` : 'var(--accent-soft)'
+  const session = await auth()
+  const googleEmail = (session as any)?.role === 'CUSTOMER' && (session as any)?.googleSub ? session?.user?.email ?? null : null
+  const googleAvailable = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
 
   return (
     <div className="themed-static-bg min-h-screen">
@@ -77,6 +82,10 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
         </aside>
 
         <section className="card min-w-0 overflow-hidden p-4 sm:p-7 lg:p-8">
+          <div className="mb-6 rounded-2xl border border-[var(--border-soft)] bg-gray-50 p-4">
+            <p className="mb-3 text-sm text-gray-600">Conectează-te cu Google înainte de rezervare pentru a putea lăsa o recenzie verificată după vizită.</p>
+            <CustomerGoogleAccount email={googleEmail} available={googleAvailable} returnTo={`/${slug}/rezerva`} />
+          </div>
           <BookingFlow
             businessId={business.id}
             businessSlug={business.slug}

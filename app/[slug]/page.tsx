@@ -4,10 +4,11 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import NearbyBusinesses from '@/components/nearby-businesses'
+import BusinessDirections from '@/components/business-directions'
 import { PublicHeader } from '@/components/ui/public-header'
 import { PublicFooter } from '@/components/ui/public-footer'
 import { BackLink } from '@/components/ui/back-link'
-import { ArrowRight, CalendarCheck2, Clock3, MapPin, Phone, ShieldCheck, Star } from 'lucide-react'
+import { ArrowRight, CalendarCheck2, CheckCircle2, Clock3, MapPin, Phone, ShieldCheck, Star } from 'lucide-react'
 import { CATEGORY_LABEL } from '@/lib/business-categories'
 
 export default async function PublicBusinessPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -28,6 +29,9 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
   const accentSoft = business.brandColor ? `${business.brandColor}1a` : 'var(--accent-soft)'
   const initials = business.name.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase()
   const bookingLabel = business.category === 'CLINICA' ? 'Programează-te acum' : 'Rezervă acum'
+  const hasCoordinates = business.latitude !== null && business.longitude !== null
+    && Number.isFinite(business.latitude) && Number.isFinite(business.longitude)
+    && Math.abs(business.latitude) <= 90 && Math.abs(business.longitude) <= 180
 
   return (
     <div className="themed-static-bg min-h-screen">
@@ -116,6 +120,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
                       <p className="flex shrink-0 gap-0.5">{Array.from({ length: 5 }).map((_, index) => <Star key={index} size={13} fill={index < review.rating ? '#eab308' : 'none'} color={index < review.rating ? '#eab308' : '#d1d5db'} />)}</p>
                     </div>
                     {review.comment && <p className="break-words text-sm leading-relaxed text-gray-600">{review.comment}</p>}
+                    {review.verifiedByGoogle && <p className="mt-2 flex items-center gap-1 text-xs font-medium text-teal-700"><CheckCircle2 size={13} /> Recenzie verificată prin rezervare</p>}
                     <p className="mt-2 text-xs text-gray-400">{review.createdAt.toLocaleDateString('ro-RO', { dateStyle: 'medium', timeZone: 'Europe/Bucharest' })}</p>
                     {review.reply && <div className="mt-3 rounded-xl p-3" style={{ background: accentSoft }}><p className="mb-1 text-xs font-medium" style={{ color: accent }}>Răspunsul afacerii</p><p className="break-words text-sm text-gray-600">{review.reply}</p></div>}
                   </article>
@@ -139,6 +144,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
             <Link href={`/${business.slug}/rezerva`} className="btn-primary mt-5 flex w-full items-center justify-center gap-2">{bookingLabel} <ArrowRight size={15} /></Link>
             {business.contactPhone && <a href={`tel:${business.contactPhone}`} className="btn-secondary mt-2 flex w-full items-center justify-center gap-2"><Phone size={15} /> {business.contactPhone}</a>}
           </div>
+          {hasCoordinates && <BusinessDirections name={business.name} address={business.address ?? business.city} latitude={business.latitude!} longitude={business.longitude!} />}
         </aside>
       </main>
 

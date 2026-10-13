@@ -222,7 +222,7 @@ export default function HomePage() {
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent-hover)]">Pentru clienți</p>
             <h2 className="text-xl font-semibold">Descoperă afaceri pe BookEasy</h2>
           </div>
-          <p className="max-w-md text-sm text-gray-500">Găsește saloane, clinici și spații de evenimente și rezervă direct.</p>
+          <p className="max-w-md text-sm text-gray-500">Găsește afaceri din apropiere și rezervă direct.</p>
         </div>
         <div className="overflow-hidden rounded-[24px] border border-[var(--border-soft)] bg-white shadow-[var(--shadow-card)]">
           <MapClient />

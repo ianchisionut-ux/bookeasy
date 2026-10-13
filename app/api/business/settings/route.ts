@@ -12,6 +12,7 @@ const schema = z.object({
   contactPhone: z.string().optional(),
   city: z.string().min(1),
   address: z.string().optional(),
+  manualLocation: z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }).nullable().optional(),
   publicListed: z.boolean(),
   teamSize: z.number().min(1).max(200).optional(),
   slotIntervalMinutes: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(20), z.literal(30), z.literal(60)]).nullable().optional(),
@@ -58,7 +59,7 @@ export async function PATCH(req: NextRequest) {
   const city = canonicalCity(parsed.data.city)
   if (!city) return NextResponse.json({ error: 'Alege un oraș din listă.' }, { status: 400 })
 
-  const { workingHours, ...businessData } = parsed.data
+  const { workingHours, manualLocation, ...businessData } = parsed.data
   businessData.city = city
 
   // re-geocodificăm doar dacă adresa sau orașul chiar s-au schimbat față de ce era
@@ -67,7 +68,9 @@ export async function PATCH(req: NextRequest) {
   const addressChanged = current && (current.address !== businessData.address || current.city !== businessData.city)
 
   let coords: { lat: number; lng: number } | null = null
-  if (addressChanged && businessData.city) {
+  if (manualLocation) {
+    coords = manualLocation
+  } else if (addressChanged && businessData.city) {
     coords = await geocodeAddress(businessData.address || '', businessData.city)
   }
 
@@ -76,7 +79,7 @@ export async function PATCH(req: NextRequest) {
       where: { id: businessId },
       data: {
         ...businessData,
-        ...(addressChanged ? { latitude: coords?.lat ?? null, longitude: coords?.lng ?? null } : {}),
+        ...((manualLocation || addressChanged) ? { latitude: coords?.lat ?? null, longitude: coords?.lng ?? null } : {}),
       },
     })
     await tx.workingHours.deleteMany({ where: { businessId } })
@@ -85,5 +88,10 @@ export async function PATCH(req: NextRequest) {
     })
   })
 
-  return NextResponse.json({ success: true, geocoded: !!coords })
+  const location = (manualLocation || addressChanged)
+    ? coords
+    : current?.latitude != null && current?.longitude != null
+      ? { lat: current.latitude, lng: current.longitude }
+      : null
+  return NextResponse.json({ success: true, geocoded: !!coords, location })
 }

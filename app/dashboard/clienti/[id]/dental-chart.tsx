@@ -60,7 +60,8 @@ function findTooth(object: THREE.Object3D | null): string | null {
 }
 
 function DentalModel({ chart, selected, onSelect }: { chart: DentalChartData; selected: string; onSelect: (tooth: string) => void }) {
-  const gltf = useGLTF('/models/bookeasy-dental-chart.glb')
+  const gltf = useGLTF('/models/bookeasy-dental-chart.glb?v=20261012-2')
+  const [hovered, setHovered] = useState<string | null>(null)
   const model = useMemo(() => {
     const clone = gltf.scene.clone(true)
     clone.traverse((object) => {
@@ -76,19 +77,44 @@ function DentalModel({ chart, selected, onSelect }: { chart: DentalChartData; se
   useEffect(() => {
     model.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) return
+      if (object.name.startsWith('Gingiva_')) {
+        const materials = Array.isArray(object.material) ? object.material : [object.material]
+        for (const material of materials) {
+          if (!(material instanceof THREE.MeshStandardMaterial)) continue
+          material.color.set('#d98791')
+          material.emissive.set('#000000')
+          material.emissiveIntensity = 0
+          material.metalness = 0
+          material.roughness = 0.48
+        }
+        return
+      }
       const tooth = findTooth(object)
       if (!tooth) return
       const status = chart.teeth[tooth]?.status ?? 'HEALTHY'
+      const crown = object.name.startsWith('Tooth_')
       object.visible = status !== 'MISSING'
       const materials = Array.isArray(object.material) ? object.material : [object.material]
       for (const material of materials) {
         if (!(material instanceof THREE.MeshStandardMaterial)) continue
-        material.color.set(STATUS[status].color)
-        material.emissive.set(tooth === selected ? '#0e9aa7' : '#000000')
-        material.emissiveIntensity = tooth === selected ? 0.22 : 0
+        if (crown) {
+          material.color.set(STATUS[status].color)
+          if (tooth === hovered) material.color.set('#a9b0b2')
+          else if (tooth === selected) material.color.lerp(new THREE.Color('#2dd4bf'), 0.62)
+        }
+        const isSelected = crown && tooth === selected
+        material.emissive.set(isSelected && tooth !== hovered ? '#14b8a6' : '#000000')
+        material.emissiveIntensity = isSelected && tooth !== hovered ? 0.82 : 0
       }
     })
-  }, [chart, model, selected])
+  }, [chart, hovered, model, selected])
+
+  useEffect(() => {
+    document.body.style.cursor = hovered ? 'pointer' : ''
+    return () => {
+      document.body.style.cursor = ''
+    }
+  }, [hovered])
 
   function handlePointer(event: ThreeEvent<PointerEvent>) {
     const tooth = findTooth(event.object)
@@ -97,7 +123,19 @@ function DentalModel({ chart, selected, onSelect }: { chart: DentalChartData; se
     onSelect(tooth)
   }
 
-  return <primitive object={model} onPointerDown={handlePointer} />
+  function handlePointerMove(event: ThreeEvent<PointerEvent>) {
+    const tooth = findTooth(event.object)
+    if (!tooth) return
+    event.stopPropagation()
+    setHovered((current) => current === tooth ? current : tooth)
+  }
+
+  function handlePointerOut(event: ThreeEvent<PointerEvent>) {
+    if (!findTooth(event.object)) return
+    setHovered(null)
+  }
+
+  return <primitive object={model} onPointerDown={handlePointer} onPointerMove={handlePointerMove} onPointerOut={handlePointerOut} />
 }
 
 function ToothRow({ label, teeth, chart, selected, onSelect }: { label: string; teeth: string[]; chart: DentalChartData; selected: string; onSelect: (tooth: string) => void }) {
@@ -202,7 +240,7 @@ export default function DentalChart({ customerId, patientName, initialChart }: {
         <div className="space-y-4">
           <Card className="overflow-hidden p-0">
             <div className="h-[420px] bg-gradient-to-b from-slate-900 to-slate-800 sm:h-[560px]">
-              <Canvas camera={{ position: [0, -10.5, 3.8], fov: 38 }} dpr={[1, 1.6]} gl={{ antialias: true }}>
+              <Canvas camera={{ position: [0, -11.5, 1.2], fov: 34 }} dpr={[1, 1.6]} gl={{ antialias: true }}>
                 <color attach="background" args={['#172126']} />
                 <ambientLight intensity={1.45} />
                 <directionalLight position={[-5, -5, 8]} intensity={2.2} />
@@ -293,4 +331,4 @@ export default function DentalChart({ customerId, patientName, initialChart }: {
   )
 }
 
-useGLTF.preload('/models/bookeasy-dental-chart.glb')
+useGLTF.preload('/models/bookeasy-dental-chart.glb?v=20261012-2')

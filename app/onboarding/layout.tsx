@@ -7,6 +7,7 @@ import Image from 'next/image'
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
   if (!session) redirect('/login')
+  if ((session as any).role === 'CUSTOMER') redirect('/cont')
 
   const businessId = (session as any).businessId
   const business = businessId ? await prisma.business.findUnique({ where: { id: businessId } }) : null

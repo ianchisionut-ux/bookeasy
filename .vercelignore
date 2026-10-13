@@ -1,0 +1,9 @@
+output/
+assets/blender/
+.git/
+.next/
+node_modules/
+.env*
+.codex/
+.agents/
+*.tsbuildinfo

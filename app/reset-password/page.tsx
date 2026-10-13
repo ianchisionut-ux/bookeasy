@@ -46,7 +46,7 @@ function ResetPasswordForm() {
         return
       }
       setDone(true)
-      setTimeout(() => router.push('/login'), 2500)
+      setTimeout(() => router.push(data.loginUrl === '/cont' ? '/cont' : '/login'), 2500)
     } catch {
       setError('Conexiune eșuată. Verifică internetul și încearcă din nou.')
     } finally {

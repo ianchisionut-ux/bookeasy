@@ -209,6 +209,7 @@ enum Role {
   OWNER
   STAFF
   SUPER_ADMIN
+  CUSTOMER
 }
 
 // ─────────────────────────────────────────────
@@ -318,6 +319,7 @@ model Booking {
   googleCalendarEventId String?
   googleCalendarSyncedAt DateTime?
   googleCalendarSyncError String?
+  reviewerGoogleSub String? // contul Google conectat când clientul a făcut rezervarea
   review          Review?
 
   // interogările reale (calendar, disponibilitate, reminder-e, statistici) filtrează
@@ -327,6 +329,7 @@ model Booking {
   @@index([businessId, status])
   @@index([businessId, confirmationSeenByAdmin])
   @@index([customerId])
+  @@index([reviewerGoogleSub, endAt])
   @@index([practitionerId])
 }
 
@@ -448,6 +451,7 @@ model Review {
   bookingId  String?  @unique
   booking    Booking? @relation(fields: [bookingId], references: [id])
   source     String   @default("bookeasy") // "bookeasy" = recenzie reală de la client, "google" = sincronizată din Google Business Profile
+  verifiedByGoogle Boolean @default(false) // recenzie BookEasy trimisă de contul Google care a făcut rezervarea
   externalReviewId String? // ID-ul recenziei la sursă (Google etc.) — evită duplicate la resincronizare
   authorName String
   rating     Int
