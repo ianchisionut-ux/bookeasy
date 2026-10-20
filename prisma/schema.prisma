@@ -740,6 +740,44 @@ model ProcessedWebhookMessage {
 // Billing
 // ─────────────────────────────────────────────
 
+model PlatformEmail {
+  id                String   @id @default(cuid())
+  providerEmailId   String   @unique
+  providerMessageId String?
+  direction         String
+  folder            String
+  fromAddress       String
+  toAddresses       Json
+  replyTo           String?
+  subject           String
+  bodyText          String   @default("")
+  bodyHtml          String?
+  isRead            Boolean  @default(false)
+  threadKey         String?
+  receivedAt        DateTime?
+  sentAt            DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  attachments       PlatformEmailAttachment[]
+
+  @@index([folder, receivedAt])
+  @@index([folder, sentAt])
+}
+
+model PlatformEmailAttachment {
+  id                   String   @id @default(cuid())
+  emailId              String
+  email                PlatformEmail @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  providerAttachmentId String
+  filename             String
+  contentType          String
+  contentId            String?
+  size                 Int?
+  storageKey           String?
+
+  @@unique([emailId, providerAttachmentId])
+}
+
 model Plan {
   id                  String   @id @default(cuid())
   name                String
