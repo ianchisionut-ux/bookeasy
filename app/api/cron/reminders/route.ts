@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendUnconfirmedBookingAlert } from '@/lib/email'
 import { isAuthorizedCronRequest } from '@/lib/cron-auth'
+import { isAuthorizedGithubCronRequest } from '@/lib/github-cron-auth'
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorizedCronRequest(req)) {
+  if (!isAuthorizedCronRequest(req) && !await isAuthorizedGithubCronRequest(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
@@ -48,3 +49,4 @@ async function sendUnconfirmedAlerts(now: Date, results: { unconfirmedAlerts: nu
     results.unconfirmedAlerts++
   }
 }
+
