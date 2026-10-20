@@ -1,96 +1,89 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, type CSSProperties, type ComponentType, type ReactNode } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { User, PanelLeftClose, PanelLeftOpen, Menu, X } from 'lucide-react'
 import {
-  Calendar,
-  MessagesSquare,
-  ClipboardList,
-  Users,
-  Tag,
-  Star,
-  BarChart3,
-  Settings,
-  Stethoscope,
-  ShieldCheck,
-  Building2,
-  Inbox,
-  LifeBuoy,
+  User, PanelLeftClose, PanelLeftOpen, Menu, X, Calendar, MessagesSquare,
+  ClipboardList, Users, Tag, Star, BarChart3, Settings, Stethoscope,
+  ShieldCheck, Building2, Inbox, LifeBuoy, ChevronRight,
 } from 'lucide-react'
 import { SidebarClock } from './sidebar-clock'
 import { CookiePreferencesButton } from './cookie-preferences-button'
+import './workspace.css'
 
-const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
-  calendar: Calendar,
-  mesaje: MessagesSquare,
-  programari: ClipboardList,
-  clienti: Users,
-  servicii: Tag,
-  recenzii: Star,
-  statistici: BarChart3,
-  setari: Settings,
-  medici: Stethoscope,
-  superadmin: ShieldCheck,
-  overview: BarChart3,
-  afaceri: Building2,
-  cereri: Inbox,
-  tichete: LifeBuoy,
+const NAV_ICONS: Record<string, ComponentType<{ size?: number }>> = {
+  calendar: Calendar, mesaje: MessagesSquare, programari: ClipboardList,
+  clienti: Users, servicii: Tag, recenzii: Star, statistici: BarChart3,
+  setari: Settings, medici: Stethoscope, superadmin: ShieldCheck,
+  overview: BarChart3, afaceri: Building2, cereri: Inbox, tichete: LifeBuoy,
 }
+const COLLAPSE_KEY = 'bookeasy.sidebar.collapsed'
 
-// amestecă o culoare hex cu alb, la un procent dat — produce o culoare SOLIDĂ (nu transparentă).
-// esențial pentru header-ul mobil, care e fix (sticky) — dacă am folosi transparență, conținutul
-// care defilează dedesubt s-ar vedea prin el, exact bug-ul de suprapunere din poză
-function blendWithWhite(hex: string, amount: number): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const nr = Math.round(r * amount + 255 * (1 - amount))
-  const ng = Math.round(g * amount + 255 * (1 - amount))
-  const nb = Math.round(b * amount + 255 * (1 - amount))
-  return `rgb(${nr}, ${ng}, ${nb})`
+type NavItem = { href: string; label: string; badge?: number; icon?: string }
+type Props = {
+  logoHref: string
+  logoLabel: string
+  profileName?: string
+  navItems: NavItem[]
+  accentColor?: string
+  accountContent: ReactNode
+  children: ReactNode
+  enableLiveBadges?: boolean
 }
 
 export function ResponsiveShell({
-  logoHref,
-  logoLabel,
-  profileName,
-  navItems,
-  accentColor,
-  accountContent,
-  children,
-  enableLiveBadges = false,
-}: {
-  logoHref: string
-  logoLabel: string
-  profileName?: string // numele afacerii/profilului, afișat sus, deasupra ceasului
-  navItems: { href: string; label: string; badge?: number; icon?: string }[]
-  accentColor?: string // culoarea aleasă de business în Setări — dacă lipsește, folosim culoarea implicită bookeasy
-  accountContent: React.ReactNode // blocul de cont/ieșire — separat, ca să nu intre în carusel
-  children: React.ReactNode
-  enableLiveBadges?: boolean // interoghează periodic numărul de notificări, ca badge-urile să se actualizeze fără reîncărcare de pagină
-}) {
+  logoHref, logoLabel, profileName, navItems, accentColor,
+  accountContent, children, enableLiveBadges = false,
+}: Props) {
   const [accountOpen, setAccountOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [liveBadges, setLiveBadges] = useState<Record<string, number | undefined>>({})
+  const accountDialog = useRef<HTMLDialogElement>(null)
+  const menuDialog = useRef<HTMLDialogElement>(null)
   const pathname = usePathname()
-  const accent = accentColor || 'var(--accent)'
-  const softTint = accentColor ? blendWithWhite(accentColor, 0.15) : 'var(--surface-muted)' // culoare solidă, opacă
-
-  // pornim cu valorile venite din server (randare inițială corectă, fără flash), apoi
-  // le suprascriem periodic — altfel notificările rămân "înghețate" până la un refresh manual
-  const initialCounts = Object.fromEntries(navItems.map((i) => [i.href, i.badge])) as Record<string, number | undefined>
-  const [liveBadges, setLiveBadges] = useState<Record<string, number | undefined>>(initialCounts)
+  const accent = accentColor && /^#[0-9a-f]{6}$/i.test(accentColor) ? accentColor : '#147f83'
 
   useEffect(() => {
+    try { setSidebarCollapsed(localStorage.getItem(COLLAPSE_KEY) === 'true') } catch { /* Storage is optional. */ }
+  }, [])
+
+  function toggleSidebar() {
+    const next = !sidebarCollapsed
+    setSidebarCollapsed(next)
+    try { localStorage.setItem(COLLAPSE_KEY, String(next)) } catch { /* Private browsing may deny storage. */ }
+  }
+
+  useEffect(() => {
+    setAccountOpen(false)
+    setMobileMenuOpen(false)
+  }, [pathname])
+
+  // Native dialogs provide Escape, focus trapping and focus restoration.
+  useEffect(() => {
+    const dialog = accountDialog.current
+    if (!dialog) return
+    if (accountOpen && !dialog.open) dialog.showModal()
+    if (!accountOpen && dialog.open) dialog.close()
+  }, [accountOpen])
+  useEffect(() => {
+    const dialog = menuDialog.current
+    if (!dialog) return
+    if (mobileMenuOpen && !dialog.open) dialog.showModal()
+    if (!mobileMenuOpen && dialog.open) dialog.close()
+  }, [mobileMenuOpen])
+
+  useEffect(() => {
+    setLiveBadges({})
     if (!enableLiveBadges) return
     let cancelled = false
+    const controller = new AbortController()
     async function poll() {
       if (document.visibilityState !== 'visible') return
       try {
-        const res = await fetch('/api/business/notification-counts')
+        const res = await fetch('/api/business/notification-counts', { signal: controller.signal })
         if (!res.ok) return
         const data = await res.json()
         if (cancelled) return
@@ -98,140 +91,119 @@ export function ResponsiveShell({
           '/dashboard/mesaje': data.needsOperatorCount > 0 ? data.needsOperatorCount : undefined,
           '/dashboard/programari': data.unseenConfirmationsCount > 0 ? data.unseenConfirmationsCount : undefined,
         })
-      } catch {
-        // eșec silențios — reîncercăm la următorul interval
-      }
+      } catch { /* Retain the last successful counts until the next refresh. */ }
     }
-    poll()
+    void poll()
     const timer = setInterval(poll, 30000)
+    document.addEventListener('visibilitychange', poll)
     return () => {
       cancelled = true
+      controller.abort()
       clearInterval(timer)
+      document.removeEventListener('visibilitychange', poll)
     }
-  }, [enableLiveBadges])
+  }, [enableLiveBadges, profileName])
 
-  const displayNavItems = enableLiveBadges
-    ? navItems.map((item) => ({ ...item, badge: item.href in liveBadges ? liveBadges[item.href] : item.badge }))
+  const items = enableLiveBadges
+    ? navItems.map(item => ({ ...item, badge: item.href in liveBadges ? liveBadges[item.href] : item.badge }))
     : navItems
-
-  // când mai multe href-uri se potrivesc (ex: '/superadmin' e prefix pentru
-  // '/superadmin/afaceri'), câștigă mereu cel mai specific (cel mai lung) — altfel
-  // rămân "active" simultan un link general și unul specific, vizual confuz
   const activeHref = navItems
-    .filter((item) => pathname === item.href || pathname?.startsWith(item.href + '/'))
+    .filter(item => pathname === item.href || pathname?.startsWith(item.href + '/'))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href
+  const dashboardItems = items.filter(item => ['/dashboard/calendar', '/dashboard/mesaje', '/dashboard/programari'].includes(item.href))
+  const mobileItems = dashboardItems.length ? dashboardItems : items.slice(0, 3)
+  const otherItems = items.filter(item => !mobileItems.some(primary => primary.href === item.href))
 
-  const dashboardMobileItems = displayNavItems.filter((item) =>
-    ['/dashboard/calendar', '/dashboard/mesaje', '/dashboard/programari'].includes(item.href)
-  )
-  const primaryMobileItems = dashboardMobileItems.length > 0 ? dashboardMobileItems : displayNavItems.slice(0, 3)
-  const otherMobileItems = displayNavItems.filter((item) => !primaryMobileItems.some((primary) => primary.href === item.href))
+  function badge(item: NavItem, mobile = false) {
+    if (!item.badge) return null
+    return <span className={mobile ? 'mobile-bottom-nav-badge' : 'be-nav-badge'} aria-label={`${item.badge} notificări`}>{item.badge > 99 ? '99+' : item.badge}</span>
+  }
 
   return (
-    <div className={`app-shell-theme min-h-screen lg:grid transition-[grid-template-columns] ${sidebarCollapsed ? 'lg:grid-cols-[76px_1fr]' : 'lg:grid-cols-[188px_1fr]'}`}>
-      {/* header mobil, doar sub lg */}
-      <div className="lg:hidden sticky top-0 z-40 border-b border-white/70 bg-white/90 backdrop-blur-xl screen-only">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Link href={logoHref} prefetch={false} className="flex items-center gap-2">
-            <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={24} height={24} /><span className="font-semibold">{logoLabel}</span>
+    <div className="app-shell-theme be-workspace" data-collapsed={sidebarCollapsed} style={{ '--workspace-accent': accent } as CSSProperties}>
+      <a className="be-skip-link screen-only" href="#workspace-content">Sari la con&#539;inut</a>
+      <header className="be-mobile-header screen-only">
+        <Link href={logoHref} prefetch={false} className="be-brand">
+          <Image src="/logo-mark-square.png" alt="" width={34} height={34} />
+          <span><strong>{logoLabel}</strong>{profileName && <small>{profileName}</small>}</span>
+        </Link>
+        <button type="button" onClick={() => setAccountOpen(true)} aria-label="Deschide contul" className="be-icon-button be-account-trigger"><User size={19} /></button>
+      </header>
+
+      <aside className="app-shell-sidebar be-sidebar screen-only" aria-label="Meniu principal">
+        <div className="be-brand-row">
+          <Link href={logoHref} prefetch={false} className="be-brand" aria-label={logoLabel} title={sidebarCollapsed ? logoLabel : undefined}>
+            <Image src="/logo-mark-square.png" alt="" width={38} height={38} />
+            {!sidebarCollapsed && <span className="be-brand-wordmark">{logoLabel}</span>}
           </Link>
-          <button
-            onClick={() => setAccountOpen(true)}
-            aria-label="Cont"
-            className="w-9 h-9 flex items-center justify-center rounded-full text-sm"
-            style={{ background: accentColor ? `${accentColor}22` : 'var(--accent-soft)' }}
-          >
-            <User size={16} />
-          </button>
+          {!sidebarCollapsed && <button type="button" onClick={toggleSidebar} className="be-icon-button be-collapse-button" aria-label="Restrânge meniul" title="Restrânge meniul"><PanelLeftClose size={17} /></button>}
         </div>
-
-      </div>
-
-      <nav aria-label="Navigare principală" className="mobile-bottom-nav lg:hidden screen-only">
-        {primaryMobileItems.map((item) => {
-          const Icon = item.icon ? NAV_ICONS[item.icon] : null
-          return <Link key={item.href} href={item.href} prefetch={false} aria-current={item.href === activeHref ? 'page' : undefined} className={'mobile-bottom-nav-item' + (item.href === activeHref ? ' is-active' : '')}>
-            <span className="relative">{Icon && <Icon size={21} />}{!!item.badge && <span className="mobile-bottom-nav-badge">{item.badge > 99 ? '99+' : item.badge}</span>}</span>
-            <span>{item.label}</span>
-          </Link>
-        })}
-        <button type="button" onClick={() => setMobileMenuOpen(true)} aria-label="Mai mult" aria-expanded={mobileMenuOpen} className={'mobile-bottom-nav-item' + (otherMobileItems.some((item) => item.href === activeHref) ? ' is-active' : '')}>
-          <Menu size={21} /><span>Mai mult</span>
-        </button>
-      </nav>
-
-      {mobileMenuOpen && <div className="lg:hidden fixed inset-0 z-50 screen-only">
-        <button type="button" className="absolute inset-0 w-full bg-black/40" aria-label="Închide meniul" onClick={() => setMobileMenuOpen(false)} />
-        <div className="mobile-more-sheet absolute inset-x-0 bottom-0 bg-white p-4 overflow-y-auto">
-          <div className="flex items-center justify-between mb-3"><h2 className="text-lg font-semibold">Mai mult</h2><button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Închide meniul" className="p-2"><X size={20}/></button></div>
-          <div className="grid grid-cols-2 gap-2">
-            {otherMobileItems.map((item) => {
-              const Icon = item.icon ? NAV_ICONS[item.icon] : null
-              return <Link key={item.href} href={item.href} prefetch={false} onClick={() => setMobileMenuOpen(false)} className="flex min-h-12 items-center gap-2 rounded-xl bg-[var(--surface-muted)] px-3 text-sm font-medium">
-                {Icon && <Icon size={18}/>}<span>{item.label}</span>{!!item.badge && <span className="ml-auto rounded-full bg-red-600 px-1.5 text-xs text-white">{item.badge}</span>}
-              </Link>
-            })}
-            <CookiePreferencesButton onOpen={() => setMobileMenuOpen(false)} className="flex min-h-12 items-center rounded-xl bg-[var(--surface-muted)] px-3 text-left text-sm font-medium" />
+        {sidebarCollapsed ? (
+          <button type="button" onClick={toggleSidebar} className="be-icon-button be-expand-button" aria-label="Extinde meniul" title="Extinde meniul"><PanelLeftOpen size={19} /></button>
+        ) : (
+          <div className="be-workspace-profile">
+            <span className="be-eyebrow">SPA&#538;IU DE LUCRU</span>
+            <p title={profileName ?? logoLabel}>{profileName ?? logoLabel}</p>
+            <div className="be-workspace-clock"><SidebarClock /></div>
           </div>
-        </div>
-      </div>}
+        )}
 
-      {/* popover de cont, doar sub lg, doar cand e deschis */}
-      {accountOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setAccountOpen(false)} />
-          <aside className="relative w-64 max-w-[80vw] bg-white h-full p-4 flex flex-col gap-1 overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <span className="font-semibold">Cont</span>
-              <button onClick={() => setAccountOpen(false)} aria-label="Închide" className="w-8 h-8 flex items-center justify-center">
-                ✕
-              </button>
-            </div>
-            <div onClick={() => setAccountOpen(false)}>{accountContent}</div>
-          </aside>
-        </div>
-      )}
-
-      {/* sidebar fix, doar de la lg in sus */}
-      <aside className="app-shell-sidebar hidden lg:flex flex-col gap-1 p-3" style={{ '--sidebar-tint': softTint } as React.CSSProperties}>
-        <button onClick={() => setSidebarCollapsed(v => !v)} className="self-start ml-1 w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/70" aria-label={sidebarCollapsed ? 'Extinde meniul' : 'Restrânge meniul'}>{sidebarCollapsed ? <PanelLeftOpen size={17}/> : <PanelLeftClose size={17}/>}</button>
-        {!sidebarCollapsed && profileName && <p className="font-semibold text-base px-3 mb-1 truncate">{profileName}</p>}
-        {!sidebarCollapsed && <SidebarClock />}
-        {displayNavItems.map((item) => {
-          const active = item.href === activeHref
-          const Icon = item.icon ? NAV_ICONS[item.icon] : null
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              prefetch={false}
-              className="flex items-center gap-2.5 rounded-xl border-l-[3px] px-3 py-2.5 text-sm font-medium transition"
-              style={
-                active
-                  ? { background: 'var(--brand-teal-dark)', color: 'white', borderLeftColor: accent, boxShadow: '0 9px 22px -12px rgba(20,127,131,.7)' }
-                  : { color: 'var(--foreground-muted, #4b5563)', borderLeftColor: 'transparent' }
-              }
-            >
-              {Icon && <Icon size={16} />}
-              {!sidebarCollapsed && <span className="flex-1">{item.label}</span>}
-              {!!item.badge && (
-                <span
-                  className={`text-xs bg-red-600 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center ${item.href === '/dashboard/mesaje' || item.href === '/dashboard/programari' ? 'animate-pulse' : ''}`}
-                >
-                  {item.badge}
-                </span>
-              )}
+        <nav className="be-sidebar-nav" aria-label="Navigare principală">
+          {!sidebarCollapsed && <p className="be-nav-caption">PRINCIPAL</p>}
+          {items.map(item => {
+            const active = item.href === activeHref
+            const Icon = item.icon ? NAV_ICONS[item.icon] : undefined
+            const management = item.href.endsWith('/setari') || item.icon === 'superadmin'
+            return <Link key={item.href} href={item.href} prefetch={false}
+              aria-current={active ? 'page' : undefined} aria-label={item.label}
+              title={sidebarCollapsed ? item.label : undefined}
+              className={`be-nav-item${active ? ' is-active' : ''}${management ? ' be-nav-management' : ''}`}>
+              {Icon && <span className="be-nav-icon"><Icon size={19} /></span>}
+              {!sidebarCollapsed && <span className="be-nav-label">{item.label}</span>}
+              {badge(item)}
+              {active && !sidebarCollapsed && !item.badge && <ChevronRight size={14} />}
             </Link>
-          )
-        })}
-        {!sidebarCollapsed && <div className="mt-auto px-3 pb-2">
-          <Image src="/logo.png" alt="bookeasy.ro" width={800} height={471} className="w-full h-auto opacity-50" />
-        </div>}
-        {!sidebarCollapsed && accountContent}
-        {!sidebarCollapsed && <CookiePreferencesButton className="px-3 py-2 text-left text-xs text-gray-600 hover:underline" />}
+          })}
+        </nav>
+
+        <div className="be-sidebar-footer">
+          {sidebarCollapsed ? <button type="button" className="be-icon-button be-account-trigger" onClick={() => setAccountOpen(true)} aria-label="Deschide contul" title="Cont"><User size={20} /></button> : <>
+            {accountContent}
+            <CookiePreferencesButton className="be-cookie-link" />
+          </>}
+        </div>
       </aside>
 
-      <main className="app-shell-content min-w-0 pb-20 lg:pb-0">{children}</main>
+      <main id="workspace-content" tabIndex={-1} className="app-shell-content be-main">{children}</main>
+
+      <nav aria-label="Navigare mobilă" className="mobile-bottom-nav be-bottom-nav screen-only">
+        {mobileItems.map(item => {
+          const Icon = item.icon ? NAV_ICONS[item.icon] : undefined
+          return <Link key={item.href} href={item.href} prefetch={false} aria-current={item.href === activeHref ? 'page' : undefined} className={`mobile-bottom-nav-item${item.href === activeHref ? ' is-active' : ''}`}>
+            <span className="relative">{Icon && <Icon size={21} />}{badge(item, true)}</span><span>{item.label}</span>
+          </Link>
+        })}
+        <button type="button" onClick={() => setMobileMenuOpen(true)} aria-label="Mai mult" aria-expanded={mobileMenuOpen} className={`mobile-bottom-nav-item${otherItems.some(item => item.href === activeHref) ? ' is-active' : ''}`}><Menu size={21} /><span>Mai mult</span></button>
+      </nav>
+
+      <dialog ref={menuDialog} className="be-menu-dialog screen-only" aria-label="Mai mult" onClose={() => setMobileMenuOpen(false)} onClick={event => { if (event.target === event.currentTarget) setMobileMenuOpen(false) }}>
+        <div className="be-dialog-panel">
+          <div className="be-dialog-heading"><h2>Toate sec&#539;iunile</h2><button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Închide meniul" className="be-icon-button"><X size={20} /></button></div>
+          <div className="be-menu-grid">{otherItems.map(item => {
+            const Icon = item.icon ? NAV_ICONS[item.icon] : undefined
+            return <Link key={item.href} href={item.href} prefetch={false} onClick={() => setMobileMenuOpen(false)} aria-current={item.href === activeHref ? 'page' : undefined} className="be-menu-tile">{Icon && <Icon size={21} />}<span>{item.label}</span>{badge(item)}</Link>
+          })}</div>
+          <CookiePreferencesButton onOpen={() => setMobileMenuOpen(false)} className="be-cookie-link" />
+        </div>
+      </dialog>
+
+      <dialog ref={accountDialog} className="be-account-dialog screen-only" aria-label="Cont" onClose={() => setAccountOpen(false)} onClick={event => { if (event.target === event.currentTarget) setAccountOpen(false) }}>
+        <div className="be-dialog-panel">
+          <div className="be-dialog-heading"><h2>Contul t&#259;u</h2><button type="button" onClick={() => setAccountOpen(false)} aria-label="Închide contul" className="be-icon-button"><X size={20} /></button></div>
+          {/* Keep this subtree mounted when closing so support portals remain usable. */}
+          <div onClick={() => setAccountOpen(false)}>{accountContent}</div>
+        </div>
+      </dialog>
     </div>
   )
 }
