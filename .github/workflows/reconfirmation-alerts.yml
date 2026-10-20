@@ -7,20 +7,21 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Check scheduler secret
-        env:
-          CRON_SECRET: ${{ secrets.BOOKEASY_CRON_SECRET }}
-        run: test -n "$CRON_SECRET"
       - name: Check unconfirmed bookings on Vercel
-        env:
-          CRON_SECRET: ${{ secrets.BOOKEASY_CRON_SECRET }}
         run: |
+          set -euo pipefail
+          oidc_response=$(curl --fail-with-body --silent --show-error --max-time 15 \
+            --header "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=bookeasy-reconfirmation-cron")
+          oidc_token=$(jq -er '.value' <<< "$oidc_response")
           curl --fail-with-body --silent --show-error --retry 2 --max-time 120 \
-            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Authorization: Bearer $oidc_token" \
             https://bookeasy.ro/api/cron/reminders
+
