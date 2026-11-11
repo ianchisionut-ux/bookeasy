@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import {getPlanPrices,formatPlanPrice} from '@/lib/plan-pricing'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { effectiveBusinessPlan, type BusinessPlan } from '@/lib/business-plans'
@@ -19,7 +20,7 @@ const planCards: { name: BusinessPlan; price: string; description: string; highl
     note: 'Accesul gratuit se acordă după aprobarea cererii.',
   },
   {
-    name: 'STANDARD', price: '55 lei / lună',
+    name: 'STANDARD', price: '',
     description: 'Mai mult control pentru echipă, comunicarea cu clienții și rezultatele afacerii.',
     highlights: ['Tot ce include Free', 'Echipă, mesaje, recenzii și statistici', 'Google Calendar și alte integrări configurabile'],
     note: 'Unele canale necesită conectarea conturilor proprii.',
@@ -85,6 +86,7 @@ function FeatureSection({ group, current }: { group: (typeof featureGroups)[numb
 }
 
 export default async function PlansPage() {
+  const prices=await getPlanPrices()
   const session = await auth()
   const businessId = (session as any)?.businessId
   const business = businessId ? await prisma.business.findUnique({
@@ -109,7 +111,7 @@ export default async function PlansPage() {
         <div className="grid gap-4 lg:grid-cols-3">
           {planCards.map(plan => <article key={plan.name} className={`flex flex-col rounded-2xl border p-6 shadow-[0_8px_28px_#163b3310] ${plan.name === current ? 'border-[#4eb5a8] bg-[#f1faf7]' : 'border-[#e1eae7] bg-white'}`}>
             <div className="flex items-center justify-between gap-3"><h3 className="text-lg font-bold text-[#193c3e]">{plan.name}</h3>{plan.name === current && <span className="rounded-full bg-[#d9f1e9] px-3 py-1 text-xs font-bold text-[#107973]">Planul tău</span>}</div>
-            <p className="mt-4 text-2xl font-bold tracking-tight text-[#193c3e]">{plan.price}</p>
+            <p className="mt-4 text-2xl font-bold tracking-tight text-[#193c3e]">{plan.name==='STANDARD'?formatPlanPrice(prices.standardMinor):plan.name==='PRO'?formatPlanPrice(prices.proMinor):plan.price}</p>
             <p className="mt-3 min-h-12 text-sm leading-6 text-gray-600">{plan.description}</p>
             <ul className="mt-5 space-y-2.5 border-t border-[#e5eeeb] pt-5 text-sm text-[#375450]">{plan.highlights.map(highlight => <li key={highlight} className="flex gap-2.5"><Check size={17} className="mt-0.5 shrink-0 text-[#168d8d]" aria-hidden="true" />{highlight}</li>)}</ul>
             <p className="mt-auto pt-5 text-xs leading-5 text-gray-500">{plan.note}</p>

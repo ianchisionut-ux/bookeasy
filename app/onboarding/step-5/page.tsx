@@ -12,7 +12,7 @@ export default function OnboardingStep5() {
   const router = useRouter()
   const [finishing, setFinishing] = useState(false)
   const [error, setError] = useState('')
-  const [info, setInfo] = useState<{ freeMonths: number; launchOpen: boolean } | null>(null)
+  const [info, setInfo] = useState<{ freeMonths: number; launchOpen: boolean; freeUntilNotice:boolean; billingAmount:number|null; billingStatus:string } | null>(null)
   const [promoCode, setPromoCode] = useState('')
   const [promoAccepted, setPromoAccepted] = useState(false)
   const [promoOffer,setPromoOffer]=useState<PromoOffer|null>(null)
@@ -47,10 +47,10 @@ export default function OnboardingStep5() {
       </p>
 
       <div className="rounded-2xl bg-[var(--accent-soft)] p-4 text-sm text-[var(--accent)]">
-        {!info ? 'Se încarcă abonamentul…' : info.freeMonths > 0 ? `Oferta deja asociată: ${info.freeMonths} luni gratuite de la finalizarea configurării.` : 'Abonament Standard: 55 lei/lună de la activare. Dacă ai un cod promoțional, îl poți introduce mai jos. Fără debitare automată.'}
+        {!info ? 'Se încarcă abonamentul…' : info.freeUntilNotice ? 'Activarea și folosirea contului sunt gratuite, fără termen stabilit. Orice plan plătit viitor necesită notificare prealabilă și acceptarea ta.' : info.freeMonths > 0 ? `Oferta deja asociată: ${info.freeMonths} luni gratuite de la finalizarea configurării.` : info.billingStatus==='GRATUIT' ? 'Plan gratuit, fără abonament lunar.' : `Abonamentul asociat: ${info.billingAmount===null?'tarif stabilit separat':info.billingAmount+' lei/lună'}. Dacă ai un cod promoțional, îl poți introduce mai jos. Fără debitare automată.`}
       </div>
 
-      {info && info.freeMonths === 0 && <div className="mt-5"><PromoCodeField value={promoCode} onChange={setPromoCode} open={info.launchOpen} accepted={promoAccepted} onAcceptedChange={setPromoAccepted} onValidated={setPromoOffer} /></div>}
+      {info && !info.freeUntilNotice && info.freeMonths === 0 && <div className="mt-5"><PromoCodeField value={promoCode} onChange={setPromoCode} open={info.launchOpen} accepted={promoAccepted} onAcceptedChange={setPromoAccepted} onValidated={setPromoOffer} /></div>}
 
       <div className="flex justify-between mt-8">
         <Button variant="secondary" onClick={() => router.back()}>

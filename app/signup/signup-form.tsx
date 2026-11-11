@@ -2,6 +2,7 @@
 
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { useEffect, useRef, useState } from 'react'
+import {formatPlanPrice,type PlanPrices} from '@/lib/plan-pricing-display'
 import PromoCodeField,{type PromoOffer} from '@/components/promo-code-field'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -14,7 +15,7 @@ import { CookiePreferencesButton } from '@/components/cookie-preferences-button'
 import { completeSignupPixel, sendSignupFunnel, signupAttribution, startSignupPixel, stopSignupPixel } from '@/lib/signup-analytics-client'
 import { COOKIE_CONSENT_CHANGED_EVENT, hasMarketingConsent } from '@/lib/cookie-consent'
 
-export default function SignupForm({ launchOpen, lockedPromoCode }: { launchOpen: boolean; lockedPromoCode?: string }) {
+export default function SignupForm({ launchOpen, lockedPromoCode,prices }: { launchOpen: boolean; lockedPromoCode?: string;prices:PlanPrices }) {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -23,6 +24,7 @@ export default function SignupForm({ launchOpen, lockedPromoCode }: { launchOpen
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [promoOffer,setPromoOffer]=useState<PromoOffer|null>(null)
   const hasPromo = Boolean(promoOffer)
+  useEffect(()=>{setTermsAccepted(false);setPromoAccepted(false)},[promoOffer?.version])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const started = useRef(false)
@@ -55,7 +57,7 @@ export default function SignupForm({ launchOpen, lockedPromoCode }: { launchOpen
     const res = await fetchWithTimeout('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, promoCode: promoCode.trim() || undefined, utmCampaign: signupAttribution(promoCode).utmCampaign, acceptSubscriptionTerms: termsAccepted, acceptLaunchTerms: hasPromo ? promoAccepted : undefined, launchOfferVersion: promoOffer?.version }),
+      body: JSON.stringify({ email, password, promoCode: promoCode.trim() || undefined, utmCampaign: signupAttribution(promoCode).utmCampaign, acceptSubscriptionTerms: termsAccepted, acceptLaunchTerms: hasPromo ? promoAccepted : undefined, launchOfferVersion: promoOffer?.version, planPriceVersion: prices.version }),
     })
     const data = await res.json()
 
@@ -106,11 +108,11 @@ export default function SignupForm({ launchOpen, lockedPromoCode }: { launchOpen
               />
             </div>
 
-            <PromoCodeField value={promoCode} onChange={setPromoCode} open={launchOpen} accepted={promoAccepted} onAcceptedChange={setPromoAccepted} onValidated={setPromoOffer} locked={Boolean(lockedPromoCode)} />
+            <PromoCodeField value={promoCode} onChange={setPromoCode} open={launchOpen} onValidated={setPromoOffer} locked={Boolean(lockedPromoCode)} />
             {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-            <label className="flex items-start gap-2 text-xs leading-relaxed text-gray-600"><input type="checkbox" checked={termsAccepted} onChange={event => setTermsAccepted(event.target.checked)} required className="mt-0.5" /><span>Accept <Link href="/termeni-si-conditii" className="underline" target="_blank" rel="noopener noreferrer">condițiile abonamentului</Link> Standard de 55 lei/lună, cu oferta promoțională doar dacă introduc un cod valid. Pot solicita oprirea abonamentului înaintea următoarei perioade.</span></label>
+            <label className="flex items-start gap-2 text-xs leading-relaxed text-gray-600"><input type="checkbox" checked={termsAccepted} onChange={event => {setTermsAccepted(event.target.checked);setPromoAccepted(event.target.checked&&hasPromo)}} disabled={Boolean(promoCode.trim())&&!promoOffer} required className="mt-0.5" /><span>Accept <Link href="/termeni-si-conditii" className="underline" target="_blank" rel="noopener noreferrer">termenii de utilizare</Link>{promoOffer?.freeUntilNotice?<> și <Link href="/legal/termeni#campanie-gratuita" className="underline" target="_blank" rel="noopener noreferrer">condițiile campaniei gratuite</Link>, fără obligație de plată. Un plan plătit viitor necesită notificare cu minimum 30 de zile înainte și acordul meu expres.</>:promoCode.trim()&&!promoOffer?' și oferta care va fi afișată după verificarea codului.':promoOffer?` și oferta validată: ${promoOffer.freeMonths} luni gratuite, apoi ${formatPlanPrice(promoOffer.regularMinor)}.`:` și abonamentul Standard de ${formatPlanPrice(prices.standardMinor)}. Pot solicita oprirea înaintea următoarei perioade.`}</span></label>
 
-            <Button type="submit" disabled={loading} className="mt-2">
+            <Button type="submit" disabled={loading||(Boolean(promoCode.trim())&&!promoOffer)} className="mt-2">
               {loading ? 'Se creează contul...' : 'Creează cont'}
             </Button>
           </form>

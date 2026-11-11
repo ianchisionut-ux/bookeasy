@@ -48,7 +48,7 @@ export async function GET() {
   if (!business) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
   const [enrollment, campaign] = await Promise.all([
-    prisma.launchEnrollment.findUnique({ where: { businessId }, select: { freeMonths: true, cancelledAt: true } }),
+    prisma.launchEnrollment.findUnique({ where: { businessId }, select: { freeMonths: true, cancelledAt: true, freeUntilNotice: true } }),
     hasOpenPromotion(),
   ])
   return NextResponse.json({
@@ -56,6 +56,9 @@ export async function GET() {
     onboardingStep: business.onboardingStep,
     onboardingDone: business.onboardingDone,
     freeMonths: enrollment && !enrollment.cancelledAt ? enrollment.freeMonths : 0,
+    freeUntilNotice: Boolean(enrollment && !enrollment.cancelledAt && enrollment.freeUntilNotice),
+    billingAmount: business.billingAmount === null ? null : Number(business.billingAmount),
+    billingStatus: business.billingStatus,
     launchOpen: campaign,
   })
 }

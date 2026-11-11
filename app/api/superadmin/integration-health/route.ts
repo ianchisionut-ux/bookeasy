@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/crypto'
+import {walletConfigured} from '@/lib/google-wallet'
+import {googleBusinessCredentials,refreshGoogleBusinessToken} from '@/lib/google-business-oauth'
+import {isPlatformSmsReady} from '@/lib/sms-routing'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -16,7 +19,7 @@ export async function GET(req: NextRequest) {
   const request = (url: string, init: RequestInit = {}) => fetch(url, { ...init, cache: 'no-store', signal: AbortSignal.timeout(15000) })
   const [calendars, channels] = await Promise.all([
     prisma.googleCalendarConnection.findMany({ where: { businessId } }),
-    prisma.channel.findMany({ where: { businessId, type: { in: ['FACEBOOK', 'INSTAGRAM', 'WHATSAPP'] } } }),
+    prisma.channel.findMany({ where: { businessId, type: { in: ['FACEBOOK', 'INSTAGRAM', 'WHATSAPP', 'GOOGLE_BUSINESS'] } } }),
   ])
   const google = []
   for (const connection of calendars) {
@@ -39,8 +42,17 @@ export async function GET(req: NextRequest) {
       await result.body?.cancel()
     } catch { google.push({ status: 'connection_or_decryption_failed' }) }
   }
+  const googleBusiness=[]
+  for(const channel of channels.filter(c=>c.type==='GOOGLE_BUSINESS')){
+    try{
+      let token=decrypt(channel.accessToken)
+      if(channel.expiresAt&&channel.expiresAt.getTime()<=Date.now()+60000){if(!channel.refreshToken){googleBusiness.push({status:'reconnect_required'});continue}token=(await refreshGoogleBusinessToken(decrypt(channel.refreshToken))).access_token}
+      const result=await request('https://mybusiness.googleapis.com/v4/'+channel.externalId+'/reviews?pageSize=1',{headers:{Authorization:'Bearer '+token}})
+      googleBusiness.push({status:result.ok?'reviews_access_ok':'reviews_access_failed',http:result.status,enabledByOwner:channel.enabledByOwner});await result.body?.cancel()
+    }catch{googleBusiness.push({status:'connection_or_decryption_failed'})}
+  }
   const meta = []
-  for (const channel of channels) {
+  for (const channel of channels.filter(c=>c.type!=='GOOGLE_BUSINESS')) {
     try {
       const url = channel.type === 'INSTAGRAM' && channel.authProvider === 'instagram'
         ? 'https://graph.instagram.com/v26.0/me?fields=user_id,username'
@@ -63,5 +75,18 @@ export async function GET(req: NextRequest) {
       }
     } catch { email = { status: 'connection_failed' } }
   }
-  return NextResponse.json({ google, meta, email, scope: 'Provider access only; no appointments, messages or emails sent.' }, { headers: { 'Cache-Control': 'no-store' } })
+  let platform:Record<string,unknown>|undefined
+  if(isSuperAdmin&&req.nextUrl.searchParams.get('full')==='1'){
+    const configured=(...names:string[])=>names.every(name=>Boolean(process.env[name]?.trim()))
+    let geocoding:Record<string,unknown>={status:'not_configured'}
+    if(process.env.GEOAPIFY_API_KEY){try{const url=new URL('https://api.geoapify.com/v1/geocode/search');url.search=new URLSearchParams({text:'Zalău, România',filter:'countrycode:ro',format:'json',limit:'1',apiKey:process.env.GEOAPIFY_API_KEY}).toString();const response=await request(url.toString());const data=await response.json();geocoding={status:response.ok&&data.results?.length?'access_ok':'provider_check_failed',http:response.status}}catch{geocoding={status:'connection_failed'}}}
+    platform={
+      googleLoginAndCalendarConfigured:configured('GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET'),googleBusinessConfigured:Boolean(googleBusinessCredentials()),
+      metaOAuthConfigured:configured('META_APP_ID','META_APP_SECRET'),metaWebhookVerificationConfigured:configured('META_VERIFY_TOKEN'),instagramDirectOAuthConfigured:configured('INSTAGRAM_APP_ID','INSTAGRAM_APP_SECRET'),
+      smsReady:await isPlatformSmsReady(),geocoding,storageConfigured:configured('BLOB_READ_WRITE_TOKEN'),
+      wallet:{enabled:process.env.GOOGLE_WALLET_ENABLED==='true',credentialsConfigured:walletConfigured(),productionApproval:'Verify in Google Wallet Console; configuration alone does not prove approval.'},
+      subscriptionOnlinePayments:'disabled',
+    }
+  }
+  return NextResponse.json({ google,googleBusiness, meta, email,...(platform?{platform}:{}), scope: 'Provider access only; no appointments, messages or emails sent.' }, { headers: { 'Cache-Control': 'no-store' } })
 }

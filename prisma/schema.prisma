@@ -269,6 +269,9 @@ model LaunchCampaign {
   code           String? @unique
   name           String @default("Campanie promoțională")
   freeMonths     Int @default(2)
+  freeUntilNotice Boolean @default(false)
+  regularMinor   Int @default(5500)
+  deletedAt      DateTime?
   startsAt       DateTime?
   endsAt         DateTime?
   enrollmentOpen Boolean @default(true)
@@ -293,6 +296,8 @@ model LaunchEnrollment {
   promoMonths  Int @default(0)
   promoMinor   Int @default(0)
   regularMinor Int @default(5500)
+  freeUntilNotice Boolean @default(false)
+  termsVersion String?
   periods      LaunchBillingPeriod[]
   @@index([cancelledAt, businessId])
   @@index([cancelledAt, nextSyncAt])

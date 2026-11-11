@@ -10,6 +10,7 @@ export function effectiveBusinessPlan(business: {
   if (isSuperAdmin) return 'PRO'
   if (business.launchEnrollment && !business.launchEnrollment.cancelledAt) return 'PRO'
   if (business.planName?.trim().toUpperCase() === 'PRO') return 'PRO'
+  if (business.planName?.trim().toUpperCase() === 'STANDARD') return 'STANDARD'
   if (business.billingStatus === 'GRATUIT' || business.planName?.trim().toUpperCase() === 'FREE') return 'FREE'
   return 'STANDARD'
 }

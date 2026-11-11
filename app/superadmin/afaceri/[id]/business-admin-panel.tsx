@@ -65,7 +65,7 @@ type Business = {
   smsDeviceLastSeenAt: string | null
 }
 
-export default function BusinessAdminPanel({ business, channels, practitioners, metaAppId, metaWhatsappConfigId, instagramOAuthEnabled, campaignManaged = false, billingMode, currentCampaignId, campaigns, platformSmsReady }: { business: Business; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string; instagramOAuthEnabled: boolean; campaignManaged?: boolean; billingMode: 'PAID' | 'FREE' | 'CAMPAIGN'; currentCampaignId: string | null; campaigns: { id: string; code: string; name: string; freeMonths: number; open: boolean }[]; platformSmsReady: boolean }) {
+export default function BusinessAdminPanel({ business, channels, practitioners, metaAppId, metaWhatsappConfigId, instagramOAuthEnabled, campaignManaged = false, billingMode, currentCampaignId, campaigns, platformSmsReady }: { business: Business; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string; instagramOAuthEnabled: boolean; campaignManaged?: boolean; billingMode: 'PAID' | 'FREE' | 'CAMPAIGN'; currentCampaignId: string | null; campaigns: { id: string; code: string; name: string; freeMonths: number; freeUntilNotice:boolean; open: boolean }[]; platformSmsReady: boolean }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(business.name)

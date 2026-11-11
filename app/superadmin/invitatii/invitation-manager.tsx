@@ -1,5 +1,6 @@
 'use client'
 
+import {formatPlanPrice,type PlanPrices} from '@/lib/plan-pricing-display'
 import { useEffect, useState } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
@@ -16,13 +17,14 @@ type Invite = {
   revokedAt: string | null
   lastError: string | null
 }
-type Promotion = { code: string; name: string; freeMonths: number }
-type Action = { action: 'invite'; email: string; name: string; offeredPlan: Invite['offeredPlan']; promoCode?: string; headerImageUrl?: string } | { action: 'resend' | 'revoke'; id: string }
+type Promotion = { code: string; name: string; freeMonths: number; freeUntilNotice: boolean }
+type Action = { action: 'invite'; email: string; name: string; offeredPlan: Invite['offeredPlan']; promoCode?: string; headerImageUrl?: string } | { action: 'resend' | 'revoke' | 'delete' | 'restore'; id: string }
 const defaultHeader = '/email/bookeasy-invitation-header-wide.jpg'
 
 export default function InvitationManager() {
   const [items, setItems] = useState<Invite[]>([])
   const [promotions, setPromotions] = useState<Promotion[]>([])
+  const [prices,setPrices]=useState<PlanPrices|null>(null)
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [promoCode, setPromoCode] = useState('')
@@ -32,6 +34,7 @@ export default function InvitationManager() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [deletedId, setDeletedId] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
 
   async function load() {
@@ -40,6 +43,7 @@ export default function InvitationManager() {
     if (!response.ok) throw Error(data.error)
     setItems(data.invitations)
     setPromotions(data.promotions)
+    setPrices(data.prices)
     setLoaded(true)
   }
 
@@ -75,7 +79,9 @@ export default function InvitationManager() {
       const data = await response.json()
       await load()
       if (!response.ok) throw Error(data.error)
-      setNotice(body.action === 'revoke'
+      if (body.action === 'delete') setDeletedId(body.id)
+      if (body.action === 'restore') setDeletedId(null)
+      setNotice(body.action === 'delete' ? 'Invitația a fost eliminată, iar linkul invalidat. Contul afacerii rămâne neschimbat.' : body.action === 'restore' ? 'Invitația a fost restaurată. Retrimite-o pentru un link nou.' : body.action === 'revoke'
         ? 'Linkul invitației a fost revocat.'
         : body.action === 'invite' && body.offeredPlan === 'CAMPAIGN' && body.promoCode
           ? `Invitația cu codul ${body.promoCode} a fost trimisă. Oferta se aplică după acceptarea condițiilor de către destinatar.`
@@ -109,15 +115,15 @@ export default function InvitationManager() {
       <label className="text-sm">Planul oferit prin invitație
         <select className="input-field mt-1 w-full" value={offeredPlan} onChange={event => { setOfferedPlan(event.target.value as Invite['offeredPlan']); setPromoCode('') }} disabled={busy}>
           <option value="FREE">FREE · fără abonament</option>
-          <option value="STANDARD">STANDARD · 55 lei/lună</option>
-          <option value="PRO">PRO · tarif stabilit separat</option>
+          <option value="STANDARD">STANDARD · {prices?formatPlanPrice(prices.standardMinor):'Se încarcă...'}</option>
+          <option value="PRO">PRO · {prices?formatPlanPrice(prices.proMinor):'Se încarcă...'}</option>
           <option value="CAMPAIGN">CAMPANIE · acces PRO</option>
         </select>
       </label>
       {offeredPlan === 'CAMPAIGN' && <label className="text-sm">Codul campaniei
         <select className="input-field mt-1 w-full" value={promoCode} onChange={event => setPromoCode(event.target.value)} disabled={busy}>
           <option value="">Fără cod promoțional</option>
-          {promotions.map(promotion => <option key={promotion.code} value={promotion.code}>{promotion.code} · {promotion.name} · {promotion.freeMonths} {promotion.freeMonths === 1 ? 'lună gratuită' : 'luni gratuite'}</option>)}
+          {promotions.map(promotion => <option key={promotion.code} value={promotion.code}>{promotion.code} · {promotion.name} · {promotion.freeUntilNotice ? 'Gratuit, fără termen stabilit' : `${promotion.freeMonths} luni gratuite`}</option>)}
         </select>
       </label>}
       <div className="sm:col-span-2 grid gap-4 rounded-2xl border border-teal-100 bg-teal-50/40 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,380px)]">
@@ -144,7 +150,7 @@ export default function InvitationManager() {
       <p className="text-xs text-gray-500 sm:col-span-2">Planul ales apare în invitație. Pentru campanie, codul se completează automat, iar destinatarul acceptă condițiile ofertei înainte de activare.</p>
     </form>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    {notice && <p role="status" className="text-sm text-green-700">{notice}</p>}
+    {notice && <p role="status" className="text-sm text-green-700">{notice} {deletedId && <button type="button" disabled={busy} className="ml-2 underline" onClick={()=>void act({action:'restore',id:deletedId})}>Anulează ștergerea</button>}</p>}
     <div className="grid gap-4 lg:grid-cols-2">{items.map(invite => <article key={invite.id} className="card p-5">
       <h2 className="font-semibold">{invite.name || invite.email}</h2>
       <p className="text-sm text-gray-500">{invite.email}</p>
@@ -154,6 +160,7 @@ export default function InvitationManager() {
       <p className="mt-1 text-xs text-gray-500">Valabilă până la {new Date(invite.expiresAt).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' })}</p>
       {invite.lastError && <p className="mt-2 text-sm text-red-700">{invite.lastError}</p>}
       <div className="mt-4 flex flex-wrap gap-3">
+        <button className="text-sm text-red-700 underline" type="button" disabled={busy} onClick={() => {if(window.confirm('Ștergi invitația pentru '+invite.email+'? Linkul va fi invalidat. Un cont deja creat nu va fi șters.'))void act({action:'delete',id:invite.id})}}>Șterge invitația</button>
         <button className="btn-secondary text-sm" type="button" disabled={busy} onClick={() => void act({ action: 'resend', id: invite.id })}>Retrimite invitația</button>
         {!invite.acceptedAt && !invite.revokedAt && <button className="text-sm text-red-700 underline" type="button" disabled={busy} onClick={() => void act({ action: 'revoke', id: invite.id })}>Revocă linkul</button>}
       </div>

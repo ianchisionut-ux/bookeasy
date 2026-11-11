@@ -5,6 +5,8 @@ function run(command, args) {
   if (result.status !== 0) process.exit(result.status ?? 1)
 }
 
+run('node', ['scripts/prepare-campaign-management.mjs'])
+
 // Existing production releases prepare the database before building. A
 // targeted release applies only the invitation schema update before building.
 if (process.env.BOOKEASY_DUAL_ACCOUNT_RELEASE === 'true') {

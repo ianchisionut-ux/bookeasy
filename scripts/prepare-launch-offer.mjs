@@ -8,8 +8,7 @@ if (process.env.VERCEL_ENV === 'production') {
   try {
     await client.query('BEGIN')
     await client.query(sql)
-    const constraint = await readFile(new URL('../prisma/migrations/20261020145000_launch_offer_constraint/migration.sql', import.meta.url), 'utf8')
-    await client.query(constraint)
+    // The current campaign migration owns the terms constraint; do not restore obsolete fixed prices.
     await client.query('COMMIT')
     console.log('Two-month offer prepared; billed or paid historical enrollments preserved.')
     const terms = await client.query('SELECT "freeMonths","promoMonths","promoMinor","regularMinor",COUNT(*)::int AS count,COUNT(*) FILTER (WHERE "activatedAt" IS NOT NULL)::int AS activated,COUNT(*) FILTER (WHERE "cancelledAt" IS NOT NULL)::int AS cancelled FROM "LaunchEnrollment" GROUP BY 1,2,3,4')

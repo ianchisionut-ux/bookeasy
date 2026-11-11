@@ -8,6 +8,7 @@ import { helpUnreadCount } from '@/lib/help-chat'
 const NAV_ITEMS = [
   { href: '/superadmin/afaceri', label: 'Afaceri', icon: 'afaceri' },
   { href: '/superadmin/invitatii', label: 'Invitații afaceri', icon: 'email' },
+  { href: '/superadmin/planuri', label: 'Planuri și prețuri', icon: 'servicii' },
   { href: '/superadmin/coduri-promotionale', label: 'Coduri promoționale', icon: 'servicii' },
   { href: '/superadmin/cereri', label: 'Cereri de acces', icon: 'cereri' },
   { href: '/superadmin/tichete', label: 'Suport tehnic', icon: 'tichete' },

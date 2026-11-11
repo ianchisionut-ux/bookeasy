@@ -16,6 +16,7 @@ const schema = z.object({
   promoCode: z.string().trim().max(64).optional(),
   utmCampaign: z.string().trim().max(64).optional(),
   acceptSubscriptionTerms: z.boolean().optional(),
+  planPriceVersion:z.string().max(500).optional(),
 })
 
 function provisionalSlug() { return 'afacere-' + randomBytes(6).toString('hex') }
@@ -36,8 +37,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-  if (parsed.data.acceptSubscriptionTerms !== true) return NextResponse.json({ error: 'Acceptă condițiile abonamentului. Dacă pagina este mai veche, reîncarc-o.' }, { status: 400 })
-  const campaignData = await launchSignupData(parsed.data.promoCode,prisma,parsed.data.launchOfferVersion??'')
+  if (parsed.data.acceptSubscriptionTerms !== true) return NextResponse.json({ error: 'Acceptă termenii de utilizare și oferta afișată. Dacă pagina este mai veche, reîncarc-o.' }, { status: 400 })
+  const campaignData = await launchSignupData(parsed.data.promoCode,prisma,parsed.data.launchOfferVersion??'',parsed.data.planPriceVersion??'')
   if (campaignData.launchEnrollment && parsed.data.acceptLaunchTerms !== true) return NextResponse.json({ error: 'Confirmă condițiile ofertei de lansare.' }, { status: 400 })
   if (!campaignData.launchEnrollment && parsed.data.acceptLaunchTerms) return NextResponse.json({ error: 'Oferta gratuită se aplică numai cu un cod promoțional valid. Reîncarcă pagina.' }, { status: 409 })
   const hashedPassword = await bcrypt.hash(password, 12)

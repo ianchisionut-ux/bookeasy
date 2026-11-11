@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { resetIpayPaymentFields } from '@/lib/billing-ipay'
-import { LAUNCH_OFFER, launchMonth } from '@/lib/launch-policy'
+import {getPlanPrices} from '@/lib/plan-pricing'
+import {promotionVersion} from '@/lib/promotion-campaigns'
+import { launchMonth } from '@/lib/launch-policy'
 import { lockLaunchBusiness, syncLaunchInTransaction } from '@/lib/launch-campaign'
 import { promotionIsOpen } from '@/lib/promotion-campaigns'
 
@@ -31,6 +33,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const mode = parsed.data.mode === 'PAID' ? 'STANDARD' : parsed.data.mode
     const currentMode = enrollment && !enrollment.cancelledAt ? 'CAMPAIGN' : business.billingStatus === 'GRATUIT' ? 'FREE' : business.planName?.toUpperCase() === 'PRO' ? 'PRO' : 'STANDARD'
     if (mode === currentMode && (parsed.data.mode !== 'CAMPAIGN' || enrollment?.campaignId === parsed.data.campaignId)) return { status: 200, success: true }
+    if(enrollment?.freeUntilNotice&&!enrollment.cancelledAt&&mode!=='CAMPAIGN'&&mode!=='FREE')return {status:409,error:'Campania gratuită nu poate fi trecută direct la plată. Este necesară notificarea și acceptarea expresă a noii oferte de către afacere.'}
+    const prices=await getPlanPrices(tx)
     const recordChange = () => tx.billingModeChange.create({ data: {
       businessId, fromMode: currentMode, toMode: mode,
       fromCampaignId: currentMode === 'CAMPAIGN' ? enrollment?.campaignId : null,
@@ -44,6 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (parsed.data.mode === 'CAMPAIGN') {
       const campaign = await tx.launchCampaign.findUnique({ where: { id: parsed.data.campaignId } })
       if (!campaign || !campaign.code || !promotionIsOpen({ ...campaign, code: campaign.code })) return { status: 409, error: 'Campania nu acceptă înscrieri noi. Activeaz-o din Coduri promoționale.' }
+      if(enrollment?.freeUntilNotice&&!enrollment.cancelledAt&&!campaign.freeUntilNotice)return {status:409,error:'O campanie gratuită fără termen nu poate fi înlocuită cu o ofertă care generează plăți fără acordul afacerii.'}
       if (enrollment) {
         const hasPeriods = await tx.launchBillingPeriod.count({ where: { enrollmentId: enrollment.id } }) > 0
         if (hasPeriods && enrollment.campaignId !== campaign.id) return { status: 409, error: 'Această afacere are istoric într-o altă campanie. Poți relua campania inițială; istoricul nu poate fi înlocuit.' }
@@ -53,10 +58,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         } else {
           await tx.launchEnrollment.update({ where: { id: enrollment.id }, data: {
             campaignId: campaign.id, acceptedAt: now, activatedAt: business.onboardingDone ? now : null,
-            freeEndsAt: business.onboardingDone ? launchMonth(now, campaign.freeMonths) : null,
-            promoEndsAt: business.onboardingDone ? launchMonth(now, campaign.freeMonths) : null,
+            freeEndsAt: business.onboardingDone && !campaign.freeUntilNotice ? launchMonth(now, campaign.freeMonths) : null,
+            promoEndsAt: business.onboardingDone && !campaign.freeUntilNotice ? launchMonth(now, campaign.freeMonths) : null,
             cancelledAt: null, billingCycle: null, nextSyncAt: business.onboardingDone ? now : null,
-            freeMonths: campaign.freeMonths, promoMonths: 0, promoMinor: 0, regularMinor: LAUNCH_OFFER.regularMinor,
+            freeMonths: campaign.freeMonths, promoMonths: 0, promoMinor: 0, regularMinor: campaign.freeUntilNotice?0:campaign.regularMinor, freeUntilNotice:campaign.freeUntilNotice,termsVersion:promotionVersion(campaign),
           } })
         }
       } else {
@@ -64,10 +69,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         await tx.launchEnrollment.create({ data: {
           businessId, campaignId: campaign.id, acceptedAt: now,
           activatedAt: business.onboardingDone ? now : null,
-          freeEndsAt: business.onboardingDone ? launchMonth(now, campaign.freeMonths) : null,
-          promoEndsAt: business.onboardingDone ? launchMonth(now, campaign.freeMonths) : null,
+          freeEndsAt: business.onboardingDone && !campaign.freeUntilNotice ? launchMonth(now, campaign.freeMonths) : null,
+          promoEndsAt: business.onboardingDone && !campaign.freeUntilNotice ? launchMonth(now, campaign.freeMonths) : null,
           nextSyncAt: business.onboardingDone ? now : null,
-          freeMonths: campaign.freeMonths, promoMonths: 0, promoMinor: 0, regularMinor: LAUNCH_OFFER.regularMinor,
+          freeMonths: campaign.freeMonths, promoMonths: 0, promoMinor: 0, regularMinor: campaign.freeUntilNotice?0:campaign.regularMinor, freeUntilNotice:campaign.freeUntilNotice,termsVersion:promotionVersion(campaign),
         } })
       }
       await tx.business.update({ where: { id: businessId }, data: {
@@ -91,11 +96,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return { status: 200, success: true }
     }
     const paid = mode !== 'FREE'
-    const amount = mode === 'STANDARD' ? LAUNCH_OFFER.regularMinor / 100 : mode === 'PRO' ? null : 0
+    const amount = mode === 'STANDARD' ? prices.standardMinor / 100 : mode === 'PRO' ? prices.proMinor===null?null:prices.proMinor/100 : 0
     await tx.business.update({ where: { id: businessId }, data: {
       planName: mode === 'PRO' ? 'Pro' : paid ? 'Standard' : 'Gratuit', billingStatus: paid ? 'NEPLATIT' : 'GRATUIT',
       billingAmount: amount, billingSubtotal: amount === null ? null : paid ? Number((amount / (1 + Number(business.billingVatRate) / 100)).toFixed(6)) : 0,
-      billingCurrency: 'RON', billingDueAt: mode === 'STANDARD' && business.onboardingDone ? now : null,
+      billingCurrency: 'RON', billingDueAt: paid && amount!==null && amount>0 && business.onboardingDone ? now : null,
       billingDueNotifiedAt: null, billingPaidAt: null,
       billingInvoiceUrl: null, billingInvoiceName: null, billingInvoiceUploadedAt: null, billingInvoiceExternalId: null,
       billingStripeCheckoutSessionId: null, billingStripePaymentIntentId: null, ...resetIpayPaymentFields(),

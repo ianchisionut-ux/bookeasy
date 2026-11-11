@@ -2,6 +2,8 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 import { LAUNCH_OFFER, launchCycle, launchMonth, launchPrice, launchView } from './launch-policy'
 import {findPromotion,promotionIsOpen,promotionVersion} from './promotion-campaigns'
+import {getPlanPrices} from './plan-pricing'
+import {FREE_CAMPAIGN_TERMS_VERSION} from './free-campaign-terms'
 import { resetIpayPaymentFields } from './billing-ipay'
 
 type Tx = Prisma.TransactionClient
@@ -10,19 +12,23 @@ export class LaunchSignupError extends Error {
   constructor(message: string, public status = 400) { super(message) }
 }
 
-export function standardSignupData() {
-  return { planName: 'Standard', billingStatus: 'NEPLATIT' as const, billingAmount: LAUNCH_OFFER.regularMinor / 100, billingSubtotal: Number((LAUNCH_OFFER.regularMinor / 100 / 1.21).toFixed(6)), billingCurrency: 'RON' }
+export function standardSignupData(regularMinor: number) {
+  return { planName: 'Standard', billingStatus: regularMinor===0?'GRATUIT' as const:'NEPLATIT' as const, billingAmount: regularMinor / 100, billingSubtotal: Number((regularMinor / 100 / 1.21).toFixed(6)), billingCurrency: 'RON' }
 }
 
-export async function launchSignupData(promoCode?: string, db: Pick<Tx, '$queryRaw'> = prisma, offerVersion?:string) {
-  if (!promoCode?.trim()) return { ...standardSignupData(), launchEnrollment: undefined }
+export async function launchSignupData(promoCode?: string, db: Pick<Tx, '$queryRaw'> = prisma, offerVersion?:string, planPriceVersion?:string) {
+  if (!promoCode?.trim()) {
+    const prices=await getPlanPrices(db)
+    if(planPriceVersion!==undefined&&planPriceVersion!==prices.version)throw new LaunchSignupError('Tarifele s-au actualizat. Reîncarcă pagina și verifică oferta.',409)
+    return { ...standardSignupData(prices.standardMinor), launchEnrollment: undefined }
+  }
   const campaign = await findPromotion(promoCode,db)
   if (!campaign) throw new LaunchSignupError('Codul promoțional nu este valid. Verifică-l sau continuă fără cod.')
   if (!promotionIsOpen(campaign)) throw new LaunchSignupError('Codul promoțional nu este disponibil în acest moment. Poți continua fără cod, cu planul Standard.',409)
   if(offerVersion!==undefined&&offerVersion!==promotionVersion(campaign))throw new LaunchSignupError('Verifică din nou codul și acceptă condițiile actuale ale ofertei.',409)
   return {
     planName: 'Lansare · Gratuit', billingStatus: 'GRATUIT' as const, billingAmount: 0, billingSubtotal: 0,
-    launchEnrollment: { create: { campaignId: campaign.id, ...LAUNCH_OFFER,freeMonths:campaign.freeMonths } },
+    launchEnrollment: { create: { campaignId: campaign.id, ...LAUNCH_OFFER,freeMonths:campaign.freeMonths,freeUntilNotice:campaign.freeUntilNotice,regularMinor:campaign.freeUntilNotice?0:campaign.regularMinor,termsVersion:campaign.freeUntilNotice?FREE_CAMPAIGN_TERMS_VERSION:promotionVersion(campaign) } },
   }
 }
 
@@ -30,7 +36,7 @@ export async function activateStandardSubscription(tx: Tx, businessId: string, n
   const enrollment = await tx.launchEnrollment.findUnique({ where: { businessId }, select: { cancelledAt: true } })
   if (enrollment && !enrollment.cancelledAt) return
   // Start normal billing only once, when onboarding finishes; preserve manual billing settings.
-  await tx.business.updateMany({ where: { id: businessId, planName: 'Standard', billingStatus: 'NEPLATIT', billingDueAt: null }, data: { billingDueAt: now } })
+  await tx.business.updateMany({ where: { id: businessId, planName: {in:['Standard','Pro']}, billingStatus: 'NEPLATIT', billingDueAt: null, billingAmount:{gt:0} }, data: { billingDueAt: now } })
 }
 
 export async function lockLaunchBusiness(tx: Tx, businessId: string) {
@@ -38,19 +44,25 @@ export async function lockLaunchBusiness(tx: Tx, businessId: string) {
 }
 
 export async function activateLaunch(tx: Tx, businessId: string, now: Date) {
-  const enrollment = await tx.launchEnrollment.findUnique({ where: { businessId }, select: { freeMonths: true, promoMonths: true, activatedAt: true, cancelledAt: true } })
+  const enrollment = await tx.launchEnrollment.findUnique({ where: { businessId }, select: { freeMonths: true, promoMonths: true, activatedAt: true, cancelledAt: true, freeUntilNotice: true } })
   if (!enrollment || enrollment.activatedAt || enrollment.cancelledAt) return
   await tx.launchEnrollment.updateMany({ where: { businessId, activatedAt: null, cancelledAt: null }, data: {
     activatedAt: now,
-    freeEndsAt: launchMonth(now, enrollment.freeMonths),
-    promoEndsAt: launchMonth(now, enrollment.freeMonths + enrollment.promoMonths),
-    nextSyncAt: launchMonth(now, 1),
+    freeEndsAt: enrollment.freeUntilNotice ? null : launchMonth(now, enrollment.freeMonths),
+    promoEndsAt: enrollment.freeUntilNotice ? null : launchMonth(now, enrollment.freeMonths + enrollment.promoMonths),
+    nextSyncAt: enrollment.freeUntilNotice ? null : launchMonth(now, 1),
   } })
 }
 
 export async function syncLaunchInTransaction(tx: Tx, businessId: string, now: Date) {
   const enrollment = await tx.launchEnrollment.findUnique({ where: { businessId }, include: { business: true } })
   if (!enrollment || enrollment.cancelledAt || !enrollment.activatedAt) return false
+  // Open-ended free offers never create billable periods or roll into Standard.
+  if (enrollment.freeUntilNotice) {
+    await tx.business.update({where:{id:businessId},data:{planName:'Campanie · Gratuit',billingStatus:'GRATUIT',billingAmount:0,billingSubtotal:0,billingDueAt:null}})
+    await tx.launchEnrollment.update({where:{id:enrollment.id},data:{nextSyncAt:null,freeEndsAt:null,promoEndsAt:null}})
+    return true
+  }
   const business = enrollment.business
   const currentCycle = launchCycle(enrollment.activatedAt, now)
   // One unique period per anniversary, including recovery after scheduler downtime.

@@ -1,4 +1,6 @@
 import Image from 'next/image'
+import {getPlanPrices} from '@/lib/plan-pricing'
+export const dynamic='force-dynamic'
 import Link from 'next/link'
 import AccessRequestForm from '@/components/access-request-form'
 import { PublicFooter } from '@/components/ui/public-footer'
@@ -80,7 +82,7 @@ const plans = [
   {
     name: 'STANDARD',
     eyebrow: 'Disponibil acum',
-    price: '55',
+    price: '',
     suffix: 'lei / lună',
     description: 'Pentru afaceri care vor să gestioneze programările și comunicarea într-un singur loc.',
     features: [
@@ -116,7 +118,9 @@ const plans = [
   },
 ] as const
 
-export default function ForBusinessesPage() {
+export default async function ForBusinessesPage() {
+  const prices=await getPlanPrices()
+  const pricedPlans=plans.map(plan=>plan.name==='STANDARD'?{...plan,price:String(prices.standardMinor/100)}:plan.name==='PRO'&&prices.proMinor!==null?{...plan,price:String(prices.proMinor/100),suffix:'lei / lună'}:plan)
   return (
     <main className="min-h-screen bg-[#f6f8f7] text-[#193c3e]">
       <header className="sticky top-0 z-30 border-b border-[#e2eae8] bg-white/95 backdrop-blur">
@@ -221,7 +225,7 @@ export default function ForBusinessesPage() {
             </div>
             <a href="#planuri" className="inline-flex items-center gap-2 text-sm font-bold text-[#16817f] hover:text-[#0c7174]">Compară planurile <ArrowRight size={16} /></a>
           </div>
-          <BusinessInteractiveDemo />
+          <BusinessInteractiveDemo standardMinor={prices.standardMinor} proMinor={prices.proMinor} />
         </div>
       </section>
 
@@ -233,7 +237,7 @@ export default function ForBusinessesPage() {
             <p className="mt-4 text-sm leading-7 text-[#6f8580]">Free este acordat după aprobare, Standard se poate activa la înscriere, iar pentru Pro stabilim împreună oferta și integrările.</p>
           </div>
           <div className="mt-10 grid items-stretch gap-5 lg:grid-cols-3">
-            {plans.map((plan) => (
+            {pricedPlans.map((plan) => (
               <article key={plan.name} className={`flex flex-col rounded-[26px] border p-6 sm:p-7 ${plan.featured ? 'border-[#4eb5a8] bg-[#f4fbf9] shadow-[0_18px_45px_#128b8620]' : 'border-[#dceae6] bg-white shadow-[0_7px_25px_#17383a0b]'}`}>
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-extrabold tracking-[.13em]">{plan.name}</h3>

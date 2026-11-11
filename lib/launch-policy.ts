@@ -5,7 +5,7 @@ export function isLaunchPromoCode(value: string) {
   return value.trim().toLowerCase() === LAUNCH_PROMO_CODE.toLowerCase()
 }
 export const LAUNCH_OFFER = { freeMonths: 2, promoMonths: 0, promoMinor: 0, regularMinor: 5500 } as const
-export type LaunchTerms = { freeMonths: number; promoMonths: number; promoMinor: number; regularMinor: number }
+export type LaunchTerms = { freeMonths: number; promoMonths: number; promoMinor: number; regularMinor: number; freeUntilNotice?: boolean }
 export type LaunchState = LaunchTerms & { activatedAt: Date | null; cancelledAt: Date | null }
 
 // Always calculate from the original anniversary, so Jan 31 -> Feb 28 -> Mar 31.
@@ -26,6 +26,7 @@ export function launchCycle(anchor: Date, now: Date) {
 }
 
 export function launchPrice(terms: LaunchTerms, cycle: number) {
+  if (terms.freeUntilNotice) return 0
   return cycle < terms.freeMonths ? 0 : cycle < terms.freeMonths + terms.promoMonths ? terms.promoMinor : terms.regularMinor
 }
 
@@ -38,21 +39,23 @@ export function launchView(enrollment: LaunchState, now = new Date()) {
     cycle,
     currentMinor,
     nextMinor: anchor ? launchPrice(enrollment, cycle + 1) : 0,
-    nextAt: anchor ? launchMonth(anchor, cycle + 1).toISOString() : null,
-    freeEndsAt: anchor ? launchMonth(anchor, enrollment.freeMonths).toISOString() : null,
-    promoEndsAt: anchor ? launchMonth(anchor, enrollment.freeMonths + enrollment.promoMonths).toISOString() : null,
+    freeUntilNotice: Boolean(enrollment.freeUntilNotice),
+    nextAt: anchor && !enrollment.freeUntilNotice ? launchMonth(anchor, cycle + 1).toISOString() : null,
+    freeEndsAt: anchor && !enrollment.freeUntilNotice ? launchMonth(anchor, enrollment.freeMonths).toISOString() : null,
+    promoEndsAt: anchor && !enrollment.freeUntilNotice ? launchMonth(anchor, enrollment.freeMonths + enrollment.promoMonths).toISOString() : null,
   }
 }
 
 export const LAUNCH_STAGE_LABEL: Record<string, string> = { ONBOARDING: 'În configurare', FREE: 'Perioadă gratuită', PROMO: 'Ofertă anterioară', STANDARD: 'Tarif standard', MANUAL: 'Facturare manuală' }
 
 export function isCurrentLaunchOffer(terms: LaunchTerms) {
-  return terms.freeMonths === LAUNCH_OFFER.freeMonths && terms.promoMonths === LAUNCH_OFFER.promoMonths && terms.promoMinor === LAUNCH_OFFER.promoMinor && terms.regularMinor === LAUNCH_OFFER.regularMinor
+  return !terms.freeUntilNotice && terms.freeMonths === LAUNCH_OFFER.freeMonths && terms.promoMonths === LAUNCH_OFFER.promoMonths && terms.promoMinor === LAUNCH_OFFER.promoMinor && terms.regularMinor === LAUNCH_OFFER.regularMinor
 }
 
 export function launchAdminSummary(enrollment: LaunchState, now = new Date()) {
   const view = launchView(enrollment, now)
   if (view.stage === 'MANUAL') return 'Facturare manuală'
+  if (enrollment.freeUntilNotice) return 'Gratuit · fără termen stabilit'
   if (view.stage === 'ONBOARDING') return enrollment.freeMonths + ' luni gratuite după configurare'
   const date = (value: string) => new Date(value).toLocaleDateString('ro-RO', {timeZone:'Europe/Bucharest'})
   if (view.stage === 'FREE' && view.freeEndsAt) return 'Gratuit până la ' + date(view.freeEndsAt)

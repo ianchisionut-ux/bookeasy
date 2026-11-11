@@ -9,5 +9,5 @@ export async function POST(req:NextRequest){
  if(!parsed.success)return NextResponse.json({error:'Introdu un cod valid.'},{status:400})
  const campaign=await findPromotion(parsed.data.code)
  if(!campaign||!promotionIsOpen(campaign))return NextResponse.json({error:'Codul nu este valid sau nu este disponibil în acest moment.'},{status:400})
- return NextResponse.json({freeMonths:campaign.freeMonths,regularMinor:5500,version:promotionVersion(campaign)},{headers:{'Cache-Control':'no-store'}})
+ return NextResponse.json({freeMonths:campaign.freeMonths,freeUntilNotice:campaign.freeUntilNotice,regularMinor:campaign.freeUntilNotice?0:campaign.regularMinor,version:promotionVersion(campaign)},{headers:{'Cache-Control':'no-store'}})
 }

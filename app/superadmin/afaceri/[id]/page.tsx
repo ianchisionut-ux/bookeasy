@@ -52,7 +52,7 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
         campaignManaged={campaignManaged}
         billingMode={billingMode}
         currentCampaignId={enrollment?.campaignId ?? null}
-        campaigns={promotions.map(campaign => ({ id: campaign.id, code: campaign.code, name: campaign.name, freeMonths: campaign.freeMonths, open: promotionIsOpen(campaign) }))}
+        campaigns={promotions.map(campaign => ({ id: campaign.id, code: campaign.code, name: campaign.name, freeMonths: campaign.freeMonths, freeUntilNotice:campaign.freeUntilNotice, open: promotionIsOpen(campaign) }))}
         business={{
           id: business.id,
           slug: business.slug,

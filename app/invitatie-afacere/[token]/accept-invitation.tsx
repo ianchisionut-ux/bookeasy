@@ -2,15 +2,16 @@
 
 import { useEffect, useState, type FormEvent } from 'react'
 import Link from 'next/link'
+import {formatPlanPrice,type PlanPrices} from '@/lib/plan-pricing-display'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import PromoCodeField, { type PromoOffer } from '@/components/promo-code-field'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
-type InvitationInfo = { email: string; name: string; offeredPlan: 'FREE' | 'STANDARD' | 'PRO' | 'CAMPAIGN'; promoCode: string | null; existing: boolean }
+type InvitationInfo = { email: string; name: string; offeredPlan: 'FREE' | 'STANDARD' | 'PRO' | 'CAMPAIGN'; promoCode: string | null; existing: boolean;prices:PlanPrices }
 const description = {
   FREE: 'Plan FREE, fără abonament lunar.',
-  STANDARD: 'Plan STANDARD, 55 lei/lună după finalizarea configurării.',
+  STANDARD: '',
   PRO: 'Plan PRO, cu tariful și facturarea stabilite separat cu echipa BookEasy.',
   CAMPAIGN: 'Campanie cu acces PRO și gratuitatea precizată în ofertă.',
 }
@@ -45,7 +46,7 @@ export default function AcceptInvitation({ token }: { token: string }) {
     try {
       const response = await fetchWithTimeout('/api/invitations/' + encodeURIComponent(token), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(info?.existing ? {} : { password, acceptTerms: terms, promoCode: info?.offeredPlan === 'CAMPAIGN' ? promo : undefined, acceptPromo: accepted, offerVersion: offer?.version }),
+        body: JSON.stringify(info?.existing ? {} : { password, acceptTerms: terms, promoCode: info?.offeredPlan === 'CAMPAIGN' ? promo : undefined, acceptPromo: accepted, offerVersion: offer?.version,planPriceVersion:info?.prices.version }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error)
@@ -65,11 +66,11 @@ export default function AcceptInvitation({ token }: { token: string }) {
     <Link href="/" className="font-semibold text-teal-700">bookeasy.ro</Link><h1 className="mt-5 text-2xl font-semibold">Continuă înrolarea afacerii</h1>
     {done ? <><p className="my-5 text-sm text-gray-600">Adresa de email a fost confirmată. Intră în cont pentru a continua configurarea afacerii tale.</p><Link className="btn-primary inline-flex" href="/login">Intră în cont și continuă</Link></> : info ? <form onSubmit={accept} className="mt-5 space-y-4 text-left">
       <p className="text-center text-sm text-gray-600">{info.name || 'Afacerea ta'} · {info.email}</p>
-      {!info.existing && <p className="rounded-xl bg-[var(--accent-soft)] p-3 text-sm font-medium">{description[info.offeredPlan]}</p>}
+      {!info.existing && <p className="rounded-xl bg-[var(--accent-soft)] p-3 text-sm font-medium">{info.offeredPlan==='STANDARD'?`Plan STANDARD · ${formatPlanPrice(info.prices.standardMinor)} după configurare.`:info.offeredPlan==='PRO'?`Plan PRO · ${formatPlanPrice(info.prices.proMinor)}`:description[info.offeredPlan]}</p>}
       {info.existing ? <p className="text-sm text-gray-600">Ai deja un cont de afacere. Confirmă invitația, apoi conectează-te cu parola existentă. Parola ta rămâne neschimbată.</p> : <>
         <label className="block text-sm">Alege parola<input type="password" autoComplete="new-password" minLength={8} maxLength={72} required className="input-field mt-1 w-full" value={password} onChange={event => setPassword(event.target.value)} /></label>
-        {info.offeredPlan === 'CAMPAIGN' && <PromoCodeField value={promo} onChange={setPromo} accepted={accepted} onAcceptedChange={setAccepted} onValidated={setOffer} locked />}
-        <label className="flex items-start gap-2 text-xs leading-relaxed"><input type="checkbox" required checked={terms} onChange={event => setTerms(event.target.checked)} /><span>Accept <Link href="/termeni-si-conditii" target="_blank" rel="noopener noreferrer" className="underline">condițiile planului</Link> {info.offeredPlan} și <Link href="/legal/confidentialitate" target="_blank" rel="noopener noreferrer" className="underline">politica de confidențialitate</Link>.</span></label>
+        {info.offeredPlan === 'CAMPAIGN' && <PromoCodeField value={promo} onChange={setPromo} onValidated={setOffer} locked />}
+        <label className="flex items-start gap-2 text-xs leading-relaxed"><input type="checkbox" required checked={terms} onChange={event => {setTerms(event.target.checked);setAccepted(event.target.checked&&Boolean(offer))}} disabled={info.offeredPlan==='CAMPAIGN'&&!offer} /><span>Accept <Link href="/termeni-si-conditii" target="_blank" rel="noopener noreferrer" className="underline">condițiile planului</Link> {offer?.freeUntilNotice?<>și <Link href="/legal/termeni#campanie-gratuita" className="underline" target="_blank" rel="noopener noreferrer">condițiile campaniei gratuite</Link>: fără obligație de plată; un tarif viitor necesită notificare cu minimum 30 de zile înainte și acordul meu expres.</>:info.offeredPlan} și <Link href="/legal/confidentialitate" target="_blank" rel="noopener noreferrer" className="underline">politica de confidențialitate</Link>.</span></label>
       </>}
       <button type="submit" disabled={busy} className="btn-primary w-full">{busy ? 'Se procesează...' : info.existing ? 'Confirmă și continuă' : 'Creează contul și continuă'}</button>
       {info.existing && <Link href="/forgot-password" className="block text-center text-sm text-teal-700">Ai uitat parola?</Link>}

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
 type Mode = 'STANDARD' | 'PRO' | 'FREE' | 'CAMPAIGN'
-type Campaign = { id: string; code: string; name: string; freeMonths: number; open: boolean }
+type Campaign = { id: string; code: string; name: string; freeMonths: number; freeUntilNotice:boolean; open: boolean }
 
 export default function BillingModeCard({ businessId, initialMode, initialPlanName, initialCampaignId, campaigns }: {
   businessId: string
@@ -47,7 +47,7 @@ export default function BillingModeCard({ businessId, initialMode, initialPlanNa
     <div className="mt-4 grid gap-2 sm:grid-cols-2">
       {([
         ['FREE', 'FREE', 'Fără abonament lunar'],
-        ['STANDARD', 'STANDARD', '55 lei/lună'],
+        ['STANDARD', 'STANDARD', 'Tariful curent din Planuri și prețuri'],
         ['PRO', 'PRO', 'Tarif configurat manual'],
         ['CAMPAIGN', 'CAMPANIE', 'Acces PRO · oferta codului'],
       ] as const).map(([value, label, description]) => <button key={value} type="button" onClick={() => setMode(value)} aria-pressed={mode === value} className={`rounded-xl border p-3 text-left transition ${mode === value ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-gray-200 bg-white'}`}>
@@ -57,7 +57,7 @@ export default function BillingModeCard({ businessId, initialMode, initialPlanNa
     {mode === 'CAMPAIGN' && <label className="mt-4 block text-sm">Campanie
       <select className="input-field mt-1 w-full" value={campaignId} onChange={event => setCampaignId(event.target.value)}>
         <option value="">Alege codul promoțional</option>
-        {campaigns.filter(c => c.open || c.id === initialCampaignId).map(c => <option key={c.id} value={c.id}>{c.name} · {c.code} · {c.freeMonths} luni gratuite{c.open ? '' : ' (închisă)'}</option>)}
+        {campaigns.filter(c => c.open || c.id === initialCampaignId).map(c => <option key={c.id} value={c.id}>{c.name} · {c.code} · {c.freeUntilNotice?'Gratuit, fără termen':`${c.freeMonths} luni gratuite`}{c.open ? '' : ' (închisă)'}</option>)}
       </select>
     </label>}
     <div className="mt-4 flex flex-wrap items-center gap-3">
