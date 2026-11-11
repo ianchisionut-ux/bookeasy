@@ -66,9 +66,9 @@ export async function GET(req: NextRequest) {
   if (process.env.RESEND_API_KEY) {
     try {
       const result = await request('https://api.resend.com/domains', { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } })
-      const data = await result.json() as { data?: { name: string; status: string }[] }
+      const data = await result.json() as { data?: { name: string; status: string }[]; name?:string }
       email = {
-        status: result.ok ? 'account_access_ok' : result.status === 403 ? 'sending_key_configured' : 'provider_check_failed',
+        status: result.ok ? 'account_access_ok' : (result.status===401||result.status===403)&&data.name === 'restricted_api_key' ? 'sending_key_configured' : result.status===401 ? 'authentication_failed' : 'provider_check_failed',
         http: result.status,
         senderDomainStatus: data.data?.find(d => d.name === 'bookeasy.ro')?.status,
         notificationRecipientConfigured: Boolean(process.env.ADMIN_NOTIFICATION_EMAIL),
