@@ -116,13 +116,13 @@ export default async function RezervaPage({ params, searchParams }: { params: Pr
               resourceId: resource.id,
               name: resource.name,
               durationMin: 60,
-              price: resource.basePrice ? Number(resource.basePrice) : null,
+              price: business.showServicePrices && resource.basePrice !== null ? Number(resource.basePrice) : null,
             })) : business.services.map((service) => ({
               id: service.id,
               resourceId: null,
               name: service.name,
               durationMin: service.durationMin,
-              price: service.price ? Number(service.price) : null,
+              price: business.showServicePrices && service.price !== null ? Number(service.price) : null,
             })))}
           />
           </>}

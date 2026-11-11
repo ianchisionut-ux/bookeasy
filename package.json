@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/prepare-launch-offer.mjs && node scripts/prepare-business-categories.mjs && node scripts/apply-reconfirmation-settings.mjs && node scripts/apply-customer-archive.mjs && node scripts/prepare-native-google.mjs && node scripts/prepare-enrollment.mjs && node scripts/prepare-meta-page-selection.mjs && node scripts/prepare-account-deletion.mjs && node scripts/prepare-guides-help.mjs && node scripts/prepare-promotion-campaigns.mjs && node scripts/prepare-business-invitations.mjs && node scripts/prepare-dual-accounts.mjs && node scripts/prepare-signup-funnel.mjs && node scripts/prepare-campaign-management.mjs && next build",
+    "build": "node scripts/prepare-launch-offer.mjs && node scripts/prepare-business-categories.mjs && node scripts/apply-reconfirmation-settings.mjs && node scripts/apply-customer-archive.mjs && node scripts/prepare-native-google.mjs && node scripts/prepare-enrollment.mjs && node scripts/prepare-meta-page-selection.mjs && node scripts/prepare-account-deletion.mjs && node scripts/prepare-guides-help.mjs && node scripts/prepare-promotion-campaigns.mjs && node scripts/prepare-business-invitations.mjs && node scripts/prepare-dual-accounts.mjs && node scripts/prepare-signup-funnel.mjs && node scripts/prepare-campaign-management.mjs && node scripts/prepare-service-prices.mjs && next build",
     "build:cloudflare": "opennextjs-cloudflare build",
     "preview:cloudflare": "npm run build:cloudflare && opennextjs-cloudflare preview",
     "deploy:cloudflare": "npm run build:cloudflare && opennextjs-cloudflare deploy",

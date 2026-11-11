@@ -18,6 +18,7 @@ export default function Step3Form({ category }: { category: BusinessCategory }) 
   const [items, setItems] = useState<Item[]>([])
   const [draft, setDraft] = useState<Item>({ name: '', durationMin: '', price: '', capacity: '' })
   const [loading, setLoading] = useState(false)
+  const [showServicePrices, setShowServicePrices] = useState(false)
   const [error, setError] = useState('')
 
   function addItem() {
@@ -41,7 +42,7 @@ export default function Step3Form({ category }: { category: BusinessCategory }) 
     const services = items.map((i) => ({
       name: i.name,
       durationMin: isSalon && i.durationMin ? Number(i.durationMin) : null,
-      price: i.price ? Number(i.price) : null,
+      price: showServicePrices && i.price ? Number(i.price) : null,
       capacity: !isSalon && i.capacity ? Number(i.capacity) : null,
     }))
 
@@ -49,7 +50,7 @@ export default function Step3Form({ category }: { category: BusinessCategory }) 
       const response = await fetchWithTimeout('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ step: 3, data: { services } }),
+        body: JSON.stringify({ step: 3, data: { services, showServicePrices } }),
       })
       if (!response.ok) { const result = await response.json(); throw new Error(typeof result.error === 'string' ? result.error : 'Serviciile nu au putut fi salvate.') }
       router.push('/onboarding/step-5')
@@ -67,9 +68,10 @@ export default function Step3Form({ category }: { category: BusinessCategory }) 
       <p className="text-sm text-gray-500 mb-6">
         {isSalon
           ? `Adaugă ${offer.plural} și durata lor pentru orele disponibile online. Le poți completa și mai târziu din ${offer.heading}.`
-          : 'Adaugă cel puțin o sală, cu capacitatea și prețul ei.'}
+          : 'Adaugă cel puțin o sală, cu capacitatea ei.'}
       </p>
 
+      <label className="mb-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={showServicePrices} onChange={e => setShowServicePrices(e.target.checked)} /> Afișează prețurile serviciilor (opțional)</label>
       {items.length > 0 && (
         <div className="flex flex-col gap-2 mb-4">
           {items.map((item, i) => (
@@ -78,8 +80,8 @@ export default function Step3Form({ category }: { category: BusinessCategory }) 
                 <p className="font-medium">{item.name}</p>
                 <p className="text-xs text-gray-500">
                   {isSalon
-                    ? `${item.durationMin || '—'} min · ${item.price || '—'} lei`
-                    : `${item.capacity || '—'} persoane · ${item.price || '—'} lei`}
+                    ? `${item.durationMin || '—'} min${showServicePrices && item.price ? ` · ${item.price} lei` : ''}`
+                    : `${item.capacity || '—'} persoane${showServicePrices && item.price ? ` · ${item.price} lei` : ''}`}
                 </p>
               </div>
               <button onClick={() => removeItem(i)} className="text-gray-400 text-xs">
@@ -117,12 +119,12 @@ export default function Step3Form({ category }: { category: BusinessCategory }) 
           )}
         </div>
         <div className="grid grid-cols-[1fr_auto] gap-2">
-          <Input
+          {showServicePrices && <Input
             type="number"
             placeholder="Preț (lei)"
             value={draft.price}
             onChange={(e) => setDraft({ ...draft, price: e.target.value })}
-          />
+          />}
           <Button type="button" variant="secondary" onClick={addItem}>
             + Adaugă
           </Button>

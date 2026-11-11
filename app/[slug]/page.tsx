@@ -91,7 +91,7 @@ export default async function PublicBusinessPage({ params, searchParams }: { par
                         <h3 className="break-words font-medium">{service.name}</h3>
                         <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-500"><Clock3 size={13} />{service.durationMin ? `${service.durationMin} minute` : 'Durată flexibilă'}</p>
                       </div>
-                      {service.price && <span className="shrink-0 text-sm font-semibold">{service.price.toString()} lei</span>}
+                      {business.showServicePrices && service.price !== null && <span className="shrink-0 text-sm font-semibold">{service.price.toString()} lei</span>}
                     </div>
                     <p className="mt-3 flex items-center gap-1 text-xs font-medium opacity-0 transition group-hover:opacity-100" style={{ color: accent }}>Alege serviciul <ArrowRight size={13} /></p>
                   </Link>

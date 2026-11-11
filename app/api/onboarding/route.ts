@@ -22,6 +22,7 @@ const stepSchemas = {
     workingHours: z.array(z.object({ weekday: z.number(), startTime: z.string(), endTime: z.string() })),
   }),
   3: z.object({
+    showServicePrices: z.boolean().optional().default(false),
     services: z.array(
       z.object({
         name: z.string(),
@@ -153,7 +154,7 @@ async function saveOnboardingStep(businessId: string, step: number, data: any) {
   }
 
   if (step === 3) {
-    const business = await prisma.business.findUnique({ where: { id: businessId } })
+    const business = await prisma.business.update({ where: { id: businessId }, data: { showServicePrices: data.showServicePrices ?? false } })
     if (business?.category === 'EVENT_VENUE') {
       await prisma.resource.createMany({
         data: data.services.map((s: any) => ({ businessId, name: s.name, capacity: s.capacity ?? null, basePrice: s.price ?? null })),

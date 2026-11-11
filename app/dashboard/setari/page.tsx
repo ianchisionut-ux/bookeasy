@@ -83,7 +83,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
 
       <div className="columns-1 gap-5 md:columns-2 2xl:columns-3">
         <div id="servicii" className="mb-5 break-inside-avoid scroll-mt-6">
-          <ServicesManager category={business.category} services={business.services.map(service => ({ id: service.id, name: service.name, durationMin: service.durationMin, price: service.price ? Number(service.price) : null, active: service.active }))} resources={business.resources.map(resource => ({ id: resource.id, name: resource.name, capacity: resource.capacity, basePrice: resource.basePrice ? Number(resource.basePrice) : null }))} />
+          <ServicesManager showServicePrices={business.showServicePrices} category={business.category} services={business.services.map(service => ({ id: service.id, name: service.name, durationMin: service.durationMin, price: service.price ? Number(service.price) : null, active: service.active }))} resources={business.resources.map(resource => ({ id: resource.id, name: resource.name, capacity: resource.capacity, basePrice: resource.basePrice ? Number(resource.basePrice) : null }))} />
         </div>
         <div className="mb-5 break-inside-avoid">
           <BusinessPhotosUploader heroImageUrl={business.heroImageUrl} gallery={business.photos.map(photo => ({ id: photo.id, url: photo.url }))} />

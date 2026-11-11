@@ -13,9 +13,11 @@ type Resource = { id: string; name: string; capacity: number | null; basePrice: 
 
 export default function ServicesManager({
   category,
+  showServicePrices,
   services,
   resources,
 }: {
+  showServicePrices: boolean
   category: BusinessCategory
   services: Service[]
   resources: Resource[]
@@ -29,6 +31,24 @@ export default function ServicesManager({
   const [adding, setAdding] = useState(false)
   const [newItem, setNewItem] = useState({ name: '', durationMin: '', price: '', capacity: '' })
   const [saving, setSaving] = useState(false)
+  const [pricesEnabled, setPricesEnabled] = useState(showServicePrices)
+  const [pricesSaving, setPricesSaving] = useState(false)
+  const [pricesError, setPricesError] = useState('')
+
+  async function togglePrices() {
+    setPricesSaving(true)
+    setPricesError('')
+    try {
+      const response = await fetchWithTimeout('/api/business/service-prices', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ showServicePrices: !pricesEnabled }),
+      })
+      if (!response.ok) throw new Error('Nu am putut salva opțiunea. Încearcă din nou.')
+      setPricesEnabled(!pricesEnabled)
+      router.refresh()
+    } catch { setPricesError('Nu am putut salva opțiunea. Încearcă din nou.') }
+    finally { setPricesSaving(false) }
+  }
 
   const endpoint = isSalon ? '/api/business/services' : '/api/business/resources'
   const items = isSalon ? services : resources
@@ -50,8 +70,8 @@ export default function ServicesManager({
     }
     setSaving(true)
     const payload = isSalon
-      ? { name: draft.name, durationMin: draft.durationMin ? Number(draft.durationMin) : null, price: draft.price ? Number(draft.price) : null }
-      : { name: draft.name, capacity: draft.capacity ? Number(draft.capacity) : null, basePrice: draft.price ? Number(draft.price) : null }
+      ? { name: draft.name, durationMin: draft.durationMin ? Number(draft.durationMin) : null, ...(pricesEnabled ? { price: draft.price ? Number(draft.price) : null } : {}) }
+      : { name: draft.name, capacity: draft.capacity ? Number(draft.capacity) : null, ...(pricesEnabled ? { basePrice: draft.price ? Number(draft.price) : null } : {}) }
 
     try {
       const response = await fetchWithTimeout(`${endpoint}/${id}`, {
@@ -87,8 +107,8 @@ export default function ServicesManager({
     }
     setSaving(true)
     const payload = isSalon
-      ? { name: newItem.name, durationMin: newItem.durationMin ? Number(newItem.durationMin) : null, price: newItem.price ? Number(newItem.price) : null }
-      : { name: newItem.name, capacity: newItem.capacity ? Number(newItem.capacity) : null, basePrice: newItem.price ? Number(newItem.price) : null }
+      ? { name: newItem.name, durationMin: newItem.durationMin ? Number(newItem.durationMin) : null, price: pricesEnabled && newItem.price ? Number(newItem.price) : null }
+      : { name: newItem.name, capacity: newItem.capacity ? Number(newItem.capacity) : null, basePrice: pricesEnabled && newItem.price ? Number(newItem.price) : null }
 
     try {
       const response = await fetchWithTimeout(endpoint, {
@@ -115,6 +135,14 @@ export default function ServicesManager({
       </div>
       <p className="mb-4 text-sm text-gray-500">{items.length} {offer.plural}</p>
 
+      <div className="mb-4 rounded-xl border border-[var(--border-soft)] p-3">
+        <label className="flex cursor-pointer items-center gap-3 text-sm">
+          <input type="checkbox" checked={pricesEnabled} disabled={pricesSaving} onChange={() => void togglePrices()} />
+          Afișează prețurile serviciilor (opțional)
+        </label>
+        <p className="mt-2 text-xs text-gray-500">Oprit: doar servicii, durate și programări. Activat: poți completa prețuri, vizibile și clienților. Opțiunea nu activează plăți sau emiterea de facturi.</p>
+        {pricesError && <p role="alert" className="mt-2 text-xs text-red-600">{pricesError}</p>}
+      </div>
       {adding && (
         <Card className="mb-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
@@ -126,7 +154,7 @@ export default function ServicesManager({
             )}
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <Input type="number" placeholder="Preț (lei)" value={newItem.price} onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} />
+            {pricesEnabled && <Input type="number" placeholder="Preț (lei)" value={newItem.price} onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} />}
             <Button variant="secondary" onClick={createItem} disabled={saving}>
               Salvează
             </Button>
@@ -148,7 +176,7 @@ export default function ServicesManager({
                   )}
                 </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-                  <Input type="number" placeholder="Preț (lei)" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} />
+                  {pricesEnabled && <Input type="number" placeholder="Preț (lei)" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} />}
                   <Button variant="secondary" onClick={() => saveEdit(item.id)} disabled={saving}>
                     Salvează
                   </Button>
@@ -165,12 +193,12 @@ export default function ServicesManager({
                     {isSalon ? (
                       <>
                         <p>{(item as Service).durationMin ? `${(item as Service).durationMin} min` : '30 min implicit'}</p>
-                        <p className="font-medium text-gray-900">{(item as Service).price ? `${(item as Service).price} lei` : ''}</p>
+                        <p className="font-medium text-gray-900">{pricesEnabled && (item as Service).price ? `${(item as Service).price} lei` : ''}</p>
                       </>
                     ) : (
                       <>
                         <p>{(item as Resource).capacity ? `${(item as Resource).capacity} persoane` : '—'}</p>
-                        <p className="font-medium text-gray-900">{(item as Resource).basePrice ? `${(item as Resource).basePrice} lei` : '—'}</p>
+                        <p className="font-medium text-gray-900">{pricesEnabled && (item as Resource).basePrice ? `${(item as Resource).basePrice} lei` : '—'}</p>
                       </>
                     )}
                   </div>

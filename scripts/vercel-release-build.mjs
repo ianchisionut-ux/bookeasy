@@ -6,6 +6,7 @@ function run(command, args) {
 }
 
 run('node', ['scripts/prepare-campaign-management.mjs'])
+run('node', ['scripts/prepare-service-prices.mjs'])
 
 // Existing production releases prepare the database before building. A
 // targeted release applies only the invitation schema update before building.

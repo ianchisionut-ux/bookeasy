@@ -155,7 +155,7 @@ export async function runBotStep({
           newState: { step: 'OPERATOR_SILENCE', silentUntil },
         }
       }
-      if (incomingText.trim() === 'NEW_BOOKING' && business.botBookingEnabled) return showServiceMenu(business.services)
+      if (incomingText.trim() === 'NEW_BOOKING' && business.botBookingEnabled) return showServiceMenu(business.services, business.showServicePrices)
       if (incomingText.trim() === 'VIEW_ACTIVE_BOOKING') {
         const upcoming = await findUpcomingBooking(businessId, channel, externalUserId)
         return upcoming
@@ -180,7 +180,7 @@ export async function runBotStep({
             ? { reply: { kind: 'buttons', text: `Ai programare pentru ${upcoming.service.name}, ${formatDate(upcoming.startAt.toISOString())}. Dorești și o programare nouă?`, options: AFTER_BOOKING_OPTIONS }, newState: { step: 'SELECTING_SERVICE' } }
             : { reply: { kind: 'buttons', text: 'Nu am găsit o programare viitoare. Dorești să faci una nouă?', options: [{ id: 'NEW_BOOKING', title: 'Programare nouă' }] }, newState: { step: 'SELECTING_SERVICE' } }
         }
-        if (incomingText.trim() === 'NEW_BOOKING') return showServiceMenu(business.services)
+        if (incomingText.trim() === 'NEW_BOOKING') return showServiceMenu(business.services, business.showServicePrices)
         const welcomeChoice = matchChoice(incomingText, getWelcomeOptions(business.slug, business.botBookingEnabled))
 
         if (welcomeChoice === 'OPERATOR') {
@@ -205,7 +205,7 @@ export async function runBotStep({
           if (upcoming) {
             return { reply: { kind: 'buttons', text: `Ai deja o programare pentru ${upcoming.service.name}, ${formatDate(upcoming.startAt.toISOString())}. Dorești să faci încă una?`, options: AFTER_BOOKING_OPTIONS }, newState: { step: 'SELECTING_SERVICE' } }
           }
-          return showServiceMenu(business.services)
+          return showServiceMenu(business.services, business.showServicePrices)
         }
 
         return showWelcome(business.name, business.slug, business.botBookingEnabled)
@@ -407,7 +407,7 @@ function showWelcome(businessName: string, slug: string, botBookingEnabled: bool
   }
 }
 
-function showServiceMenu(services: { id: string; name: string; durationMin: number | null; price: any }[]) {
+function showServiceMenu(services: { id: string; name: string; durationMin: number | null; price: any }[], showPrices = false) {
   if (services.length === 0) {
     return {
       reply: { kind: 'text' as const, text: 'Momentan nu avem servicii disponibile online — te rugăm sună-ne direct.' },
@@ -418,7 +418,7 @@ function showServiceMenu(services: { id: string; name: string; durationMin: numb
   const options: ChoiceOption[] = services.map((s) => ({
     id: s.id,
     title: s.name,
-    subtitle: [s.durationMin ? `${s.durationMin} min` : null, s.price ? `${s.price} lei` : null].filter(Boolean).join(' · ') || undefined,
+    subtitle: [s.durationMin ? `${s.durationMin} min` : null, showPrices && s.price !== null ? `${s.price} lei` : null].filter(Boolean).join(' · ') || undefined,
   }))
 
   return {

@@ -1,0 +1,1 @@
+ALTER TABLE "Business" ADD COLUMN IF NOT EXISTS "showServicePrices" BOOLEAN NOT NULL DEFAULT false;

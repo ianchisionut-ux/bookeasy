@@ -32,7 +32,7 @@ export default async function SmsConfirmationPage({ params, searchParams }: { pa
         {booking.staff && <Detail icon={<UserRound size={18} />} label="Personal" value={booking.staff.name} accent={accent} soft={accentSoft} />}
         {booking.resource && <Detail icon={<MapPin size={18} />} label="Resursă" value={booking.resource.name} accent={accent} soft={accentSoft} />}
         <Detail icon={<CalendarDays size={18} />} label="Data" value={date} accent={accent} soft={accentSoft} /><Detail icon={<Clock3 size={18} />} label="Interval și durată" value={`${time} – ${endTime} · ${duration} min`} accent={accent} soft={accentSoft} />
-        {booking.service.price !== null && <Detail icon={<Stethoscope size={18} />} label="Preț" value={`${booking.service.price.toString()} RON`} accent={accent} soft={accentSoft} />}
+        {booking.business.showServicePrices && booking.service.price !== null && <Detail icon={<Stethoscope size={18} />} label="Preț" value={`${booking.service.price.toString()} RON`} accent={accent} soft={accentSoft} />}
         {booking.business.address && <Detail icon={<MapPin size={18} />} label="Locație" value={booking.business.address} accent={accent} soft={accentSoft} />}
       </div><div className="mt-7">{booking.customerConfirmed !== null ? <div className="rounded-2xl bg-gray-50 p-5 text-center"><p className="font-semibold">Răspunsul a fost deja înregistrat.</p><p className="mt-1 text-sm text-gray-500">{booking.customerConfirmed ? 'Programarea este confirmată.' : 'Programarea este anulată.'}</p></div> : <ConfirmationActions bookingId={booking.id} token={token} accent={accent} />}</div></div>
     </div></main></div>
