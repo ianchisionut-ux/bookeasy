@@ -12,19 +12,17 @@ export async function getDailyStats(businessId: string, days = 30) {
   const d = Math.min(days || 30, 365)
   const since = new Date(Date.now() - d * 24 * 60 * 60 * 1000)
 
-  const rows = await prisma.$queryRaw<{ date: string; bookings: bigint; revenue: number }[]>`
+  const rows = await prisma.$queryRaw<{ date: string; bookings: bigint }[]>`
     SELECT to_char(b."startAt", 'YYYY-MM-DD') AS date,
-           COUNT(*) AS bookings,
-           COALESCE(SUM(s.price), 0)::float AS revenue
+           COUNT(*) AS bookings
     FROM "Booking" b
-    JOIN "Service" s ON s.id = b."serviceId"
     WHERE b."businessId" = ${businessId}
       AND b."startAt" >= ${since}
       AND b.status != 'CANCELLED'
     GROUP BY date
     ORDER BY date ASC
   `
-  return rows.map((r) => ({ date: r.date, bookings: Number(r.bookings), revenue: r.revenue }))
+  return rows.map((r) => ({ date: r.date, bookings: Number(r.bookings) }))
 }
 
 export async function getMonthlyStats(businessId: string, months = 12) {
@@ -32,19 +30,17 @@ export async function getMonthlyStats(businessId: string, months = 12) {
   const since = new Date()
   since.setMonth(since.getMonth() - m)
 
-  const rows = await prisma.$queryRaw<{ month: string; bookings: bigint; revenue: number }[]>`
+  const rows = await prisma.$queryRaw<{ month: string; bookings: bigint }[]>`
     SELECT to_char(b."startAt", 'YYYY-MM') AS month,
-           COUNT(*) AS bookings,
-           COALESCE(SUM(s.price), 0)::float AS revenue
+           COUNT(*) AS bookings
     FROM "Booking" b
-    JOIN "Service" s ON s.id = b."serviceId"
     WHERE b."businessId" = ${businessId}
       AND b."startAt" >= ${since}
       AND b.status != 'CANCELLED'
     GROUP BY month
     ORDER BY month ASC
   `
-  return rows.map((r) => ({ month: r.month, bookings: Number(r.bookings), revenue: r.revenue }))
+  return rows.map((r) => ({ month: r.month, bookings: Number(r.bookings) }))
 }
 
 const DOW_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
@@ -63,15 +59,11 @@ export async function getSummaryStats(businessId: string, from?: string, to?: st
   const cancelled = bookings.filter((b) => b.status === 'CANCELLED')
   const noShow = bookings.filter((b) => b.status === 'NO_SHOW')
 
-  const revenue = active.reduce((sum, b) => sum + Number(b.service.price ?? 0), 0)
-  const avgBookingValue = active.length > 0 ? revenue / active.length : 0
-
   // pe canal
-  const byChannelMap = new Map<string, { count: number; revenue: number }>()
+  const byChannelMap = new Map<string, { count: number }>()
   active.forEach((b) => {
-    const cur = byChannelMap.get(b.channel) ?? { count: 0, revenue: 0 }
+    const cur = byChannelMap.get(b.channel) ?? { count: 0 }
     cur.count += 1
-    cur.revenue += Number(b.service.price ?? 0)
     byChannelMap.set(b.channel, cur)
   })
   const byChannel = Array.from(byChannelMap.entries()).map(([channel, v]) => ({ channel, ...v }))
@@ -91,11 +83,10 @@ export async function getSummaryStats(businessId: string, from?: string, to?: st
   const peakDayOfWeek = byDayOfWeek.reduce((best, cur) => (cur.count > best.count ? cur : best), byDayOfWeek[0])
 
   // top servicii
-  const byServiceMap = new Map<string, { name: string; count: number; revenue: number }>()
+  const byServiceMap = new Map<string, { name: string; count: number }>()
   active.forEach((b) => {
-    const cur = byServiceMap.get(b.serviceId) ?? { name: b.service.name, count: 0, revenue: 0 }
+    const cur = byServiceMap.get(b.serviceId) ?? { name: b.service.name, count: 0 }
     cur.count += 1
-    cur.revenue += Number(b.service.price ?? 0)
     byServiceMap.set(b.serviceId, cur)
   })
   const topServices = Array.from(byServiceMap.values())
@@ -104,12 +95,11 @@ export async function getSummaryStats(businessId: string, from?: string, to?: st
 
   // pe medic/profesionist — util doar la afacerile cu echipă de mai multe persoane;
   // rezervările fără persoană asignată (gestiune unică) sunt ignorate aici
-  const byPractitionerMap = new Map<string, { name: string; count: number; revenue: number }>()
+  const byPractitionerMap = new Map<string, { name: string; count: number }>()
   active.forEach((b) => {
     if (!b.practitionerId || !b.practitioner) return
-    const cur = byPractitionerMap.get(b.practitionerId) ?? { name: b.practitioner.name, count: 0, revenue: 0 }
+    const cur = byPractitionerMap.get(b.practitionerId) ?? { name: b.practitioner.name, count: 0 }
     cur.count += 1
-    cur.revenue += Number(b.service.price ?? 0)
     byPractitionerMap.set(b.practitionerId, cur)
   })
   const byPractitioner = Array.from(byPractitionerMap.values()).sort((a, b) => b.count - a.count)
@@ -118,8 +108,6 @@ export async function getSummaryStats(businessId: string, from?: string, to?: st
     from: formatLocalDate(fromDate),
     to: formatLocalDate(toDate),
     totalBookings: active.length,
-    revenue,
-    avgBookingValue,
     cancelledCount: cancelled.length,
     cancellationRate: bookings.length > 0 ? cancelled.length / bookings.length : 0,
     noShowCount: noShow.length,
@@ -139,9 +127,6 @@ export type AdvancedPeriodStats = {
   days: AnalyticsPeriod
   totalBookings: number
   previousBookings: number
-  revenue: number
-  previousRevenue: number
-  avgBookingValue: number
   cancellationRate: number
   noShowRate: number
   completionRate: number
@@ -149,13 +134,13 @@ export type AdvancedPeriodStats = {
   uniqueCustomers: number
   newCustomers: number
   returningCustomers: number
-  daily: { date: string; bookings: number; revenue: number; cancelled: number }[]
+  daily: { date: string; bookings: number; cancelled: number }[]
   byStatus: { status: string; count: number }[]
-  byChannel: { name: string; count: number; revenue: number }[]
+  byChannel: { name: string; count: number }[]
   byHour: { hour: number; count: number }[]
   byDayOfWeek: { label: string; count: number }[]
-  topServices: { name: string; count: number; revenue: number }[]
-  byOperator: { name: string; count: number; revenue: number }[]
+  topServices: { name: string; count: number }[]
+  byOperator: { name: string; count: number }[]
 }
 
 function startOfLocalDay(date: Date) {
@@ -180,7 +165,7 @@ export async function getAdvancedStats(businessId: string) {
     prisma.booking.findMany({
       where: { businessId, startAt: { gte: since, lte: now } },
       include: {
-        service: { select: { name: true, price: true } },
+        service: { select: { name: true } },
         practitioner: { select: { name: true } },
         resource: { select: { name: true } },
         customer: { select: { createdAt: true } },
@@ -191,7 +176,7 @@ export async function getAdvancedStats(businessId: string) {
   ])
 
   const periods = [7, 30, 90, 365] as const
-  const result = {} as Record<AnalyticsPeriod, AdvancedPeriodStats & { bookingChange: number; revenueChange: number }>
+  const result = {} as Record<AnalyticsPeriod, AdvancedPeriodStats & { bookingChange: number }>
   const hourFormatter = new Intl.DateTimeFormat('ro-RO', { hour: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
   const weekdayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'Europe/Bucharest' })
   const weekdayIndex = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 } as Record<string, number>
@@ -212,45 +197,37 @@ export async function getAdvancedStats(businessId: string) {
     const previous = bookings.filter((booking) => booking.startAt >= previousFrom && booking.startAt < from)
     const active = current.filter((booking) => booking.status !== 'CANCELLED')
     const previousActive = previous.filter((booking) => booking.status !== 'CANCELLED')
-    const revenueOf = (items: typeof bookings) => items.reduce((sum, booking) => sum + Number(booking.service.price ?? 0), 0)
-    const revenue = revenueOf(active)
-    const previousRevenue = revenueOf(previousActive)
-
-    const dailyMap = new Map<string, { bookings: number; revenue: number; cancelled: number }>()
+    const dailyMap = new Map<string, { bookings: number; cancelled: number }>()
     for (let index = 0; index < days; index++) {
       const date = new Date(from)
       date.setDate(date.getDate() + index)
-      dailyMap.set(formatLocalDate(date), { bookings: 0, revenue: 0, cancelled: 0 })
+      dailyMap.set(formatLocalDate(date), { bookings: 0, cancelled: 0 })
     }
     current.forEach((booking) => {
       const key = formatLocalDate(booking.startAt)
       const row = dailyMap.get(key)
       if (!row) return
       if (booking.status === 'CANCELLED') row.cancelled += 1
-      else {
-        row.bookings += 1
-        row.revenue += Number(booking.service.price ?? 0)
-      }
+      else row.bookings += 1
     })
 
     const statusOrder = ['PENDING', 'CONFIRMED', 'COMPLETED', 'NO_SHOW', 'CANCELLED']
     const byStatus = statusOrder.map((status) => ({ status, count: current.filter((booking) => booking.status === status).length }))
-    const channelMap = new Map<string, { count: number; revenue: number }>()
-    const serviceMap = new Map<string, { count: number; revenue: number }>()
-    const operatorMap = new Map<string, { count: number; revenue: number }>()
+    const channelMap = new Map<string, { count: number }>()
+    const serviceMap = new Map<string, { count: number }>()
+    const operatorMap = new Map<string, { count: number }>()
     const byHour = Array.from({ length: 24 }, (_, hour) => ({ hour, count: 0 }))
     const byDayOfWeek = Array.from({ length: 7 }, (_, dow) => ({ label: DOW_LABELS[dow], count: 0 }))
 
     active.forEach((booking) => {
-      const value = Number(booking.service.price ?? 0)
-      const channel = channelMap.get(booking.channel) ?? { count: 0, revenue: 0 }
-      channel.count += 1; channel.revenue += value; channelMap.set(booking.channel, channel)
-      const service = serviceMap.get(booking.service.name) ?? { count: 0, revenue: 0 }
-      service.count += 1; service.revenue += value; serviceMap.set(booking.service.name, service)
+      const channel = channelMap.get(booking.channel) ?? { count: 0 }
+      channel.count += 1; channelMap.set(booking.channel, channel)
+      const service = serviceMap.get(booking.service.name) ?? { count: 0 }
+      service.count += 1; serviceMap.set(booking.service.name, service)
       const operatorName = booking.practitioner?.name ?? booking.resource?.name
       if (operatorName) {
-        const operator = operatorMap.get(operatorName) ?? { count: 0, revenue: 0 }
-        operator.count += 1; operator.revenue += value; operatorMap.set(operatorName, operator)
+        const operator = operatorMap.get(operatorName) ?? { count: 0 }
+        operator.count += 1; operatorMap.set(operatorName, operator)
       }
       const localTime = localTimeByBooking.get(booking.id)!
       byHour[localTime.hour].count += 1
@@ -277,10 +254,6 @@ export async function getAdvancedStats(businessId: string) {
       totalBookings: active.length,
       previousBookings: previousActive.length,
       bookingChange: percentChange(active.length, previousActive.length),
-      revenue,
-      previousRevenue,
-      revenueChange: percentChange(revenue, previousRevenue),
-      avgBookingValue: active.length ? revenue / active.length : 0,
       cancellationRate: current.length ? current.filter((booking) => booking.status === 'CANCELLED').length / current.length : 0,
       noShowRate: active.length ? current.filter((booking) => booking.status === 'NO_SHOW').length / active.length : 0,
       completionRate: active.length ? current.filter((booking) => booking.status === 'COMPLETED').length / active.length : 0,

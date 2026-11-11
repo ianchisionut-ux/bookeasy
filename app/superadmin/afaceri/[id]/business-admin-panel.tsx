@@ -29,7 +29,6 @@ type Business = {
   publicListed: boolean
   ownerEmail: string | null
   bookingsCount: number
-  revenue: number
   planName: string | null
   teamSize: number
   billingStatus: 'GRATUIT' | 'NEPLATIT' | 'PLATIT' | 'RESTANT'
@@ -248,7 +247,6 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
           </div>
           <div className="text-right text-sm">
             <p className="font-semibold">{business.bookingsCount} rezervări</p>
-            <p className="text-gray-500">{business.revenue.toLocaleString('ro-RO')} lei încasări est.</p>
           </div>
         </div>
 

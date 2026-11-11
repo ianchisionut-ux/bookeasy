@@ -11,7 +11,7 @@ import { ArrowDownRight, ArrowUpRight, CalendarDays, Download, Gauge, RefreshCw,
 import { bookingTerminology, isPatientCategory, offerLabel, practitionerLabel, type BusinessCategory } from '@/lib/business-categories'
 
 type Category = BusinessCategory
-type PeriodData = AdvancedPeriodStats & { bookingChange: number; revenueChange: number }
+type PeriodData = AdvancedPeriodStats & { bookingChange: number }
 type Analytics = { periods: Record<AnalyticsPeriod, PeriodData>; rating: number; reviewCount: number }
 
 const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
@@ -25,10 +25,6 @@ const STATUS_COLOR: Record<string, string> = {
 }
 const CHANNEL_LABEL: Record<string, string> = {
   WHATSAPP: 'WhatsApp', INSTAGRAM: 'Instagram', FACEBOOK: 'Facebook', GOOGLE_BUSINESS: 'Google', WEB: 'Site', MANUAL: 'Manual',
-}
-
-function money(value: number) {
-  return `${Math.round(value).toLocaleString('ro-RO')} lei`
 }
 
 function Delta({ value }: { value: number }) {
@@ -60,7 +56,6 @@ function KpiCard({ label, value, hint, delta, icon }: { label: string; value: st
 
 export default function StatisticiCharts({ analytics, category }: { analytics: Analytics; category: Category }) {
   const [period, setPeriod] = useState<AnalyticsPeriod>(30)
-  const [metric, setMetric] = useState<'bookings' | 'revenue'>('bookings')
   const data = analytics.periods[period]
   const isClinic = isPatientCategory(category)
   const isVenue = category === 'EVENT_VENUE'
@@ -81,7 +76,7 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
   }, [data, bookingLabel, category])
 
   function exportCsv() {
-    const rows = [['Data', bookingLabel, 'Venit', 'Anulate'], ...data.daily.map((row) => [row.date, row.bookings, row.revenue, row.cancelled])]
+    const rows = [['Data', bookingLabel, 'Anulate'], ...data.daily.map((row) => [row.date, row.bookings, row.cancelled])]
     const csv = rows.map((row) => row.join(',')).join('\n')
     const link = document.createElement('a')
     link.href = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }))
@@ -107,10 +102,8 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <KpiCard label={bookingLabel} value={String(data.totalBookings)} delta={data.bookingChange} hint="față de perioada anterioară" icon={<CalendarDays size={17} />} />
-        <KpiCard label="Venit estimat" value={money(data.revenue)} delta={data.revenueChange} hint="față de perioada anterioară" />
-        <KpiCard label="Valoare medie" value={money(data.avgBookingValue)} hint={`per ${bookingWords.singular}`} />
         <KpiCard label="Grad de ocupare" value={`${(data.utilizationRate * 100).toFixed(0)}%`} hint="din capacitatea disponibilă" icon={<Gauge size={17} />} />
         <KpiCard label={isClinic ? 'Pacienți unici' : 'Clienți unici'} value={String(data.uniqueCustomers)} hint={`${data.newCustomers} noi`} icon={<Users size={17} />} />
         <KpiCard label={isClinic ? 'Pacienți reveniți' : 'Clienți reveniți'} value={String(data.returningCustomers)} hint={data.uniqueCustomers ? `${((data.returningCustomers / data.uniqueCustomers) * 100).toFixed(0)}% din total` : 'fără date'} icon={<RefreshCw size={16} />} />
@@ -120,10 +113,6 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
         <Card>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div><h2 className="font-medium">Evoluție în timp</h2><p className="text-xs text-gray-500">Treci cu mouse-ul peste grafic pentru valori exacte.</p></div>
-            <div className="inline-flex rounded-lg bg-gray-100 p-1">
-              <button onClick={() => setMetric('bookings')} className={`px-2.5 py-1 rounded-md text-xs ${metric === 'bookings' ? 'bg-white shadow-sm font-medium' : 'text-gray-500'}`}>{bookingLabel}</button>
-              <button onClick={() => setMetric('revenue')} className={`px-2.5 py-1 rounded-md text-xs ${metric === 'revenue' ? 'bg-white shadow-sm font-medium' : 'text-gray-500'}`}>Venit</button>
-            </div>
           </div>
           <div className="h-72">
             <ResponsiveContainer>
@@ -131,9 +120,9 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
                 <defs><linearGradient id="statFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--accent)" stopOpacity={0.28}/><stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(value) => value.slice(5)} minTickGap={24} />
-                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} width={45} tickFormatter={(value) => metric === 'revenue' && value >= 1000 ? `${Math.round(value / 1000)}k` : value} />
-                <Tooltip formatter={(value) => metric === 'revenue' ? money(Number(value)) : [Number(value), bookingLabel]} labelFormatter={(value) => new Date(`${value}T12:00:00`).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Bucharest' })} />
-                <Area type="monotone" dataKey={metric} stroke="var(--accent)" strokeWidth={2.5} fill="url(#statFill)" activeDot={{ r: 5 }} />
+                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} width={45} />
+                <Tooltip formatter={(value) => [Number(value), bookingLabel]} labelFormatter={(value) => new Date(`${value}T12:00:00`).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Bucharest' })} />
+                <Area type="monotone" dataKey="bookings" stroke="var(--accent)" strokeWidth={2.5} fill="url(#statFill)" activeDot={{ r: 5 }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -185,9 +174,9 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
   )
 }
 
-function RankingCard({ title, rows, empty }: { title: string; rows: { name: string; count: number; revenue: number }[]; empty: string }) {
+function RankingCard({ title, rows, empty }: { title: string; rows: { name: string; count: number }[]; empty: string }) {
   const max = Math.max(1, ...rows.map((row) => row.count))
-  return <Card><h2 className="font-medium mb-3">{title}</h2>{rows.length ? <div className="space-y-3">{rows.map((row) => <div key={row.name}><div className="flex justify-between gap-3 text-xs mb-1"><span className="truncate text-gray-600">{row.name}</span><strong className="whitespace-nowrap">{row.count} · {money(row.revenue)}</strong></div><div className="h-1.5 rounded-full bg-gray-100 overflow-hidden"><div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${(row.count / max) * 100}%` }} /></div></div>)}</div> : <p className="text-sm text-gray-400">{empty}</p>}</Card>
+  return <Card><h2 className="font-medium mb-3">{title}</h2>{rows.length ? <div className="space-y-3">{rows.map((row) => <div key={row.name}><div className="flex justify-between gap-3 text-xs mb-1"><span className="truncate text-gray-600">{row.name}</span><strong className="whitespace-nowrap">{row.count}</strong></div><div className="h-1.5 rounded-full bg-gray-100 overflow-hidden"><div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${(row.count / max) * 100}%` }} /></div></div>)}</div> : <p className="text-sm text-gray-400">{empty}</p>}</Card>
 }
 
 function MetricRow({ label, value, good = false }: { label: string; value: number; good?: boolean }) {

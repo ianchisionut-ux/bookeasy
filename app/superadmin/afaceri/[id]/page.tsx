@@ -13,7 +13,7 @@ import { isPlatformSmsReady } from '@/lib/sms-routing'
 export default async function SuperAdminBusinessDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   await refreshLaunchIfDue(id)
-  const [business, revenueAgg, signatures, platformSmsReady] = await Promise.all([
+  const [business, signatures, platformSmsReady] = await Promise.all([
     prisma.business.findUnique({
       where: { id },
       include: {
@@ -27,16 +27,6 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
         _count: { select: { bookings: true } },
       },
     }),
-    // venit estimat brut (aproximativ — sumă preț servicii pentru rezervările CONFIRMED/COMPLETED)
-    // — independentă de "business", rulează în paralel; dacă afacerea nu există, pur și
-    // simplu ignorăm rezultatul mai jos (cost mic, câștig real în cazul normal, frecvent)
-    prisma.$queryRaw<Array<{ totalRevenue: unknown }>>`
-      SELECT COALESCE(SUM(service.price), 0) AS "totalRevenue"
-      FROM "Booking" booking
-      INNER JOIN "Service" service ON service.id = booking."serviceId"
-      WHERE booking."businessId" = ${id}
-        AND booking.status IN ('CONFIRMED', 'COMPLETED')
-    `,
     prisma.contractSignature.findMany({ where: { businessId: id }, orderBy: { customerSignedAt: 'desc' }, select: { id: true, type: true, documentHash: true, customerSignerName: true, customerSignedAt: true, providerSignedAt: true } }),
     isPlatformSmsReady(),
   ])
@@ -49,8 +39,6 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
   ])
   const campaignManaged = Boolean(enrollment && !enrollment.cancelledAt)
   const billingMode = campaignManaged ? 'CAMPAIGN' : business.billingStatus === 'GRATUIT' ? 'FREE' : 'PAID'
-
-  const totalRevenue = Number(revenueAgg[0]?.totalRevenue ?? 0)
 
   return (
     <div className="dashboard-page">
@@ -75,7 +63,6 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
           publicListed: business.publicListed,
           ownerEmail: business.users[0]?.email ?? null,
           bookingsCount: business._count.bookings,
-          revenue: totalRevenue,
           planName: business.planName,
           teamSize: business.teamSize,
           billingStatus: business.billingStatus,
