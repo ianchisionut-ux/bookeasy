@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 
 async function ownsLetter(letterId: string, businessId: string) {
   const l = await prisma.medicalLetter.findUnique({ where: { id: letterId } })

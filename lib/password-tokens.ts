@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import { prisma } from './prisma'
 import { Resend } from 'resend'
+import { buildOnboardingEmail } from './onboarding-email'
 
 let resendClient: Resend | null = null
 function getResend() {
@@ -43,41 +44,38 @@ export async function createPasswordToken(userId: string): Promise<string> {
 }
 
 export async function sendPasswordSetupEmail(email: string, businessName: string, token: string) {
-  const link = `${process.env.APP_URL}/reset-password?token=${token}`
+  const link = new URL('/reset-password', process.env.APP_URL || 'https://bookeasy.ro')
+  link.searchParams.set('token', token)
   if (!process.env.RESEND_API_KEY) {
     console.warn('RESEND_API_KEY lipsește — sar peste trimiterea email-ului de configurare cont.')
     return
   }
   await sendOrThrow({
     from: 'bookeasy.ro <noreply@bookeasy.ro>',
-    replyTo: 'nextlevel.zalau@gmail.com',
+    replyTo: 'contact@bookeasy.ro',
     to: email,
     subject: `Bun venit pe bookeasy.ro — configurează-ți contul pentru ${businessName}`,
-    html: `
-      <p>Salut,</p>
-      <p>Contul tău pentru <strong>${businessName}</strong> a fost creat pe bookeasy.ro.</p>
-      <p>Apasă pe linkul de mai jos ca să-ți setezi parola și să confirmi adresa de email:</p>
-      <p><a href="${link}">Setează-ți parola</a></p>
-      <p style="color:#888; font-size:13px;">Linkul expiră în 24 de ore.</p>
-    `,
+    ...buildOnboardingEmail(businessName, link.toString()),
   })
 }
 
-export async function sendPasswordResetEmail(email: string, token: string) {
-  const link = `${process.env.APP_URL}/reset-password?token=${token}`
+export async function sendPasswordResetEmail(email: string, token: string, accountType: 'customer' | 'business' = 'business') {
+  const link = new URL('/reset-password', process.env.APP_URL || 'https://bookeasy.ro')
+  link.searchParams.set('token', token)
+  link.searchParams.set('type', accountType)
   if (!process.env.RESEND_API_KEY) {
     console.warn('RESEND_API_KEY lipsește — sar peste trimiterea email-ului de resetare parolă.')
     return
   }
   await sendOrThrow({
     from: 'bookeasy.ro <noreply@bookeasy.ro>',
-    replyTo: 'nextlevel.zalau@gmail.com',
+    replyTo: 'contact@bookeasy.ro',
     to: email,
-    subject: 'Resetare parolă — bookeasy.ro',
+    subject: `Resetare parolă cont ${accountType === 'customer' ? 'Client' : 'Business'} — bookeasy.ro`,
     html: `
       <p>Salut,</p>
       <p>Ai cerut resetarea parolei pentru contul tău bookeasy.ro.</p>
-      <p><a href="${link}">Setează o parolă nouă</a></p>
+      <p><a href="${link.toString()}">Setează o parolă nouă</a></p>
       <p style="color:#888; font-size:13px;">Dacă nu ai cerut tu asta, ignoră acest email. Linkul expiră în 24 de ore.</p>
     `,
   })

@@ -1,5 +1,7 @@
 'use client'
 
+import BookingSmsHistory from '@/components/booking-sms-history'
+import { useSmsAllowances } from '@/components/use-sms-allowances'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
@@ -39,12 +41,6 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> 
   NO_SHOW: 'danger',
 }
 
-function reconfirmationChannelLabel(channel: string) {
-  if (channel === 'FACEBOOK') return 'Messenger'
-  if (channel === 'INSTAGRAM') return 'Instagram'
-  return 'WhatsApp'
-}
-
 function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: number; startTime: string; endTime: string }[], durationMinutes: number, stepMinutes: number) {
   if (!dateValue) return []
   const weekday = new Date(`${dateValue}T12:00:00`).getDay()
@@ -64,18 +60,22 @@ function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: num
 
 export default function BookingEditModal({
   booking,
+  smsAvailable,
   isAppointmentBased,
   onClose,
   workingHours,
   stepMinutes,
 }: {
   booking: BookingDetail
+  smsAvailable: boolean
   isAppointmentBased: boolean
   onClose: () => void
   workingHours: { weekday: number; startTime: string; endTime: string }[]
   stepMinutes: number
 }) {
   const router = useRouter()
+  const sms = useSmsAllowances([booking.id], smsAvailable)
+  const allowance = sms.allowances[booking.id]
   const [status, setStatus] = useState(booking.status)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -84,26 +84,49 @@ export default function BookingEditModal({
   const [patientPhone, setPatientPhone] = useState(booking.customerPhone)
   const [savingPatient, setSavingPatient] = useState(false)
   const [sendingConfirmation, setSendingConfirmation] = useState(false)
+  const [sendingReminder, setSendingReminder] = useState(false)
 
-  async function requestReconfirmation() {
+  async function requestReconfirmation(channel: 'SMS' | 'FACEBOOK' = 'SMS') {
     setSendingConfirmation(true)
     setError('')
     try {
       const res = await fetchWithTimeout(`/api/business/bookings/${booking.id}/send-confirmation-request`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setError(data.error ?? 'Nu am putut trimite cererea de reconfirmare.')
         return
       }
-      alert(`Cererea a fost trimisă pe ${reconfirmationChannelLabel(data.channel ?? booking.channel)}.`)
+      alert(channel === 'FACEBOOK' ? 'Cererea de reconfirmare a fost trimisă pe Messenger.' : data.message || 'SMS adăugat în coadă. Așteaptă preluarea de către telefonul gateway.')
       router.refresh()
       onClose()
     } catch {
       setError('Conexiune eșuată. Încearcă din nou.')
     } finally {
+      sms.refresh()
       setSendingConfirmation(false)
+    }
+  }
+
+  async function sendReminder() {
+    setSendingReminder(true)
+    setError('')
+    try {
+      const res = await fetchWithTimeout(`/api/business/bookings/${booking.id}/send-reminder`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(data.error ?? 'Nu am putut trimite reminderul SMS.')
+        return
+      }
+      alert(data.message || 'SMS adăugat în coadă. Așteaptă preluarea de către telefonul gateway.')
+    } catch {
+      setError('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      sms.refresh()
+      setSendingReminder(false)
     }
   }
 
@@ -255,7 +278,7 @@ export default function BookingEditModal({
         <div className="flex flex-col gap-3">
           <div>
             <label className="text-sm text-gray-500 block mb-1.5">Data și ora</label>
-            <div className="grid grid-cols-[1fr_120px] gap-2">
+            <div className="calendar-booking-datetime">
               <input
                 type="date"
                 value={selectedDate}
@@ -263,13 +286,13 @@ export default function BookingEditModal({
                   const nextTimes = buildWorkingTimeOptions(e.target.value, workingHours, durationMinutes, stepMinutes)
                   setStartAt(e.target.value && nextTimes[0] ? `${e.target.value}T${nextTimes[0]}` : e.target.value)
                 }}
-                className="input-field w-full"
+                className="input-field w-full min-w-0"
                 aria-label={`Data ${isAppointmentBased ? 'programării' : 'rezervării'}`}
               />
               <select
                 value={selectedTime}
                 onChange={(e) => setStartAt(selectedDate ? `${selectedDate}T${e.target.value}` : '')}
-                className="input-field w-full"
+                className="input-field w-full min-w-0"
                 aria-label={`Ora ${isAppointmentBased ? 'programării' : 'rezervării'} în format 24 de ore`}
               >
                 <option value="">Ora</option>
@@ -281,7 +304,7 @@ export default function BookingEditModal({
 
           <div>
             <label className="text-sm text-gray-500 block mb-1.5">Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="input-field w-full">
+            <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="input-field w-full min-w-0">
               {Object.entries(STATUS_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -293,21 +316,21 @@ export default function BookingEditModal({
 
         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
 
-        {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') &&
-          new Date(booking.startAt).getTime() > Date.now() &&
-          !booking.confirmationRequestSent && (
-            <button
-              onClick={requestReconfirmation}
-              disabled={sendingConfirmation || saving}
-              className="btn-secondary w-full mt-4"
-            >
-              {sendingConfirmation
-                ? 'Se trimite...'
-                : `Cere reconfirmare · ${reconfirmationChannelLabel(booking.channel)}`}
-            </button>
-          )}
+        {smsAvailable && <BookingSmsHistory allowance={allowance} />}
+        {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && new Date(booking.startAt).getTime() > Date.now() && (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">{smsAvailable && <p className="text-xs text-gray-500 sm:col-span-2">Pauză de 15 minute între solicitările SMS.</p>}
+            {booking.customerConfirmed !== true && (
+              <>{smsAvailable && (allowance?.reconfirmationsLeft ?? 0) > 0 && <button onClick={() => requestReconfirmation('SMS')} disabled={sendingConfirmation || sendingReminder || saving || !allowance?.canReconfirm} className="btn-secondary w-full disabled:cursor-not-allowed disabled:opacity-50">
+                {sendingConfirmation ? 'Se trimite...' : 'Reconfirmare SMS'}
+              </button>}<button type="button" onClick={() => requestReconfirmation('FACEBOOK')} disabled={sendingConfirmation || sendingReminder || saving} className="btn-secondary w-full disabled:cursor-not-allowed disabled:opacity-50">Cere reconfirmare pe Messenger</button></>
+            )}
+            {smsAvailable && (allowance?.remindersLeft ?? 0) > 0 && <button onClick={sendReminder} disabled={sendingReminder || sendingConfirmation || saving || !allowance?.canRemind} className="btn-secondary w-full disabled:cursor-not-allowed disabled:opacity-50">
+              {sendingReminder ? 'Se trimite...' : 'SMS reminder'}
+            </button>}
+          </div>
+        )}
 
-        <div className="flex justify-between mt-5">
+        <div className="calendar-booking-actions mt-5">
           <button onClick={cancelBooking} disabled={saving} className="text-sm text-red-600 font-medium">
             {isAppointmentBased ? 'Anulează programarea' : 'Anulează rezervarea'}
           </button>

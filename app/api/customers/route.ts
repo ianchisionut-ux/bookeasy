@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { z } from 'zod'
+import { canonicalCustomerPhone } from '@/lib/customer-phone'
+import { findCustomerByPhone } from '@/lib/customer-lookup'
 
 const schema = z.object({
   name: z.string().optional(),
-  phone: z.string().min(3),
+  phone: z.string().min(3).transform(canonicalCustomerPhone),
   email: z.string().email().optional().or(z.literal('')),
   dateOfBirth: z.string().optional(),
   allergies: z.string().optional(),
@@ -21,8 +23,9 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const existing = await prisma.customer.findFirst({ where: { businessId, phone: parsed.data.phone } })
+  const existing = await findCustomerByPhone(businessId, parsed.data.phone)
   if (existing) {
+    if (existing.archivedAt) return NextResponse.json({ error: 'Acest număr aparține unei fișe eliminate. Restaureaz-o din Arhivă.' }, { status: 409 })
     return NextResponse.json({ error: 'Există deja un client cu acest număr de telefon.' }, { status: 409 })
   }
 

@@ -1,22 +1,34 @@
 # BookEasy
 
-Aplicație Next.js pentru programări, rezervări, mesaje și facturi. Ținta de hosting este Vercel (Node.js), cu PostgreSQL în Neon și fișiere în Vercel Blob privat. Plățile online noi sunt dezactivate; facturile și statusul plăților se gestionează manual.
+Aplicație Next.js pentru programări, rezervări și administrarea afacerilor. Producția rulează în proiectul Vercel pmcustoms/bookeasy, cu PostgreSQL în Neon. Fișierele afacerilor folosesc stocarea R2, iar tutorialele folosesc Vercel Blob privat.
 
-## Dezvoltare locală
+## Dezvoltare și verificare
 
-```bash
-npm ci
-cp .env.example .env.local
-npx prisma generate
-npm run dev
-```
+Instalează dependențele cu npm ci, configurează mediul local după .env.example, generează clientul cu npx prisma generate și pornește aplicația cu npm run dev.
 
-Nu rula migrațiile automat la build. Aplică o migrare numai după verificarea bazei și a planului de rollback.
+- npm run test:core verifică anularea cererilor și webhook-ul Meta cu furnizori și bază de date simulate. Nu trimite mesaje și nu face cereri de rețea.
+- npm run test:ipay verifică regulile tranzacțiilor istorice BT iPay.
+- npm run build compilează proiectul și verifică tipurile. În mediul production, scripturile prepare din comanda build pregătesc idempotent schema. Verifică baza țintă și scripturile înainte de publicare. Nu șterge migrațiile sau istoricul pentru a reveni la o versiune anterioară.
 
-## Migrare Vercel
+Comenzile vechi de test pentru Fitness și campania de lansare nu sunt incluse în această copie a sursei publicate; nu sunt expuse ca scripturi npm funcționale.
 
-Pașii de configurare și verificare sunt în [VERCEL-MIGRATION.md](VERCEL-MIGRATION.md). `npm run build` produce build-ul Vercel. Proiectul existent este `pmcustoms/bookeasy`.
+## Fluxuri principale
 
-## Plăți
+- Conectare comună pentru clienți și administratori, cu direcționare după tipul contului.
+- Înrolare prin signup sau invitație trimisă explicit de Super Admin. Linkul invitației expiră după 24 de ore și se poate retrimite sau revoca. Invitația singură nu creează un cont și nu activează abonamentul.
+- În Super Admin, lista Afaceri include datele de contact, căutare, filtre, paginare și actualizare manuală. Codurile promoționale sunt administrate separat; oprirea înscrierilor nu modifică ofertele deja acordate.
+- Suportul tehnic folosește conversații cu notificări de necitit și șabloane editabile. Super Admin poate începe o conversație către o afacere aleasă.
+- Tutorialele sunt în Ghid de utilizare, cu notificări pentru materialele noi.
+- Hărțile încorporate folosesc OpenStreetMap; geocodarea folosește Geoapify.
+- Integrarea Facebook/Instagram este separată pentru fiecare afacere. Tokenurile sunt criptate. Utilizatorii trebuie să autorizeze activele profesionale potrivite.
+- Categoria FITNESS păstrează spațiul de coaching și PWA pentru clienții invitați. Accesul la date rămâne separat pe afaceri.
 
-Formularul public acceptă rezervări fără plată online. Rutele care inițiau checkout de avans, checkout BT iPay și configurarea procesatorilor răspund cu HTTP 410. Webhook-urile procesatorilor și finalizarea BT iPay rămân disponibile pentru tranzacțiile inițiate anterior dezactivării. Istoricul facturilor și marcarea manuală a plății rămân în dashboard.
+## Plăți și compatibilitate
+
+Rezervările noi nu inițiază plăți online. Rutele vechi de checkout răspund cu HTTP 410. Webhook-urile de plată și finalizarea BT iPay rămân pentru tranzacțiile istorice; nu le elimina doar pentru că nu au apeluri din interfață. Facturile și plățile se gestionează explicit în administrare.
+
+Abonamentul Standard este de 55 lei/lună. Codurile promoționale acordă lunile gratuite configurate, de la finalizarea înrolării. Ofertele vechi își păstrează condițiile salvate la înscriere. Campania nu debitează și nu emite automat facturi.
+
+## Utilitare operaționale
+
+lib/customer-merge.ts este folosit de scripts/merge-customers-release.ts și nu este cod mort. Scripturile de migrare și rutele pentru servicii externe nu sunt eliminate pe baza lipsei unei legături în navigare. cloudflare-worker.ts referă un fișier generat numai de build-ul Cloudflare; absența lui din sursa curată este normală.

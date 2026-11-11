@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const schema = z.object({ enabled: z.boolean() })
 
 export async function PATCH(request: NextRequest) {
-  const session = await auth()
+  const session = await auth('STANDARD')
   const businessId = (session as any)?.businessId
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 

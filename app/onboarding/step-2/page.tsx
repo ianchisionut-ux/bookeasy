@@ -37,14 +37,15 @@ export default function OnboardingStep2() {
       .map((h) => ({ weekday: h.weekday, startTime: h.startTime, endTime: h.endTime }))
 
     try {
-      await fetchWithTimeout('/api/onboarding', {
+      const response = await fetchWithTimeout('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ step: 2, data: { workingHours } }),
       })
+      if (!response.ok) { const result = await response.json(); throw new Error(typeof result.error === 'string' ? result.error : 'Programul nu a putut fi salvat.') }
       router.push('/onboarding/step-3')
-    } catch {
-      setError('Conexiune eșuată. Încearcă din nou.')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Conexiune eșuată. Încearcă din nou.')
       setLoading(false)
     }
   }

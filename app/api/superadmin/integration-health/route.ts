@@ -42,9 +42,12 @@ export async function GET(req: NextRequest) {
   const meta = []
   for (const channel of channels) {
     try {
-      const result = await request(`https://graph.facebook.com/v21.0/${encodeURIComponent(channel.externalId)}?fields=id`, { headers: { Authorization: `Bearer ${decrypt(channel.accessToken)}` } })
+      const url = channel.type === 'INSTAGRAM' && channel.authProvider === 'instagram'
+        ? 'https://graph.instagram.com/v26.0/me?fields=user_id,username'
+        : `https://graph.facebook.com/v21.0/${encodeURIComponent(channel.externalId)}?fields=id`
+      const result = await request(url, { headers: { Authorization: `Bearer ${decrypt(channel.accessToken)}` } })
       const data = await result.json() as { error?: { code?: number; error_subcode?: number } }
-      meta.push({ type: channel.type, status: result.ok ? 'access_ok' : 'access_failed', http: result.status, code: data.error?.code, subcode: data.error?.error_subcode })
+      meta.push({ type: channel.type, account: channel.displayName ?? channel.externalId, provider: channel.authProvider, enabledByOwner: channel.enabledByOwner, status: result.ok ? 'access_ok' : 'access_failed', http: result.status, code: data.error?.code, subcode: data.error?.error_subcode })
     } catch { meta.push({ type: channel.type, status: 'connection_or_decryption_failed' }) }
   }
   let email: Record<string, unknown> = { status: 'not_configured' }

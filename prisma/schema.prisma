@@ -12,7 +12,73 @@ datasource db {
 // Business & auth
 // ─────────────────────────────────────────────
 
+model FitnessMember {
+  id              String @id @default(cuid())
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId      String @unique
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  clientProfileId String?
+  clientProfile   ClientProfile? @relation(fields: [clientProfileId], references: [id], onDelete: SetNull)
+  goal            String @default("")
+  coachNotes      String @default("")
+  active          Boolean @default(true)
+  inviteHash      String? @unique
+  inviteExpiresAt DateTime?
+  createdAt       DateTime @default(now())
+  plans           FitnessPlan[]
+  tasks           FitnessTask[]
+  progress        FitnessProgress[]
+  @@index([businessId, active])
+  @@index([clientProfileId])
+}
+
+model FitnessPlan {
+  id        String @id @default(cuid())
+  memberId  String
+  member    FitnessMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  kind      String
+  title     String
+  details   String @db.Text
+  updatedAt DateTime @updatedAt
+  tasks     FitnessTask[]
+  @@index([memberId, kind])
+}
+
+model FitnessTask {
+  id          String @id @default(cuid())
+  memberId    String
+  member      FitnessMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  planId      String?
+  plan        FitnessPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  kind        String
+  title       String
+  details     String @default("") @db.Text
+  day         String
+  time        String
+  durationMin Int @default(45)
+  completed   Boolean @default(false)
+  feedback    String @default("")
+  videoRoom   String? @unique
+  version     Int @default(1)
+  updatedAt   DateTime @updatedAt
+  @@index([memberId, day])
+}
+
+model FitnessProgress {
+  id       String @id @default(cuid())
+  memberId String
+  member   FitnessMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  day      String
+  weightKg Float?
+  note     String @default("")
+  @@unique([memberId, day])
+}
+
 model Business {
+  billingModeChanges BillingModeChange[]
+  invitations        BusinessInvitation[]
+  slugAliases        BusinessSlugAlias[]
   id                 String       @id @default(cuid())
   name               String
   slug               String       @unique
@@ -41,7 +107,20 @@ model Business {
   timezone           String       @default("Europe/Bucharest")
   slotIntervalMinutes Int?        // null = automat, după durata fiecărui serviciu; altfel interval fix (10/15/30...)
   minLeadTimeMinutes  Int          @default(120) // rezervările/anulările din exterior (bot, site) nu se pot face mai aproape de această limită; admin-ul manual e scutit
-  reminderMinutesBefore Int        @default(1440) // cu cât timp înainte de programare trimitem reminder-ul + cererea de confirmare pe WhatsApp (implicit 24h)
+  reminderMinutesBefore Int        @default(1440) // cu cât timp înainte de programare trimitem reminder-ul + cererea de confirmare prin SMS (implicit 24h)
+  smsReconfirmationEnabled Boolean @default(true)
+  messengerReconfirmationEnabled Boolean @default(true)
+  smsGatewayApiUrl      String?
+  smsGatewayApiKey      String?
+  smsGatewayDeviceId    Int?
+  smsGatewayPhone       String?
+  smsGatewayEnabled     Boolean    @default(false)
+  smsGatewayTestedAt    DateTime?
+  smsGatewayLastError   String?
+  smsSenderMode         String     @default("CENTRAL")
+  smsGatewayMode        String     @default("EXTERNAL")
+  smsDeviceTokenHash    String?
+  smsDeviceLastSeenAt   DateTime?
   operatorSilenceMinutes Int       @default(30) // cât timp tace botul complet după ce clientul cere un operator, ca omul să poată prelua conversația fără suprapuneri
   botBookingEnabled      Boolean   @default(true) // dacă e oprit, opțiunea "Fă o programare" dispare din meniul de start al botului — rămân doar Operator și link spre site
   break1Start         String? // pauze zilnice (ex: masă) — aceleași ore în fiecare zi lucrătoare, nu se pot face programări
@@ -101,6 +180,7 @@ model Business {
   services           Service[]
   customers          Customer[]
   bookings           Booking[]
+  smsJobs            SmsJob[]
   googleCalendarConnections GoogleCalendarConnection[]
   waitlistEntries    WaitlistEntry[]
   supportTickets     SupportTicket[]
@@ -118,6 +198,12 @@ model Business {
   subscription       Subscription?
   missedMessageAlerts MissedMessageAlert[]
   contractSignatures ContractSignature[]
+  fitnessClients     FitnessMember[]
+  launchEnrollment   LaunchEnrollment?
+  guideSeen          GuideSeen?
+  @@index([createdAt, id])
+  @@index([onboardingDone, createdAt])
+  @@index([billingStatus, createdAt])
 }
 
 enum ContractDocumentType {
@@ -159,6 +245,77 @@ enum BillingStatus {
   RESTANT
 }
 
+model BillingModeChange {
+  id                        String   @id @default(cuid())
+  businessId                String
+  business                  Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  fromMode                  String
+  toMode                    String
+  fromCampaignId            String?
+  toCampaignId              String?
+  previousPlanName          String?
+  previousBillingStatus     BillingStatus
+  previousAmount            Decimal?
+  previousDueAt             DateTime?
+  previousInvoiceUrl        String?
+  previousInvoiceName       String?
+  previousInvoiceExternalId String?
+  changedAt                 DateTime @default(now())
+  @@index([businessId, changedAt])
+}
+
+model LaunchCampaign {
+  id             String @id
+  code           String? @unique
+  name           String @default("Campanie promoțională")
+  freeMonths     Int @default(2)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  enrollmentOpen Boolean @default(true)
+  updatedAt      DateTime @updatedAt
+  enrollments    LaunchEnrollment[]
+}
+
+model LaunchEnrollment {
+  id           String @id @default(cuid())
+  businessId   String @unique
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  campaignId   String
+  campaign     LaunchCampaign @relation(fields: [campaignId], references: [id])
+  acceptedAt   DateTime @default(now())
+  activatedAt  DateTime?
+  freeEndsAt   DateTime?
+  promoEndsAt  DateTime?
+  cancelledAt  DateTime?
+  billingCycle Int?
+  nextSyncAt   DateTime?
+  freeMonths   Int @default(2)
+  promoMonths  Int @default(0)
+  promoMinor   Int @default(0)
+  regularMinor Int @default(5500)
+  periods      LaunchBillingPeriod[]
+  @@index([cancelledAt, businessId])
+  @@index([cancelledAt, nextSyncAt])
+  @@index([cancelledAt, freeEndsAt])
+  @@index([cancelledAt, promoEndsAt])
+}
+
+model LaunchBillingPeriod {
+  id          String @id @default(cuid())
+  enrollmentId String
+  enrollment  LaunchEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  cycle       Int
+  startsAt    DateTime
+  endsAt      DateTime
+  amountMinor Int
+  paidAt      DateTime?
+  invoiceUrl  String?
+  invoiceName String?
+  invoiceExternalId String?
+  @@unique([enrollmentId, cycle])
+  @@index([enrollmentId, paidAt, startsAt])
+}
+
 enum PaymentProcessor {
   STRIPE
   NETOPIA
@@ -167,20 +324,63 @@ enum PaymentProcessor {
 
 enum BusinessType {
   SALON
+  COAFURA_FRIZERIE
+  BARBER_SHOP
+  COSMETICA
+  NAILS
+  LASHES
+  MAKE_UP
+  EPILARE
+  MASAJ
+  SPA_WELLNESS
+  FITNESS
+  NUTRITIE_WELLNESS
+  ESTETICA_REMODELARE
+  TATUAJE_PIERCING
+  MEDICAL_ESTETIC
+  SPORT_BAZE
+  MEDICAL
+  CURSURI
+  LOC_JOACA
+  ACCES_CLUB
+  STUDIO_BEAUTY
   EVENT_VENUE
   HOTEL
   PENSIUNE
   CLINICA
+  PSIHOLOGIE
+  KINETOTERAPIE
+  LOGOPEDIE
+  VETERINAR
+  GROOMING
+  AVOCATURA
+  MEDITATII
+  LIMBI_STRAINE
+  MUZICA
+  SERVICE_AUTO
+  DETAILING_AUTO
 }
 
 model User {
   id                  String                @id @default(cuid())
-  email               String                @unique
+  email               String
+  accountKind         String                @default("BUSINESS")
   password            String
+  emailVerificationRequired Boolean         @default(false)
+  emailVerifiedAt     DateTime?
   role                Role                  @default(OWNER)
   businessId          String?
   business            Business?             @relation(fields: [businessId], references: [id])
   passwordResetTokens PasswordResetToken[]
+
+  @@index([businessId])
+  @@unique([email, accountKind])
+}
+
+model BusinessSlugAlias {
+  slug       String   @id
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId])
 }
@@ -189,6 +389,19 @@ enum Role {
   OWNER
   STAFF
   SUPER_ADMIN
+  CUSTOMER
+}
+
+model ClientProfile {
+  id        String    @id @default(cuid())
+  ownerKey  String    @unique
+  firstName String    @default("")
+  lastName  String    @default("")
+  email     String
+  phone     String    @default("")
+  bookings  Booking[]
+  fitnessMemberships FitnessMember[]
+  updatedAt DateTime  @updatedAt
 }
 
 // ─────────────────────────────────────────────
@@ -255,18 +468,67 @@ model Customer {
   allergies        String?   // alergii cunoscute — câmp separat, vizibil clar pe fișă
   medicalNotes     String?   // istoric medical/notă liberă — vizibilă STRICT în dashboard-ul clinicii
   createdAt        DateTime @default(now())
+  archivedAt       DateTime?
   bookings         Booking[]
   waitlistEntries  WaitlistEntry[]
   medicalRecord    PatientMedicalRecord?
   documents        PatientDocument[]
   medicalLetters   MedicalLetter[]
+  fitnessMember    FitnessMember?
 
   @@unique([businessId, phone])
   @@unique([businessId, instagramUserId])
   @@unique([businessId, facebookUserId])
+  @@index([businessId, archivedAt])
+}
+
+// Private recovery snapshots for customer merges. Never exposed by public APIs.
+model CustomerMergeArchive {
+  id String @id @default(cuid())
+  businessId String
+  customerId String
+  snapshot Json
+  createdAt DateTime @default(now())
+  restoredAt DateTime?
+  @@index([businessId, createdAt])
+}
+
+model PlatformSmsGateway {
+  id String @id @default("central")
+  phone String?
+  enabled Boolean @default(false)
+  tokenHash String?
+  lastSeenAt DateTime?
+  lastError String?
+}
+
+model SmsJob {
+  bookingId String?
+  kind String @default("OTHER")
+  senderPhone String?
+  expiresAt DateTime?
+  senderKey String?
+  id             String    @id @default(cuid())
+  businessId     String
+  business       Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  recipient      String
+  message        String    @db.Text
+  idempotencyKey String
+  status         String    @default("PENDING")
+  createdAt      DateTime  @default(now())
+  dispatchedAt   DateTime?
+  sentAt         DateTime?
+  error          String?
+  @@unique([businessId, idempotencyKey])
+  @@index([businessId, status, createdAt])
+  @@index([senderKey, status, createdAt])
+  @@index([businessId, bookingId])
+  @@index([senderPhone, dispatchedAt])
 }
 
 model Booking {
+  contactName String?
+  contactEmail String?
   id              String        @id @default(cuid())
   businessId      String
   business        Business      @relation(fields: [businessId], references: [id])
@@ -298,6 +560,14 @@ model Booking {
   googleCalendarEventId String?
   googleCalendarSyncedAt DateTime?
   googleCalendarSyncError String?
+  arrivalTokenHash String?
+  arrivalCandidateAt DateTime?
+  arrivalLastSeenAt DateTime?
+  arrivalSamples Int @default(0)
+  arrivedAt DateTime?
+  reviewerGoogleSub String? // contul Google conectat când clientul a făcut rezervarea
+  clientProfileId String?
+  clientProfile ClientProfile? @relation(fields: [clientProfileId], references: [id])
   review          Review?
 
   // interogările reale (calendar, disponibilitate, reminder-e, statistici) filtrează
@@ -307,6 +577,9 @@ model Booking {
   @@index([businessId, status])
   @@index([businessId, confirmationSeenByAdmin])
   @@index([customerId])
+  @@index([reviewerGoogleSub, endAt])
+  @@index([clientProfileId, startAt])
+  @@index([businessId, arrivedAt])
   @@index([practitionerId])
 }
 
@@ -341,6 +614,8 @@ model Channel {
   externalId     String
   wabaId         String?       // doar pentru WHATSAPP — WhatsApp Business Account ID, diferit de phone_number_id
   accessToken    String
+  authProvider   String        @default("meta")
+  displayName    String?
   refreshToken   String?
   expiresAt      DateTime?
   status         ChannelStatus @default(ACTIVE)
@@ -375,7 +650,7 @@ model Conversation {
   externalUserId String
   state          Json
   needsOperator  Boolean  @default(false) // clientul a cerut un operator, așteaptă răspuns uman
-  operatorRequestedAt DateTime? // momentul exact al ultimei cereri de operator — inbox-ul arată mesajele doar de-atunci încolo, nu tot istoricul cu botul
+  operatorRequestedAt DateTime? // setat numai după apăsarea „Operator”; atunci inbox-ul dezvăluie întreg istoricul conversației
   updatedAt      DateTime @updatedAt
 
   @@index([businessId, needsOperator])
@@ -428,6 +703,7 @@ model Review {
   bookingId  String?  @unique
   booking    Booking? @relation(fields: [bookingId], references: [id])
   source     String   @default("bookeasy") // "bookeasy" = recenzie reală de la client, "google" = sincronizată din Google Business Profile
+  verifiedByGoogle Boolean @default(false) // recenzie BookEasy trimisă de contul Google care a făcut rezervarea
   externalReviewId String? // ID-ul recenziei la sursă (Google etc.) — evită duplicate la resincronizare
   authorName String
   rating     Int
@@ -677,6 +953,9 @@ model SupportTicket {
   reply      String? // răspunsul tău, vizibil apoi și adminului afacerii
   repliedAt  DateTime?
   createdAt  DateTime           @default(now())
+  businessUnread Boolean @default(false)
+  adminUnread Boolean @default(true)
+  chatMessages SupportChatMessage[]
 
   @@index([businessId])
 }
@@ -732,6 +1011,9 @@ model MissedMessageAlert {
 // multe ori. Fără această evidență, botul ar procesa un răspuns al clientului de 2+ ori,
 // avansând conversația greșit sau cerând din nou aceeași informație
 model ProcessedWebhookMessage {
+  status String @default("DONE")
+  leaseUntil DateTime?
+  claimToken String?
   id          String   @id // ID-ul mesajului dat de Meta — garantat unic per mesaj real
   processedAt DateTime @default(now())
 }
@@ -739,6 +1021,44 @@ model ProcessedWebhookMessage {
 // ─────────────────────────────────────────────
 // Billing
 // ─────────────────────────────────────────────
+
+model PlatformEmail {
+  id                String   @id @default(cuid())
+  providerEmailId   String   @unique
+  providerMessageId String?
+  direction         String
+  folder            String
+  fromAddress       String
+  toAddresses       Json
+  replyTo           String?
+  subject           String
+  bodyText          String   @default("")
+  bodyHtml          String?
+  isRead            Boolean  @default(false)
+  threadKey         String?
+  receivedAt        DateTime?
+  sentAt            DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  attachments       PlatformEmailAttachment[]
+
+  @@index([folder, receivedAt])
+  @@index([folder, sentAt])
+}
+
+model PlatformEmailAttachment {
+  id                   String   @id @default(cuid())
+  emailId              String
+  email                PlatformEmail @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  providerAttachmentId String
+  filename             String
+  contentType          String
+  contentId            String?
+  size                 Int?
+  storageKey           String?
+
+  @@unique([emailId, providerAttachmentId])
+}
 
 model Plan {
   id                  String   @id @default(cuid())
@@ -778,4 +1098,129 @@ enum SubscriptionStatus {
   PAST_DUE
   CANCELED
   UNPAID
+}
+
+model RateLimitBucket {
+  key String @id
+  count Int
+  resetAt DateTime
+  @@index([resetAt])
+}
+
+model PendingGoogleConnection {
+  id String @id @default(cuid())
+  businessId String
+  userId String
+  redirectTo String
+  locations Json
+  accessToken String
+  refreshToken String?
+  tokenExpiresAt DateTime
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+
+model NativeGoogleFlow {
+  id String @id
+  challenge String
+  expiresAt DateTime @db.Timestamptz(3)
+  payload Json? @db.JsonB
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([expiresAt])
+}
+
+model PendingMetaConnection {
+  id String @id @default(cuid())
+  businessId String
+  userId String
+  redirectTo String
+  payload String
+  expiresAt DateTime
+  claimedAt DateTime?
+  @@index([expiresAt])
+}
+
+// Minimal non-PII tombstones invalidate sessions issued before account deletion.
+model AccountRevocation {
+  ownerHash String @id
+  revokedAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model AccountDeletionChallenge {
+  tokenHash String @id
+  actorHash String
+  targetHash String
+  kind String
+  expiresAt DateTime @db.Timestamptz(3)
+  @@index([expiresAt])
+}
+
+// Encrypted contractual/financial evidence, never exposed by customer APIs.
+model ClosedBusinessRecord {
+  businessHash String @id
+  records Json @db.JsonB
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model AccountFileDeletion {
+  id String @id
+  url String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model UsageTutorial {
+ id String @id
+ title String
+ description String @default("")
+ videoUrl String
+ captionsUrl String?
+ posterUrl String?
+ duration String @default("")
+ published Boolean @default(false)
+ publishedAt DateTime @default(now()) @db.Timestamptz(3)
+}
+model GuideSeen {
+ businessId String @id
+ business Business @relation(fields:[businessId],references:[id],onDelete:Cascade)
+ seenAt DateTime @db.Timestamptz(3)
+}
+model SupportChatMessage {
+ id String @id
+ ticketId String
+ ticket SupportTicket @relation(fields:[ticketId],references:[id],onDelete:Cascade)
+ sender String
+ text String
+ requestId String
+ createdAt DateTime @default(now()) @db.Timestamptz(3)
+ @@unique([ticketId,requestId])
+ @@index([ticketId,createdAt])
+}
+
+model BusinessInvitation {
+ id String @id
+ email String @unique
+ name String @default("")
+ offeredPlan String @default("STANDARD")
+ promoCode String?
+ headerImageUrl String?
+ tokenHash String @unique
+ expiresAt DateTime
+ acceptedAt DateTime?
+ revokedAt DateTime?
+ businessId String?
+ business Business? @relation(fields:[businessId],references:[id],onDelete:Cascade)
+ sentAt DateTime?
+ attemptedAt DateTime @default(now())
+ lastError String?
+ createdAt DateTime @default(now())
+}
+
+// Anonymous daily counters; no email, IP, session ID, or individual visit is stored.
+model SignupFunnelDaily {
+ day DateTime @db.Date
+ promoCode String
+ utmCampaign String
+ step String
+ count Int @default(0)
+ @@id([day, promoCode, utmCampaign, step])
 }

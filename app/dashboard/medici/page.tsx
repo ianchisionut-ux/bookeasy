@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import PractitionersManager from './practitioners-manager'
+import { isAppointmentCategory, isPatientCategory, practitionerLabel } from '@/lib/business-categories'
 
 export default async function MediciPage() {
   const session = await auth()
@@ -9,9 +10,9 @@ export default async function MediciPage() {
   if (!businessId) redirect('/login')
 
   const business = await prisma.business.findUnique({ where: { id: businessId }, select: { teamSize: true, category: true } })
-  if (!business || business.teamSize <= 1) redirect('/dashboard')
+  if (!business || business.category === 'FITNESS' || business.teamSize <= 1) redirect('/dashboard')
 
-  const isClinic = business.category === 'CLINICA'
+  const staffLabel = practitionerLabel(business.category)
 
   const [practitioners, services] = await Promise.all([
     prisma.practitioner.findMany({
@@ -24,7 +25,9 @@ export default async function MediciPage() {
 
   return (
     <PractitionersManager
-      isClinic={isClinic}
+      staffLabel={staffLabel}
+      usesAppointments={isAppointmentCategory(business.category)}
+      usesPatientProfile={isPatientCategory(business.category)}
       practitioners={practitioners.map((p) => ({
         id: p.id,
         name: p.name,

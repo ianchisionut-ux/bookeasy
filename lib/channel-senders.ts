@@ -1,6 +1,12 @@
 import { prisma } from './prisma'
 import { decrypt } from './crypto'
 
+function messagingUrl(c: { type: string; authProvider: string; externalId: string }) {
+  return c.type === 'INSTAGRAM' && c.authProvider === 'instagram'
+    ? `https://graph.instagram.com/v26.0/${encodeURIComponent(c.externalId)}/messages`
+    : 'https://graph.facebook.com/v21.0/me/messages'
+}
+
 type Channel = 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
 
 // WhatsApp cere formatul internațional complet, fără 0 la început, fără "+", fără
@@ -43,7 +49,7 @@ export async function sendMessage({
   text: string
 }) {
   const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
-  if (!channelRecord) throw new Error('Channel not found')
+  if (!channelRecord || !['ACTIVE', 'EXPIRING_SOON'].includes(channelRecord.status)) throw new Error('Canalul necesită reconectare.')
   const accessToken = decrypt(channelRecord.accessToken)
 
   if (channel === 'WHATSAPP') {
@@ -55,10 +61,9 @@ export async function sendMessage({
     return
   }
 
-  // Instagram și Facebook Messenger folosesc același Send API
-  await metaFetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
+  await metaFetch(messagingUrl(channelRecord), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ recipient: { id: to }, message: { text } }),
   })
 }
@@ -77,7 +82,7 @@ export async function sendWhatsAppButtons({
   options: { id: string; title: string; url?: string }[]
 }) {
   const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
-  if (!channelRecord) throw new Error('Channel not found')
+  if (!channelRecord || !['ACTIVE', 'EXPIRING_SOON'].includes(channelRecord.status)) throw new Error('Canalul necesită reconectare.')
   const accessToken = decrypt(channelRecord.accessToken)
 
   await metaFetch(`https://graph.facebook.com/v21.0/${channelRecord.externalId}/messages`, {
@@ -113,12 +118,12 @@ export async function sendMessengerButtons({
   options: { id: string; title: string; url?: string }[]
 }) {
   const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
-  if (!channelRecord) throw new Error('Channel not found')
+  if (!channelRecord || !['ACTIVE', 'EXPIRING_SOON'].includes(channelRecord.status)) throw new Error('Canalul necesită reconectare.')
   const accessToken = decrypt(channelRecord.accessToken)
 
-  await metaFetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
+  await metaFetch(messagingUrl(channelRecord), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       recipient: { id: to },
       message: {
@@ -165,7 +170,7 @@ export async function sendWhatsAppList({
   groups: ChoiceGroup[]
 }) {
   const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
-  if (!channelRecord) throw new Error('Channel not found')
+  if (!channelRecord || !['ACTIVE', 'EXPIRING_SOON'].includes(channelRecord.status)) throw new Error('Canalul necesită reconectare.')
   const accessToken = decrypt(channelRecord.accessToken)
 
   const sections = groups.map((g) => ({
@@ -206,7 +211,7 @@ export async function sendMessengerCarousel({
   cards: { id: string; title: string; subtitle?: string; buttonLabel: string }[]
 }) {
   const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
-  if (!channelRecord) throw new Error('Channel not found')
+  if (!channelRecord || !['ACTIVE', 'EXPIRING_SOON'].includes(channelRecord.status)) throw new Error('Canalul necesită reconectare.')
   const accessToken = decrypt(channelRecord.accessToken)
 
   const elements = cards.slice(0, 10).map((c) => ({
@@ -215,9 +220,9 @@ export async function sendMessengerCarousel({
     buttons: [{ type: 'postback', title: c.buttonLabel.slice(0, 20), payload: c.id }],
   }))
 
-  await metaFetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${accessToken}`, {
+  await metaFetch(messagingUrl(channelRecord), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       recipient: { id: to },
       message: { attachment: { type: 'template', payload: { template_type: 'generic', elements } } },

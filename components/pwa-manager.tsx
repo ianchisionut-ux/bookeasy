@@ -2,9 +2,9 @@
 
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Download, Share, WifiOff, X } from 'lucide-react'
-import { CLIENT_INSTALL_DISMISSED_KEY, CLIENT_INSTALLED_KEY, isStandaloneApp } from '@/lib/client-pwa'
+import { claimInstallSuggestion, dismissInstallSuggestion, installWasDismissed, INSTALL_PREFERENCE_EVENT, markAppInstalled, isStandaloneApp } from '@/lib/client-pwa'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
@@ -17,6 +17,7 @@ function isStandaloneAppSafe() {
 
 export default function PwaManager() {
   const pathname = usePathname()
+  const previousPath = useRef(pathname)
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [iosInstallable, setIosInstallable] = useState(false)
   const [online, setOnline] = useState(true)
@@ -24,12 +25,19 @@ export default function PwaManager() {
   const [manualInstall, setManualInstall] = useState(false)
 
   useEffect(() => {
+    if (previousPath.current === pathname) return
+    previousPath.current = pathname
+    setManualInstall(false)
+    setDismissed(true)
+  }, [pathname])
+
+  useEffect(() => {
     setOnline(navigator.onLine)
     const standalone = isStandaloneApp()
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
-    const wasDismissed = sessionStorage.getItem('bookeasy-install-dismissed') === '1'
+    const wasDismissed = installWasDismissed()
     setIosInstallable(ios && !standalone)
-    setDismissed(wasDismissed)
+    if (wasDismissed) setDismissed(true)
 
     if ('serviceWorker' in navigator) {
       const register = () => navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
@@ -46,9 +54,7 @@ export default function PwaManager() {
     }
 
     const onAppInstalled = () => {
-      if (/^\/(descopera|harta)(\/|$)/.test(window.location.pathname)) {
-        try { localStorage.setItem(CLIENT_INSTALLED_KEY, '1') } catch { /* Storage may be disabled. */ }
-      }
+      markAppInstalled()
       setInstallPrompt(null)
       setManualInstall(false)
       setDismissed(true)
@@ -57,8 +63,10 @@ export default function PwaManager() {
     const onInstall = (event: Event) => {
       event.preventDefault()
       setInstallPrompt(event as BeforeInstallPromptEvent)
-      setDismissed(sessionStorage.getItem('bookeasy-install-dismissed') === '1')
     }
+    const hideSuggestion = () => { setDismissed(true); setManualInstall(false) }
+    window.addEventListener(INSTALL_PREFERENCE_EVENT, hideSuggestion)
+    window.addEventListener('storage', hideSuggestion)
     const onOnline = () => setOnline(true)
     const onOffline = () => setOnline(false)
     window.addEventListener('beforeinstallprompt', onInstall)
@@ -66,6 +74,8 @@ export default function PwaManager() {
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
     return () => {
+      window.removeEventListener(INSTALL_PREFERENCE_EVENT, hideSuggestion)
+      window.removeEventListener('storage', hideSuggestion)
       window.removeEventListener('beforeinstallprompt', onInstall)
       window.removeEventListener('appinstalled', onAppInstalled)
       window.removeEventListener('online', onOnline)
@@ -91,15 +101,18 @@ export default function PwaManager() {
   }
 
   function dismiss() {
-    if (isClientPage) {
-      try { localStorage.setItem(CLIENT_INSTALL_DISMISSED_KEY, '1') } catch { /* Storage may be disabled. */ }
-    } else {
-      sessionStorage.setItem('bookeasy-install-dismissed', '1')
-    }
+    dismissInstallSuggestion()
+    setManualInstall(false)
     setDismissed(true)
   }
 
-  const isClientPage = /^\/(descopera|harta)(\/|$)/.test(pathname) || /^\/[^/]+\/(rezerva|recenzie)(\/|$)/.test(pathname)
+  const isClientPage = /^\/(descopera|harta|fitness|cont)(\/|$)/.test(pathname) || /^\/[^/]+\/(rezerva|recenzie)(\/|$)/.test(pathname)
+  useEffect(() => {
+    if (!isClientPage && online && (installPrompt || iosInstallable) && claimInstallSuggestion()) {
+      setDismissed(false)
+    }
+  }, [isClientPage, online, installPrompt, iosInstallable])
+
   const showInstallCard = online && !dismissed && !isStandaloneAppSafe() && (isClientPage ? manualInstall : Boolean(installPrompt || iosInstallable || manualInstall))
 
   return (

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { deleteR2File } from '@/lib/r2-storage'
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

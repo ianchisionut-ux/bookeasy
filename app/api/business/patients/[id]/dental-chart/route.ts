@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { z } from 'zod'
 
 const toothStatus = z.enum(['HEALTHY', 'WATCH', 'CARIES', 'FILLED', 'CROWN', 'ROOT_CANAL', 'IMPLANT', 'MISSING'])

@@ -8,8 +8,9 @@ import {
   CartesianGrid, PieChart, Pie, Cell,
 } from 'recharts'
 import { ArrowDownRight, ArrowUpRight, CalendarDays, Download, Gauge, RefreshCw, Users } from 'lucide-react'
+import { bookingTerminology, isPatientCategory, offerLabel, practitionerLabel, type BusinessCategory } from '@/lib/business-categories'
 
-type Category = 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+type Category = BusinessCategory
 type PeriodData = AdvancedPeriodStats & { bookingChange: number; revenueChange: number }
 type Analytics = { periods: Record<AnalyticsPeriod, PeriodData>; rating: number; reviewCount: number }
 
@@ -61,11 +62,11 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
   const [period, setPeriod] = useState<AnalyticsPeriod>(30)
   const [metric, setMetric] = useState<'bookings' | 'revenue'>('bookings')
   const data = analytics.periods[period]
-  const isClinic = category === 'CLINICA'
+  const isClinic = isPatientCategory(category)
   const isVenue = category === 'EVENT_VENUE'
-  const isAppointmentBased = category === 'SALON' || category === 'CLINICA'
-  const bookingLabel = isAppointmentBased ? 'Programări' : 'Rezervări'
-  const operatorLabel = isVenue ? 'Performanță pe sală' : isClinic ? 'Performanță pe medic' : 'Performanță pe membru'
+  const bookingWords = bookingTerminology(category)
+  const bookingLabel = bookingWords.heading
+  const operatorLabel = isVenue ? 'Performanță pe sală' : `Performanță pe ${practitionerLabel(category).singular}`
   const statusData = data.byStatus.filter((item) => item.count > 0)
 
   const insights = useMemo(() => {
@@ -74,10 +75,10 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
     const topChannel = data.byChannel[0]
     return [
       peakDay?.count ? `${peakDay.label} este cea mai solicitată zi, cu ${peakDay.count} ${bookingLabel.toLowerCase()}.` : 'Nu sunt încă suficiente date pentru ziua de vârf.',
-      peakHour?.count ? `Intervalul de vârf începe la ${String(peakHour.hour).padStart(2, '0')}:00.` : 'Ora de vârf va apărea după primele rezervări.',
+      peakHour?.count ? `Intervalul de vârf începe la ${String(peakHour.hour).padStart(2, '0')}:00.` : `Ora de vârf va apărea după primele ${bookingTerminology(category).plural}.`,
       topChannel ? `${CHANNEL_LABEL[topChannel.name] ?? topChannel.name} aduce cele mai multe solicitări (${topChannel.count}).` : 'Canalele de achiziție vor fi comparate automat.',
     ]
-  }, [data, bookingLabel])
+  }, [data, bookingLabel, category])
 
   function exportCsv() {
     const rows = [['Data', bookingLabel, 'Venit', 'Anulate'], ...data.daily.map((row) => [row.date, row.bookings, row.revenue, row.cancelled])]
@@ -109,7 +110,7 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
         <KpiCard label={bookingLabel} value={String(data.totalBookings)} delta={data.bookingChange} hint="față de perioada anterioară" icon={<CalendarDays size={17} />} />
         <KpiCard label="Venit estimat" value={money(data.revenue)} delta={data.revenueChange} hint="față de perioada anterioară" />
-        <KpiCard label="Valoare medie" value={money(data.avgBookingValue)} hint={`per ${isAppointmentBased ? 'programare' : 'rezervare'}`} />
+        <KpiCard label="Valoare medie" value={money(data.avgBookingValue)} hint={`per ${bookingWords.singular}`} />
         <KpiCard label="Grad de ocupare" value={`${(data.utilizationRate * 100).toFixed(0)}%`} hint="din capacitatea disponibilă" icon={<Gauge size={17} />} />
         <KpiCard label={isClinic ? 'Pacienți unici' : 'Clienți unici'} value={String(data.uniqueCustomers)} hint={`${data.newCustomers} noi`} icon={<Users size={17} />} />
         <KpiCard label={isClinic ? 'Pacienți reveniți' : 'Clienți reveniți'} value={String(data.returningCustomers)} hint={data.uniqueCustomers ? `${((data.returningCustomers / data.uniqueCustomers) * 100).toFixed(0)}% din total` : 'fără date'} icon={<RefreshCw size={16} />} />
@@ -162,7 +163,7 @@ export default function StatisticiCharts({ analytics, category }: { analytics: A
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
-        <RankingCard title="Top servicii" rows={data.topServices} empty="Serviciile vor apărea după primele rezervări." />
+        <RankingCard title={`Top ${offerLabel(category).plural}`} rows={data.topServices} empty={`${offerLabel(category).heading} vor apărea după primele ${bookingWords.plural}.`} />
         <RankingCard title="Canale de achiziție" rows={data.byChannel.map((row) => ({ ...row, name: CHANNEL_LABEL[row.name] ?? row.name }))} empty="Fără date pe canale." />
         <RankingCard title={operatorLabel} rows={data.byOperator} empty={isVenue ? 'Sălile rezervate vor apărea aici.' : 'Disponibil pentru profilurile cu echipă.'} />
       </div>

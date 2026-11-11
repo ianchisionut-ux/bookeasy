@@ -36,7 +36,7 @@ export default async function RecenziiPage() {
         comment: r.comment,
         reply: r.reply,
         createdAt: r.createdAt.toISOString(),
-        verified: r.source === 'bookeasy' && r.bookingId !== null,
+        verified: r.verifiedByGoogle,
         source: r.source,
       }))}
     />

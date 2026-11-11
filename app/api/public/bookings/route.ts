@@ -1,5 +1,7 @@
+import { isBookingConflict } from '@/lib/booking-conflict'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
 import {
   getDaySlotsWithStatus,
   getPractitionerDaySlotsWithStatus,
@@ -15,6 +17,11 @@ import { getNextSequenceNumber } from '@/lib/booking-number'
 import { syncBookingToGoogle } from '@/lib/google-calendar'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { z } from 'zod'
+import { clientIdentity, saveBookingClientProfile } from '@/lib/client-profile'
+import { canonicalCustomerPhone } from '@/lib/customer-phone'
+import { findCustomerByPhone } from '@/lib/customer-lookup'
+import { createHash, randomBytes } from 'node:crypto'
+import { createBookingWalletLink } from '@/lib/google-wallet'
 
 const schema = z.object({
   businessId: z.string(),
@@ -23,26 +30,28 @@ const schema = z.object({
   resourceId: z.string().optional(),
   durationMinutes: z.number().int().min(60).max(720).optional(),
   startAt: z.string(),
-  customerName: z.string().min(1),
-  customerPhone: z.string().min(6),
+  customerName: z.string().trim().min(1).max(181),
+  customerPhone: z.string().trim().max(30).refine((value) => /^\d{7,15}$/.test(value.replace(/[^\d]/g, ''))).transform(canonicalCustomerPhone),
+  customerEmail: z.string().trim().email().max(254).optional(),
   paymentMethod: z.enum(['CASH', 'ONLINE']).optional(),
 })
 
 export async function POST(req: NextRequest) {
+  try {
   const ip = getClientIp(req)
-  const { allowed } = rateLimit(`public-booking:${ip}`, 5, 10 * 60 * 1000) // 5 rezervări / 10 min / IP
+  const { allowed } = await rateLimit(`public-booking:${ip}`, 5, 10 * 60 * 1000) // 5 rezervări / 10 min / IP
   if (!allowed) {
     return NextResponse.json({ error: 'Prea multe încercări. Așteaptă câteva minute și încearcă din nou.' }, { status: 429 })
   }
 
-  const body = await req.json()
+  const body = await req.json().catch(() => null)
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Date invalide, verifică formularul.' }, { status: 400 })
 
   const { businessId, serviceId, practitionerId, resourceId: requestedResourceId, customerName, customerPhone, paymentMethod } = parsed.data
   if (paymentMethod === 'ONLINE') return NextResponse.json({ error: 'Plata online este dezactivată. Fă rezervarea fără plată online.' }, { status: 410 })
 
-  const business = await prisma.business.findUnique({ where: { id: businessId } })
+  const business = await prisma.business.findUnique({ where: { id: businessId }, include: { launchEnrollment: { select: { cancelledAt: true } } } })
   if (!business || !business.publicListed || !business.accountActive) {
     return NextResponse.json({ error: 'Afacerea nu este disponibilă pentru rezervări.' }, { status: 404 })
   }
@@ -55,7 +64,7 @@ export async function POST(req: NextRequest) {
   if (practitionerId) {
     const practitioner = await prisma.practitioner.findUnique({ where: { id: practitionerId } })
     if (!practitioner || practitioner.businessId !== businessId || !practitioner.active) {
-      return NextResponse.json({ error: 'Medicul ales nu mai este disponibil.' }, { status: 404 })
+      return NextResponse.json({ error: 'Persoana aleasă nu mai este disponibilă.' }, { status: 404 })
     }
   }
 
@@ -140,18 +149,32 @@ export async function POST(req: NextRequest) {
 
   // clientul de pe web e identificat după telefon, la fel ca pe WhatsApp — dacă a mai
   // rezervat vreodată (indiferent de canal), îl recunoaștem pe același număr
+  const session = await auth()
+  const identity = clientIdentity(session)
+  const customerEmail = identity?.email ?? parsed.data.customerEmail
+  const profile = identity ? await saveBookingClientProfile(identity, customerName, customerPhone) : null
+  const existingCustomer = await findCustomerByPhone(businessId, customerPhone)
   const customer = await prisma.customer.upsert({
-    where: { businessId_phone: { businessId, phone: customerPhone } },
-    create: { businessId, name: customerName, phone: customerPhone },
-    update: { name: customerName },
+    where: existingCustomer ? { id: existingCustomer.id } : { businessId_phone: { businessId, phone: customerPhone } },
+    create: { businessId, name: customerName, phone: customerPhone, email: customerEmail },
+    update: { archivedAt: null }, // O rezervare nouă readuce fișa în lista activă fără a schimba datele existente.
   })
 
   const sequenceNumber = await getNextSequenceNumber(businessId, startAt)
+  const reviewerGoogleSub = (session as any)?.role === 'CUSTOMER' && typeof (session as any)?.googleSub === 'string'
+    ? (session as any).googleSub as string
+    : null
+  const arrivalToken = randomBytes(32).toString('hex')
 
   const booking = await prisma.booking.create({
     data: {
       businessId,
       customerId: customer.id,
+      contactName: customerName,
+      contactEmail: customerEmail ?? null,
+      clientProfileId: profile?.id ?? null,
+      reviewerGoogleSub,
+      arrivalTokenHash: createHash('sha256').update(arrivalToken).digest('hex'),
       serviceId,
       resourceId,
       practitionerId: practitionerId ?? null,
@@ -165,6 +188,23 @@ export async function POST(req: NextRequest) {
   })
   await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync public booking:', error))
 
-  return NextResponse.json({ bookingId: booking.id })
-}
+  let walletUrl: string | null = null
+  try {
+    walletUrl = await createBookingWalletLink({ id: booking.id, startAt: booking.startAt, endAt: booking.endAt, serviceName: service.name, business }, req.nextUrl.origin)
+  } catch (error) {
+    console.error('[google-wallet] unable to prepare booking pass:', error)
+  }
 
+
+  return NextResponse.json({
+    bookingId: booking.id,
+    walletUrl,
+    arrival: business.latitude !== null && business.longitude !== null
+      ? { token: arrivalToken, startAt: booking.startAt.toISOString() }
+      : null,
+  }, { headers: { 'Cache-Control': 'private, no-store' } })
+  } catch (error) {
+    if (isBookingConflict(error)) return NextResponse.json({ error: 'Intervalul tocmai a fost ocupat. Alege altă oră.' }, { status: 409 })
+    throw error
+  }
+}

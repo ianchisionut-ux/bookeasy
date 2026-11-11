@@ -19,12 +19,18 @@ import {
   Building2,
   Inbox,
   LifeBuoy,
+  Mail,
+  Dumbbell,
+  BookOpen,
+  CreditCard,
 } from 'lucide-react'
 import { SidebarClock } from './sidebar-clock'
 import { CookiePreferencesButton } from './cookie-preferences-button'
+import type { BusinessPlan } from '@/lib/business-plans'
 
 const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   calendar: Calendar,
+  fitness: Dumbbell,
   mesaje: MessagesSquare,
   programari: ClipboardList,
   clienti: Users,
@@ -38,6 +44,11 @@ const NAV_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   afaceri: Building2,
   cereri: Inbox,
   tichete: LifeBuoy,
+  email: Mail,
+  ghid: BookOpen,
+  planuri: BarChart3,
+  marketing: MessagesSquare,
+  wallet: CreditCard,
 }
 
 // amestecă o culoare hex cu alb, la un procent dat — produce o culoare SOLIDĂ (nu transparentă).
@@ -58,20 +69,29 @@ export function ResponsiveShell({
   logoLabel,
   profileName,
   navItems,
+  currentPlan,
   accentColor,
   accountContent,
   children,
   enableLiveBadges = false,
+  notificationScope = 'business',
 }: {
   logoHref: string
   logoLabel: string
   profileName?: string // numele afacerii/profilului, afișat sus, deasupra ceasului
-  navItems: { href: string; label: string; badge?: number; icon?: string }[]
+  navItems: { href: string; label: string; badge?: number; icon?: string; lockedTo?: BusinessPlan }[]
+  currentPlan?: BusinessPlan
   accentColor?: string // culoarea aleasă de business în Setări — dacă lipsește, folosim culoarea implicită bookeasy
   accountContent: React.ReactNode // blocul de cont/ieșire — separat, ca să nu intre în carusel
   children: React.ReactNode
   enableLiveBadges?: boolean // interoghează periodic numărul de notificări, ca badge-urile să se actualizeze fără reîncărcare de pagină
+  notificationScope?: 'business' | 'superadmin'
 }) {
+  const [nativeIos, setNativeIos] = useState(false)
+  useEffect(() => {
+    const cap = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string } }).Capacitor
+    setNativeIos(Boolean(cap?.isNativePlatform?.() && cap?.getPlatform?.() === 'ios'))
+  }, [])
   const [accountOpen, setAccountOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -83,6 +103,7 @@ export function ResponsiveShell({
   // le suprascriem periodic — altfel notificările rămân "înghețate" până la un refresh manual
   const initialCounts = Object.fromEntries(navItems.map((i) => [i.href, i.badge])) as Record<string, number | undefined>
   const [liveBadges, setLiveBadges] = useState<Record<string, number | undefined>>(initialCounts)
+  const [supportUnread,setSupportUnread] = useState(0)
 
   useEffect(() => {
     if (!enableLiveBadges) return
@@ -90,13 +111,16 @@ export function ResponsiveShell({
     async function poll() {
       if (document.visibilityState !== 'visible') return
       try {
-        const res = await fetch('/api/business/notification-counts')
+        const res = await fetch(notificationScope === 'business' ? '/api/business/notification-counts' : '/api/superadmin/help-chat/notifications')
         if (!res.ok) return
         const data = await res.json()
         if (cancelled) return
-        setLiveBadges({
+        setSupportUnread(data.supportUnread ?? 0)
+        window.dispatchEvent(new CustomEvent('bookeasy-notification-counts',{detail:data}))
+        setLiveBadges(previous => notificationScope === 'superadmin' ? {...previous,'/superadmin/tichete':data.supportUnread||undefined} : {
           '/dashboard/mesaje': data.needsOperatorCount > 0 ? data.needsOperatorCount : undefined,
           '/dashboard/programari': data.unseenConfirmationsCount > 0 ? data.unseenConfirmationsCount : undefined,
+          '/dashboard/ghid-utilizare': data.guideUnread > 0 ? data.guideUnread : undefined,
         })
       } catch {
         // eșec silențios — reîncercăm la următorul interval
@@ -104,11 +128,13 @@ export function ResponsiveShell({
     }
     poll()
     const timer = setInterval(poll, 30000)
+    window.addEventListener('bookeasy-support-changed',poll)
     return () => {
       cancelled = true
       clearInterval(timer)
+      window.removeEventListener('bookeasy-support-changed',poll)
     }
-  }, [enableLiveBadges])
+  }, [enableLiveBadges,notificationScope])
 
   const displayNavItems = enableLiveBadges
     ? navItems.map((item) => ({ ...item, badge: item.href in liveBadges ? liveBadges[item.href] : item.badge }))
@@ -128,9 +154,9 @@ export function ResponsiveShell({
   const otherMobileItems = displayNavItems.filter((item) => !primaryMobileItems.some((primary) => primary.href === item.href))
 
   return (
-    <div className={`app-shell-theme min-h-screen lg:grid transition-[grid-template-columns] ${sidebarCollapsed ? 'lg:grid-cols-[76px_1fr]' : 'lg:grid-cols-[188px_1fr]'}`}>
+    <div className={`app-shell-theme ${nativeIos ? 'native-ios-shell' : ''} min-h-screen lg:grid transition-[grid-template-columns] ${sidebarCollapsed ? 'lg:grid-cols-[76px_1fr]' : 'lg:grid-cols-[188px_1fr]'}`}>
       {/* header mobil, doar sub lg */}
-      <div className="lg:hidden sticky top-0 z-40 border-b border-white/70 bg-white/90 backdrop-blur-xl screen-only">
+      <div className="app-shell-mobile-header lg:hidden sticky top-0 z-40 border-b border-white/70 bg-white screen-only">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href={logoHref} prefetch={false} className="flex items-center gap-2">
             <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={24} height={24} /><span className="font-semibold">{logoLabel}</span>
@@ -138,10 +164,11 @@ export function ResponsiveShell({
           <button
             onClick={() => setAccountOpen(true)}
             aria-label="Cont"
-            className="w-9 h-9 flex items-center justify-center rounded-full text-sm"
+            className="relative w-9 h-9 flex items-center justify-center rounded-full text-sm"
             style={{ background: accentColor ? `${accentColor}22` : 'var(--accent-soft)' }}
           >
             <User size={16} />
+            {supportUnread>0&&notificationScope==='business'&&<span aria-label="Răspuns nou la suport" className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-red-600"/>}
           </button>
         </div>
 
@@ -152,7 +179,8 @@ export function ResponsiveShell({
           const Icon = item.icon ? NAV_ICONS[item.icon] : null
           return <Link key={item.href} href={item.href} prefetch={false} aria-current={item.href === activeHref ? 'page' : undefined} className={'mobile-bottom-nav-item' + (item.href === activeHref ? ' is-active' : '')}>
             <span className="relative">{Icon && <Icon size={21} />}{!!item.badge && <span className="mobile-bottom-nav-badge">{item.badge > 99 ? '99+' : item.badge}</span>}</span>
-            <span>{item.label}</span>
+            <span>{item.href === '/superadmin/cereri' ? 'Cereri' : item.href === '/superadmin/tichete' ? 'Suport' : item.label}</span>
+            {item.lockedTo && <span className="text-[9px] font-bold text-[#147f83]">{item.lockedTo}</span>}
           </Link>
         })}
         <button type="button" onClick={() => setMobileMenuOpen(true)} aria-label="Mai mult" aria-expanded={mobileMenuOpen} className={'mobile-bottom-nav-item' + (otherMobileItems.some((item) => item.href === activeHref) ? ' is-active' : '')}>
@@ -168,7 +196,7 @@ export function ResponsiveShell({
             {otherMobileItems.map((item) => {
               const Icon = item.icon ? NAV_ICONS[item.icon] : null
               return <Link key={item.href} href={item.href} prefetch={false} onClick={() => setMobileMenuOpen(false)} className="flex min-h-12 items-center gap-2 rounded-xl bg-[var(--surface-muted)] px-3 text-sm font-medium">
-                {Icon && <Icon size={18}/>}<span>{item.label}</span>{!!item.badge && <span className="ml-auto rounded-full bg-red-600 px-1.5 text-xs text-white">{item.badge}</span>}
+                {Icon && <Icon size={18}/>}<span>{item.label}</span>{item.lockedTo && <span className="ml-auto rounded-full bg-[#e8f7f4] px-2 py-0.5 text-[10px] font-bold text-[#147f83]">{item.lockedTo}</span>}{!!item.badge && <span className="ml-auto rounded-full bg-red-600 px-1.5 text-xs text-white">{item.badge}</span>}
               </Link>
             })}
             <CookiePreferencesButton onOpen={() => setMobileMenuOpen(false)} className="flex min-h-12 items-center rounded-xl bg-[var(--surface-muted)] px-3 text-left text-sm font-medium" />
@@ -180,14 +208,14 @@ export function ResponsiveShell({
       {accountOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/30" onClick={() => setAccountOpen(false)} />
-          <aside className="relative w-64 max-w-[80vw] bg-white h-full p-4 flex flex-col gap-1 overflow-y-auto">
+          <aside className="relative w-64 max-w-[80vw] bg-white h-full p-4 app-shell-account-sheet flex flex-col gap-1 overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <span className="font-semibold">Cont</span>
               <button onClick={() => setAccountOpen(false)} aria-label="Închide" className="w-8 h-8 flex items-center justify-center">
                 ✕
               </button>
             </div>
-            <div onClick={() => setAccountOpen(false)}>{accountContent}</div>
+            <div>{accountContent}</div>
           </aside>
         </div>
       )}
@@ -214,6 +242,7 @@ export function ResponsiveShell({
             >
               {Icon && <Icon size={16} />}
               {!sidebarCollapsed && <span className="flex-1">{item.label}</span>}
+              {item.lockedTo && !sidebarCollapsed && <span className="rounded-full bg-[#e8f7f4] px-2 py-0.5 text-[9px] font-bold text-[#147f83]">{item.lockedTo}</span>}
               {!!item.badge && (
                 <span
                   className={`text-xs bg-red-600 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center ${item.href === '/dashboard/mesaje' || item.href === '/dashboard/programari' ? 'animate-pulse' : ''}`}
@@ -224,6 +253,10 @@ export function ResponsiveShell({
             </Link>
           )
         })}
+        {!sidebarCollapsed && currentPlan && <Link href="/dashboard/planuri" className="mx-1 mt-2 rounded-xl border border-[#bde3da] bg-[#eef8f5] px-3 py-3 text-xs leading-5 text-[#247975]">
+          <strong className="block">Planul tău: {currentPlan}</strong>
+          <span>{currentPlan === 'PRO' ? 'Vezi funcțiile incluse în plan →' : 'Descoperă funcțiile disponibile și opțiunile de upgrade →'}</span>
+        </Link>}
         {!sidebarCollapsed && <div className="mt-auto px-3 pb-2">
           <Image src="/logo.png" alt="bookeasy.ro" width={800} height={471} className="w-full h-auto opacity-50" />
         </div>}

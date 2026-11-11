@@ -5,14 +5,22 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Pill } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import MetaEmbeddedSignupV4Button from '@/components/meta-embedded-signup-v4-button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { isAppointmentCategory } from '@/lib/business-categories'
+import { integrationUrl } from '@/lib/integration-links'
+import ManualIntegrationSettings from '@/components/admin/manual-integration-settings'
+import MessengerBotToggle from '@/components/messenger-bot-toggle'
+import SmsBusinessToggle from '@/components/sms-business-toggle'
 
 type Channel = {
   id: string
   type: 'FACEBOOK' | 'INSTAGRAM' | 'WHATSAPP' | 'GOOGLE_BUSINESS' | 'WEB' | 'MANUAL'
   status: string
   externalId: string
+  displayName?: string | null
+  wabaId?: string | null
+  authProvider?: string
+  enabledByOwner?: boolean
 }
 
 type Practitioner = {
@@ -21,6 +29,7 @@ type Practitioner = {
   googleCalendar: {
     googleEmail: string | null
     calendarName: string
+    calendarId?: string
     syncEnabled: boolean
     includeCustomerDetails: boolean
     lastSyncAt: Date | string | null
@@ -32,7 +41,25 @@ function ConnectionStatus({ connected, warning = false }: { connected: boolean; 
   return <Pill tone={warning ? 'warning' : connected ? 'success' : 'neutral'}>{warning ? 'Necesită reconectare' : connected ? 'Conectat' : 'Neconectat'}</Pill>
 }
 
-function IndividualCalendar({ practitioner, businessName }: { practitioner: Practitioner; businessName: string }) {
+function DisconnectButton({ endpoint, service }: { endpoint: string; service: string }) {
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  async function disconnect() {
+    if (!window.confirm(`Deconectezi ${service}? Datele salvate și celelalte integrări rămân disponibile.`)) return
+    setBusy(true)
+    try {
+      const response = await fetchWithTimeout(endpoint, { method: 'DELETE' })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || 'Deconectarea nu a reușit.')
+      router.refresh()
+      if (result.warning) window.alert(result.warning)
+    } catch (error) { window.alert(error instanceof Error ? error.message : 'Deconectarea nu a reușit.') }
+    finally { setBusy(false) }
+  }
+  return <Button variant="secondary" type="button" disabled={busy} className="min-h-11 max-w-full whitespace-normal text-center text-xs text-red-700" onClick={() => void disconnect()}>{busy ? 'Se deconectează…' : `Deconectează ${service}`}</Button>
+}
+
+function IndividualCalendar({ practitioner, businessName, adminBusinessId }: { practitioner: Practitioner; businessName: string; adminBusinessId?: string }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [syncEnabled, setSyncEnabled] = useState(practitioner.googleCalendar?.syncEnabled ?? true)
@@ -41,7 +68,7 @@ function IndividualCalendar({ practitioner, businessName }: { practitioner: Prac
   async function save() {
     setBusy(true)
     try {
-      const response = await fetchWithTimeout('/api/google-calendar/settings', {
+      const response = await fetchWithTimeout(integrationUrl('/api/google-calendar/settings', adminBusinessId), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ practitionerId: practitioner.id, syncEnabled, includeCustomerDetails }),
@@ -58,7 +85,7 @@ function IndividualCalendar({ practitioner, businessName }: { practitioner: Prac
   async function syncNow() {
     setBusy(true)
     try {
-      const response = await fetchWithTimeout('/api/google-calendar/settings', {
+      const response = await fetchWithTimeout(integrationUrl('/api/google-calendar/settings', adminBusinessId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ practitionerId: practitioner.id }),
@@ -78,7 +105,7 @@ function IndividualCalendar({ practitioner, businessName }: { practitioner: Prac
     if (!window.confirm('Deconectezi Google Calendar? Evenimentele deja create vor rămâne în calendar.')) return
     setBusy(true)
     try {
-      const response = await fetchWithTimeout(`/api/google-calendar/settings?practitionerId=${encodeURIComponent(practitioner.id)}`, { method: 'DELETE' })
+      const response = await fetchWithTimeout(integrationUrl(`/api/google-calendar/settings?practitionerId=${encodeURIComponent(practitioner.id)}`, adminBusinessId), { method: 'DELETE' })
       if (!response.ok) throw new Error()
       router.refresh()
     } catch {
@@ -96,7 +123,7 @@ function IndividualCalendar({ practitioner, businessName }: { practitioner: Prac
             <p className="text-sm font-medium">Calendarul {businessName}</p>
             <p className="text-xs text-gray-500">Calendar neconectat</p>
           </div>
-          <a href={`/api/google-calendar/connect?source=settings&practitionerId=${encodeURIComponent(practitioner.id)}`} className="btn-secondary inline-flex text-xs">Conectează</a>
+          <a href={integrationUrl(`/api/google-calendar/connect?source=settings&practitionerId=${encodeURIComponent(practitioner.id)}`, adminBusinessId)} className="btn-secondary inline-flex min-h-11 max-w-full items-center justify-center whitespace-normal text-center text-xs">Conectează</a>
         </div>
       </div>
     )
@@ -127,7 +154,7 @@ function IndividualCalendar({ practitioner, businessName }: { practitioner: Prac
         <div className="flex flex-wrap gap-2 pt-1">
           <Button onClick={save} disabled={busy} className="text-xs">Salvează</Button>
           <Button variant="secondary" onClick={syncNow} disabled={busy} className="text-xs">Sincronizează acum</Button>
-          <a href={`/api/google-calendar/connect?source=settings&practitionerId=${encodeURIComponent(practitioner.id)}`} className="btn-secondary inline-flex text-xs">Reconectează</a>
+          <a href={integrationUrl(`/api/google-calendar/connect?source=settings&practitionerId=${encodeURIComponent(practitioner.id)}`, adminBusinessId)} className="btn-secondary inline-flex min-h-11 max-w-full items-center justify-center whitespace-normal text-center text-xs">Reconectează</a>
           <button type="button" className="px-2 text-xs text-red-600" onClick={disconnect} disabled={busy}>Deconectează</button>
         </div>
       </div>
@@ -136,43 +163,46 @@ function IndividualCalendar({ practitioner, businessName }: { practitioner: Prac
 }
 
 export default function IntegrationsCard({
+  platformSmsReady,
   channels,
   practitioners,
   businessName,
   businessCategory,
   isIndividual,
-  instagramOAuthEnabled,
-  metaAppId,
-  metaV4ConfigId,
+  smsGateway,
+  adminBusinessId,
 }: {
+  platformSmsReady?: boolean
   channels: Channel[]
   practitioners: Practitioner[]
   businessName: string
   businessCategory: string
   isIndividual: boolean
   instagramOAuthEnabled: boolean
-  metaAppId: string
-  metaV4ConfigId: string
+  smsGateway: { apiUrl: string | null; hasApiKey: boolean; deviceId: number | null; phone: string | null; enabled: boolean; testedAt: string | Date | null; lastError: string | null; mode: string; paired: boolean; lastSeenAt: string | Date | null }
+  adminBusinessId?: string
 }) {
   const searchParams = useSearchParams()
   const connected = searchParams.get('connected')
   const oauthError = searchParams.get('error')
   const googleStatus = searchParams.get('google')
-  const facebook = channels.find((channel) => channel.type === 'FACEBOOK' && channel.status === 'ACTIVE')
-  const instagram = channels.find((channel) => channel.type === 'INSTAGRAM' && channel.status === 'ACTIVE')
-  const whatsapp = channels.find((channel) => channel.type === 'WHATSAPP' && channel.status === 'ACTIVE')
-  const profileLabel = businessCategory === 'CLINICA' ? 'un medic' : businessCategory === 'SALON' ? 'un membru al echipei' : 'un profil de echipă'
+  const facebook = channels.find((channel) => channel.type === 'FACEBOOK' && channel.status === 'ACTIVE') ?? channels.find((channel) => channel.type === 'FACEBOOK')
+  const instagram = channels.find((channel) => channel.type === 'INSTAGRAM' && channel.status === 'ACTIVE') ?? channels.find((channel) => channel.type === 'INSTAGRAM')
+  const googleBusiness = channels.find((channel) => channel.type === 'GOOGLE_BUSINESS' && channel.status === 'ACTIVE') ?? channels.find((channel) => channel.type === 'GOOGLE_BUSINESS')
+  const profileLabel = businessCategory === 'CLINICA' ? 'un medic' : isAppointmentCategory(businessCategory) ? 'un membru al echipei' : 'un profil de echipă'
   const individualPractitioner = practitioners[0]
 
   return (
     <Card className="mb-5 break-inside-avoid">
       <h2 className="font-medium mb-1">Integrări</h2>
       <p className="text-sm text-gray-500 mb-4">
-        Conectează conturile direct la Meta și Google. BookEasy nu vede și nu salvează parolele tale.
+        Conectează conturile proprii ale afacerii la Facebook, Instagram și Google. Fiecare conexiune aparține acestei afaceri. BookEasy nu salvează parolele tale.
       </p>
 
+      {connected === 'meta' && <p role="status" className="mb-3 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-700">Facebook & Instagram: autorizarea a fost salvată. Verifică starea fiecărui canal mai jos.</p>}
       {connected === 'messenger' && <p className="mb-3 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-700">Messenger a fost conectat.</p>}
       {connected === 'instagram' && <p className="mb-3 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-700">Instagram a fost conectat.</p>}
+      {connected === 'google' && googleBusiness?.status === 'ACTIVE' && <p className="mb-3 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-700">Google Business Profile a fost conectat.</p>}
       {googleStatus === 'connected' && <p className="mb-3 rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-xs text-green-700">Google Calendar a fost conectat și sincronizat.</p>}
       {(oauthError || (googleStatus && googleStatus !== 'connected')) && (
         <p className="mb-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -181,52 +211,59 @@ export default function IntegrationsCard({
       )}
 
       <div className="space-y-3">
-        <section className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
+        <section aria-label="Facebook & Instagram" className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
+          <h3 className="text-sm font-semibold">Facebook &amp; Instagram</h3>
+          <p className="mt-1 text-xs text-gray-500">O singură autorizare pentru Pagina Facebook, mesajele Messenger și contul Instagram profesional asociat paginii.</p>
+          <div className="mt-3 space-y-2">
+            {([{ label: 'Facebook / Messenger', channel: facebook }, { label: 'Instagram', channel: instagram }]).map(({ label, channel }) => (
+              <div key={label} className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-[var(--border-soft)] bg-white/80 p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium">{label}</p>
+                  {channel && <p className="mt-1 break-all text-xs text-gray-500">{channel.displayName || channel.externalId}</p>}
+                </div>
+                <ConnectionStatus connected={channel?.status === 'ACTIVE'} warning={channel?.status === 'EXPIRED' || channel?.status === 'EXPIRING_SOON'} />
+                {channel?.status === 'ACTIVE' && (label === 'Facebook / Messenger' || label === 'Instagram') && (
+                  <div className="w-full border-t border-[var(--border-soft)] pt-2">
+                    <MessengerBotToggle
+                      channelId={channel.id}
+                      enabled={channel.enabledByOwner ?? true}
+                      channelName={label === 'Instagram' ? 'Instagram' : 'Messenger'}
+                      businessId={adminBusinessId}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <a href={integrationUrl('/api/oauth/meta/start?source=settings&channel=both', adminBusinessId)} className="btn-secondary mt-3 inline-flex max-w-full whitespace-normal text-sm">{facebook || instagram ? 'Reconectează Facebook & Instagram' : 'Conectează Facebook & Instagram'}</a>
+          {!adminBusinessId && (facebook || instagram) && <div><DisconnectButton endpoint="/api/business/integrations/meta" service="Facebook & Instagram" /></div>}
+          {adminBusinessId && <div className="mt-4 space-y-3 border-t border-[var(--border-soft)] pt-3">
+            <div>
+              <p className="text-xs font-medium">Facebook / Messenger · configurare manuală</p>
+              <ManualIntegrationSettings businessId={adminBusinessId} type="FACEBOOK" channel={facebook} />
+            </div>
+            <div>
+              <p className="text-xs font-medium">Instagram · configurare manuală</p>
+              <ManualIntegrationSettings businessId={adminBusinessId} type="INSTAGRAM" channel={instagram} />
+            </div>
+          </div>}
+        </section>
+
+        {platformSmsReady && <SmsBusinessToggle initial={smsGateway.enabled} businessId={adminBusinessId} />}
+
+        <section className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-sm font-semibold">Messenger</p>
-              <p className="mt-1 text-xs text-gray-500">Selectează Pagina Facebook a afacerii. Se solicită numai permisiunile necesare pentru Messenger.</p>
+              <p className="text-sm font-semibold text-blue-950">Google Business Profile</p>
+              <p className="mt-1 text-xs text-blue-800">Conectează profilul Google al afacerii pentru sincronizarea recenziilor.</p>
             </div>
-            <ConnectionStatus connected={Boolean(facebook)} />
+            <ConnectionStatus connected={googleBusiness?.status === 'ACTIVE'} warning={googleBusiness?.status === 'EXPIRED' || googleBusiness?.status === 'EXPIRING_SOON'} />
           </div>
-          <a href="/api/oauth/meta/start?source=settings&channel=messenger" className="btn-secondary mt-3 inline-flex text-sm">
-            {facebook ? 'Reconectează Messenger' : 'Conectează Messenger'}
+          <a href={integrationUrl('/api/oauth/google/start?source=settings', adminBusinessId)} className="btn-secondary mt-3 inline-flex text-sm">
+            {googleBusiness ? 'Reconectează Google Business Profile' : 'Conectează Google Business Profile'}
           </a>
-        </section>
-
-        <section className="rounded-2xl border border-pink-100 bg-pink-50 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <p className="text-sm font-semibold text-pink-950">Instagram</p>
-              <p className="mt-1 text-xs text-pink-800">Conectare separată pentru contul profesional Instagram asociat unei Pagini Facebook.</p>
-            </div>
-            <ConnectionStatus connected={Boolean(instagram)} />
-          </div>
-          {instagramOAuthEnabled ? (
-            <a href="/api/oauth/meta/start?source=settings&channel=instagram" className="btn-secondary mt-3 inline-flex text-sm">
-              {instagram ? 'Reconectează Instagram' : 'Conectează Instagram'}
-            </a>
-          ) : (
-            <p className="mt-3 text-xs font-medium text-amber-700">Înainte de conectare trebuie activate permisiunile Instagram în aplicația Meta.</p>
-          )}
-        </section>
-
-        <section className="rounded-2xl border border-green-100 bg-green-50 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <p className="text-sm font-semibold text-green-950">WhatsApp Business</p>
-              <p className="mt-1 text-xs text-green-800">Autorizare oficială prin Meta Embedded Signup v4.</p>
-            </div>
-            <ConnectionStatus connected={Boolean(whatsapp)} />
-          </div>
-          <div className="mt-3">
-            <MetaEmbeddedSignupV4Button
-              appId={metaAppId}
-              configId={metaV4ConfigId}
-              endpoint="/api/business/integrations/meta-whatsapp"
-              label={whatsapp ? 'Reconectează WhatsApp' : 'Conectează WhatsApp'}
-            />
-          </div>
+          {googleBusiness && <div className="mt-2"><DisconnectButton endpoint={integrationUrl('/api/business/integrations/google-business', adminBusinessId)} service="Google Business Profile" /></div>}
+          {adminBusinessId && <ManualIntegrationSettings businessId={adminBusinessId} type="GOOGLE_BUSINESS" channel={channels.find(c => c.type === 'GOOGLE_BUSINESS')} />}
         </section>
 
         <section className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
@@ -240,10 +277,10 @@ export default function IntegrationsCard({
             {isIndividual && !individualPractitioner && (
               <div className="rounded-xl border border-blue-100 bg-white/80 p-3">
                 <p className="mb-2 text-xs text-blue-900">Calendarul se configurează direct pentru afacere; nu trebuie să adaugi un profil în Medici/Echipă.</p>
-                <a href="/api/google-calendar/connect?source=settings" className="btn-secondary inline-flex text-xs">Conectează Google Calendar</a>
+                <a href={integrationUrl('/api/google-calendar/connect?source=settings', adminBusinessId)} className="btn-secondary inline-flex min-h-11 max-w-full items-center justify-center whitespace-normal text-center text-xs">Conectează Google Calendar</a>
               </div>
             )}
-            {isIndividual && individualPractitioner && <IndividualCalendar practitioner={individualPractitioner} businessName={businessName} />}
+            {isIndividual && individualPractitioner && <IndividualCalendar practitioner={individualPractitioner} businessName={businessName} adminBusinessId={adminBusinessId} />}
             {!isIndividual && practitioners.length === 0 && <p className="text-xs text-blue-800">Adaugă mai întâi {profileLabel}.</p>}
             {!isIndividual && practitioners.map((practitioner) => (
               <div key={practitioner.id} className="flex flex-col gap-2 rounded-xl border border-blue-100 bg-white/80 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -251,15 +288,17 @@ export default function IntegrationsCard({
                   <p className="text-sm font-medium">{practitioner.name}</p>
                   <p className="truncate text-xs text-gray-500">{practitioner.googleCalendar?.googleEmail ?? practitioner.googleCalendar?.calendarName ?? 'Calendar neconectat'}</p>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="integration-calendar-actions">
                   <ConnectionStatus connected={Boolean(practitioner.googleCalendar?.syncEnabled)} warning={Boolean(practitioner.googleCalendar?.lastError)} />
-                  <a href={`/api/google-calendar/connect?source=settings&practitionerId=${encodeURIComponent(practitioner.id)}`} className="btn-secondary inline-flex text-xs">
+                  <a href={integrationUrl(`/api/google-calendar/connect?source=settings&practitionerId=${encodeURIComponent(practitioner.id)}`, adminBusinessId)} className="btn-secondary inline-flex min-h-11 max-w-full items-center justify-center whitespace-normal text-center text-xs">
                     {practitioner.googleCalendar ? 'Reconectează' : 'Conectează'}
                   </a>
+                  {practitioner.googleCalendar && <DisconnectButton endpoint={integrationUrl(`/api/google-calendar/settings?practitionerId=${encodeURIComponent(practitioner.id)}`, adminBusinessId)} service="Google Calendar" />}
                 </div>
               </div>
             ))}
           </div>
+          {adminBusinessId && <ManualIntegrationSettings businessId={adminBusinessId} type="GOOGLE_CALENDAR" practitioners={practitioners} individual={isIndividual} />}
         </section>
       </div>
     </Card>

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { z } from 'zod'
 
 const schema = z.object({ title: z.string().min(1).max(60), text: z.string().min(1).max(1000) })
 
 export async function GET() {
-  const session = await auth()
+  const session = await auth('STANDARD')
   const businessId = (session as any)?.businessId
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
@@ -15,7 +15,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const session = await auth('STANDARD')
   const businessId = (session as any)?.businessId
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 

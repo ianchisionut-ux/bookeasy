@@ -2,10 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import {
-  BarChart3, CalendarDays, ClipboardList, Eye, Menu, MessageSquare,
-  Settings, Star, Stethoscope, Tag, Users, X,
-} from 'lucide-react'
+import { BarChart3, CalendarDays, ClipboardList, Eye, Menu, MessageSquare, Settings, Star, Tag, Users, X } from 'lucide-react';
 
 type Section = 'calendar' | 'messages' | 'bookings' | 'customers' | 'services' | 'reviews' | 'stats' | 'settings'
 
@@ -147,7 +144,7 @@ function MessagesPreview({ onPreview }: { onPreview: (title: string) => void }) 
 }
 
 function BookingsPreview({ label, onPreview }: { label: string; onPreview: (title: string) => void }) {
-  return <><div className="mb-4 flex justify-end"><DemoButton onClick={() => onPreview('Programare nouă')}>+ Adaugă {label.toLowerCase().replace(/ări$/, 'are')}</DemoButton></div><Panel className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="text-gray-500"><tr><th className="pb-3">Ora</th><th>Client</th><th>Serviciu</th><th>Canal</th><th>Status</th></tr></thead><tbody>{SAMPLE_BOOKINGS.map((b,i)=><tr key={b.time} className="border-t"><td className="py-4">{b.time}</td><td className="font-medium">{b.name}</td><td>{b.service}</td><td>{i%2?'WhatsApp':'Site'}</td><td><Status label={b.status} tone={b.tone} /></td></tr>)}</tbody></table></Panel></>
+  return <><div className="mb-4 flex justify-end"><DemoButton onClick={() => onPreview('Programare nouă')}>+ Adaugă {label.toLowerCase().replace(/ări$/, 'are')}</DemoButton></div><Panel className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="text-gray-500"><tr><th className="pb-3">Ora</th><th>Client</th><th>Serviciu</th><th>Canal</th><th>Status</th></tr></thead><tbody>{SAMPLE_BOOKINGS.map((b,i)=><tr key={b.time} className="border-t"><td className="py-4">{b.time}</td><td className="font-medium">{b.name}</td><td>{b.service}</td><td>{i%2?'SMS':'Site'}</td><td><Status label={b.status} tone={b.tone} /></td></tr>)}</tbody></table></Panel></>
 }
 
 function CustomersPreview({ label, isClinic, onPreview }: { label: string; isClinic: boolean; onPreview: (title: string) => void }) {

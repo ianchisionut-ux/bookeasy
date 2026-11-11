@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { EuPlatesc } from 'euplatesc'
+import { resolvePublicSlug } from '@/lib/business-public-slug'
 import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/crypto'
 import { sendMessage } from '@/lib/channel-senders'
@@ -12,7 +13,7 @@ import { sendMessage } from '@/lib/channel-senders'
 // cererii — recalculează hash-ul din câmpurile individuale primite.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const business = await prisma.business.findUnique({ where: { slug } })
+  const business = await prisma.business.findUnique({ where: { slug: await resolvePublicSlug(slug) } })
   if (!business || !business.euplatescMerchantId || !business.euplatescSecretKey) {
     return new NextResponse(null, { status: 404 })
   }

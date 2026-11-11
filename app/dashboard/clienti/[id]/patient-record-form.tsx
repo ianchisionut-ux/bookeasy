@@ -154,13 +154,17 @@ export default function PatientRecordForm({
     setError('')
     try {
       const { previousSpecialist, previousSpecialistLastVisit, ...restForm } = form
-      const [res1, res2] = await Promise.all([
-        fetchWithTimeout(`/api/customers/${customerId}`, {
+      const res1 = await fetchWithTimeout(`/api/customers/${customerId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(simple),
-        }),
-        fetchWithTimeout(`/api/business/patients/${customerId}/medical-record`, {
+        })
+      if (!res1.ok) {
+        const data = await res1.json().catch(() => ({}))
+        setError(typeof data.error === 'string' ? data.error : 'Datele de contact nu au putut fi salvate.')
+        return
+      }
+      const res2 = await fetchWithTimeout(`/api/business/patients/${customerId}/medical-record`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -170,10 +174,10 @@ export default function PatientRecordForm({
             medicalConditions: conditions,
             clinicalHistory: { ...visit, fears, symptoms, familyHistory },
           }),
-        }),
-      ])
-      if (!res1.ok || !res2.ok) {
-        setError('A apărut o eroare la salvare.')
+        })
+      if (!res2.ok) {
+        const data = await res2.json().catch(() => ({}))
+        setError(`Datele de contact au fost salvate, dar fișa medicală nu: ${typeof data.error === 'string' ? data.error : 'încearcă din nou.'}`)
         return
       }
       setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' }))
@@ -188,6 +192,8 @@ export default function PatientRecordForm({
   return (
     <div>
       <div className="screen-only flex flex-col gap-4">
+        <div className="flex items-center gap-3 flex-wrap"><Button onClick={save} disabled={saving}>{saving ? 'Se salvează...' : 'Salvează fișa'}</Button><span className="text-xs text-gray-500">Modifică datele de mai jos, apoi salvează.</span>{savedAt && <span className="text-xs text-green-700">Salvat la {savedAt}</span>}</div>
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <Card>
           <h3 className="font-medium mb-3">Date de contact</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

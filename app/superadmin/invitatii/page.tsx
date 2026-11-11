@@ -1,0 +1,2 @@
+import InvitationManager from './invitation-manager'
+export default function InvitationsPage(){return <div className="dashboard-page"><h1 className="text-2xl font-semibold">Invită afaceri prin email</h1><p className="mb-6 mt-2 text-sm text-gray-500">Proprietarul primește o prezentare BookEasy cu antet vizual, oferta aleasă și un link de înscriere valabil 24 de ore. Invitația singură nu creează contul și nu activează abonamentul.</p><InvitationManager/></div>}

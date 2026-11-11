@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
 const schema = z.object({
-  token: z.string().min(1),
+  token: z.string().regex(/^[a-f0-9]{64}$/),
   newPassword: z.string().min(8, 'Parola trebuie să aibă minim 8 caractere.'),
 })
 
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const hashed = await bcrypt.hash(parsed.data.newPassword, 10)
 
   await prisma.$transaction([
-    prisma.user.update({ where: { id: record.userId }, data: { password: hashed } }),
+    prisma.user.update({ where: { id: record.userId }, data: { password: hashed, emailVerifiedAt: new Date() } }),
     prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
   ])
 

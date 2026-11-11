@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { prisma } from '@/lib/prisma'
 import { buildContractDocument, contractMissingFields, documentHash } from '@/lib/business-contracts'
 import { signatureRequest, signingMetadata, validSignaturePng } from '@/lib/contract-signature'
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   if (!session || !businessId || !userId || (session as any).role !== 'OWNER' || (session as any).isSuperAdmin) {
     return NextResponse.json({ error: 'Doar titularul businessului poate semna.' }, { status: 403 })
   }
-  if (!rateLimit(`contract-sign:${businessId}`, 10, 60 * 60 * 1000).allowed) return NextResponse.json({ error: 'Prea multe încercări de semnare.' }, { status: 429 })
+  if (!(await rateLimit(`contract-sign:${businessId}`, 10, 60 * 60 * 1000)).allowed) return NextResponse.json({ error: 'Prea multe încercări de semnare.' }, { status: 429 })
   const parsed = signatureRequest.safeParse(await req.json().catch(() => null))
   if (!parsed.success || !parsed.data.type || !parsed.data.documentHash || !validSignaturePng(parsed.data.signature)) {
     return NextResponse.json({ error: 'Semnătura sau datele sunt invalide.' }, { status: 400 })

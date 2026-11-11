@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.WAKE_LOCK"/>
+ <uses-permission android:name="android.permission.SEND_SMS"/><uses-permission android:name="android.permission.READ_PHONE_STATE"/><uses-permission android:name="android.permission.READ_PHONE_NUMBERS"/>
+ <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/><uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+ <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/><uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING"/>
+ <uses-feature android:name="android.hardware.telephony" android:required="true"/>
+ <application android:label="BookEasy Gateway SMS" android:icon="@drawable/gateway_icon" android:allowBackup="false" android:usesCleartextTraffic="false" android:theme="@android:style/Theme.Material.Light.NoActionBar">
+  <activity android:name="ro.bookeasy.smsgateway.GatewaySetupActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter><intent-filter><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="bookeasy-gateway" android:host="setup"/></intent-filter></activity>
+  <service android:name="ro.bookeasy.smsgateway.SmsGatewayService" android:exported="false" android:stopWithTask="false" android:foregroundServiceType="remoteMessaging"/>
+  <receiver android:name="ro.bookeasy.smsgateway.GatewayBootReceiver" android:exported="true"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>
+ </application>
+</manifest>

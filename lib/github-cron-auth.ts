@@ -46,4 +46,3 @@ export async function isAuthorizedGithubCronRequest(req: Request): Promise<boole
     return false
   }
 }
-

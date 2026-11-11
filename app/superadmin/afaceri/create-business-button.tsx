@@ -6,11 +6,14 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { BusinessCategoryOptions } from '@/components/business-category-options'
+import { type BusinessCategory } from '@/lib/business-categories'
+import PromoCodeField from '@/components/promo-code-field'
 
 export default function CreateBusinessButton() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ slug: '', name: '', email: '', category: 'SALON' as 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' })
+  const [form, setForm] = useState({ slug: '', name: '', email: '', category: 'SALON' as BusinessCategory, promoCode: '' })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -29,7 +32,7 @@ export default function CreateBusinessButton() {
         return
       }
       setOpen(false)
-      setForm({ slug: '', name: '', email: '', category: 'SALON' })
+      setForm({ slug: '', name: '', email: '', category: 'SALON', promoCode: '' })
       router.push(`/superadmin/afaceri/${data.business.id}`)
     } catch (err) {
       setError('Conexiune eșuată. Verifică internetul și încearcă din nou.')
@@ -47,7 +50,7 @@ export default function CreateBusinessButton() {
       <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h2 className="font-medium mb-1">Creează afacere nouă</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Clientul primește un email cu link de configurare a parolei — nu introduci tu parola.
+          Beneficiarul primește pe email un link valabil 24 de ore pentru a-și seta parola. Apoi intră în cont și continuă configurarea afacerii.
         </p>
 
         <div className="flex flex-col gap-2">
@@ -56,16 +59,14 @@ export default function CreateBusinessButton() {
           <p className="text-xs text-gray-500">Denumirea legală și datele de facturare se completează separat în profilul afacerii.</p>
           <select
             value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value as 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' })}
+            onChange={(e) => setForm({ ...form, category: e.target.value as BusinessCategory })}
             className="input-field"
+            aria-label="Categoria afacerii"
           >
-            <option value="SALON">Salon</option>
-            <option value="EVENT_VENUE">Spații evenimente</option>
-            <option value="CLINICA">Clinică medicală/stomatologică</option>
-            <option value="HOTEL">Hotel (în dezvoltare, nu apare public)</option>
-            <option value="PENSIUNE">Pensiune (în dezvoltare, nu apare public)</option>
+            <BusinessCategoryOptions />
           </select>
           <Input placeholder="Email owner" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <PromoCodeField value={form.promoCode} onChange={promoCode => setForm({ ...form, promoCode })} />
         </div>
 
         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}

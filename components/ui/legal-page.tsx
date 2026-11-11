@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { PublicFooter } from './public-footer'
 import { PublicHeader } from './public-header'
 
 export function LegalPage({
@@ -36,7 +35,6 @@ export function LegalPage({
           <div className="legal-content px-5 py-7 sm:px-10 sm:py-10">{children}</div>
         </article>
       </main>
-      <PublicFooter />
     </div>
   )
 }

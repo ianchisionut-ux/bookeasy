@@ -1,7 +1,5 @@
 import { prisma } from './prisma'
 
-const ACTIVE_STATUSES = ['PENDING', 'CONFIRMED', 'COMPLETED', 'NO_SHOW'] as const // excludem CANCELLED din venit/trend
-
 // formatare locală, fără toISOString() — evită deplasarea datei cu o zi pentru fusuri UTC+
 function formatLocalDate(d: Date): string {
   const y = d.getFullYear()
@@ -268,9 +266,9 @@ export async function getAdvancedStats(businessId: string) {
       return sum + Math.max(0, endHour * 60 + endMinute - startHour * 60 - startMinute)
     }, 0) ?? 0
     const capacityMultiplier = business?.category === 'EVENT_VENUE'
-      ? Math.max(1, business.resources.length)
-      : business?.category === 'CLINICA'
-        ? Math.max(1, business.practitioners.length)
+      ? Math.max(1, business?.resources.length ?? 1)
+      : (business?.teamSize ?? 1) > 1
+        ? Math.max(1, business?.practitioners.length ?? 1)
         : Math.max(1, business?.teamSize ?? 1)
     const availableMinutes = weeklyMinutes * (days / 7) * capacityMultiplier
 

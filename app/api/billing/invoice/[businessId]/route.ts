@@ -4,13 +4,15 @@ import { prisma } from '@/lib/prisma'
 import { getR2File, r2Key } from '@/lib/r2-storage'
 import { downloadSignalInvoice } from '@/lib/signal-billing'
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ businessId: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ businessId: string }> }) {
   const session = await auth()
   const { businessId } = await params
   if (!session || (!(session as any).isSuperAdmin && (session as any).businessId !== businessId)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
-  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { billingInvoiceUrl: true, billingInvoiceName: true } })
+  const periodId = req.nextUrl.searchParams.get('periodId')
+  const period = periodId ? await prisma.launchBillingPeriod.findFirst({ where: { id: periodId, enrollment: { businessId } }, select: { invoiceUrl: true, invoiceName: true } }) : null
+  const business = periodId ? period ? { billingInvoiceUrl: period.invoiceUrl, billingInvoiceName: period.invoiceName } : null : await prisma.business.findUnique({ where: { id: businessId }, select: { billingInvoiceUrl: true, billingInvoiceName: true } })
   if (!business?.billingInvoiceUrl) return NextResponse.json({ error: 'Factura nu există.' }, { status: 404 })
   if (business.billingInvoiceUrl.startsWith('signal:')) {
     try {

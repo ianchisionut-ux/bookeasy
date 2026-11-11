@@ -37,11 +37,15 @@ const WEEKDAY_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Viner
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
 export default function PractitionersManager({
-  isClinic,
+  staffLabel,
+  usesAppointments,
+  usesPatientProfile,
   practitioners,
   services,
 }: {
-  isClinic: boolean
+  staffLabel: { singular: string; plural: string; definite: string }
+  usesAppointments: boolean
+  usesPatientProfile: boolean
   practitioners: Practitioner[]
   services: { id: string; name: string }[]
 }) {
@@ -51,9 +55,8 @@ export default function PractitionersManager({
   const [newSpecialization, setNewSpecialization] = useState('')
   const [saving, setSaving] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const label = isClinic ? 'medic' : 'profesionist'
-  const labelPlural = isClinic ? 'Medici' : 'Profesioniști'
-  const labelCap = isClinic ? 'Medic' : 'Profesionist'
+  const label = staffLabel.singular
+  const labelPlural = staffLabel.plural
 
   async function createPractitioner() {
     if (!newName.trim()) return
@@ -98,7 +101,7 @@ export default function PractitionersManager({
       </div>
       <p className="text-sm text-gray-500 mb-6">
         Fiecare {label} are propriul program și, opțional, serviciile pe care le oferă. Clienții pot
-        alege un(o) {label} anume la {isClinic ? 'programare' : 'rezervare'}.
+        alege un {label} anume la {usesAppointments ? 'programare' : 'rezervare'}.
       </p>
 
       {adding && (
@@ -144,13 +147,13 @@ export default function PractitionersManager({
 
             {expandedId === p.id && (
               <div onClick={(e) => e.stopPropagation()} className="mt-4 pt-4 border-t border-[var(--border-soft)]">
-                <PractitionerDetail practitioner={p} services={services} onSaved={() => router.refresh()} />
+                <PractitionerDetail practitioner={p} services={services} usesPatientProfile={usesPatientProfile} onSaved={() => router.refresh()} />
               </div>
             )}
           </CardInteractive>
         ))}
         {practitioners.length === 0 && !adding && (
-          <p className="text-sm text-gray-500">Niciun {label} adăugat încă. Apasă "+ Adaugă {label}" ca să începi.</p>
+          <p className="text-sm text-gray-500">Niciun {label} adăugat încă. Apasă &quot;+ Adaugă {label}&quot; ca să începi.</p>
         )}
       </div>
     </div>
@@ -160,10 +163,12 @@ export default function PractitionersManager({
 function PractitionerDetail({
   practitioner,
   services,
+  usesPatientProfile,
   onSaved,
 }: {
   practitioner: Practitioner
   services: { id: string; name: string }[]
+  usesPatientProfile: boolean
   onSaved: () => void
 }) {
   const [hours, setHours] = useState<WorkingHour[]>(practitioner.workingHours)
@@ -376,7 +381,7 @@ function PractitionerDetail({
           <div className="flex flex-col gap-3">
             <div className="text-xs text-gray-500"><span className="font-medium text-gray-700">{practitioner.googleCalendar.calendarName}</span>{practitioner.googleCalendar.googleEmail ? ` · ${practitioner.googleCalendar.googleEmail}` : ''}</div>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={syncEnabled} onChange={(e) => setSyncEnabled(e.target.checked)} /> Sincronizare automată activă</label>
-            <label className="flex items-start gap-2 text-sm"><input className="mt-0.5" type="checkbox" checked={includeCustomerDetails} onChange={(e) => setIncludeCustomerDetails(e.target.checked)} /><span>Include numele, telefonul și serviciul clientului <span className="block text-xs text-gray-400">Pentru clinici recomandăm să rămână dezactivat.</span></span></label>
+            <label className="flex items-start gap-2 text-sm"><input className="mt-0.5" type="checkbox" checked={includeCustomerDetails} onChange={(e) => setIncludeCustomerDetails(e.target.checked)} /><span>Include numele, telefonul și serviciul {usesPatientProfile ? 'pacientului' : 'clientului'} în eveniment <span className="block text-xs text-gray-400">{usesPatientProfile ? 'Pentru date medicale recomandăm să rămână dezactivat.' : 'Se aplică evenimentelor create în Google Calendar.'}</span></span></label>
             {practitioner.googleCalendar.lastError && <p className="text-xs text-red-600">Necesită atenție: {practitioner.googleCalendar.lastError}</p>}
             {practitioner.googleCalendar.lastSyncAt && !practitioner.googleCalendar.lastError && <p className="text-xs text-emerald-600">Sincronizat: {new Date(practitioner.googleCalendar.lastSyncAt).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest' })}</p>}
             <div className="flex flex-wrap gap-2">

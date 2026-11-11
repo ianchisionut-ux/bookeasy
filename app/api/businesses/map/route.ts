@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { PUBLIC_CATEGORIES } from '@/lib/business-categories'
 
 // Rută publică — nu necesită autentificare, doar date publice necesare hărții
 export async function GET(req: NextRequest) {
-  const category = req.nextUrl.searchParams.get('category') // SALON | EVENT_VENUE | null (toate)
+  const requestedCategory = req.nextUrl.searchParams.get('category')
+  const category = PUBLIC_CATEGORIES.find((item) => item === requestedCategory)
   const city = req.nextUrl.searchParams.get('city')
 
   const businesses = await prisma.business.findMany({
@@ -13,7 +15,7 @@ export async function GET(req: NextRequest) {
       longitude: { not: null },
       // Hotel/Pensiune există în sistem (pot fi create din superadmin), dar nu apar
       // încă public — partea aia de produs nu e gata
-      category: { in: category ? [category as any] : ['SALON', 'EVENT_VENUE', 'CLINICA'] },
+      category: { in: category ? [category] : [...PUBLIC_CATEGORIES] },
       ...(city ? { city: { equals: city, mode: 'insensitive' } } : {}),
     },
     select: {

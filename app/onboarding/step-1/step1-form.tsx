@@ -8,22 +8,15 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { ROMANIAN_CITIES } from '@/lib/romanian-cities'
-
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Salon',
-  EVENT_VENUE: 'Spații evenimente',
-  HOTEL: 'Hotel',
-  PENSIUNE: 'Pensiune',
-  CLINICA: 'Clinică medicală/stomatologică',
-}
+import { CATEGORY_LABEL, PUBLIC_CATEGORIES, PUBLIC_CATEGORY_GROUPS, type PublicCategory } from '@/lib/business-categories'
 
 export default function Step1Form({ currentCategory, categoryLocked }: { currentCategory: string; categoryLocked: boolean }) {
   const router = useRouter()
-  const categoryIsFixed = categoryLocked || !['SALON', 'EVENT_VENUE', 'CLINICA'].includes(currentCategory)
+  const categoryIsFixed = categoryLocked || !PUBLIC_CATEGORIES.some((category) => category === currentCategory)
 
   const [form, setForm] = useState({
     name: '',
-    category: (['SALON', 'EVENT_VENUE', 'CLINICA'].includes(currentCategory) ? currentCategory : 'SALON') as 'SALON' | 'EVENT_VENUE' | 'CLINICA',
+    category: (PUBLIC_CATEGORIES.some((category) => category === currentCategory) ? currentCategory : 'SALON') as PublicCategory,
     contactPhone: '',
     city: '',
     address: '',
@@ -72,7 +65,7 @@ export default function Step1Form({ currentCategory, categoryLocked }: { current
           <Input
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Salon Bella"
+            placeholder="Numele afacerii tale"
             required
           />
         </div>
@@ -81,59 +74,21 @@ export default function Step1Form({ currentCategory, categoryLocked }: { current
           <div>
             <label className="text-sm text-gray-500 block mb-1.5">Tip de afacere</label>
             <div className="rounded-2xl p-4 border border-[var(--border-soft)] bg-[var(--surface-muted)]">
-              <p className="text-sm font-medium">{CATEGORY_LABEL[currentCategory] ?? currentCategory}</p>
+              <p className="text-sm font-medium">{CATEGORY_LABEL[currentCategory as keyof typeof CATEGORY_LABEL] ?? currentCategory}</p>
               <p className="text-xs text-gray-500 mt-0.5">Stabilit la crearea contului — pentru schimbare, contactează-ne.</p>
             </div>
           </div>
         ) : (
           <div>
             <label className="text-sm text-gray-500 block mb-2">Tip de afacere</label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, category: 'SALON' })}
-                className="rounded-2xl p-4 text-left transition"
-                style={{
-                  border: form.category === 'SALON' ? '2px solid var(--accent)' : '1px solid var(--border-soft)',
-                  background: form.category === 'SALON' ? 'var(--accent-soft)' : 'white',
-                }}
-              >
-                <p className="text-sm font-medium" style={{ color: form.category === 'SALON' ? 'var(--accent)' : undefined }}>
-                  Salon
-                </p>
-                <p className="text-xs text-gray-500">frizerie, unghii, coafor</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, category: 'EVENT_VENUE' })}
-                className="rounded-2xl p-4 text-left transition"
-                style={{
-                  border: form.category === 'EVENT_VENUE' ? '2px solid var(--accent)' : '1px solid var(--border-soft)',
-                  background: form.category === 'EVENT_VENUE' ? 'var(--accent-soft)' : 'white',
-                }}
-              >
-                <p
-                  className="text-sm font-medium"
-                  style={{ color: form.category === 'EVENT_VENUE' ? 'var(--accent)' : undefined }}
-                >
-                  Spații evenimente
-                </p>
-                <p className="text-xs text-gray-500">săli, nunți, corporate</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, category: 'CLINICA' })}
-                className="rounded-2xl p-4 text-left transition"
-                style={{
-                  border: form.category === 'CLINICA' ? '2px solid var(--accent)' : '1px solid var(--border-soft)',
-                  background: form.category === 'CLINICA' ? 'var(--accent-soft)' : 'white',
-                }}
-              >
-                <p className="text-sm font-medium" style={{ color: form.category === 'CLINICA' ? 'var(--accent)' : undefined }}>
-                  Clinică
-                </p>
-                <p className="text-xs text-gray-500">medicală, stomatologică</p>
-              </button>
+            <div className="space-y-3">
+              {PUBLIC_CATEGORY_GROUPS.map(group => <details key={group.id} open={group.categories.some(value => value === form.category)} className="rounded-xl border border-[var(--border-soft)] p-3"><summary className="cursor-pointer text-sm font-semibold">{group.label}</summary><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">{group.categories.map((category) => (
+                <button key={category} type="button" aria-pressed={form.category === category} onClick={() => setForm({ ...form, category })}
+                  className="rounded-2xl p-4 text-left transition"
+                  style={{ border: form.category === category ? '2px solid var(--accent)' : '1px solid var(--border-soft)', background: form.category === category ? 'var(--accent-soft)' : 'white' }}>
+                  <p className="text-sm font-medium" style={{ color: form.category === category ? 'var(--accent)' : undefined }}>{CATEGORY_LABEL[category]}</p>
+                </button>
+              ))}</div></details>)}
             </div>
           </div>
         )}

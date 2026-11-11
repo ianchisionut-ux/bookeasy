@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { rateLimit } from '@/lib/rate-limit'
 import { publicR2Url, putR2File } from '@/lib/r2-storage'
 
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const businessId = (session as any).businessId
   if (!businessId) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  const { allowed } = rateLimit(`photo-upload:${businessId}`, 30, 60 * 60 * 1000) // 30 poze/oră/business
+  const { allowed } = await rateLimit(`photo-upload:${businessId}`, 30, 60 * 60 * 1000) // 30 poze/oră/business
   if (!allowed) {
     return NextResponse.json({ error: 'Ai încărcat prea multe poze recent. Așteaptă puțin.' }, { status: 429 })
   }

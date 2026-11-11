@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { deleteR2File, getR2File, r2Key } from '@/lib/r2-storage'
 
 async function getOwnedDocument(docId: string, customerId: string, businessId: string) {

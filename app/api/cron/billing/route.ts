@@ -12,8 +12,15 @@ export async function GET(req: NextRequest) {
   for (const business of due) {
     if (!business.billingDueNotifiedAt) {
       const owner=business.users[0]
-      if (owner) { try { await sendBillingDueEmail({to:owner.email,businessName:business.name,amount:business.billingAmount===null?null:Number(business.billingAmount),dueAt:business.billingDueAt!}) } catch(e){ console.error('Eroare notificare scadență:',e) } }
-      await prisma.business.update({where:{id:business.id},data:{billingDueNotifiedAt:now,billingStatus:'RESTANT'}});notified++
+      let sent = false
+      if (owner) {
+        try {
+          await sendBillingDueEmail({to:owner.email,businessName:business.name,amount:business.billingAmount===null?null:Number(business.billingAmount),dueAt:business.billingDueAt!})
+          sent = true
+        } catch(e) { console.error('Eroare notificare scadență:',e) }
+      }
+      await prisma.business.update({where:{id:business.id},data:{billingStatus:'RESTANT', ...(sent ? {billingDueNotifiedAt:now} : {})}})
+      if (sent) notified++
     } else if (business.billingStatus !== 'RESTANT') await prisma.business.update({where:{id:business.id},data:{billingStatus:'RESTANT'}})
     if (business.accountActive && now.getTime() >= business.billingDueAt!.getTime() + 15*DAY) {
       await prisma.business.update({where:{id:business.id},data:{accountActive:false,billingSuspendedAt:now,billingStatus:'RESTANT'}});suspended++

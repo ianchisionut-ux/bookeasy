@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import type { ReactNode } from 'react'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
@@ -11,8 +12,10 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import type { BookingDetail } from '@/components/booking-edit-modal'
-import { Lock, CheckCircle2, X, Search, Users, AlertTriangle, Clock3 } from 'lucide-react'
+import { useSmsAvailability } from '@/components/use-sms-availability'
+import { Lock, X, Search, SlidersHorizontal, Users, AlertTriangle, Clock3, CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck } from 'lucide-react'
 import { PrintButton } from '@/components/print-button'
+import { allPractitionersLabel, bookingTerminology, isAppointmentCategory, isPatientCategory, offerLabel, practitionerLabel, type BusinessCategory } from '@/lib/business-categories'
 
 const locales = { ro }
 const localizer = dateFnsLocalizer({
@@ -27,6 +30,19 @@ const DnDCalendar = withDragAndDrop(Calendar) as any
 const BookingEditModal = dynamic(() => import('@/components/booking-edit-modal'), {
   loading: () => null,
 })
+
+const SERVICE_COLORS = [
+  { background: '#e8fbef', border: '#22c55e', ink: '#14532d' },
+  { background: '#e8f3ff', border: '#3b82f6', ink: '#1e3a8a' },
+  { background: '#f4eaff', border: '#a855f7', ink: '#581c87' },
+  { background: '#fff3da', border: '#f59e0b', ink: '#78350f' },
+  { background: '#ffeaf2', border: '#ec4899', ink: '#831843' },
+  { background: '#e4f9f8', border: '#14b8a6', ink: '#134e4a' },
+]
+
+function sameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
 
 function getISOWeekNumber(date: Date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
@@ -46,9 +62,13 @@ type Event = {
   customerId: string
   customerName: string
   customerPhone: string
+  customerCreatedAt?: string
   confirmationRequestSent?: boolean
   customerConfirmed?: boolean | null
+  arrivedAt?: string | null
   serviceName: string
+  serviceId: string
+  resourceId?: string | null
   practitionerId?: string | null
   practitionerName?: string | null
   isBlocked?: false
@@ -67,7 +87,10 @@ type BreakEvent = { id: string; title: string; start: Date; end: Date; isBreak: 
 type BreakRange = { label: string; startTime: string; endTime: string }
 
 export default function CalendarClient({
+  initialSmsAvailable,
   category,
+  services,
+  resources,
   events,
   blockedSlots,
   minTime,
@@ -77,7 +100,10 @@ export default function CalendarClient({
   slotIntervalMinutes,
   practitioners,
 }: {
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  initialSmsAvailable: boolean
+  category: BusinessCategory
+  services: { id: string; name: string }[]
+  resources: { id: string; name: string }[]
   events: Event[]
   blockedSlots: BlockedSlot[]
   minTime: string
@@ -87,10 +113,10 @@ export default function CalendarClient({
   slotIntervalMinutes: number
   practitioners: { id: string; name: string; minTime: string; maxTime: string; workingHours: { weekday: number; startTime: string; endTime: string }[]; breaks: BreakRange[] }[]
 }) {
-  const isClinic = category === 'CLINICA'
-  const isAppointmentBased = category === 'SALON' || category === 'CLINICA'
-  const bookingPlural = isAppointmentBased ? 'programări' : 'rezervări'
-  const bookingSingular = isAppointmentBased ? 'programare' : 'rezervare'
+  const isClinic = isPatientCategory(category)
+  const smsAvailable = useSmsAvailability(initialSmsAvailable)
+  const isAppointmentBased = isAppointmentCategory(category)
+  const { singular: bookingSingular, plural: bookingPlural, heading: bookingHeading } = bookingTerminology(category)
   const customerPlural = isClinic ? 'pacienți' : 'clienți'
   const customerSingular = isClinic ? 'pacient' : 'client'
   const router = useRouter()
@@ -111,6 +137,10 @@ export default function CalendarClient({
     return practitioners.length > 1 ? 'all' : practitioners[0]?.id ?? ''
   })
   const [search, setSearch] = useState('')
+  const [serviceFilter, setServiceFilter] = useState('all')
+  const [resourceFilter, setResourceFilter] = useState('all')
+  const [hiddenPractitionerIds, setHiddenPractitionerIds] = useState<string[]>([])
+  const [hiddenServiceIds, setHiddenServiceIds] = useState<string[]>([])
 
   useEffect(() => {
     setCalendarEvents((current) => {
@@ -121,8 +151,37 @@ export default function CalendarClient({
   }, [events])
 
   useEffect(() => {
-    const from = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
-    const to = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 1)
+    let active = true
+    const refreshArrivals = async () => {
+      if (document.visibilityState !== 'visible') return
+      try {
+        const response = await fetch('/api/business/bookings/arrivals', { cache: 'no-store' })
+        if (!response.ok || !active) return
+        const data = await response.json() as { arrivals?: { id: string; arrivedAt: string | null }[] }
+        if (!active || !data.arrivals?.length) return
+        const arrived = new Map(data.arrivals.map((item) => [item.id, item.arrivedAt]))
+        setCalendarEvents((current) => {
+          let changed = false
+          const updated = current.map((event) => {
+            const arrivedAt = arrived.get(event.id)
+            if (!arrivedAt || event.arrivedAt === arrivedAt) return event
+            changed = true
+            return { ...event, arrivedAt }
+          })
+          return changed ? updated : current
+        })
+      } catch { /* reîncercăm la următoarea verificare */ }
+    }
+    void refreshArrivals()
+    const timer = window.setInterval(() => void refreshArrivals(), 20_000)
+    return () => { active = false; window.clearInterval(timer) }
+  }, [])
+
+  const calendarYear = currentDate.getFullYear()
+  const calendarMonth = currentDate.getMonth()
+  useEffect(() => {
+    const from = new Date(calendarYear, calendarMonth - 1, 1)
+    const to = new Date(calendarYear, calendarMonth + 2, 1)
     const controller = new AbortController()
     setLoadingRange(true)
     fetchWithTimeout(`/api/business/bookings?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`, {
@@ -147,7 +206,7 @@ export default function CalendarClient({
       })
       .finally(() => setLoadingRange(false))
     return () => controller.abort()
-  }, [currentDate.getFullYear(), currentDate.getMonth()])
+  }, [calendarYear, calendarMonth])
 
   function changePractitionerFilter(value: string) {
     setPractitionerFilter(value)
@@ -160,10 +219,14 @@ export default function CalendarClient({
 
   const visibleEvents = useMemo(() => calendarEvents.filter((e) => {
     const practitionerMatch = practitioners.length === 0 || practitionerFilter === 'all' || e.practitionerId === practitionerFilter
+    const practitionerVisible = !e.practitionerId || !hiddenPractitionerIds.includes(e.practitionerId)
+    const serviceMatch = serviceFilter === 'all' || e.serviceId === serviceFilter
+    const serviceVisible = !hiddenServiceIds.includes(e.serviceId)
+    const resourceMatch = resourceFilter === 'all' || e.resourceId === resourceFilter
     const query = search.trim().toLocaleLowerCase('ro')
     const searchMatch = !query || `${e.customerName} ${e.customerPhone} ${e.serviceName} ${e.practitionerName ?? ''}`.toLocaleLowerCase('ro').includes(query)
-    return practitionerMatch && searchMatch
-  }), [calendarEvents, practitionerFilter, practitioners.length, search])
+    return practitionerMatch && practitionerVisible && serviceMatch && serviceVisible && resourceMatch && searchMatch
+  }), [calendarEvents, practitionerFilter, practitioners.length, hiddenPractitionerIds, serviceFilter, hiddenServiceIds, resourceFilter, search])
   const [blockMode, setBlockMode] = useState(false)
   const [showBookingModal, setShowBookingModal] = useState(false)
 
@@ -189,8 +252,8 @@ export default function CalendarClient({
   }
 
   const selectedPractitioner = practitioners.find((p) => p.id === practitionerFilter) ?? null
-  const activeWorkingHours = selectedPractitioner?.workingHours ?? (practitioners.length === 0 ? businessWorkingHours : [])
-  const activeBreaks = selectedPractitioner?.breaks ?? (practitioners.length === 0 ? businessBreaks : [])
+  const activeWorkingHours = useMemo(() => selectedPractitioner?.workingHours ?? (practitioners.length === 0 ? businessWorkingHours : []), [selectedPractitioner, practitioners.length, businessWorkingHours])
+  const activeBreaks = useMemo(() => selectedPractitioner?.breaks ?? (practitioners.length === 0 ? businessBreaks : []), [selectedPractitioner, practitioners.length, businessBreaks])
   const breakEvents = useMemo<BreakEvent[]>(() => {
     if (activeBreaks.length === 0) return []
     const result: BreakEvent[] = []
@@ -292,14 +355,14 @@ export default function CalendarClient({
         return new Date(start) < pauseEnd && new Date(end) > pauseStart
       })
       if (overlapsBreak) {
-        alert(`${isAppointmentBased ? 'Programarea' : 'Rezervarea'} nu poate fi mutată peste o pauză.`)
+        alert(`${bookingHeading} nu pot fi mutate peste o pauză.`)
         resetPosition()
         return
       }
 
       const conflict = calendarEvents.some((candidate) => candidate.id !== event.id && candidate.practitionerId === event.practitionerId && new Date(start) < candidate.end && new Date(end) > candidate.start)
       if (conflict) {
-        alert(`Conflict detectat: ${isClinic ? 'medicul' : category === 'EVENT_VENUE' ? 'sala' : 'profilul'} are deja o ${bookingSingular} în acest interval.`)
+        alert(`Conflict detectat: ${category === 'EVENT_VENUE' ? 'sala' : practitionerLabel(category).definite} are deja o ${bookingSingular} în acest interval.`)
         resetPosition()
         return
       }
@@ -336,107 +399,122 @@ export default function CalendarClient({
         resetPosition()
       }
     },
-    [router, calendarEvents, isClinic, isAppointmentBased, bookingSingular, practitioners, activeBreaks]
+    [router, calendarEvents, isClinic, bookingHeading, bookingSingular, practitioners, activeBreaks, category]
   )
 
+  const today = new Date()
+  const todayEvents = calendarEvents.filter((event) => sameDay(event.start, today))
+  const newCustomersToday = new Set(todayEvents.filter((event) => event.customerCreatedAt && sameDay(new Date(event.customerCreatedAt), today)).map((event) => event.customerId)).size
+  const pendingToday = todayEvents.filter((event) => event.status === 'PENDING').length
+  const completedToday = todayEvents.filter((event) => event.status === 'COMPLETED').length
+  const dateValue = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
+  const weekStart = startOfWeek(currentDate, { locale: ro })
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6)
+  const periodLabel = view === Views.MONTH
+    ? format(currentDate, 'LLLL yyyy', { locale: ro })
+    : view === Views.WEEK
+      ? `Săpt. ${getISOWeekNumber(currentDate)} · ${format(weekStart, 'd MMM', { locale: ro })} – ${format(weekEnd, 'd MMM yyyy', { locale: ro })}`
+      : format(currentDate, 'EEEE d MMMM yyyy', { locale: ro })
+
+  function navigatePeriod(direction: number) {
+    const next = new Date(currentDate)
+    if (view === Views.MONTH) next.setMonth(next.getMonth() + direction)
+    else next.setDate(next.getDate() + direction * (view === Views.WEEK ? 7 : 1))
+    setCurrentDate(next)
+  }
+
+  function chooseDate(value: string) {
+    if (!value) return
+    const [year, month, day] = value.split('-').map(Number)
+    setCurrentDate(new Date(year, month - 1, day))
+  }
+
   return (
-    <div className="calendar-page dashboard-page h-[calc(100dvh-138px)] min-h-[420px] md:h-[calc(100vh-56px)] lg:h-screen flex flex-col">
-      <div className="mb-3 space-y-2 md:hidden screen-only">
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="min-w-0 text-lg font-semibold">Calendar {bookingPlural}</h1>
-          <button type="button" onClick={() => setShowBookingModal(true)} className="btn-primary min-h-11 shrink-0 px-3 text-sm">+ Adaugă</button>
+    <div className="calendar-page calendar-modern dashboard-page flex h-[calc(100dvh-138px)] min-h-[540px] flex-col gap-3 md:h-[calc(100vh-56px)] lg:h-screen">
+      <header className="calendar-overview screen-only">
+        <div className="calendar-overview-title">
+          <h1>Calendar {bookingPlural}</h1>
+          <p>Gestionează {bookingPlural}, {practitionerLabel(category).plural.toLowerCase()} și {resources.length ? 'sălile' : 'serviciile'} într-un singur loc.</p>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <input
-            type="date"
-            value={currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0')}
-            onChange={(e) => {
-              if (!e.target.value) return
-              const [year, month, day] = e.target.value.split('-').map(Number)
-              setCurrentDate(new Date(year, month - 1, day))
-            }}
-            className="input-field min-w-0 min-h-11"
-            aria-label="Alege data"
-          />
-          {practitioners.length > 0 ? <select value={practitionerFilter} onChange={(e) => changePractitionerFilter(e.target.value)} className="input-field min-w-0 min-h-11" aria-label="Filtrează după persoană">
-            {practitioners.length > 1 && <option value="all">Toți medicii</option>}
-            {practitioners.map((practitioner) => <option key={practitioner.id} value={practitioner.id}>{practitioner.name}</option>)}
-          </select> : <span className="flex items-center text-sm text-gray-500">{visibleEvents.length} {bookingPlural}</span>}
+        <div className="calendar-summary-grid">
+          <CalendarSummary icon={<CalendarDays size={18}/>} value={todayEvents.length} label={`${bookingHeading} azi`} tone="teal" />
+          <CalendarSummary icon={<Users size={18}/>} value={newCustomersToday} label={`${customerPlural[0].toUpperCase()}${customerPlural.slice(1)} noi`} tone="violet" />
+          <CalendarSummary icon={<Clock3 size={18}/>} value={pendingToday} label="În așteptare" tone="amber" />
+          <div className="hidden md:block"><CalendarSummary icon={<ClipboardCheck size={18}/>} value={completedToday} label="Finalizate azi" tone="green" /></div>
         </div>
-        <details className="calendar-mobile-options rounded-xl border border-[var(--border-soft)] bg-white px-3">
-          <summary className="cursor-pointer py-2.5 text-sm font-medium text-[var(--accent)]">Căutare și opțiuni</summary>
-          <div className="flex flex-col gap-2 pb-3">
-            <label className="calendar-search !m-0 !min-w-0"><Search size={16}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={'Caută ' + customerSingular + ', telefon...'} aria-label={'Caută ' + customerSingular}/></label>
-            <button type="button" onClick={() => setBlockMode((value) => !value)} className="btn-secondary min-h-11 text-sm">
-              {blockMode ? 'Blocare activă' : 'Blocare poziții'}
-            </button>
+      </header>
+
+      <div className="calendar-commandbar calendar-modern-commandbar screen-only">
+        <div className="hidden min-w-0 flex-wrap items-center gap-2 lg:flex">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setShowBookingModal(true)} className="btn-primary shrink-0 whitespace-nowrap">+ Adaugă {bookingSingular}</button>
+          {practitioners.length > 0 && <select value={practitionerFilter} onChange={(e) => changePractitionerFilter(e.target.value)} className="input-field shrink-0 text-sm" aria-label="Filtrează după persoană">
+            <option value="all">{allPractitionersLabel(category)}</option>
+            {practitioners.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+          </select>}
+          <select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="input-field shrink-0 text-sm" aria-label="Filtrează după serviciu">
+            <option value="all">Toate {offerLabel(category).plural}</option>
+            {services.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}
+          </select>
+          {resources.length > 0 && <select value={resourceFilter} onChange={(e) => setResourceFilter(e.target.value)} className="input-field shrink-0 text-sm" aria-label="Filtrează după sală">
+            <option value="all">Toate sălile</option>
+            {resources.map((resource) => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
+          </select>}
+          <input type="date" value={dateValue} onChange={(e) => chooseDate(e.target.value)} className="input-field shrink-0 text-sm" aria-label="Alege data" />
+          <button type="button" onClick={() => setCurrentDate(new Date())} className="btn-secondary shrink-0 text-sm">Astăzi</button>
+          <button type="button" onClick={() => navigatePeriod(-1)} className="calendar-icon-button" aria-label="Intervalul anterior"><ChevronLeft size={18}/></button>
+          <button type="button" onClick={() => navigatePeriod(1)} className="calendar-icon-button" aria-label="Intervalul următor"><ChevronRight size={18}/></button>
+          </div>
+          <div className="calendar-visible-actions ml-auto">
+            <label className="calendar-search"><Search size={16}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Caută ${customerSingular}...`} aria-label={`Caută ${customerSingular}`}/></label>
+            <button type="button" onClick={() => setBlockMode((value) => !value)} className="btn-secondary gap-1.5 text-sm" aria-pressed={blockMode}><Lock size={15}/>{blockMode ? 'Oprește blocarea' : 'Blochează intervale'}</button>
             <PrintButton />
           </div>
-        </details>
-        {blockMode && <p className="text-xs text-gray-600">Ține apăsat pe un interval pentru a-l bloca.</p>}
-        {(busy || loadingRange) && <p className="text-xs text-gray-500">Se actualizează...</p>}
-      </div>
-      <div className="mb-3 hidden md:block screen-only calendar-commandbar">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl lg:text-2xl font-semibold mr-1">Calendar {bookingPlural}</h1>
-          <span className="calendar-kpi"><Clock3 size={14}/>{visibleEvents.length} {bookingPlural}</span>
-          <span className="calendar-kpi"><Users size={14}/>{new Set(visibleEvents.map(e => e.customerId)).size} {customerPlural}</span>
-          {practitioners.length > 0 && (
-            <select
-              value={practitionerFilter}
-              onChange={(e) => changePractitionerFilter(e.target.value)}
-              className="input-field text-sm py-1.5"
-              aria-label="Filtrează după persoană"
-            >
-              {practitioners.length > 1 && <option value="all">Toți medicii</option>}
-              {practitioners.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
-          <label className="calendar-search"><Search size={15}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Caută ${customerSingular}, telefon...`} aria-label={`Caută ${customerSingular}`}/></label>
-          <button
-            onClick={() => setBlockMode((v) => !v)}
-            className="btn-secondary text-sm whitespace-nowrap flex items-center gap-1.5"
-            style={blockMode ? { background: 'var(--accent)', color: 'white', borderColor: 'var(--accent)' } : {}}
-          >
-            {blockMode ? (
-              <>
-                <CheckCircle2 size={15} /> Blocare activă
-              </>
-            ) : (
-              <>
-                <Lock size={15} /> Blocare poziții
-              </>
-            )}
-          </button>
-          <input
-            type="date"
-            value={`${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`}
-            onChange={(e) => {
-              if (!e.target.value) return
-              const [y, m, d] = e.target.value.split('-').map(Number)
-              setCurrentDate(new Date(y, m - 1, d))
-            }}
-            className="input-field text-sm py-1.5 hidden lg:block"
-            aria-label="Sari la o dată"
-          />
-          <PrintButton />
-          <button onClick={() => setShowBookingModal(true)} className="btn-primary text-sm whitespace-nowrap">
-            + Adaugă {bookingSingular}
-          </button>
-          {(busy || loadingRange) && <span className="text-xs text-gray-400">se actualizează...</span>}
         </div>
-        {blockMode && (
-          <p className="text-xs text-gray-500 mt-2">
-            Selectează cu mouse-ul un interval ca să-l blochezi — click pe o zonă blocată pentru a o debloca
-          </p>
-        )}
+        <div className="flex items-center gap-2 lg:hidden">
+          <input type="date" value={dateValue} onChange={(e) => chooseDate(e.target.value)} className="input-field min-w-0 flex-1 text-sm" aria-label="Alege data" />
+          <button type="button" onClick={() => setShowBookingModal(true)} className="btn-primary hidden shrink-0 text-sm md:inline-flex">+ Adaugă {bookingSingular}</button>
+          <button type="button" onClick={() => navigatePeriod(-1)} className="calendar-icon-button" aria-label="Intervalul anterior"><ChevronLeft size={18}/></button>
+          <button type="button" onClick={() => navigatePeriod(1)} className="calendar-icon-button" aria-label="Intervalul următor"><ChevronRight size={18}/></button>
+          <details className="calendar-filter-details">
+            <summary className="calendar-icon-button cursor-pointer" aria-label="Deschide filtrele"><SlidersHorizontal size={18}/></summary>
+            <div className="calendar-filter-popover">
+              {practitioners.length > 0 && <select value={practitionerFilter} onChange={(e) => changePractitionerFilter(e.target.value)} className="input-field w-full text-sm" aria-label="Filtrează după persoană"><option value="all">{allPractitionersLabel(category)}</option>{practitioners.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select>}
+              <select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="input-field w-full text-sm" aria-label="Filtrează după serviciu"><option value="all">Toate {offerLabel(category).plural}</option>{services.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}</select>
+              {resources.length > 0 && <select value={resourceFilter} onChange={(e) => setResourceFilter(e.target.value)} className="input-field w-full text-sm" aria-label="Filtrează după sală"><option value="all">Toate sălile</option>{resources.map((resource) => <option key={resource.id} value={resource.id}>{resource.name}</option>)}</select>}
+            </div>
+          </details>
+        </div>
+        <div className="calendar-visible-actions calendar-mobile-actions lg:hidden">
+          <label className="calendar-search"><Search size={16}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Caută ${customerSingular}...`} aria-label={`Caută ${customerSingular}`}/></label>
+          <button type="button" onClick={() => setBlockMode(value => !value)} className="btn-secondary gap-1.5 text-sm" aria-pressed={blockMode}><Lock size={15}/>{blockMode ? 'Oprește blocarea' : 'Blochează intervale'}</button>
+          <PrintButton />
+        </div>
       </div>
+      <div className="calendar-view-switch screen-only md:hidden" role="group" aria-label="Vizualizare calendar">
+        {[[Views.DAY, 'Zi'], [Views.WEEK, 'Săptămână'], [Views.MONTH, 'Lună'], [Views.AGENDA, 'Agendă']].map(([value, label]) => <button type="button" key={value} onClick={() => setView(value)} className={view === value ? 'active' : ''}>{label}</button>)}
+      </div>
+      {blockMode && <p className="text-xs text-amber-700 screen-only">Selectează un interval din calendar pentru a-l bloca.</p>}
+      {(busy || loadingRange) && <p className="text-xs text-gray-500 screen-only">Se actualizează calendarul...</p>}
       {search && visibleEvents.length === 0 && <div className="mb-2 text-sm text-amber-700 flex items-center gap-2"><AlertTriangle size={15}/> Nu există {bookingPlural} care corespund căutării.</div>}
-      <div className="calendar-print-sheet card printable p-2 lg:p-4 flex-1 min-h-0 overflow-x-auto">
+      <div className="calendar-workspace min-h-0 flex-1">
+        <aside className="calendar-sidebar screen-only">
+          <MiniCalendar date={currentDate} onSelect={setCurrentDate} />
+          {practitioners.length > 0 && <div className="calendar-sidebar-card">
+            <h2>{practitionerLabel(category).plural}</h2>
+            <label className="calendar-filter-check"><input type="checkbox" checked={hiddenPractitionerIds.length === 0} onChange={(e) => setHiddenPractitionerIds(e.target.checked ? [] : practitioners.map((person) => person.id))} />{allPractitionersLabel(category)}</label>
+            {practitioners.map((person, index) => <label key={person.id} className="calendar-filter-check"><input type="checkbox" checked={!hiddenPractitionerIds.includes(person.id)} onChange={(e) => setHiddenPractitionerIds((current) => e.target.checked ? current.filter((id) => id !== person.id) : [...current, person.id])} /><span className="calendar-avatar" style={{ background: SERVICE_COLORS[index % SERVICE_COLORS.length].background, color: SERVICE_COLORS[index % SERVICE_COLORS.length].ink }}>{person.name.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span><span className="truncate">{person.name}</span></label>)}
+          </div>}
+          {services.length > 0 && <div className="calendar-sidebar-card">
+            <h2>{offerLabel(category).heading}</h2>
+            {services.map((service, index) => <label key={service.id} className="calendar-filter-check"><input type="checkbox" checked={!hiddenServiceIds.includes(service.id)} onChange={(e) => setHiddenServiceIds((current) => e.target.checked ? current.filter((id) => id !== service.id) : [...current, service.id])} style={{ accentColor: SERVICE_COLORS[index % SERVICE_COLORS.length].border }} /><span className="truncate">{service.name}</span></label>)}
+          </div>}
+        </aside>
+        <div className="calendar-print-sheet card printable min-h-0 min-w-0 flex-1 overflow-x-auto p-2 lg:p-3">
+          <div className="calendar-period-bar screen-only">
+            <div className="flex items-center gap-2"><button type="button" onClick={() => navigatePeriod(-1)} aria-label="Intervalul anterior"><ChevronLeft size={17}/></button><strong>{periodLabel}</strong><button type="button" onClick={() => navigatePeriod(1)} aria-label="Intervalul următor"><ChevronRight size={17}/></button></div>
+            <div className="calendar-view-switch hidden md:flex" role="group" aria-label="Vizualizare calendar">{[[Views.MONTH, 'Lună'], [Views.WEEK, 'Săptămână'], [Views.DAY, 'Zi'], [Views.AGENDA, 'Agendă']].map(([value, label]) => <button type="button" key={value} onClick={() => setView(value)} className={view === value ? 'active' : ''}>{label}</button>)}</div>
+          </div>
         <DnDCalendar
           key={`${practitionerFilter}-${calendarRevision}`}
           localizer={localizer}
@@ -469,6 +547,7 @@ export default function CalendarClient({
             showMore: (count: number) => `+${count} mai multe`,
           }}
           formats={{
+            agendaDateFormat: (date: Date) => format(date, 'EEE d MMM', { locale: ro }),
             dayRangeHeaderFormat: ({ start, end }: any) =>
               `Săpt. ${getISOWeekNumber(start)} · ${format(start, 'd MMM', { locale: ro })} – ${format(end, 'd MMM', { locale: ro })}`,
           }}
@@ -492,24 +571,32 @@ export default function CalendarClient({
                 },
               }
             }
+            const serviceIndex = services.findIndex((service) => service.id === event.serviceId)
+            const color = SERVICE_COLORS[(serviceIndex < 0 ? 0 : serviceIndex) % SERVICE_COLORS.length]
+            const isInactive = event.status === 'CANCELLED' || event.status === 'NO_SHOW'
             return {
+              className: event.arrivedAt ? 'calendar-arrived-event' : undefined,
               style: {
-                backgroundColor: event.status === 'CONFIRMED' ? '#f0fdf4' : event.status === 'PENDING' ? '#fffbeb' : event.status === 'COMPLETED' ? '#f3f4f6' : '#fef2f2',
-                color: 'var(--brand-ink)',
-                borderRadius: '10px',
-                border: '1px solid #eceef1',
-                borderLeft: `4px solid ${event.status === 'CONFIRMED' ? '#16a34a' : event.status === 'PENDING' ? '#eab308' : event.status === 'COMPLETED' ? '#6b7280' : '#ef4444'}`,
+                backgroundColor: isInactive ? '#f3f4f6' : color.background,
+                color: isInactive ? '#64748b' : color.ink,
+                borderRadius: '7px',
+                border: `1px solid ${isInactive ? '#cbd5e1' : color.border}`,
+                borderLeft: `4px solid ${isInactive ? '#94a3b8' : color.border}`,
                 cursor: 'pointer',
               },
             }
           }}
-          components={{ event: CalendarEventCard }}
+          components={{ event: CalendarEventCard, toolbar: () => null }}
           style={{ height: '100%' }}
         />
+        </div>
       </div>
+
+      <button type="button" onClick={() => setShowBookingModal(true)} className="calendar-mobile-add btn-primary screen-only md:hidden">+ Adaugă {bookingSingular}</button>
 
       {selected && (
         <BookingEditModal
+          smsAvailable={smsAvailable}
           isAppointmentBased={isAppointmentBased}
           booking={
             {
@@ -535,6 +622,7 @@ export default function CalendarClient({
 
       {showBookingModal && (
         <CalendarQuickBookingModal
+          category={category}
           isAppointmentBased={isAppointmentBased}
           isClinic={isClinic}
           businessWorkingHours={businessWorkingHours}
@@ -556,39 +644,43 @@ function CalendarEventCard({ event }: { event: Event | BreakEvent | BlockedEvent
   const bookingEvent = event as Event
   const duration = Math.max(1, Math.round((bookingEvent.end.getTime() - bookingEvent.start.getTime()) / 60000))
   const compact = duration <= 30
-  return <div className="calendar-event-card" title={`${bookingEvent.customerName} · ${bookingEvent.serviceName} · ${bookingEvent.customerPhone}`}>
+  return <div className="calendar-event-card" title={`${bookingEvent.customerName} · ${bookingEvent.serviceName} · ${bookingEvent.customerPhone}${bookingEvent.arrivedAt ? ` · ${bookingEvent.customerName} a ajuns` : ''}`}>
     <span className={`status-dot status-${bookingEvent.status.toLowerCase()}`}/>
+    <div className="calendar-event-time">{format(bookingEvent.start, 'HH:mm')} – {format(bookingEvent.end, 'HH:mm')}</div>
     <div className="calendar-event-name">{bookingEvent.customerName}</div>
-    {!compact && <><div className="calendar-event-service">{bookingEvent.serviceName}</div><div className="calendar-event-meta">{duration} min{bookingEvent.practitionerName ? ` · ${bookingEvent.practitionerName}` : ''}</div></>}
+    {bookingEvent.arrivedAt && <div className="calendar-arrival-note" aria-label={`${bookingEvent.customerName} a ajuns`}><span className="calendar-arrival-dot" aria-hidden="true" />A ajuns</div>}
+    <div className="calendar-event-service">{bookingEvent.serviceName}{!compact && bookingEvent.practitionerName ? ` · ${bookingEvent.practitionerName}` : ''}</div>
   </div>
 }
 
-function buildWorkingTimeOptions(dateValue: string, workingHours: { weekday: number; startTime: string; endTime: string }[], durationMinutes: number, stepMinutes = 10) {
-  if (!dateValue) return []
-  const weekday = new Date(`${dateValue}T12:00:00`).getDay()
-  const ranges = workingHours.filter((range) => range.weekday === weekday)
-  const options: string[] = []
-  for (const range of ranges) {
-    const [startHour, startMinute] = range.startTime.split(':').map(Number)
-    const [endHour, endMinute] = range.endTime.split(':').map(Number)
-    let cursor = startHour * 60 + startMinute
-    const end = endHour * 60 + endMinute
-    cursor = Math.ceil(cursor / stepMinutes) * stepMinutes
-    while (cursor + durationMinutes <= end) {
-      options.push(`${String(Math.floor(cursor / 60)).padStart(2, '0')}:${String(cursor % 60).padStart(2, '0')}`)
-      cursor += stepMinutes
-    }
-  }
-  return [...new Set(options)]
+function CalendarSummary({ icon, value, label, tone }: { icon: ReactNode; value: number; label: string; tone: string }) {
+  return <div className="calendar-summary-card"><span className={`calendar-summary-icon calendar-summary-${tone}`} aria-hidden="true">{icon}</span><span><strong>{value}</strong><small>{label}</small></span></div>
 }
 
-function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPractitionerId, businessWorkingHours, stepMinutes, isAppointmentBased, isClinic }: { onClose: () => void; onCreated: () => void; initialStart?: Date; initialPractitionerId?: string; businessWorkingHours: { weekday: number; startTime: string; endTime: string }[]; stepMinutes: number; isAppointmentBased: boolean; isClinic: boolean }) {
+function MiniCalendar({ date, onSelect }: { date: Date; onSelect: (date: Date) => void }) {
+  const first = new Date(date.getFullYear(), date.getMonth(), 1)
+  const offset = (first.getDay() + 6) % 7
+  const days = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+  const count = Math.ceil((offset + days) / 7) * 7
+  const cells = Array.from({ length: count }, (_, index) => new Date(date.getFullYear(), date.getMonth(), index - offset + 1))
+  return <div className="calendar-sidebar-card calendar-mini-month">
+    <div className="calendar-mini-heading"><strong>{format(date, 'LLLL yyyy', { locale: ro })}</strong><span><button type="button" onClick={() => onSelect(new Date(date.getFullYear(), date.getMonth() - 1, Math.min(date.getDate(), new Date(date.getFullYear(), date.getMonth(), 0).getDate())))} aria-label="Luna anterioară"><ChevronLeft size={16}/></button><button type="button" onClick={() => onSelect(new Date(date.getFullYear(), date.getMonth() + 1, Math.min(date.getDate(), new Date(date.getFullYear(), date.getMonth() + 2, 0).getDate())))} aria-label="Luna următoare"><ChevronRight size={16}/></button></span></div>
+    <div className="calendar-mini-grid">{['Lu', 'Ma', 'Mi', 'Jo', 'Vi', 'Sâ', 'Du'].map((day) => <span key={day} className="calendar-mini-weekday">{day}</span>)}{cells.map((cell) => <button type="button" key={cell.toISOString()} onClick={() => onSelect(cell)} className={`${cell.getMonth() !== date.getMonth() ? 'outside' : ''} ${sameDay(cell, date) ? 'selected' : ''}`} aria-label={format(cell, 'd MMMM yyyy', { locale: ro })} aria-current={sameDay(cell, new Date()) ? 'date' : undefined}>{cell.getDate()}</button>)}</div>
+  </div>
+}
+
+function CalendarQuickBookingModal({ category, onClose, onCreated, initialStart, initialPractitionerId, businessWorkingHours, stepMinutes, isAppointmentBased, isClinic }: { category: BusinessCategory; onClose: () => void; onCreated: () => void; initialStart?: Date; initialPractitionerId?: string; businessWorkingHours: { weekday: number; startTime: string; endTime: string }[]; stepMinutes: number; isAppointmentBased: boolean; isClinic: boolean }) {
+  const booking = bookingTerminology(category)
+  const definite = category === 'FITNESS' ? 'ședința' : category === 'CURSURI' ? 'înscrierea' : booking.singular === 'rezervare' ? 'rezervarea' : 'programarea'
+  const genitive = category === 'FITNESS' ? 'ședinței' : category === 'CURSURI' ? 'înscrierii' : booking.singular === 'rezervare' ? 'rezervării' : 'programării'
   const [services, setServices] = useState<{ id: string; name: string; durationMin: number | null }[]>([])
   const [practitioners, setPractitioners] = useState<{ id: string; name: string }[]>([])
   const [isMultiPractitioner, setIsMultiPractitioner] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
 
   const [customerName, setCustomerName] = useState('')
+  const [customers, setCustomers] = useState<{ id: string; name: string | null; phone: string | null }[]>([])
+  const [customerId, setCustomerId] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [serviceId, setServiceId] = useState('')
   const [practitionerId, setPractitionerId] = useState(initialPractitionerId ?? '')
@@ -610,10 +702,11 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetchWithTimeout('/api/business/conversations/quick-booking-data')
-      .then((res) => res.json())
+    fetchWithTimeout('/api/business/conversations/quick-booking-data?includeCustomers=true')
+      .then((res) => { if (!res.ok) throw new Error('loading_failed'); return res.json() })
       .then((data) => {
         setServices(data.services ?? [])
+        setCustomers(data.customers ?? [])
         setPractitioners(data.practitioners ?? [])
         setIsMultiPractitioner(!!data.isMultiPractitioner)
         if (data.practitioners?.length === 1) setPractitionerId(data.practitioners[0].id)
@@ -654,7 +747,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
 
   async function submit() {
     const hasDateInfo = isMultiPractitioner ? !!selectedSlot : !!simpleDateTime
-    if (!customerName.trim() || customerPhone.trim().length < 6 || !serviceId || !hasDateInfo) {
+    if ((!customerId && (!customerName.trim() || customerPhone.trim().length < 6)) || !serviceId || !hasDateInfo) {
       setError('Completează numele, telefonul, serviciul și data.')
       return
     }
@@ -672,7 +765,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
     const end = new Date(start.getTime() + (service?.durationMin ?? 30) * 60000)
 
     if (start < new Date()) {
-      setError(`Nu poți crea o ${isAppointmentBased ? 'programare' : 'rezervare'} într-un interval din trecut.`)
+      setError(`Nu poți crea o ${booking.singular} într-un interval din trecut.`)
       return
     }
 
@@ -683,8 +776,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: customerName.trim(),
-          customerPhone: customerPhone.trim(),
+          ...(customerId ? { customerId } : { customerName: customerName.trim(), customerPhone: customerPhone.trim() }),
           serviceId,
           practitionerId: isMultiPractitioner ? practitionerId : undefined,
           startAt: start.toISOString(),
@@ -708,7 +800,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold">{isAppointmentBased ? 'Programare nouă' : 'Rezervare nouă'}</h2>
+          <h2 className="font-semibold">{booking.heading} noi</h2>
           <button onClick={onClose} aria-label="Închide">
             <X size={18} />
           </button>
@@ -718,9 +810,23 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
           <p className="text-sm text-gray-400">Se încarcă...</p>
         ) : (
           <div className="flex flex-col gap-3">
+            {customers.length > 0 && <label className="text-sm">
+              {isClinic ? 'Pacient' : 'Client'}
+              <select aria-label={isClinic ? 'Alege pacientul' : 'Alege clientul'} value={customerId} onChange={(e) => {
+                const id = e.target.value
+                const customer = customers.find((item) => item.id === id)
+                setCustomerId(id)
+                setCustomerName(customer?.name ?? '')
+                setCustomerPhone(customer?.phone ?? '')
+                setError('')
+              }} className="input-field w-full mt-1">
+                <option value="">{isClinic ? '+ Pacient nou' : '+ Client nou'}</option>
+                {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name || 'Fără nume'}{customer.phone ? ` — ${customer.phone}` : ''}</option>)}
+              </select>
+            </label>}
             <div className="grid grid-cols-2 gap-2">
-              <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={isClinic ? 'Nume pacient' : 'Nume client'} className="input-field" />
-              <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Telefon" className="input-field" />
+              <input aria-label={isClinic ? 'Nume pacient' : 'Nume client'} readOnly={!!customerId} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={isClinic ? 'Nume pacient' : 'Nume client'} className="input-field" />
+              <input aria-label="Telefon" readOnly={!!customerId} value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Telefon" className="input-field" />
             </div>
 
             <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} className="input-field w-full">
@@ -779,13 +885,13 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
                   value={simpleDate}
                   onChange={(e) => setSimpleDateTime(e.target.value && simpleTime ? `${e.target.value}T${simpleTime}` : e.target.value)}
                   className="input-field w-full"
-                  aria-label={`Data ${isAppointmentBased ? 'programării' : 'rezervării'}`}
+                  aria-label={`Data ${genitive}`}
                 />
                 <select
                   value={simpleTime}
                   onChange={(e) => setSimpleDateTime(simpleDate ? `${simpleDate}T${e.target.value}` : '')}
                   className="input-field w-full"
-                  aria-label={`Ora ${isAppointmentBased ? 'programării' : 'rezervării'} în format 24 de ore`}
+                  aria-label={`Ora ${genitive} în format 24 de ore`}
                 >
                   <option value="">Ora</option>
                   {availableSimpleTimes.map((time) => <option key={time} value={time}>{time}</option>)}
@@ -800,7 +906,7 @@ function CalendarQuickBookingModal({ onClose, onCreated, initialStart, initialPr
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <button onClick={submit} disabled={saving} className="btn-primary w-full">
-              {saving ? 'Se salvează...' : `Salvează ${isAppointmentBased ? 'programarea' : 'rezervarea'}`}
+              {saving ? 'Se salvează...' : `Salvează ${definite}`}
             </button>
           </div>
         )}

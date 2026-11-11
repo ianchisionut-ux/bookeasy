@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { rateLimit } from '@/lib/rate-limit'
 import { putR2File, r2Url } from '@/lib/r2-storage'
 
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const owned = await ownsPatient(id, businessId)
   if (!owned) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  const { allowed } = rateLimit(`patient-doc-upload:${businessId}`, 40, 60 * 60 * 1000)
+  const { allowed } = await rateLimit(`patient-doc-upload:${businessId}`, 40, 60 * 60 * 1000)
   if (!allowed) return NextResponse.json({ error: 'Prea multe încărcări recente. Așteaptă puțin.' }, { status: 429 })
 
   const formData = await req.formData()

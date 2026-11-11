@@ -1,19 +1,19 @@
+import { redirectPublicAlias } from '@/lib/business-public-slug'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import { PublicHeader } from '@/components/ui/public-header'
-import { PublicFooter } from '@/components/ui/public-footer'
 import { BackLink } from '@/components/ui/back-link'
 import BookingFlow from './booking-flow'
 import { ensureVenueService } from '@/lib/venue-services'
 import { CalendarCheck2, Check, Clock3, ShieldCheck } from 'lucide-react'
+import { CATEGORY_LABEL, bookingTerminology, practitionerLabel } from '@/lib/business-categories'
+import { auth } from '@/lib/auth'
+import CustomerGoogleAccount from '@/components/customer-google-account'
+import { canPreviewBusiness, businessSetupHref } from '@/lib/business-preview'
+import BusinessPreviewNotice from '@/components/business-preview-notice'
+import Link from 'next/link'
 
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Salon',
-  EVENT_VENUE: 'Spații evenimente',
-  HOTEL: 'Hotel',
-  PENSIUNE: 'Pensiune',
-  CLINICA: 'Clinică medicală',
-}
+export const dynamic = 'force-dynamic'
 
 const WEEKDAY_SHORT = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
 
@@ -28,8 +28,9 @@ function summarizeOpenDays(workingHours: { weekday: number }[]) {
   return `Deschis ${openDays.map((d) => WEEKDAY_SHORT[d]).join(', ')}`
 }
 
-export default async function RezervaPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function RezervaPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { slug } = await params
+  await redirectPublicAlias(slug, '/rezerva', (await searchParams) ?? {})
   const business = await prisma.business.findUnique({
     where: { slug },
     include: {
@@ -39,10 +40,13 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
     },
   })
 
-  if (!business || !business.publicListed || !business.accountActive) notFound()
+  if (!business) notFound()
+  const session = await auth()
+  const preview = !business.publicListed || !business.accountActive
+  if (preview && !canPreviewBusiness(business.id, session)) notFound()
   if (business.category === 'HOTEL' || business.category === 'PENSIUNE') notFound()
 
-  const venueServices = business.category === 'EVENT_VENUE'
+  const venueServices = !preview && business.category === 'EVENT_VENUE'
     ? await Promise.all(business.resources.map(async (resource) => ({ resource, service: await ensureVenueService(resource) })))
     : []
 
@@ -50,17 +54,24 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
   const openSummary = summarizeOpenDays(business.workingHours)
   const accent = business.brandColor || 'var(--accent)'
   const accentSoft = business.brandColor ? `${business.brandColor}1a` : 'var(--accent-soft)'
+  const googleEmail = (session as any)?.role === 'CUSTOMER' ? session?.user?.email ?? null : null
+  const googleAvailable = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+  const isVenue = business.category === 'EVENT_VENUE'
+  const staff = practitionerLabel(business.category)
+  const booking = bookingTerminology(business.category)
+  const bookingNoun = business.category === 'FITNESS' ? 'ședinței' : business.category === 'CURSURI' ? 'înscrierii' : booking.singular === 'rezervare' ? 'rezervării' : 'programării'
 
   return (
     <div className="themed-static-bg min-h-screen">
       <PublicHeader />
+      {preview && <div className="px-3 sm:px-6"><BusinessPreviewNotice onboardingDone={business.onboardingDone} onboardingStep={business.onboardingStep} accountActive={business.accountActive} /></div>}
 
       <div className="px-3 pt-4 sm:px-6 sm:pt-8">
         <div className="mx-auto max-w-6xl overflow-hidden rounded-[22px] px-4 py-5 shadow-xl sm:rounded-[26px] sm:px-8 sm:py-8" style={{ background: `linear-gradient(125deg, var(--brand-ink) 0%, ${accent} 150%)` }}>
           <div className="flex items-center gap-4">
             <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-white/20 bg-white/15 text-xl font-semibold text-white shadow-inner backdrop-blur">{initials}</div>
             <div className="min-w-0">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/60">Programare online</p>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/60">{booking.heading} online</p>
               <h1 className="truncate text-xl font-semibold text-white sm:text-2xl">{business.name}</h1>
               <p className="mt-1 text-sm text-white/75">{CATEGORY_LABEL[business.category]}{openSummary ? ` · ${openSummary}` : ''}</p>
             </div>
@@ -73,22 +84,31 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
           <BackLink href={`/${slug}`} label={`Înapoi la ${business.name}`} />
           <div className="mt-5 border-t border-[var(--border-soft)] pt-5">
             <h2 className="font-semibold">Rezervă în câteva momente</h2>
-            <p className="mt-1 text-xs leading-relaxed text-gray-500">Alegi serviciul, medicul și ora potrivită. Confirmarea ajunge pe telefon.</p>
+            <p className="mt-1 text-xs leading-relaxed text-gray-500">{isVenue ? 'Alegi sala, durata și ora potrivită.' : business.teamSize > 1 ? `Alegi serviciul, ${staff.definite} și ora potrivită.` : 'Alegi serviciul și ora potrivită.'} Confirmarea ajunge pe telefon.</p>
             <div className="mt-5 space-y-4">
-              <div className="flex items-center gap-3 text-sm text-gray-700"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: accentSoft, color: accent }}><CalendarCheck2 size={15} /></span>Alegi serviciul și medicul</div>
+              <div className="flex items-center gap-3 text-sm text-gray-700"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: accentSoft, color: accent }}><CalendarCheck2 size={15} /></span>{isVenue ? 'Alegi sala și durata' : business.teamSize > 1 ? `Alegi serviciul și ${staff.definite}` : 'Alegi serviciul'}</div>
               <div className="flex items-center gap-3 text-sm text-gray-700"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: accentSoft, color: accent }}><Clock3 size={15} /></span>Selectezi data și ora</div>
               <div className="flex items-center gap-3 text-sm text-gray-700"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: accentSoft, color: accent }}><Check size={15} /></span>Completezi datele și confirmi</div>
             </div>
-            <div className="mt-6 flex items-start gap-2 rounded-2xl bg-gray-50 p-3 text-xs leading-relaxed text-gray-500"><ShieldCheck size={16} className="mt-0.5 shrink-0" style={{ color: accent }} />Datele tale sunt folosite numai pentru gestionarea programării.</div>
+            <div className="mt-6 flex items-start gap-2 rounded-2xl bg-gray-50 p-3 text-xs leading-relaxed text-gray-500"><ShieldCheck size={16} className="mt-0.5 shrink-0" style={{ color: accent }} />Datele tale sunt folosite numai pentru gestionarea {bookingNoun}.</div>
           </div>
         </aside>
 
         <section className="card min-w-0 overflow-hidden p-4 sm:p-7 lg:p-8">
+          {preview ? <div className="py-6">
+            <h2 className="text-xl font-semibold">{booking.heading} nu sunt încă deschise</h2>
+            <p className="mt-2 text-sm text-gray-500">Configurează ofertele și programul de lucru, apoi publică pagina afacerii. În această previzualizare nu se pot trimite {booking.plural}.</p>
+            {business.accountActive && <Link href={businessSetupHref(business.onboardingDone, business.onboardingStep)} className="btn-primary mt-4 inline-flex">{business.onboardingDone ? 'Deschide setările' : 'Continuă configurarea'}</Link>}
+          </div> : <>
+          <div className="mb-6 rounded-2xl border border-[var(--border-soft)] bg-gray-50 p-4">
+            <p className="mb-3 text-sm text-gray-600">Conectează-te cu Google înainte de rezervare pentru a putea lăsa o recenzie verificată după vizită.</p>
+            <CustomerGoogleAccount email={googleEmail} available={googleAvailable} returnTo={`/${slug}/rezerva`} />
+          </div>
           <BookingFlow
             businessId={business.id}
             businessSlug={business.slug}
             category={business.category}
-            isMultiPractitioner={business.teamSize > 1}
+            isMultiPractitioner={business.category !== 'FITNESS' && business.teamSize > 1}
             accentColor={accent}
             accentSoftColor={accentSoft}
             services={(business.category === 'EVENT_VENUE' ? venueServices.map(({ resource, service }) => ({
@@ -105,9 +125,9 @@ export default async function RezervaPage({ params }: { params: Promise<{ slug: 
               price: service.price ? Number(service.price) : null,
             })))}
           />
+          </>}
         </section>
       </main>
-      <PublicFooter />
     </div>
   )
 }

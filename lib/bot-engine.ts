@@ -4,6 +4,7 @@ import { sendMessage, sendWhatsAppList, sendMessengerCarousel, sendWhatsAppButto
 import { sendAlertEmail } from './email'
 import { rateLimit } from './rate-limit'
 import { syncBookingToGoogle } from './google-calendar'
+import { businessHasPlan } from './business-plan-access'
 
 const CANCEL_BOOKING_PATTERN = /^anulez\b/i
 const CONFIRM_BOOKING_PATTERN = /^(da|confirm|confirma[țt])\b/i
@@ -17,6 +18,7 @@ export async function processIncomingMessage(params: {
 }) {
   // Protecție definitivă: webhook-ul WhatsApp nu poate porni botul conversațional.
   if (params.channel === 'WHATSAPP') return
+  if (!await businessHasPlan(params.businessId, 'STANDARD')) return
 
   try {
     await handleIncomingMessage(params)
@@ -25,9 +27,9 @@ export async function processIncomingMessage(params: {
     // logăm eroarea reală (vizibilă în Vercel Logs) și încercăm să trimitem măcar un
     // mesaj de rezervă, ca să știe că ceva n-a mers, nu doar tăcere completă
     console.error('[bot-engine] Eroare neașteptată la procesarea mesajului:', err?.message ?? err, err?.stack)
-    if (params.channel === 'FACEBOOK') {
-      const messenger = await prisma.channel.findUnique({ where: { id: params.channelId }, select: { enabledByOwner: true } }).catch(() => null)
-      if (messenger && !messenger.enabledByOwner) return
+    if (params.channel === 'FACEBOOK' || params.channel === 'INSTAGRAM') {
+      const channelRecord = await prisma.channel.findUnique({ where: { id: params.channelId }, select: { enabledByOwner: true } }).catch(() => null)
+      if (channelRecord && !channelRecord.enabledByOwner) return
     }
     try {
       await sendMessage({
@@ -40,6 +42,7 @@ export async function processIncomingMessage(params: {
       // dacă eșuează și trimiterea mesajului de rezervă, nu mai avem ce face — deja
       // e logată eroarea principală mai sus
     }
+    throw err
   }
 }
 
@@ -58,7 +61,7 @@ async function handleIncomingMessage({
 }) {
   // limitare per utilizator — protejează costurile Meta (taxate per mesaj/conversație)
   // dacă cineva bombardează botul intenționat sau dintr-o eroare de integrare
-  const { allowed } = rateLimit(`bot-msg:${businessId}:${externalUserId}`, 20, 10 * 60 * 1000) // 20 mesaje/10min
+  const { allowed } = await rateLimit(`bot-msg:${businessId}:${externalUserId}`, 20, 10 * 60 * 1000) // 20 mesaje/10min
   if (!allowed) return
 
   const business = await prisma.business.findUnique({ where: { id: businessId } })
@@ -68,11 +71,11 @@ async function handleIncomingMessage({
   // operator) sau canalul are o problemă — ca istoricul din inbox-ul din dashboard
   // să fie complet, nu doar ce a "văzut" botul. Traducem ID-urile tehnice de buton
   // (ex: REMINDER_CONFIRM_xyz) într-un text ușor de citit de un operator uman
-  const incomingMessage = await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'IN', text: toFriendlyLogText(text) } })
+  await prisma.chatMessage.create({ data: { businessId, channel, externalUserId, direction: 'IN', text: toFriendlyLogText(text) } })
 
   const channelRecord = await prisma.channel.findUnique({ where: { id: channelId } })
 
-  if (!channelRecord || channelRecord.status !== 'ACTIVE' || (channel !== 'FACEBOOK' && !channelRecord.enabledByOwner)) {
+  if (!channelRecord || !['ACTIVE', 'EXPIRING_SOON'].includes(channelRecord.status)) {
     await notifyOwnerOfMissedMessage(businessId, channel)
     return
   }
@@ -156,21 +159,11 @@ async function handleIncomingMessage({
     return
   }
 
-  // Când botul Messenger este oprit, mesajele rămân în inbox pentru operator.
-  // Acțiunile explicite dintr-o cerere de reconfirmare au fost tratate mai sus.
-  if (channel === 'FACEBOOK' && !channelRecord.enabledByOwner) {
-    const conversation = await prisma.conversation.findFirst({ where: { businessId, channel, externalUserId } })
-    if (conversation) {
-      await prisma.conversation.update({
-        where: { id: conversation.id },
-        data: { needsOperator: true, operatorRequestedAt: conversation.operatorRequestedAt ?? incomingMessage.createdAt },
-      })
-    } else {
-      await prisma.conversation.create({
-        data: { businessId, channel, externalUserId, state: { step: 'IDLE' }, needsOperator: true, operatorRequestedAt: incomingMessage.createdAt },
-      })
-    }
-    return
+  // Oprirea botului nu trimite automat conversația în inbox. În BookEasy devin
+  // vizibile numai conversațiile pentru care clientul a apăsat explicit „Operator”.
+  // Acceptăm totuși payload-ul unui buton Operator trimis înainte de oprirea botului.
+  if ((channel === 'FACEBOOK' || channel === 'INSTAGRAM') && !channelRecord.enabledByOwner) {
+    if (trimmed !== 'OPERATOR') return
   }
   if (CANCEL_BOOKING_PATTERN.test(text.trim())) {
     const reply = await handleBookingCancellation(businessId, channel, externalUserId)
@@ -211,9 +204,8 @@ async function handleIncomingMessage({
       state: newState as any,
       updatedAt: new Date(),
       needsOperator: newState.step === 'OPERATOR_SILENCE' ? true : conversation.needsOperator,
-      // setăm operatorRequestedAt DOAR la prima intrare în tăcere — dacă am seta-o la
-      // fiecare mesaj primit cât timp rămâne "OPERATOR_SILENCE", pragul ar sări mereu
-      // înaintea mesajelor deja logate, excluzându-le din inbox (exact bug-ul găsit)
+      // Marcăm o singură dată cererea explicită. Din acel moment dashboardul poate
+      // afișa conversația și întreg istoricul ei, până când operatorul o închide.
       ...(newState.step === 'OPERATOR_SILENCE' && !conversation.operatorRequestedAt
         ? { operatorRequestedAt: new Date() }
         : {}),

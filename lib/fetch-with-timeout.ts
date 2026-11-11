@@ -3,10 +3,15 @@
 // motiv neprevăzut (rețea, funcție serverless înghețată etc.)
 export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 20000): Promise<Response> {
   const controller = new AbortController()
+  const callerSignal = options.signal
+  const cancel = () => controller.abort(callerSignal?.reason)
+  if (callerSignal?.aborted) cancel()
+  else callerSignal?.addEventListener('abort', cancel, { once: true })
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
   try {
     return await fetch(url, { ...options, signal: controller.signal })
   } finally {
     clearTimeout(timeout)
+    callerSignal?.removeEventListener('abort', cancel)
   }
 }

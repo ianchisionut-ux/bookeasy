@@ -1,48 +1,75 @@
+import { googleBusinessCredentials, GoogleBusinessConnectionError } from '@/lib/google-business-oauth'
+import { listGoogleLocations } from '@/lib/google-business-locations'
+import { businessOAuthOrigin } from '@/lib/business-oauth-origin'
+import { connectDirectInstagram, connectViaFacebook, MetaConnectionError } from '@/lib/business-meta'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { encrypt } from '@/lib/crypto'
 import { auth } from '@/lib/auth'
 import { verifyOAuthState } from '@/lib/oauth-state'
 
-async function fetchGoogle(url: string, accessToken: string) {
-  // Nu reîncercăm automat un 429: fiecare retry consumă aceeași cotă și prelungește blocarea.
-  return fetch(url, { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' })
-}
-
 export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { provider: providerRaw } = await params
-  if (providerRaw !== 'google' && providerRaw !== 'meta') {
+  if (providerRaw !== 'google' && providerRaw !== 'meta' && providerRaw !== 'instagram') {
     return NextResponse.json({ error: 'invalid provider' }, { status: 400 })
   }
-  const provider = providerRaw as 'google' | 'meta'
+  const provider = providerRaw as 'google' | 'meta' | 'instagram'
   const session = await auth()
   if (!session) return NextResponse.redirect(new URL('/login', req.url))
+  if (!(session as any).isSuperAdmin && (session as any).role !== 'OWNER') return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  const origin = businessOAuthOrigin(req)
 
   const code = req.nextUrl.searchParams.get('code')
   const stateRaw = req.nextUrl.searchParams.get('state')
   const state = stateRaw ? verifyOAuthState(stateRaw, provider) : null
-  if (!state) return NextResponse.redirect(process.env.APP_URL + '/dashboard/canale?error=invalid_state')
+  if (!state || state.origin !== origin || state.userId !== (session as any).userId || req.cookies.get(`bookeasy_oauth_${provider}`)?.value !== state.nonce) return NextResponse.redirect(origin + '/dashboard/setari?error=' + encodeURIComponent('Sesiunea de conectare a expirat sau aparține altei ferestre. Reia conectarea din Setări.'))
   if (!code) {
     const message = req.nextUrl.searchParams.get('error_description') ?? 'Autorizarea a fost anulată.'
-    return NextResponse.redirect(process.env.APP_URL + state.redirectTo + '?error=' + encodeURIComponent(message))
+    return NextResponse.redirect(origin + state.redirectTo + '?error=' + encodeURIComponent(message))
   }
   const { businessId, redirectTo } = state
   if (!(session as any).isSuperAdmin && (session as any).businessId !== businessId) {
-    return NextResponse.redirect(process.env.APP_URL + '/dashboard/canale?error=forbidden_business')
+    return NextResponse.redirect(origin + '/dashboard/setari?error=forbidden_business')
   }
-  const redirectUri = `${process.env.APP_URL}/api/oauth/${provider}/callback`
+  const redirectUri = `${origin}/api/oauth/${provider}/callback`
 
-  const tokenRes = await fetch(
-    provider === 'google'
-      ? 'https://oauth2.googleapis.com/token'
-      : 'https://graph.facebook.com/v21.0/oauth/access_token',
+  if (provider === 'instagram' || provider === 'meta') {
+    try {
+      if (provider === 'instagram') {
+        if (!process.env.INSTAGRAM_APP_ID || !process.env.INSTAGRAM_APP_SECRET) throw new MetaConnectionError('configuration', 'Conectarea directă Instagram este în curs de configurare. Poți folosi alternativa prin Facebook.')
+        await connectDirectInstagram(businessId, code, redirectUri)
+      } else {
+        const pending = await connectViaFacebook(businessId, code, redirectUri, state.metaChannel ?? 'messenger', { userId: (session as any).userId, redirectTo })
+        if (pending) {
+          const path = (session as any).isSuperAdmin ? '/superadmin/meta-page' : '/dashboard/meta-page'
+          const response = NextResponse.redirect(new URL(`${path}?connection=${encodeURIComponent(pending.connectionId)}`, req.url))
+          response.cookies.set('bookeasy_oauth_meta', '', { path: '/api/oauth/meta', maxAge: 0 })
+          return response
+        }
+      }
+      const connected = provider === 'instagram' ? 'instagram' : state.metaChannel === 'both' ? 'meta' : state.metaChannel === 'instagram' ? 'instagram' : 'messenger'
+      const response = NextResponse.redirect(`${origin}${redirectTo}?connected=${connected}`)
+      response.cookies.set(`bookeasy_oauth_${provider}`, '', { path: `/api/oauth/${provider}`, maxAge: 0 })
+      return response
+    } catch (error) {
+      const known = error instanceof MetaConnectionError
+      console.error('[business-meta-connect]', { provider, stage: known ? error.stage : 'save_connection', status: known ? error.status : undefined, code: known ? error.code : undefined, reason: known ? error.reason : undefined })
+      const message = known ? error.message : 'Conexiunea nu a putut fi salvată. Reia conectarea sau contactează echipa BookEasy.'
+      return NextResponse.redirect(`${origin}${redirectTo}?error=${encodeURIComponent(message)}`)
+    }
+  }
+
+  try {
+  const credentials = googleBusinessCredentials()
+  if (!credentials) throw new GoogleBusinessConnectionError('configuration', 'Conectarea Google Business Profile nu este configurată complet. Contactează echipa BookEasy.')
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token',
     {
-      method: 'POST',
+      method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(15000),
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         code,
-        client_id: provider === 'google' ? process.env.GOOGLE_CLIENT_ID! : process.env.META_APP_ID!,
-        client_secret: provider === 'google' ? process.env.GOOGLE_CLIENT_SECRET! : process.env.META_APP_SECRET!,
+        client_id: credentials.clientId,
+        client_secret: credentials.clientSecret,
         redirect_uri: redirectUri,
         grant_type: 'authorization_code',
       }),
@@ -50,137 +77,31 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   )
   const tokenData = await tokenRes.json()
   if (!tokenRes.ok || !tokenData.access_token) {
-    const message = tokenData.error_description ?? tokenData.error?.message ?? `${provider === 'google' ? 'Google' : 'Meta'} nu a returnat tokenul de acces.`
-    return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
-  }
-
-  if (provider === 'meta') {
-    const metaChannel = state.metaChannel ?? 'messenger'
-    const longLived = await fetch(
-      `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.META_APP_ID}&client_secret=${process.env.META_APP_SECRET}&fb_exchange_token=${tokenData.access_token}`
-    ).then((r) => r.json())
-
-    const pageFields = encodeURIComponent(metaChannel === 'instagram' ? 'id,name,access_token,instagram_business_account{id,username}' : 'id,name,access_token')
-    const pages = await fetch(`https://graph.facebook.com/v21.0/me/accounts?fields=${pageFields}&access_token=${longLived.access_token}`).then((r) =>
-      r.json()
-    )
-
-    if (longLived.error || pages.error || !pages.data?.length) {
-      const message = longLived.error?.message ?? pages.error?.message ?? 'Nu a fost selectată nicio Pagină Facebook.'
-      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
-    }
-
-    if (pages.data.length !== 1) {
-      const message = 'Selectează exact o singură Pagină Facebook pentru această afacere.'
-      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
-    }
-
-    const page = pages.data[0]
-    const instagramAccountId = page.instagram_business_account?.id as string | undefined
-    if (metaChannel === 'instagram' && !instagramAccountId) {
-      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent('Pagina selectată nu are asociat un cont Instagram profesional.'))
-    }
-
-    const subscribedObjectId = metaChannel === 'instagram' ? instagramAccountId! : page.id
-    const subscribedFields = metaChannel === 'instagram' ? 'messages,messaging_postbacks' : 'messages,messaging_postbacks,message_deliveries,message_reads'
-    const subscription = await fetch(`https://graph.facebook.com/v21.0/${subscribedObjectId}/subscribed_apps?subscribed_fields=${subscribedFields}&access_token=${page.access_token}`, { method: 'POST' })
-    const subscriptionData = await subscription.json()
-    if (!subscription.ok || subscriptionData.error) {
-      const message = subscriptionData.error?.message ?? 'Abonarea paginii la webhook a eșuat.'
-      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
-    }
-
-    if (metaChannel === 'messenger') {
-      await prisma.channel.upsert({
-        where: { type_externalId: { type: 'FACEBOOK', externalId: page.id } },
-        create: {
-          businessId,
-          type: 'FACEBOOK',
-          externalId: page.id,
-          accessToken: encrypt(page.access_token),
-          expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-        },
-        update: { businessId, accessToken: encrypt(page.access_token), status: 'ACTIVE' },
-      })
-    }
-
-    // Același acord Meta conectează și contul Instagram profesional asociat
-    // Paginii selectate. Dacă pagina nu are Instagram Business/Creator, Messenger
-    // rămâne conectat, iar utilizatorul vede Instagram ca neconectat în Setări.
-    if (metaChannel === 'instagram' && instagramAccountId) {
-      await prisma.channel.upsert({
-        where: { type_externalId: { type: 'INSTAGRAM', externalId: instagramAccountId } },
-        create: {
-          businessId,
-          type: 'INSTAGRAM',
-          externalId: instagramAccountId,
-          accessToken: encrypt(page.access_token),
-          expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-        },
-        update: {
-          businessId,
-          accessToken: encrypt(page.access_token),
-          status: 'ACTIVE',
-          enabledByOwner: true,
-        },
-      })
-    }
+    throw new GoogleBusinessConnectionError('token', 'Google a refuzat autorizarea. Reia conectarea din Setări; dacă eroarea persistă, contactează echipa BookEasy.', tokenRes.status, 'token_rejected')
   }
 
   if (provider === 'google') {
-    const accountsResponse = await fetchGoogle('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', tokenData.access_token)
-    const accounts = await accountsResponse.json()
-    if (!accountsResponse.ok || accounts.error) {
-      const message = accountsResponse.status === 429 ? 'Cota Google Business Profile a proiectului este epuizată. Administratorul trebuie să mărească limita Requests per minute în Google Cloud Console, apoi conectarea poate fi reluată.' : accounts.error?.message ?? 'Google nu a returnat conturile Business Profile.'
-      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
-    }
-
-    const accountName = accounts.accounts?.[0]?.name // ex: "accounts/123456"
-    if (!accountName) {
-      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent('Contul Google nu are niciun Business Profile disponibil.'))
-    }
-
-    // recenziile se cer pe LOCAȚIE, nu pe cont — trebuie numele complet al resursei
-    // (ex: "accounts/123456/locations/789") ca să putem sincroniza ulterior recenziile
-    const locationsResponse = await fetchGoogle(
-      `https://mybusinessbusinessinformation.googleapis.com/v1/${accountName}/locations?readMask=name,title`,
-      tokenData.access_token
-    )
-    const locations = await locationsResponse.json()
-    if (!locationsResponse.ok || locations.error) {
-      const message = locationsResponse.status === 429 ? 'Cota Google Business Profile a proiectului este epuizată. Mărește limita API din Google Cloud Console și încearcă din nou.' : locations.error?.message ?? 'Google nu a returnat locațiile Business Profile.'
-      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent(message))
-    }
-    const rawLocationName = locations.locations?.[0]?.name // de regulă "locations/789"
-    if (!rawLocationName) {
-      return NextResponse.redirect(process.env.APP_URL + redirectTo + '?error=' + encodeURIComponent('Business Profile nu are nicio locație disponibilă.'))
-    }
-    const locationName = rawLocationName.startsWith('accounts/')
-      ? rawLocationName
-      : `${accountName}/${rawLocationName}`
-
-    const existingGoogleChannel = await prisma.channel.findFirst({
-      where: { businessId, type: 'GOOGLE_BUSINESS' },
-    })
-    const tokenUpdate = {
-      externalId: locationName,
-      accessToken: encrypt(tokenData.access_token),
-      ...(tokenData.refresh_token ? { refreshToken: encrypt(tokenData.refresh_token) } : {}),
-      expiresAt: new Date(Date.now() + Number(tokenData.expires_in ?? 3600) * 1000),
-      status: 'ACTIVE' as const,
-      enabledByOwner: true,
-    }
-    if (existingGoogleChannel) {
-      await prisma.channel.update({ where: { id: existingGoogleChannel.id }, data: tokenUpdate })
-    } else {
-      await prisma.channel.create({ data: {
-        businessId,
-        type: 'GOOGLE_BUSINESS',
-        ...tokenUpdate,
-      } })
-    }
+    if (!tokenData.refresh_token) throw new GoogleBusinessConnectionError('offline_access', 'Google nu a oferit acces offline. Reia conectarea și acordă accesul solicitat.')
+    const locations = await listGoogleLocations(tokenData.access_token)
+    if (!locations.length) throw new GoogleBusinessConnectionError('locations', 'Contul Google nu are nicio locație Business Profile disponibilă. Alege contul care administrează afacerea.')
+    const pending = await prisma.pendingGoogleConnection.create({ data: {
+      businessId, userId: (session as any).userId, redirectTo,
+      locations, accessToken: encrypt(tokenData.access_token), refreshToken: encrypt(tokenData.refresh_token),
+      tokenExpiresAt: new Date(Date.now() + Number(tokenData.expires_in ?? 3600) * 1000),
+      expiresAt: new Date(Date.now() + 10 * 60_000),
+    } })
+    const selectionPath = (session as any).isSuperAdmin ? '/superadmin/google-location' : '/dashboard/google-location'
+    const response = NextResponse.redirect(new URL(selectionPath + '?connection=' + pending.id, req.url))
+    response.cookies.set('bookeasy_oauth_google', '', { path: '/api/oauth/google', maxAge: 0 })
+    return response
   }
 
-  const connected = provider === 'meta' ? (state.metaChannel ?? 'messenger') : provider
-  return NextResponse.redirect(`${process.env.APP_URL}${redirectTo ?? '/dashboard/canale'}?connected=${connected}`)
+  const connected = provider
+  return NextResponse.redirect(`${origin}${redirectTo ?? '/dashboard/canale'}?connected=${connected}`)
+  } catch (error) {
+    const known = error instanceof GoogleBusinessConnectionError
+    console.error('[business-google-connect]', { stage: known ? error.stage : 'save_connection', status: known ? error.status : undefined, reason: known ? error.reason : undefined })
+    const message = known ? error.message : 'Conectarea Google nu a putut fi salvată. Reia conectarea sau contactează echipa BookEasy.'
+    return NextResponse.redirect(`${origin}${redirectTo}?error=${encodeURIComponent(message)}`)
+  }
 }

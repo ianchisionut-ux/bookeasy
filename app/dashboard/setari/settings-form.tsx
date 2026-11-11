@@ -7,27 +7,39 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Time10Select } from '@/components/working-date-time-picker'
 import { canonicalCity, ROMANIAN_CITIES } from '@/lib/romanian-cities'
+import BusinessLocationPicker from '@/components/business-location-picker'
+import { bookingTerminology } from '@/lib/business-categories'
+import Link from 'next/link'
 
 const WEEKDAY_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
 
 type WorkingHour = { weekday: number; startTime: string; endTime: string; closed: boolean }
 
 export default function SettingsForm({
+  smsAvailable,
+  category,
   business,
   workingHours,
   isMultiPractitioner,
   isClinic,
   isEventVenue,
+  advancedLocked,
 }: {
+  smsAvailable: boolean
+  category: string
   business: {
     name: string
     contactPhone: string
     city: string
     address: string
+    latitude: number | null
+    longitude: number | null
     publicListed: boolean
     slotIntervalMinutes: number | null
     minLeadTimeMinutes: number
     reminderMinutesBefore: number
+    smsReconfirmationEnabled: boolean
+    messengerReconfirmationEnabled: boolean
     operatorSilenceMinutes: number
     botBookingEnabled: boolean
     break1Start: string | null
@@ -41,10 +53,13 @@ export default function SettingsForm({
   isMultiPractitioner: boolean
   isClinic: boolean
   isEventVenue: boolean
+  advancedLocked?: boolean
 }) {
   const [form, setForm] = useState({ ...business, city: canonicalCity(business.city) ?? '' })
+  const [position, setPosition] = useState<{ lat: number; lng: number } | null>(business.latitude !== null && business.longitude !== null ? { lat: business.latitude, lng: business.longitude } : null)
+  const [manualPositionChanged, setManualPositionChanged] = useState(false)
   const [saveError, setSaveError] = useState('')
-  const usesAppointments = !isEventVenue
+  const bookingWords = bookingTerminology(category)
   const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null)
 
   useEffect(() => {
@@ -107,6 +122,7 @@ export default function SettingsForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          ...(manualPositionChanged ? { manualLocation: position } : {}),
           slotIntervalMinutes: form.slotIntervalMinutes,
           workingHours: hours,
           break1Start: break1Enabled ? form.break1Start : null,
@@ -121,6 +137,8 @@ export default function SettingsForm({
         const data = await res.json()
         setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' }))
         setGeocoded(!!data.geocoded)
+        setPosition(data.location ?? null)
+        setManualPositionChanged(false)
       } else {
         setSaveError('Setările nu au putut fi salvate. Verifică orașul selectat.')
       }
@@ -185,6 +203,26 @@ export default function SettingsForm({
             <label className="text-sm text-gray-500 block mb-1.5">Adresă</label>
             <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </div>
+          <div className="border-t border-[var(--border-soft)] pt-3">
+            <div className="flex min-h-9 items-center justify-between gap-3">
+              <p className="min-w-0 text-sm font-medium">Poziția pe hartă</p>
+              <Button
+                type="button"
+                variant="secondary"
+                className="!inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap !px-4 !py-0 text-xs leading-none"
+                disabled={!position}
+                onClick={() => {
+                  setPosition(null)
+                  setManualPositionChanged(true)
+                  setGeocoded(false)
+                }}
+              >
+                Elimină pin
+              </Button>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">Dacă adresa nu este găsită corect, alege manual locul exact.</p>
+            <BusinessLocationPicker value={position} city={form.city} onChange={(next) => { setPosition(next); setManualPositionChanged(true); setGeocoded(false) }} />
+          </div>
         </div>
         {saveError && <p role="alert" className="mt-2 text-sm text-red-600">{saveError}</p>}
       </Card>
@@ -227,17 +265,17 @@ export default function SettingsForm({
         <div className="pt-4 border-t border-[var(--border-soft)]">
           {isMultiPractitioner ? (
             <p className="text-sm text-gray-500">
-              Profilul e setat pe "Echipă" — fiecare medic/angajat își setează propriile pauze din{' '}
-              <a href="/dashboard/medici" className="text-[var(--accent)] underline">
+              Profilul e setat pe &quot;Echipă&quot; — fiecare medic/angajat își setează propriile pauze din{' '}
+              <Link href="/dashboard/medici" className="text-[var(--accent)] underline">
                 Medici
-              </a>
+              </Link>
               , unde știu cel mai bine când au pauză pe calendarul lor.
             </p>
           ) : (
             <>
               <h3 className="text-sm font-medium mb-1">Pauze</h3>
               <p className="text-xs text-gray-500 mb-3">
-                Aceleași ore în fiecare zi lucrătoare — nu se pot face {usesAppointments ? 'programări' : 'rezervări'} în aceste intervale.
+                Aceleași ore în fiecare zi lucrătoare — nu se pot face {bookingWords.plural} în aceste intervale.
               </p>
               <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -288,7 +326,7 @@ export default function SettingsForm({
       <Card className="mb-5 break-inside-avoid">
         <h2 className="font-medium mb-1">Interval între ore disponibile</h2>
         <p className="text-sm text-gray-500 mb-3">
-          Cum se împart orele oferite {isClinic ? 'pacienților' : 'clienților'} la {usesAppointments ? 'programare' : 'rezervare'}.
+          Cum se împart orele oferite {isClinic ? 'pacienților' : 'clienților'} pentru fiecare {bookingWords.singular}.
         </p>
         <select
           value={form.slotIntervalMinutes ?? ''}
@@ -305,16 +343,16 @@ export default function SettingsForm({
         </select>
         <p className="text-xs text-gray-400 mt-2">
           Automat, BookEasy folosește durata celui mai scurt serviciu activ. O valoare manuală se aplică exact
-          așa cum este aleasă, în calendarul individual, modul echipă și programările online.
+          așa cum este aleasă, în calendarul individual, modul echipă și {bookingWords.plural} online.
         </p>
       </Card>
 
       <Card className="mb-5 break-inside-avoid">
-        <h2 className="font-medium mb-1">Interval minim pentru {usesAppointments ? 'programări' : 'rezervări'} din exterior</h2>
+        <h2 className="font-medium mb-1">Interval minim pentru {bookingWords.plural} din exterior</h2>
         <p className="text-sm text-gray-500 mb-3">
-          {usesAppointments ? 'Programările venite' : 'Rezervările venite'} prin bot (WhatsApp/Instagram/Facebook) sau de pe site nu se pot face
-          mai aproape de acest interval — ca să ai timp să vezi {usesAppointments ? 'programările' : 'rezervările'}. La fel și anulările
-          făcute de {isClinic ? 'pacienți' : 'clienți'}. {usesAppointments ? 'Programările create' : 'Rezervările create'} manual de tine din dashboard nu sunt afectate — le
+          {bookingWords.heading} venite prin bot (Instagram/Facebook) sau de pe site nu se pot face
+          mai aproape de acest interval — ca să ai timp să le vezi. La fel și anulările
+          făcute de {isClinic ? 'pacienți' : 'clienți'}. Cele create manual de tine din dashboard nu sunt afectate — le
           poți face oricând, chiar cu 30 de minute înainte.
         </p>
         <select
@@ -329,17 +367,37 @@ export default function SettingsForm({
         </select>
       </Card>
 
+      <div className="relative">
+      {advancedLocked && <div className="mb-3 rounded-xl border border-[#bde3da] bg-[#eef8f5] p-4 text-sm text-[#247975]"><strong>STANDARD</strong> · Reconfirmările și automatizările se activează odată cu planul Standard. <Link href="/dashboard/planuri" className="underline">Vezi planurile</Link></div>}
+      <fieldset disabled={advancedLocked} className={advancedLocked ? 'opacity-55' : ''}>
       <Card className="mb-5 break-inside-avoid">
-        <h2 className="font-medium mb-1">Reconfirmare {usesAppointments ? 'programări' : 'rezervări'} în conversație</h2>
-        <p className="text-sm text-gray-500">
-          Când apeși manual <strong>„Cere reconfirmare”</strong>, mesajul pleacă pe canalul original al {usesAppointments ? 'programării' : 'rezervării'}: Messenger, Instagram sau WhatsApp. Pentru cele create din site ori manual se folosește WhatsApp. {isClinic ? 'Pacientul' : 'Clientul'} primește butoanele Confirmă și Anulează direct în conversație.
-        </p>
+        <h2 className="font-medium mb-1">Reconfirmarea {bookingWords.plural}</h2>
+        <p className="text-sm text-gray-500">Alege cum poți cere confirmarea pentru fiecare {bookingWords.singular}. {isClinic ? 'Pacientul' : 'Clientul'} poate confirma, reprograma sau anula.</p>
+        {smsAvailable && <label className="mt-4 flex items-center justify-between gap-4 text-sm">
+          <span><strong>Reconfirmare prin SMS</strong><span className="mt-1 block text-xs text-gray-500">Permite cererile automate și manuale prin SMS.</span></span>
+          <input type="checkbox" role="switch" className="h-5 w-5 shrink-0 accent-[var(--accent)]" checked={form.smsReconfirmationEnabled} onChange={event => setForm({ ...form, smsReconfirmationEnabled: event.target.checked })} />
+        </label>}
+        {smsAvailable && form.smsReconfirmationEnabled && <label className="mt-3 grid gap-2 text-sm">Când se cere automat reconfirmarea prin SMS
+          <select className="input-field w-full" value={form.reminderMinutesBefore} onChange={event => setForm({ ...form, reminderMinutesBefore: Number(event.target.value) })}>
+            {![60, 120, 360, 720, 1440, 2880].includes(form.reminderMinutesBefore) && <option value={form.reminderMinutesBefore}>{form.reminderMinutesBefore} minute înainte</option>}
+            <option value={60}>Cu 1 oră înainte</option>
+            <option value={120}>Cu 2 ore înainte</option>
+            <option value={360}>Cu 6 ore înainte</option>
+            <option value={720}>Cu 12 ore înainte</option>
+            <option value={1440}>Cu 24 de ore înainte</option>
+            <option value={2880}>Cu 48 de ore înainte</option>
+          </select>
+        </label>}
+        <label className="mt-4 flex items-center justify-between gap-4 border-t border-[var(--border-soft)] pt-4 text-sm">
+          <span><strong>Reconfirmare pe Messenger</strong><span className="mt-1 block text-xs text-gray-500">Permite să ceri manual reconfirmarea în conversația Messenger.</span></span>
+          <input type="checkbox" role="switch" className="h-5 w-5 shrink-0 accent-[var(--accent)]" checked={form.messengerReconfirmationEnabled} onChange={event => setForm({ ...form, messengerReconfirmationEnabled: event.target.checked })} />
+        </label>
       </Card>
 
       <Card className="mb-5 break-inside-avoid">
         <h2 className="font-medium mb-1">Tăcere bot Instagram/Facebook după cerere de operator</h2>
         <p className="text-sm text-gray-500 mb-3">
-          Când un client apasă "Operator" în conversația de pe Instagram/Messenger, botul nu mai
+          Când un client apasă &quot;Operator&quot; în conversația de pe Instagram/Messenger, botul nu mai
           răspunde deloc pentru acest interval — ca să poți prelua tu conversația fără suprapuneri.
           După ce trece timpul, botul revine automat la răspunsuri normale.
         </p>
@@ -359,11 +417,11 @@ export default function SettingsForm({
       <Card className="mb-5 break-inside-avoid">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-medium">{usesAppointments ? 'Programare' : 'Rezervare'} direct în Instagram/Facebook (bot)</h2>
+            <h2 className="font-medium">{bookingWords.heading} direct în Instagram/Facebook (bot)</h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              Dacă e oprit, opțiunea "{usesAppointments ? 'Fă o programare' : 'Fă o rezervare'}" dispare din meniul de start al botului —
-              rămân doar "Vorbește cu un operator" și "Vezi pagina de rezervare". Util dacă vrei ca
-              toate {usesAppointments ? 'programările' : 'rezervările'} din Instagram/Messenger să treacă prin pagina publică, nu prin bot.
+              Dacă e oprit, opțiunea de {bookingWords.singular} dispare din meniul de start al botului —
+              rămân doar &quot;Vorbește cu un operator&quot; și &quot;Vezi pagina de rezervare&quot;. Util dacă vrei ca
+              toate {bookingWords.plural} din Instagram/Messenger să treacă prin pagina publică, nu prin bot.
             </p>
           </div>
           <button
@@ -385,8 +443,10 @@ export default function SettingsForm({
           {botBookingError || (savingBotBooking ? 'Se salvează...' : `Setarea este ${form.botBookingEnabled ? 'activă' : 'dezactivată'}.`)}
         </p>
       </Card>
+      </fieldset>
+      </div>
 
-      <Card className="mb-5 break-inside-avoid">
+      <Card id="settings-visibility" className="mb-5 break-inside-avoid scroll-mt-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-medium">Vizibil pe harta publică</h2>
@@ -395,6 +455,10 @@ export default function SettingsForm({
             </p>
           </div>
           <button
+            type="button"
+            role="switch"
+            aria-label="Vizibil pe harta publică"
+            aria-checked={form.publicListed}
             onClick={() => setForm({ ...form, publicListed: !form.publicListed })}
             className="pill w-11 h-6 flex items-center px-0.5 transition"
             style={{ background: form.publicListed ? 'var(--accent)' : '#e5e5ea' }}

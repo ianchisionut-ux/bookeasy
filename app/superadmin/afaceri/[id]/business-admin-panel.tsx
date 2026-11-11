@@ -2,34 +2,28 @@
 
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
 import BillingSection from './billing-section'
-import MessengerBotToggle from '@/components/messenger-bot-toggle'
-import MetaEmbeddedSignupV4Button from '@/components/meta-embedded-signup-v4-button'
+import { CATEGORY_LABEL, type BusinessCategory } from '@/lib/business-categories'
+import SmsRoutingSettings from '@/components/admin/sms-routing-settings'
+import SharedIntegrationsCard from '@/app/dashboard/setari/integrations-card'
+import BillingModeCard from './billing-mode-card'
 
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Salon',
-  EVENT_VENUE: 'Spații evenimente',
-  HOTEL: 'Hotel',
-  PENSIUNE: 'Pensiune',
-  CLINICA: 'Clinică',
-}
-
-type Channel = { id: string; type: string; externalId: string; wabaId: string | null; status: string; enabledByOwner: boolean }
+type Channel = { id: string; type: 'FACEBOOK' | 'INSTAGRAM' | 'WHATSAPP' | 'GOOGLE_BUSINESS' | 'WEB' | 'MANUAL'; externalId: string; displayName?: string | null; authProvider?: string; wabaId: string | null; status: string; enabledByOwner: boolean }
 type CalendarPractitioner = {
   id: string
   name: string
-  googleCalendar: { googleEmail: string | null; calendarName: string; syncEnabled: boolean; lastError: string | null } | null
+  googleCalendar: { googleEmail: string | null; calendarName: string; calendarId: string; syncEnabled: boolean; includeCustomerDetails: boolean; lastSyncAt: Date | string | null; lastError: string | null } | null
 }
 type Business = {
   id: string
   slug: string
   name: string
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  category: BusinessCategory
   dentalClinic: boolean
   accountActive: boolean
   publicListed: boolean
@@ -59,15 +53,26 @@ type Business = {
   billingEmail: string | null
   contractRepresentativeName: string | null
   contractRepresentativeRole: string | null
+  smsGatewayApiUrl: string | null
+  smsGatewayHasApiKey: boolean
+  smsGatewayDeviceId: number | null
+  smsGatewayPhone: string | null
+  smsGatewayEnabled: boolean
+  smsGatewayTestedAt: string | null
+  smsGatewayLastError: string | null
+  smsSenderMode: string
+  smsGatewayMode: string
+  smsDevicePaired: boolean
+  smsDeviceLastSeenAt: string | null
 }
 
-export default function BusinessAdminPanel({ business, channels, practitioners, metaAppId, metaWhatsappConfigId, instagramOAuthEnabled }: { business: Business; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string; instagramOAuthEnabled: boolean }) {
+export default function BusinessAdminPanel({ business, channels, practitioners, metaAppId, metaWhatsappConfigId, instagramOAuthEnabled, campaignManaged = false, billingMode, currentCampaignId, campaigns, platformSmsReady }: { business: Business; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string; instagramOAuthEnabled: boolean; campaignManaged?: boolean; billingMode: 'PAID' | 'FREE' | 'CAMPAIGN'; currentCampaignId: string | null; campaigns: { id: string; code: string; name: string; freeMonths: number; open: boolean }[]; platformSmsReady: boolean }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(business.name)
   const [resetSentTo, setResetSentTo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [teamMode, setTeamMode] = useState(business.teamSize > 1)
+  const [teamMode, setTeamMode] = useState(business.category !== 'FITNESS' && business.teamSize > 1)
   const [savingTeam, setSavingTeam] = useState(false)
   const [teamSaved, setTeamSaved] = useState(false)
   const [dentalClinic, setDentalClinic] = useState(business.dentalClinic)
@@ -210,8 +215,8 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
                 <h1 className="text-xl font-semibold">{business.name}</h1>
               )}
               <Pill tone="accent">{CATEGORY_LABEL[business.category] ?? business.category}</Pill>
-              <Pill tone={business.teamSize > 1 ? 'accent' : 'neutral'}>
-                {business.teamSize > 1 ? 'Echipă' : 'Individual'}
+              <Pill tone={business.category !== 'FITNESS' && business.teamSize > 1 ? 'accent' : 'neutral'}>
+                {business.category === 'FITNESS' ? '1 instructor' : business.teamSize > 1 ? 'Echipă' : 'Individual'}
               </Pill>
               <Pill tone={business.accountActive ? 'success' : 'danger'}>{business.accountActive ? 'Activ' : 'Dezactivat'}</Pill>
             </div>
@@ -289,7 +294,8 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
 
       {/* Coloana stângă — profil, facturare */}
       <div className="flex flex-col gap-5">
-        <Card>
+        <BillingModeCard key={`${billingMode}-${business.planName}-${currentCampaignId}`} businessId={business.id} initialMode={billingMode} initialPlanName={business.planName} initialCampaignId={currentCampaignId} campaigns={campaigns} />
+        {business.category === 'FITNESS' ? <Card><h2 className="font-medium mb-2">Un instructor · o afacere</h2><p className="text-sm text-gray-500">Instructorul își gestionează propriii clienți, planurile și cele trei calendare: programări, antrenamente și nutriție.</p></Card> : <Card>
           <h2 className="font-medium mb-1">Profilul afacerii</h2>
           <p className="text-sm text-gray-500 mb-3">
             Individual — un singur calendar, gestiune unică (ca acum). Echipă — proprietarul poate
@@ -328,7 +334,7 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
             </div>
           )}
           {teamSaved && !teamModeChanged && <p className="text-xs text-green-700">✓ Salvat</p>}
-        </Card>
+        </Card>}
 
         {business.category === 'CLINICA' && (
           <Card>
@@ -359,6 +365,9 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
         )}
 
         <BillingSection
+          key={`${business.billingDueAt}-${business.billingStatus}-${business.billingInvoiceName}`}
+          campaignManaged={campaignManaged}
+          billingMode={billingMode}
           businessId={business.id}
           initialPlanName={business.planName}
           initialStatus={business.billingStatus}
@@ -387,433 +396,8 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
 
       {/* Coloana dreaptă — integrări unificate, plată */}
       <div className="flex flex-col gap-5">
-        <IntegrationsCard businessId={business.id} individual={business.teamSize <= 1} channels={channels} practitioners={practitioners} metaAppId={metaAppId} metaWhatsappConfigId={metaWhatsappConfigId} instagramOAuthEnabled={instagramOAuthEnabled} />
-      </div>
-    </div>
-  )
-}
-
-function IntegrationsCard({ businessId, individual, channels, practitioners, metaAppId, metaWhatsappConfigId, instagramOAuthEnabled }: { businessId: string; individual: boolean; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string; instagramOAuthEnabled: boolean }) {
-  const searchParams = useSearchParams()
-  const oauthError = searchParams.get('error')
-  const [tab, setTab] = useState<'FACEBOOK' | 'INSTAGRAM' | 'WHATSAPP' | 'GOOGLE_CALENDAR'>('FACEBOOK')
-
-  const tabs: { id: typeof tab; label: string }[] = [
-    { id: 'FACEBOOK', label: 'Messenger' },
-    { id: 'INSTAGRAM', label: 'Instagram' },
-    { id: 'WHATSAPP', label: 'WhatsApp' },
-    { id: 'GOOGLE_CALENDAR', label: 'Google Calendar' },
-  ]
-
-  return (
-    <Card>
-      <h2 className="text-xs font-semibold text-gray-500 tracking-wide mb-3">INTEGRĂRI</h2>
-      {oauthError && (
-        <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2 mb-3">
-          Conectarea nu a reușit: {oauthError}
-        </p>
-      )}
-      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 mb-4">
-        <p className="text-sm font-medium text-blue-950">Înrolare asistată Meta</p>
-        <p className="text-xs text-blue-800 mt-1 mb-3">Clientul se conectează cu propriul cont Meta și selectează numai pagina afacerii sale. Messenger se configurează și se abonează automat.</p>
-        <a href={'/api/oauth/meta/start?channel=messenger&businessId=' + businessId} className="btn-secondary inline-flex text-sm">Autorizează Messenger</a>
-      </div>
-      <div className="flex gap-1.5 mb-4 flex-wrap">
-        {tabs.map((t) => {
-          const connected = t.id === 'GOOGLE_CALENDAR'
-            ? practitioners.some((p) => p.googleCalendar?.syncEnabled)
-            : channels.some((c) => c.type === t.id && c.status === 'ACTIVE')
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className="px-2.5 py-1 rounded-full text-xs font-medium border flex items-center gap-1"
-              style={
-                tab === t.id
-                  ? { background: 'var(--accent)', color: 'white', borderColor: 'var(--accent)' }
-                  : { borderColor: 'var(--border-soft)' }
-              }
-            >
-              {t.label}
-              {connected && <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />}
-            </button>
-          )
-        })}
-      </div>
-
-      {tab === 'FACEBOOK' && (
-        <MessengerConnectionCard
-          businessId={businessId}
-          channel={channels.find((c) => c.type === 'FACEBOOK') ?? null}
-        />
-      )}
-      {tab === 'INSTAGRAM' && (
-        <div className="space-y-3">
-          <div className="rounded-2xl border border-pink-100 bg-pink-50 p-4">
-            <p className="text-sm font-semibold text-pink-950">Autorizare Instagram</p>
-            <p className="mt-1 text-xs text-pink-800">Flux separat de Messenger, pentru contul profesional asociat Paginii Facebook.</p>
-            {instagramOAuthEnabled ? (
-              <a href={'/api/oauth/meta/start?channel=instagram&businessId=' + businessId} className="btn-secondary mt-3 inline-flex text-sm">Autorizează Instagram</a>
-            ) : (
-              <p className="mt-3 text-xs font-medium text-amber-700">Activează mai întâi permisiunile Instagram în aplicația Meta.</p>
-            )}
-          </div>
-          <ChannelFields
-            businessId={businessId}
-            type="INSTAGRAM"
-            channel={channels.find((c) => c.type === 'INSTAGRAM') ?? null}
-            idLabel="Instagram Business Account ID"
-            idPlaceholder="ex: 178414000000000"
-            helpText="Contul Instagram trebuie să fie profesional (Business/Creator) și legat de aceeași Pagină de Facebook ca Messenger."
-          />
-        </div>
-      )}
-      {tab === 'WHATSAPP' && <WhatsAppFields businessId={businessId} channel={channels.find((c) => c.type === 'WHATSAPP') ?? null} metaAppId={metaAppId} configId={metaWhatsappConfigId} />}
-      {tab === 'GOOGLE_CALENDAR' && <GoogleCalendarCard businessId={businessId} individual={individual} practitioners={practitioners} />}
-    </Card>
-  )
-}
-
-function MessengerConnectionCard({ businessId, channel }: { businessId: string; channel: Channel | null }) {
-  const connected = channel?.status === 'ACTIVE'
-
-  return (
-    <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold">Facebook Messenger</p>
-          <p className="text-xs text-gray-500 mt-1">
-            Conectarea se face exclusiv prin autorizarea Meta. Nu trebuie completate manual Page ID sau Access Token.
-          </p>
-        </div>
-        <Pill tone={connected ? 'success' : 'neutral'}>{connected ? 'ACTIVE' : 'Neconectat'}</Pill>
-      </div>
-      {channel && (
-        <div className="mt-3">
-          <p className="text-xs text-gray-500 mb-3 break-all">Page ID: {channel.externalId}</p>
-          <div className="mb-3"><MessengerBotToggle channelId={channel.id} enabled={channel.enabledByOwner} businessId={businessId} /></div>
-          <DisconnectChannelButton businessId={businessId} channel={channel} />
-        </div>
-      )}
-    </div>
-  )
-}
-
-function DisconnectChannelButton({ businessId, channel }: { businessId: string; channel: Channel }) {
-  const router = useRouter()
-  const [disconnecting, setDisconnecting] = useState(false)
-  const [error, setError] = useState('')
-  const label: Record<string, string> = {
-    FACEBOOK: 'Messenger',
-    INSTAGRAM: 'Instagram',
-    WHATSAPP: 'WhatsApp',
-    GOOGLE_BUSINESS: 'Google',
-  }
-
-  async function disconnect() {
-    const channelLabel = label[channel.type] ?? 'integrarea'
-    if (!window.confirm(`Deconectezi ${channelLabel}? Tokenul va fi șters din BookEasy, iar canalul va trebui autorizat din nou pentru reconectare.`)) return
-
-    setDisconnecting(true)
-    setError('')
-    try {
-      const response = await fetch(`/api/superadmin/businesses/${businessId}/channels/${channel.id}`, { method: 'DELETE' })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error ?? 'Deconectarea nu a reușit.')
-      if (data.warning) {
-        window.alert(`Canalul a fost eliminat din BookEasy. Furnizorul extern a răspuns însă: ${data.warning}`)
-      }
-      router.refresh()
-    } catch (disconnectError) {
-      setError(disconnectError instanceof Error ? disconnectError.message : 'Deconectarea nu a reușit.')
-    } finally {
-      setDisconnecting(false)
-    }
-  }
-
-  return (
-    <div>
-      <Button variant="secondary" className="text-red-600 border-red-200 hover:bg-red-50" onClick={disconnect} disabled={disconnecting}>
-        {disconnecting ? 'Se deconectează...' : 'Deconectează'}
-      </Button>
-      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
-    </div>
-  )
-}
-
-function GoogleCalendarCard({ businessId, individual, practitioners }: { businessId: string; individual: boolean; practitioners: CalendarPractitioner[] }) {
-  const searchParams = useSearchParams()
-  const googleStatus = searchParams.get('google')
-  const visiblePractitioners = individual
-    ? [practitioners.find((item) => item.googleCalendar?.syncEnabled) ?? practitioners[0]].filter(Boolean) as CalendarPractitioner[]
-    : practitioners
-
-  return (
-    <div className="space-y-3">
-      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-        <p className="text-sm font-semibold text-blue-950">Google Calendar</p>
-        <p className="mt-1 text-xs text-blue-800">Programările create, mutate sau anulate în calendarul BookEasy se sincronizează automat. Nu este necesar Google Business Profile.</p>
-      </div>
-      {googleStatus === 'connected' && (
-        <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-xl px-3 py-2 mb-3">
-          Google Calendar a fost conectat și programările viitoare au fost sincronizate.
-        </p>
-      )}
-      {googleStatus && googleStatus !== 'connected' && (
-        <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2 mb-3">
-          Conectarea Google Calendar nu a reușit. Verifică permisiunile contului și încearcă din nou.
-        </p>
-      )}
-      {visiblePractitioners.length === 0 && <p className="text-sm text-gray-500">Nu există niciun profil activ. Creează mai întâi profilul din Medici/Echipă.</p>}
-      {visiblePractitioners.map((practitioner) => (
-        <div key={practitioner.id} className="flex flex-col gap-3 rounded-xl border border-[var(--border-soft)] p-3">
-          <div className="min-w-0 w-full">
-            <p className="text-sm font-medium">{individual ? 'Calendarul afacerii' : practitioner.name}</p>
-            <p className={`break-all text-xs sm:truncate ${practitioner.googleCalendar ? 'text-green-700' : 'text-gray-500'}`}>
-              {practitioner.googleCalendar ? `Conectat: ${practitioner.googleCalendar.googleEmail ?? practitioner.googleCalendar.calendarName}` : 'Calendar neconectat'}
-            </p>
-            {practitioner.googleCalendar?.lastError && <p className="mt-1 text-xs text-red-600">Necesită reconectare</p>}
-          </div>
-          <div className="flex w-full flex-wrap gap-2">
-            <a href={`/api/google-calendar/connect?businessId=${encodeURIComponent(businessId)}&practitionerId=${encodeURIComponent(practitioner.id)}`} className="btn-secondary inline-flex min-w-0 flex-1 justify-center text-xs">
-              {practitioner.googleCalendar ? 'Reconectează' : 'Conectează'}
-            </a>
-            {practitioner.googleCalendar && <DisconnectGoogleCalendarButton businessId={businessId} practitionerId={practitioner.id} />}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function DisconnectGoogleCalendarButton({ businessId, practitionerId }: { businessId: string; practitionerId: string }) {
-  const router = useRouter()
-  const [disconnecting, setDisconnecting] = useState(false)
-
-  async function disconnect() {
-    if (!window.confirm('Deconectezi Google Calendar? Evenimentele deja create vor rămâne în Google, dar sincronizarea BookEasy se va opri.')) return
-    setDisconnecting(true)
-    const response = await fetch(`/api/google-calendar/settings?businessId=${encodeURIComponent(businessId)}&practitionerId=${encodeURIComponent(practitionerId)}`, { method: 'DELETE' })
-    setDisconnecting(false)
-    if (!response.ok) {
-      window.alert('Google Calendar nu a putut fi deconectat.')
-      return
-    }
-    router.refresh()
-  }
-
-  return (
-    <Button variant="secondary" className="min-w-0 flex-1 justify-center text-xs text-red-600 border-red-200 hover:bg-red-50" onClick={disconnect} disabled={disconnecting}>
-      {disconnecting ? 'Se deconectează...' : 'Deconectează'}
-    </Button>
-  )
-}
-
-function ChannelFields({
-  businessId,
-  type,
-  channel,
-  idLabel,
-  idPlaceholder,
-  helpText,
-}: {
-  businessId: string
-  type: string
-  channel: Channel | null
-  idLabel: string
-  idPlaceholder: string
-  helpText?: string
-}) {
-  const router = useRouter()
-  const [externalId, setExternalId] = useState(channel?.externalId ?? '')
-  const [accessToken, setAccessToken] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState('')
-
-  async function save() {
-    setSaving(true)
-    setSaveError('')
-    const response = await fetch(`/api/superadmin/businesses/${businessId}/channels`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, externalId, accessToken: accessToken || undefined }),
-    })
-    const data = await response.json()
-    if (!response.ok) {
-      setSaveError(typeof data.error === 'string' ? data.error : 'Datele canalului nu sunt valide.')
-      setSaving(false)
-      return
-    }
-    setAccessToken('')
-    setSaving(false)
-    router.refresh()
-  }
-
-  return (
-    <div>
-      {channel && (
-        <div className="mb-3">
-          <Pill tone={channel.status === 'ACTIVE' ? 'success' : 'neutral'}>{channel.status}</Pill>
-        </div>
-      )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm text-gray-500 block mb-1.5">{idLabel}</label>
-          <Input
-            name={`${type.toLowerCase()}-external-id`}
-            autoComplete="one-time-code"
-            data-1p-ignore="true"
-            value={externalId}
-            onChange={(e) => setExternalId(e.target.value)}
-            placeholder={idPlaceholder}
-          />
-        </div>
-        <div>
-          <label className="text-sm text-gray-500 block mb-1.5">Access Token</label>
-          <Input
-            value={accessToken}
-            onChange={(e) => setAccessToken(e.target.value)}
-            placeholder="Lasă gol dacă nu schimbi"
-            type="text"
-            className="[-webkit-text-security:disc]"
-            spellCheck={false}
-            name={`${type.toLowerCase()}-access-token`}
-            autoComplete="one-time-code"
-            data-1p-ignore="true"
-          />
-        </div>
-      </div>
-      {helpText && <p className="text-xs text-gray-400 mt-2">{helpText}</p>}
-      <div className="mt-3 flex flex-wrap items-start gap-2">
-        <Button variant="secondary" onClick={save} disabled={saving || !externalId}>
-          {saving ? 'Se salvează...' : 'Salvează'}
-        </Button>
-        {channel && <DisconnectChannelButton businessId={businessId} channel={channel} />}
-      </div>
-      {saveError && <p className="text-xs text-red-600 mt-2">{saveError}</p>}
-    </div>
-  )
-}
-
-function WhatsAppFields({ businessId, channel, metaAppId, configId }: { businessId: string; channel: Channel | null; metaAppId: string; configId: string }) {
-  const router = useRouter()
-  const [externalId, setExternalId] = useState(channel?.externalId ?? '')
-  const [wabaId, setWabaId] = useState(channel?.wabaId ?? '')
-  const [accessToken, setAccessToken] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [subscribing, setSubscribing] = useState(false)
-  const [message, setMessage] = useState('')
-
-  async function save() {
-    setSaving(true)
-    setMessage('')
-    const controller = new AbortController()
-    const timeoutId = window.setTimeout(() => controller.abort(), 15_000)
-
-    try {
-      const response = await fetch(`/api/superadmin/businesses/${businessId}/channels`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'WHATSAPP', externalId, wabaId, accessToken: accessToken || undefined }),
-        signal: controller.signal,
-      })
-      const data = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(
-          typeof data?.error === 'string' ? data.error : 'Datele WhatsApp nu au putut fi salvate.'
-        )
-      }
-
-      setAccessToken('')
-      setMessage('Datele WhatsApp au fost salvate.')
-      router.refresh()
-    } catch (error) {
-      setMessage(
-        error instanceof DOMException && error.name === 'AbortError'
-          ? 'Salvarea a durat prea mult. Încearcă din nou.'
-          : error instanceof Error
-            ? error.message
-            : 'Datele WhatsApp nu au putut fi salvate.'
-      )
-    } finally {
-      window.clearTimeout(timeoutId)
-      setSaving(false)
-    }
-  }
-
-  async function subscribe() {
-    setSubscribing(true)
-    setMessage('')
-    try {
-      const res = await fetch(`/api/superadmin/businesses/${businessId}/whatsapp-subscribe`, { method: 'POST' })
-      const data = await res.json().catch(() => null)
-      setMessage(
-        res.ok
-          ? 'Abonat cu succes — webhook-ul WhatsApp e activ.'
-          : typeof data?.error === 'string'
-            ? data.error
-            : 'Aplicația nu a putut fi abonată la WhatsApp.'
-      )
-    } catch {
-      setMessage('Aplicația nu a putut fi abonată la WhatsApp.')
-    } finally {
-      setSubscribing(false)
-    }
-  }
-
-  return (
-    <div>
-      <div className="rounded-2xl border border-green-100 bg-green-50 p-3 mb-4">
-        <p className="text-sm font-medium text-green-950">Meta Embedded Signup v4</p>
-        <p className="text-xs text-green-800 mt-1 mb-3">Clientul își autorizează propriul portofoliu Meta; WABA, numărul și tokenul se salvează automat.</p>
-        <MetaEmbeddedSignupV4Button
-          appId={metaAppId}
-          configId={configId}
-          endpoint={`/api/superadmin/businesses/${businessId}/meta-whatsapp`}
-          label="Conectează WhatsApp cu clientul"
-        />
-      </div>
-      {channel && (
-        <div className="mb-3">
-          <Pill tone={channel.status === 'ACTIVE' ? 'success' : 'neutral'}>{channel.status}</Pill>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm text-gray-500 block mb-1.5">Phone Number ID</label>
-          <Input name="whatsapp-phone-number-id" autoComplete="one-time-code" data-1p-ignore="true" value={externalId} onChange={(e) => setExternalId(e.target.value)} placeholder="ex: 126137824372250" />
-        </div>
-        <div>
-          <label className="text-sm text-gray-500 block mb-1.5">Access Token</label>
-          <Input name="whatsapp-access-token" autoComplete="one-time-code" data-1p-ignore="true" className="[-webkit-text-security:disc]" spellCheck={false} value={accessToken} onChange={(e) => setAccessToken(e.target.value)} placeholder="Lasă gol dacă nu schimbi" type="text" />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-        <div>
-          <label className="text-sm text-gray-500 block mb-1.5">WhatsApp Business Account ID (WABA)</label>
-          <Input name="whatsapp-waba-id" autoComplete="one-time-code" data-1p-ignore="true" value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="ex: 120826654809241" />
-        </div>
-        <div className="flex items-end">
-          <button onClick={subscribe} disabled={subscribing} className="btn-secondary w-full">
-            {subscribing ? 'Se abonează...' : 'Abonează aplicația la WhatsApp'}
-          </button>
-        </div>
-      </div>
-
-      <p className="text-xs text-gray-400 mt-2">
-        Pas obligatoriu, o singură dată per business — altfel WhatsApp nu trimite niciun mesaj către
-        webhook, chiar dacă restul e configurat corect. Salvează întâi Token-ul și WABA ID-ul, apoi apasă butonul.
-      </p>
-
-      {message && <p className="text-xs mt-2 text-[var(--accent)]">{message}</p>}
-
-      <div className="mt-3 flex flex-wrap items-start gap-2">
-        <Button variant="secondary" onClick={save} disabled={saving || !externalId}>
-          {saving ? 'Se salvează...' : 'Salvează'}
-        </Button>
-        {channel && <DisconnectChannelButton businessId={businessId} channel={channel} />}
+        <SharedIntegrationsCard platformSmsReady={platformSmsReady} adminBusinessId={business.id} businessName={business.name} businessCategory={business.category} isIndividual={business.category === 'FITNESS' || business.teamSize <= 1} channels={channels} practitioners={practitioners} instagramOAuthEnabled={instagramOAuthEnabled} smsGateway={{ apiUrl: business.smsGatewayApiUrl, hasApiKey: business.smsGatewayHasApiKey, deviceId: business.smsGatewayDeviceId, phone: business.smsGatewayPhone, enabled: business.smsGatewayEnabled, testedAt: business.smsGatewayTestedAt, lastError: business.smsGatewayLastError, mode: business.smsGatewayMode, paired: business.smsDevicePaired, lastSeenAt: business.smsDeviceLastSeenAt }} />
+        {platformSmsReady && <SmsRoutingSettings businessId={business.id} initial={business.smsSenderMode} />}
       </div>
     </div>
   )

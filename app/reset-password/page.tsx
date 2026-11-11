@@ -13,6 +13,7 @@ function ResetPasswordForm() {
   const params = useSearchParams()
   const router = useRouter()
   const token = params.get('token') ?? ''
+  const accountType = params.get('type') === 'customer' ? 'customer' : 'business'
 
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -46,7 +47,7 @@ function ResetPasswordForm() {
         return
       }
       setDone(true)
-      setTimeout(() => router.push('/login'), 2500)
+      setTimeout(() => router.push(accountType === 'customer' ? '/cont' : '/login'), 2500)
     } catch {
       setError('Conexiune eșuată. Verifică internetul și încearcă din nou.')
     } finally {
@@ -67,7 +68,7 @@ function ResetPasswordForm() {
       ) : (
         <>
           <p className="text-sm text-gray-500 mb-4">Alege o parolă nouă pentru contul tău.</p>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <form method="post" onSubmit={handleSubmit} className="flex flex-col gap-3">
             <div>
               <label className="text-sm text-gray-500 block mb-1.5">Parolă nouă</label>
               <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={8} required />
@@ -89,7 +90,7 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <main className="themed-static-bg min-h-screen flex items-center justify-center px-6">
+    <main className="public-flow-page themed-static-bg min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
         <Link href="/">
           <Image src="/logo.png" alt="bookeasy.ro" width={200} height={133} priority className="w-[160px] h-auto" />

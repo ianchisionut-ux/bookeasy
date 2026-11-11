@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolvePublicSlug } from '@/lib/business-public-slug'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req)
-  const { allowed } = rateLimit(`review-lookup:${ip}`, 20, 10 * 60 * 1000)
+  const { allowed } = await rateLimit(`review-lookup:${ip}`, 20, 10 * 60 * 1000)
   if (!allowed) return NextResponse.json({ error: 'Prea multe încercări.' }, { status: 429 })
 
   const slug = req.nextUrl.searchParams.get('slug')
-  const phone = req.nextUrl.searchParams.get('phone')?.trim()
-  if (!slug || !phone) return NextResponse.json({ error: 'Date lipsă.' }, { status: 400 })
+  if (!slug) return NextResponse.json({ error: 'Date lipsă.' }, { status: 400 })
+  const session = await auth()
+  const googleSub = (session as any)?.role === 'CUSTOMER' ? (session as any)?.googleSub : null
+  if (typeof googleSub !== 'string' || !googleSub) return NextResponse.json({ error: 'Conectează-te cu Google pentru a vedea rezervările tale.' }, { status: 401 })
 
-  const business = await prisma.business.findUnique({ where: { slug } })
+  const business = await prisma.business.findUnique({ where: { slug: await resolvePublicSlug(slug) } })
   if (!business || !business.publicListed) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
   const bookings = await prisma.booking.findMany({
@@ -20,7 +24,7 @@ export async function GET(req: NextRequest) {
       status: { in: ['CONFIRMED', 'COMPLETED'] },
       endAt: { lte: new Date() },
       review: null,
-      customer: { phone },
+      reviewerGoogleSub: googleSub,
     },
     include: { service: true },
     orderBy: { startAt: 'desc' },

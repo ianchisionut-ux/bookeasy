@@ -1,12 +1,13 @@
 import Stripe from 'stripe'
 import { NextRequest, NextResponse } from 'next/server'
+import { resolvePublicSlug } from '@/lib/business-public-slug'
 import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/crypto'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const business = await prisma.business.findUnique({
-    where: { slug },
+    where: { slug: await resolvePublicSlug(slug) },
     select: { id: true, stripeSecretKey: true, stripeWebhookSecret: true },
   })
   if (!business?.stripeSecretKey || !business.stripeWebhookSecret) return new NextResponse(null, { status: 404 })

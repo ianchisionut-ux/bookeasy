@@ -5,17 +5,23 @@ import BusinessAdminPanel from './business-admin-panel'
 import { ContractAdminSection } from './contract-admin-section'
 import { buildContractDocument, documentHash } from '@/lib/business-contracts'
 
+import { getLaunchDetails, refreshLaunchIfDue } from '@/lib/launch-campaign'
+import { LaunchBusinessCard } from '@/components/launch-campaign-card'
+import { listPromotions, promotionIsOpen } from '@/lib/promotion-campaigns'
+import { isPlatformSmsReady } from '@/lib/sms-routing'
+
 export default async function SuperAdminBusinessDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const [business, revenueAgg, signatures] = await Promise.all([
+  await refreshLaunchIfDue(id)
+  const [business, revenueAgg, signatures, platformSmsReady] = await Promise.all([
     prisma.business.findUnique({
       where: { id },
       include: {
-        channels: true,
+        channels: { select: { id: true, type: true, externalId: true, wabaId: true, status: true, enabledByOwner: true, displayName: true, authProvider: true } },
         practitioners: {
           where: { active: true },
           orderBy: { name: 'asc' },
-          include: { googleCalendar: { select: { googleEmail: true, calendarName: true, syncEnabled: true, lastError: true } } },
+          include: { googleCalendar: { select: { googleEmail: true, calendarName: true, calendarId: true, syncEnabled: true, includeCustomerDetails: true, lastSyncAt: true, lastError: true } } },
         },
         users: { where: { role: 'OWNER' } },
         _count: { select: { bookings: true } },
@@ -32,9 +38,17 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
         AND booking.status IN ('CONFIRMED', 'COMPLETED')
     `,
     prisma.contractSignature.findMany({ where: { businessId: id }, orderBy: { customerSignedAt: 'desc' }, select: { id: true, type: true, documentHash: true, customerSignerName: true, customerSignedAt: true, providerSignedAt: true } }),
+    isPlatformSmsReady(),
   ])
 
   if (!business) notFound()
+  const [launch, enrollment, promotions] = await Promise.all([
+    getLaunchDetails(id),
+    prisma.launchEnrollment.findUnique({ where: { businessId: id }, select: { campaignId: true, cancelledAt: true } }),
+    listPromotions(),
+  ])
+  const campaignManaged = Boolean(enrollment && !enrollment.cancelledAt)
+  const billingMode = campaignManaged ? 'CAMPAIGN' : business.billingStatus === 'GRATUIT' ? 'FREE' : 'PAID'
 
   const totalRevenue = Number(revenueAgg[0]?.totalRevenue ?? 0)
 
@@ -44,7 +58,13 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
         <BackLink href="/superadmin/afaceri" label="Înapoi la afaceri" />
       </div>
 
+      {launch && <LaunchBusinessCard details={launch} businessId={id} admin />}
       <BusinessAdminPanel
+        platformSmsReady={platformSmsReady}
+        campaignManaged={campaignManaged}
+        billingMode={billingMode}
+        currentCampaignId={enrollment?.campaignId ?? null}
+        campaigns={promotions.map(campaign => ({ id: campaign.id, code: campaign.code, name: campaign.name, freeMonths: campaign.freeMonths, open: promotionIsOpen(campaign) }))}
         business={{
           id: business.id,
           slug: business.slug,
@@ -79,14 +99,27 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
           billingEmail: business.billingEmail ?? business.users[0]?.email ?? null,
           contractRepresentativeName: business.contractRepresentativeName,
           contractRepresentativeRole: business.contractRepresentativeRole,
+          smsGatewayApiUrl: business.smsGatewayApiUrl,
+          smsGatewayHasApiKey: Boolean(business.smsGatewayApiKey),
+          smsGatewayDeviceId: business.smsGatewayDeviceId,
+          smsGatewayPhone: business.smsGatewayPhone,
+          smsGatewayEnabled: business.smsGatewayEnabled,
+          smsGatewayTestedAt: business.smsGatewayTestedAt?.toISOString() ?? null,
+          smsGatewayLastError: business.smsGatewayLastError,
+          smsGatewayMode: business.smsGatewayMode,
+          smsSenderMode: business.smsSenderMode,
+          smsDevicePaired: Boolean(business.smsDeviceTokenHash),
+          smsDeviceLastSeenAt: business.smsDeviceLastSeenAt?.toISOString() ?? null,
         }}
         metaAppId={process.env.META_APP_ID ?? ''}
         metaWhatsappConfigId={process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_V4_CONFIG_ID ?? process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ?? ''}
-        instagramOAuthEnabled={process.env.META_INSTAGRAM_OAUTH_ENABLED === 'true'}
+        instagramOAuthEnabled={process.env.META_INSTAGRAM_OAUTH_ENABLED === 'true' && Boolean(process.env.INSTAGRAM_APP_ID && process.env.INSTAGRAM_APP_SECRET)}
         channels={business.channels.map((c) => ({
           id: c.id,
           type: c.type,
           externalId: c.externalId,
+          displayName: c.displayName,
+          authProvider: c.authProvider,
           wabaId: c.wabaId,
           status: c.status,
           enabledByOwner: c.enabledByOwner,

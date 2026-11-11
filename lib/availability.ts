@@ -30,10 +30,10 @@ export async function getAvailableSlots(businessId: string, serviceId: string, d
 // intervalele blocate ale unei zile — folosite atât pentru filtrarea sloturilor
 // oferite de bot, cât și pentru verificarea "ultima clipă" la confirmare
 async function getBlockedSlotsForDay(businessId: string, date: Date) {
-  const dayStart = new Date(date)
-  dayStart.setHours(0, 0, 0, 0)
-  const dayEnd = new Date(dayStart)
-  dayEnd.setDate(dayEnd.getDate() + 1)
+  const dayStart = combineDateAndTime(date, '00:00')
+  const nextDay = new Date(date)
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+  const dayEnd = combineDateAndTime(nextDay, '00:00')
 
   return prisma.blockedSlot.findMany({
     where: { businessId, startAt: { lt: dayEnd }, endAt: { gt: dayStart } },
@@ -92,7 +92,7 @@ export async function hasActiveBookingConflict(
   const conflict = await prisma.booking.findFirst({
     where: {
       businessId,
-      ...(practitionerId ? { practitionerId } : {}),
+      ...(practitionerId ? { OR: [{ practitionerId }, { practitionerId: null }] } : {}),
       ...(ignoreBookingId ? { id: { not: ignoreBookingId } } : {}),
       status: { in: ['CONFIRMED', 'PENDING'] },
       startAt: { lt: end },
@@ -186,7 +186,7 @@ export async function getPractitionerDaySlotsWithStatus(
     prisma.business.findUnique({ where: { id: businessId }, select: { slotIntervalMinutes: true, minLeadTimeMinutes: true } }),
     prisma.practitioner.findFirst({ where: { id: practitionerId, businessId, active: true }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
     prisma.practitionerWorkingHours.findMany({ where: { practitionerId, weekday } }),
-    prisma.booking.findMany({ where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
+    prisma.booking.findMany({ where: { businessId, OR: [{ practitionerId }, { practitionerId: null }], status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: addMinutes(combineDateAndTime(date, '00:00'), 36 * 60) }, endAt: { gt: combineDateAndTime(date, '00:00') } } }),
     getBlockedSlotsForDay(businessId, date),
     prisma.service.findMany({
       where: {
@@ -264,7 +264,7 @@ export async function isPractitionerSlotStillAvailable(
 
   const [conflict, blocked, practitioner] = await Promise.all([
     prisma.booking.findFirst({
-      where: { practitionerId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: endAt }, endAt: { gt: startAt } },
+      where: { businessId, OR: [{ practitionerId }, { practitionerId: null }], status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: endAt }, endAt: { gt: startAt } },
     }),
     isIntervalBlocked(businessId, startAt, endAt),
     prisma.practitioner.findFirst({ where: { id: practitionerId, businessId, active: true }, select: { break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true } }),
@@ -302,7 +302,7 @@ export async function getDaySlotsWithStatus(
       select: { slotIntervalMinutes: true, minLeadTimeMinutes: true, break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true },
     }),
     prisma.workingHours.findMany({ where: { businessId, weekday } }),
-    prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
+    prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: addMinutes(combineDateAndTime(date, '00:00'), 36 * 60) }, endAt: { gt: combineDateAndTime(date, '00:00') } } }),
     getBlockedSlotsForDay(businessId, date),
     prisma.service.findMany({ where: { businessId, active: true, type: 'APPOINTMENT' }, select: { durationMin: true } }),
   ])
@@ -393,7 +393,7 @@ async function getSingleSlotAvailability(businessId: string, service: { id: stri
       select: { slotIntervalMinutes: true, minLeadTimeMinutes: true, break1Start: true, break1End: true, break2Start: true, break2End: true, break3Start: true, break3End: true },
     }),
     prisma.workingHours.findMany({ where: { businessId, weekday } }),
-    prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { gte: date } } }),
+    prisma.booking.findMany({ where: { businessId, status: { in: ['CONFIRMED', 'PENDING'] }, startAt: { lt: addMinutes(combineDateAndTime(date, '00:00'), 36 * 60) }, endAt: { gt: combineDateAndTime(date, '00:00') } } }),
     getBlockedSlotsForDay(businessId, date),
     prisma.service.findMany({ where: { businessId, active: true, type: 'APPOINTMENT' }, select: { durationMin: true } }),
   ])

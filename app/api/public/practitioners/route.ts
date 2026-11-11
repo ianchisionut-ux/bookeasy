@@ -6,6 +6,9 @@ export async function GET(req: NextRequest) {
   const serviceId = req.nextUrl.searchParams.get('serviceId')
   if (!businessId || !serviceId) return NextResponse.json({ error: 'Parametri lipsă' }, { status: 400 })
 
+  const business = await prisma.business.findFirst({ where: { id: businessId, publicListed: true, accountActive: true }, select: { id: true } })
+  if (!business) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
   const service = await prisma.service.findFirst({ where: { id: serviceId, businessId, active: true }, select: { id: true } })
   if (!service) return NextResponse.json({ error: 'not found' }, { status: 404 })
 

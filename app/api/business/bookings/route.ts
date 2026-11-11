@@ -1,16 +1,19 @@
+import { isBookingConflict } from '@/lib/booking-conflict'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { hasActiveBookingConflict, isIntervalBlocked, isWithinWorkingHours } from '@/lib/availability'
 import { getNextSequenceNumber } from '@/lib/booking-number'
 import { z } from 'zod'
 import { syncBookingToGoogle } from '@/lib/google-calendar'
+import { canonicalCustomerPhone } from '@/lib/customer-phone'
+import { findCustomerByPhone } from '@/lib/customer-lookup'
 
 const schema = z
   .object({
     customerId: z.string().optional(),
     customerName: z.string().min(1).optional(),
-    customerPhone: z.string().min(6).optional(),
+    customerPhone: z.string().min(6).transform(canonicalCustomerPhone).optional(),
     serviceId: z.string(),
     staffId: z.string().nullable().optional(),
     resourceId: z.string().nullable().optional(),
@@ -53,10 +56,14 @@ export async function GET(req: NextRequest) {
       status: true,
       channel: true,
       customerId: true,
+      contactName: true,
+      serviceId: true,
+      resourceId: true,
       practitionerId: true,
       confirmationRequestSent: true,
       customerConfirmed: true,
-      customer: { select: { name: true, phone: true } },
+      arrivedAt: true,
+      customer: { select: { name: true, phone: true, createdAt: true } },
       service: { select: { name: true } },
       practitioner: { select: { name: true } },
     },
@@ -66,24 +73,29 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     events: bookings.map((booking) => ({
       id: booking.id,
-      title: `${booking.customer.name ?? booking.customer.phone} — ${booking.service.name}${booking.practitioner ? ` (${booking.practitioner.name})` : ''}`,
+      title: `${booking.contactName ?? booking.customer.name ?? booking.customer.phone} — ${booking.service.name}${booking.practitioner ? ` (${booking.practitioner.name})` : ''}`,
       start: booking.startAt.toISOString(),
       end: booking.endAt.toISOString(),
       status: booking.status,
       channel: booking.channel,
       customerId: booking.customerId,
-      customerName: booking.customer.name ?? booking.customer.phone ?? 'Fără nume',
+      customerName: booking.contactName ?? booking.customer.name ?? booking.customer.phone ?? 'Fără nume',
       customerPhone: booking.customer.phone ?? '',
+      customerCreatedAt: booking.customer.createdAt.toISOString(),
+      serviceId: booking.serviceId,
       serviceName: booking.service.name,
+      resourceId: booking.resourceId,
       practitionerId: booking.practitionerId,
       practitionerName: booking.practitioner?.name ?? null,
       confirmationRequestSent: booking.confirmationRequestSent,
       customerConfirmed: booking.customerConfirmed,
+      arrivedAt: booking.arrivedAt?.toISOString() ?? null,
     })),
   })
 }
 
 export async function POST(req: NextRequest) {
+  try {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
@@ -139,23 +151,24 @@ export async function POST(req: NextRequest) {
   // ca administratorul să nu mai trebuiască să treacă prin /Clienti separat
   let customerId = parsed.data.customerId
   if (customerId && (parsed.data.customerName || parsed.data.customerPhone)) {
+    const conflict = parsed.data.customerPhone ? await findCustomerByPhone(businessId, parsed.data.customerPhone) : null
+    if (conflict && conflict.id !== customerId) return NextResponse.json({ error: 'Telefonul aparține unei fișe existente. Unește fișele duplicate din Clienți.' }, { status: 409 })
     // clientul era deja cunoscut, dar adminul a corectat/actualizat numele sau
     // telefonul direct din formular (ex: din programarea rapidă în chat) — salvăm
     // modificarea pe fișa clientului, nu o ignorăm
     await prisma.customer.update({
       where: { id: customerId },
       data: {
+        archivedAt: null,
         ...(parsed.data.customerName ? { name: parsed.data.customerName } : {}),
         ...(parsed.data.customerPhone ? { phone: parsed.data.customerPhone } : {}),
       },
     })
   } else if (!customerId && parsed.data.customerPhone) {
-    const existing = await prisma.customer.findFirst({ where: { businessId, phone: parsed.data.customerPhone } })
+    const existing = await findCustomerByPhone(businessId, parsed.data.customerPhone)
     if (existing) {
       customerId = existing.id
-      if (parsed.data.customerName && !existing.name) {
-        await prisma.customer.update({ where: { id: existing.id }, data: { name: parsed.data.customerName } })
-      }
+      await prisma.customer.update({ where: { id: existing.id }, data: { archivedAt: null, ...(parsed.data.customerName && !existing.name ? { name: parsed.data.customerName } : {}) } })
     } else {
       const created = await prisma.customer.create({
         data: { businessId, name: parsed.data.customerName, phone: parsed.data.customerPhone },
@@ -185,5 +198,10 @@ export async function POST(req: NextRequest) {
 
   await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync create:', error))
 
+
   return NextResponse.json({ booking })
+  } catch (error) {
+    if (isBookingConflict(error)) return NextResponse.json({ error: 'Intervalul tocmai a fost ocupat. Alege altă oră.' }, { status: 409 })
+    throw error
+  }
 }

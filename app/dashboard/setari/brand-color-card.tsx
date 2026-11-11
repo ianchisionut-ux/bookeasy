@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import { bookingTerminology } from '@/lib/business-categories'
 
 const PRESET_COLORS = [
   '#0f9b6c', // verde
@@ -16,7 +17,7 @@ const PRESET_COLORS = [
   '#ea580c', // portocaliu
 ]
 
-export default function BrandColorCard({ initialColor, usesAppointments }: { initialColor: string | null; usesAppointments: boolean }) {
+export default function BrandColorCard({ initialColor, category }: { initialColor: string | null; category: string }) {
   const router = useRouter()
   const [color, setColor] = useState<string | null>(initialColor)
   const [saving, setSaving] = useState(false)
@@ -51,7 +52,7 @@ export default function BrandColorCard({ initialColor, usesAppointments }: { ini
     <Card className="mb-5 break-inside-avoid">
       <h2 className="font-medium mb-1">Culoarea profilului tău</h2>
       <p className="text-sm text-gray-500 mb-4">
-        Se aplică pe pagina publică și pe formularul de {usesAppointments ? 'programare' : 'rezervare'} — servicii selectate, date, ore, buton de confirmare.
+        Se aplică pe pagina publică și pe formularul de {bookingTerminology(category).singular} — oferte selectate, date, ore și confirmare.
       </p>
 
       <div className="flex flex-wrap gap-2.5 mb-2">

@@ -1,3 +1,4 @@
+import { googleBusinessCredentials, refreshGoogleBusinessToken } from '@/lib/google-business-oauth'
 import { NextRequest, NextResponse } from 'next/server'
 import { isAuthorizedCronRequest } from '@/lib/cron-auth'
 import { prisma } from '@/lib/prisma'
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
   const results = { expired: 0, expiringSoon: 0, autoRefreshed: 0 }
 
   for (const channel of channels) {
-    if (channel.type === 'GOOGLE_BUSINESS' && channel.refreshToken && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    if (channel.type === 'GOOGLE_BUSINESS' && channel.refreshToken && googleBusinessCredentials()) {
       try {
         const refreshed = await tryRefreshGoogleToken(channel.id, channel.refreshToken)
         if (refreshed) {
@@ -35,6 +36,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    if (channel.type === 'INSTAGRAM' && channel.authProvider === 'instagram' && channel.expiresAt! > now) {
+      try {
+        const url = new URL('https://graph.instagram.com/refresh_access_token')
+        url.search = new URLSearchParams({ grant_type: 'ig_refresh_token', access_token: decrypt(channel.accessToken) }).toString()
+        const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(15000) })
+        const token = await response.json()
+        if (response.ok && token.access_token && Number.isFinite(token.expires_in) && token.expires_in > 0) {
+          await prisma.channel.update({ where: { id: channel.id }, data: { accessToken: encrypt(token.access_token), expiresAt: new Date(Date.now() + token.expires_in * 1000), status: 'ACTIVE' } })
+          results.autoRefreshed++
+          continue
+        }
+      } catch { console.error('[check-tokens] Instagram refresh failed', { channelId: channel.id }) }
+    }
     const isExpired = channel.expiresAt! <= now
     const newStatus = isExpired ? 'EXPIRED' : 'EXPIRING_SOON'
 
@@ -66,20 +80,8 @@ export async function GET(req: NextRequest) {
 async function tryRefreshGoogleToken(channelId: string, refreshTokenEncrypted: string) {
   const refreshToken = decrypt(refreshTokenEncrypted)
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  })
+  const data = await refreshGoogleBusinessToken(refreshToken)
 
-  if (!res.ok) return false
-
-  const data = await res.json()
   await prisma.channel.update({
     where: { id: channelId },
     data: {

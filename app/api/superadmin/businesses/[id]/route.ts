@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
+import { BUSINESS_CATEGORIES } from '@/lib/business-categories'
 import { resetIpayPaymentFields } from '@/lib/billing-ipay'
 
 const patchSchema = z.object({
   name: z.string().min(2).optional(),
-  category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE', 'CLINICA']).optional(),
+  category: z.enum(BUSINESS_CATEGORIES).optional(),
   planName: z.string().nullable().optional(),
   billingStatus: z.enum(['GRATUIT', 'NEPLATIT', 'PLATIT', 'RESTANT']).optional(),
   billingNote: z.string().nullable().optional(),
@@ -48,8 +49,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const current = await prisma.business.findUnique({ where: { id }, select: { category: true, billingSuspendedAt: true, billingDueAt: true, billingInvoiceUrl: true, billingAmount: true, billingSubtotal: true, billingStatus: true } })
   if (!current) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
+  const campaign = await prisma.launchEnrollment.findUnique({ where: { businessId: id }, select: { cancelledAt: true } })
+  if (campaign && !campaign.cancelledAt && ['planName', 'billingStatus', 'billingAmount', 'billingSubtotal', 'billingVatRate', 'billingDueAt'].some(key => key in parsed.data)) return NextResponse.json({ error: 'Tariful este gestionat de campanie. Înregistrează plata în cardul campaniei sau treci afacerea la facturare manuală.' }, { status: 409 })
+  if (parsed.data.billingStatus === 'GRATUIT' || (current.billingStatus === 'GRATUIT' && parsed.data.billingStatus !== undefined)) return NextResponse.json({ error: 'Schimbă tipul contului din cardul „Tipul contului”.' }, { status: 409 })
 
   const targetCategory = parsed.data.category ?? current.category
+  if (targetCategory === 'FITNESS' && parsed.data.teamSize !== undefined && parsed.data.teamSize !== 1) return NextResponse.json({ error: 'Fiecare afacere Fitness are un singur instructor.' }, { status: 400 })
   if (parsed.data.dentalClinic === true && targetCategory !== 'CLINICA') {
     return NextResponse.json({ error: 'Odontograma poate fi activată numai pentru o clinică.' }, { status: 400 })
   }
@@ -59,6 +64,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     ...input,
     ...(billingDueAt !== undefined ? { billingDueAt: billingDueAt ? new Date(billingDueAt) : null } : {}),
   }
+  if (targetCategory === 'FITNESS') data.teamSize = 1
   if (parsed.data.category && parsed.data.category !== 'CLINICA') data.dentalClinic = false
   const billingChanged =
     (parsed.data.billingAmount !== undefined && Number(current.billingAmount) !== parsed.data.billingAmount) ||

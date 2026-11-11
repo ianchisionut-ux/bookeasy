@@ -32,8 +32,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!source) return NextResponse.json({ error: 'Business-ul sursă nu există.' }, { status: 404 })
 
   const [slugTaken, emailTaken] = await Promise.all([
-    prisma.business.findUnique({ where: { slug: newSlug } }),
-    prisma.user.findUnique({ where: { email: newEmail } }),
+    prisma.business.findFirst({ where: { OR: [{ slug: newSlug }, { slugAliases: { some: { slug: newSlug } } }] } }),
+    prisma.user.findUnique({ where: { email_accountKind: { email: newEmail, accountKind: 'BUSINESS' } } }),
   ])
   if (slugTaken) return NextResponse.json({ error: 'Slug-ul există deja.' }, { status: 409 })
   if (emailTaken) return NextResponse.json({ error: 'Există deja un cont cu acest email.' }, { status: 409 })

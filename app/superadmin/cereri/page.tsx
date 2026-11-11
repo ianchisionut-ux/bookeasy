@@ -3,14 +3,7 @@ import { Card } from '@/components/ui/card'
 import { Pill } from '@/components/ui/input'
 import RequestActions from './request-actions'
 import { Mail, Phone } from 'lucide-react'
-
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Salon',
-  EVENT_VENUE: 'Spații evenimente',
-  HOTEL: 'Hotel',
-  PENSIUNE: 'Pensiune',
-  CLINICA: 'Clinică',
-}
+import { CATEGORY_LABEL } from '@/lib/business-categories'
 
 const STATUS_LABEL: Record<string, string> = {
   NEW: 'Nouă',
@@ -53,7 +46,7 @@ export default async function AccessRequestsPage() {
               <Mail size={13} /> <a href={`mailto:${r.email}`} className="text-[var(--accent)]">{r.email}</a> ·
               <Phone size={13} /> <a href={`tel:${r.phone}`} className="text-[var(--accent)]">{r.phone}</a>
             </p>
-            {r.message && <p className="text-sm text-gray-500 italic mb-2">"{r.message}"</p>}
+            {r.message && <p className="text-sm text-gray-500 italic mb-2">&quot;{r.message}&quot;</p>}
             <RequestActions id={r.id} status={r.status} />
           </Card>
         ))}

@@ -1,3 +1,4 @@
+import { disconnectBusinessChannel } from '@/lib/disconnect-business-channel'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
@@ -5,9 +6,12 @@ import { decrypt } from '@/lib/crypto'
 
 const META_GRAPH_URL = 'https://graph.facebook.com/v21.0'
 
-async function unsubscribeFromMeta(objectId: string, encryptedToken: string) {
+async function unsubscribeFromMeta(objectId: string, encryptedToken: string, type: string) {
   try {
-    const response = await fetch(`${META_GRAPH_URL}/${encodeURIComponent(objectId)}/subscribed_apps`, {
+    const url = type === 'INSTAGRAM'
+      ? 'https://graph.instagram.com/v26.0/me/subscribed_apps'
+      : `${META_GRAPH_URL}/${encodeURIComponent(objectId)}/subscribed_apps`
+    const response = await fetch(url, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${decrypt(encryptedToken)}` },
       cache: 'no-store',
@@ -50,6 +54,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const channel = await prisma.channel.findFirst({ where: { id: channelId, businessId: id } })
   if (!channel) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
+  if (channel.type === 'FACEBOOK' || channel.type === 'INSTAGRAM' || channel.type === 'WHATSAPP') return NextResponse.json(await disconnectBusinessChannel(id, channel.type))
+
   // Interfata trateaza fiecare tip ca o singura integrare. Eliminam toate intrarile
   // de acelasi tip ca sa nu ramana ACTIVE o a doua configurare salvata accidental.
   const channels = await prisma.channel.findMany({
@@ -60,10 +66,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     await Promise.all(
       channels.map(async (currentChannel) => {
         if (currentChannel.type === 'FACEBOOK' || currentChannel.type === 'INSTAGRAM') {
-          return unsubscribeFromMeta(currentChannel.externalId, currentChannel.accessToken)
+          return unsubscribeFromMeta(currentChannel.externalId, currentChannel.accessToken, currentChannel.type)
         }
         if (currentChannel.type === 'WHATSAPP' && currentChannel.wabaId) {
-          return unsubscribeFromMeta(currentChannel.wabaId, currentChannel.accessToken)
+          return unsubscribeFromMeta(currentChannel.wabaId, currentChannel.accessToken, currentChannel.type)
         }
         if (currentChannel.type === 'GOOGLE_BUSINESS') {
           return revokeGoogleToken(currentChannel.refreshToken ?? currentChannel.accessToken)

@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { signCalendarState } from '@/lib/google-calendar-oauth'
+import crypto from 'crypto'
+import { businessHasPlan } from '@/lib/business-plan-access'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
+  if (!session || (!(session as any).isSuperAdmin && (session as any).role !== 'OWNER')) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   const requestedBusinessId = req.nextUrl.searchParams.get('businessId') ?? undefined
   const initiatedBySuperAdmin = Boolean((session as any)?.isSuperAdmin && requestedBusinessId)
   const businessId = initiatedBySuperAdmin ? requestedBusinessId : ((session as any)?.businessId as string | undefined)
@@ -12,9 +15,10 @@ export async function GET(req: NextRequest) {
   const returnTo = req.nextUrl.searchParams.get('source') === 'settings' ? 'settings' : 'practitioners'
   const backPath = initiatedBySuperAdmin && businessId ? `/superadmin/afaceri/${businessId}` : returnTo === 'settings' ? '/dashboard/setari' : '/dashboard/medici'
   if (!businessId) return NextResponse.redirect(new URL(`${backPath}?google=unauthorized`, req.url))
+  if (!(await businessHasPlan(businessId, 'STANDARD', initiatedBySuperAdmin))) return NextResponse.redirect(new URL('/dashboard/planuri', req.url))
 
-  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { name: true, teamSize: true } })
-  if (!business) return NextResponse.redirect(new URL(`${backPath}?google=not_found`, req.url))
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { name: true, teamSize: true, accountActive: true } })
+  if (!business?.accountActive) return NextResponse.redirect(new URL(`${backPath}?google=not_found`, req.url))
 
   // Afacerile individuale nu au nevoie de o fișă vizibilă în Medici/Echipă.
   // Păstrăm intern un profil implicit deoarece legătura Google Calendar este
@@ -33,7 +37,8 @@ export async function GET(req: NextRequest) {
   }
   if (!practitioner) return NextResponse.redirect(new URL(`${backPath}?google=not_found`, req.url))
   const redirectUri = `${process.env.APP_URL}/api/google-calendar/callback`
-  const state = signCalendarState({ businessId, practitionerId: practitioner.id, initiatedBySuperAdmin, returnTo, expiresAt: Date.now() + 10 * 60_000 })
+  const nonce = crypto.randomUUID()
+  const state = signCalendarState({ businessId, practitionerId: practitioner.id, userId: (session as any).userId, nonce, initiatedBySuperAdmin, returnTo, expiresAt: Date.now() + 10 * 60_000 })
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth')
   // BookEasy creează un calendar secundar propriu și gestionează exclusiv evenimentele
   // din el. Nu avem nevoie de acces la toate calendarele utilizatorului.
@@ -46,5 +51,7 @@ export async function GET(req: NextRequest) {
     scope: 'openid email https://www.googleapis.com/auth/calendar.app.created',
     state,
   }).toString()
-  return NextResponse.redirect(url)
+  const response = NextResponse.redirect(url)
+  response.cookies.set('bookeasy_calendar_oauth', nonce, { httpOnly: true, secure: req.nextUrl.protocol === 'https:', sameSite: 'lax', path: '/api/google-calendar', maxAge: 600 })
+  return response
 }

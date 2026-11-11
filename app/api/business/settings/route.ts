@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { geocodeAddress } from '@/lib/geocode'
 import { z } from 'zod'
 import { canonicalCity } from '@/lib/romanian-cities'
+import { businessHasPlan } from '@/lib/business-plan-access'
 
 const timeValue = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
 
@@ -12,11 +13,14 @@ const schema = z.object({
   contactPhone: z.string().optional(),
   city: z.string().min(1),
   address: z.string().optional(),
+  manualLocation: z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }).nullable().optional(),
   publicListed: z.boolean(),
   teamSize: z.number().min(1).max(200).optional(),
   slotIntervalMinutes: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(20), z.literal(30), z.literal(60)]).nullable().optional(),
   minLeadTimeMinutes: z.number().min(30).max(1440).optional(),
   reminderMinutesBefore: z.number().min(15).max(2880).optional(),
+  smsReconfirmationEnabled: z.boolean().optional(),
+  messengerReconfirmationEnabled: z.boolean().optional(),
   operatorSilenceMinutes: z.number().min(5).max(240).optional(),
   botBookingEnabled: z.boolean().optional(),
   break1Start: timeValue.nullable().optional(),
@@ -58,16 +62,30 @@ export async function PATCH(req: NextRequest) {
   const city = canonicalCity(parsed.data.city)
   if (!city) return NextResponse.json({ error: 'Alege un oraș din listă.' }, { status: 400 })
 
-  const { workingHours, ...businessData } = parsed.data
+  const manualLocationProvided = Object.prototype.hasOwnProperty.call(parsed.data, 'manualLocation')
+  const { workingHours, manualLocation, ...businessData } = parsed.data
   businessData.city = city
 
   // re-geocodificăm doar dacă adresa sau orașul chiar s-au schimbat față de ce era
   // salvat — evită apeluri API inutile la fiecare simplă salvare de setări
   const current = await prisma.business.findUnique({ where: { id: businessId } })
+  if (current && !(await businessHasPlan(businessId, 'STANDARD', Boolean((session as any).isSuperAdmin)))) {
+    const advancedKeys = [
+      'teamSize', 'reminderMinutesBefore', 'smsReconfirmationEnabled',
+      'messengerReconfirmationEnabled', 'operatorSilenceMinutes', 'botBookingEnabled',
+    ] as const
+    if (advancedKeys.some((key) => businessData[key] !== undefined && businessData[key] !== current[key])) {
+      return NextResponse.json({ error: 'Funcția necesită planul Standard.' }, { status: 403 })
+    }
+  }
+  if (current?.category === 'FITNESS') businessData.teamSize = 1
   const addressChanged = current && (current.address !== businessData.address || current.city !== businessData.city)
+  const shouldUpdateLocation = manualLocationProvided || !!addressChanged
 
   let coords: { lat: number; lng: number } | null = null
-  if (addressChanged && businessData.city) {
+  if (manualLocationProvided) {
+    coords = manualLocation ?? null
+  } else if (addressChanged && businessData.city) {
     coords = await geocodeAddress(businessData.address || '', businessData.city)
   }
 
@@ -76,7 +94,7 @@ export async function PATCH(req: NextRequest) {
       where: { id: businessId },
       data: {
         ...businessData,
-        ...(addressChanged ? { latitude: coords?.lat ?? null, longitude: coords?.lng ?? null } : {}),
+        ...(shouldUpdateLocation ? { latitude: coords?.lat ?? null, longitude: coords?.lng ?? null } : {}),
       },
     })
     await tx.workingHours.deleteMany({ where: { businessId } })
@@ -85,5 +103,10 @@ export async function PATCH(req: NextRequest) {
     })
   })
 
-  return NextResponse.json({ success: true, geocoded: !!coords })
+  const location = shouldUpdateLocation
+    ? coords
+    : current?.latitude != null && current?.longitude != null
+      ? { lat: current.latitude, lng: current.longitude }
+      : null
+  return NextResponse.json({ success: true, geocoded: !!coords, location })
 }

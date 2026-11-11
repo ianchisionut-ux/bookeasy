@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -10,9 +10,11 @@ const schema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const session = await auth('STANDARD')
   const businessId = (session as any)?.businessId
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { category: true } })
+  if (business?.category === 'FITNESS') return NextResponse.json({ error: 'Fiecare afacere Fitness are un singur instructor.' }, { status: 403 })
 
   const body = await req.json()
   const parsed = schema.safeParse(body)

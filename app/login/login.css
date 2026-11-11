@@ -1,0 +1,6 @@
+.login-visual .marketplace-hero-slideshow{position:absolute;inset:0;z-index:0;background:#153f43 url('/videos/hero/poster.webp') center/cover no-repeat}
+.login-visual .marketplace-hero-slideshow::after{content:none}
+.login-visual .marketplace-hero-videos{position:absolute;inset:0;overflow:hidden}
+.login-visual .marketplace-hero-videos video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:0;transition:opacity 1s ease-in-out}
+.login-visual .marketplace-hero-videos video.is-visible{opacity:1}
+@media(prefers-reduced-motion:reduce){.login-visual .marketplace-hero-videos video{transition:none}}

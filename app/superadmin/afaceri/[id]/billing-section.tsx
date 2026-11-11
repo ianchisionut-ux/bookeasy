@@ -7,10 +7,12 @@ import { Input, Pill } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 
-const LABEL: Record<string, string> = { GRATUIT: 'Gratuit (demo)', NEPLATIT: 'Neplătit', PLATIT: 'Plătit', RESTANT: 'Restant' }
+const LABEL: Record<string, string> = { GRATUIT: 'Gratuit', NEPLATIT: 'Neplătit', PLATIT: 'Plătit', RESTANT: 'Restant' }
 const TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = { GRATUIT: 'neutral', NEPLATIT: 'warning', PLATIT: 'success', RESTANT: 'danger' }
 
 type Props = {
+  campaignManaged?: boolean
+  billingMode: 'PAID' | 'FREE' | 'CAMPAIGN'
   businessId: string; initialPlanName: string | null; initialStatus: string; initialNote: string | null
   initialAmount: number | null; initialSubtotal: number | null; initialVatRate: number
   initialDueAt: string | null; invoiceName: string | null; initialLegalName: string
@@ -23,7 +25,7 @@ type Props = {
 
 export default function BillingSection(p: Props) {
   const router = useRouter(), inputRef = useRef<HTMLInputElement>(null)
-  const [planName, setPlanName] = useState(p.initialPlanName ?? ''), [status, setStatus] = useState(p.initialStatus), [note, setNote] = useState(p.initialNote ?? '')
+  const [status, setStatus] = useState(p.initialStatus), [note, setNote] = useState(p.initialNote ?? '')
   const [subtotal, setSubtotal] = useState(p.initialSubtotal?.toString() ?? ''), [vatRate, setVatRate] = useState(String(p.initialVatRate)), [dueAt, setDueAt] = useState(p.initialDueAt?.slice(0, 10) ?? '')
   const [legalName, setLegalName] = useState(p.initialLegalName), [clientType, setClientType] = useState(p.initialClientType === 'PF' ? 'PF' : 'PJ')
   const [cif, setCif] = useState(p.initialCif ?? ''), [regCom, setRegCom] = useState(p.initialRegCom ?? ''), [address, setAddress] = useState(p.initialAddress ?? '')
@@ -35,9 +37,8 @@ export default function BillingSection(p: Props) {
 
   async function persistSettings() {
     const res = await fetchWithTimeout(`/api/superadmin/businesses/${p.businessId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-      planName: planName || null, billingStatus: status, billingNote: note || null,
-      billingSubtotal: subtotal ? Number(subtotal) : null, billingVatRate: Number(vatRate),
-      billingDueAt: dueAt ? new Date(`${dueAt}T12:00:00Z`).toISOString() : null,
+      ...(p.billingMode === 'PAID' ? { billingStatus: status, billingSubtotal: subtotal ? Number(subtotal) : null, billingVatRate: Number(vatRate), billingDueAt: dueAt ? new Date(`${dueAt}T12:00:00Z`).toISOString() : null } : {}),
+      billingNote: note || null,
       billingLegalName: legalName || null, billingClientType: clientType, billingCif: cif || null,
       billingRegCom: regCom || null, billingAddress: address || null, billingCounty: county || null,
       billingCity: city || null, billingPostalCode: postalCode || null, billingEmail: email || null,
@@ -92,18 +93,20 @@ export default function BillingSection(p: Props) {
   return <Card>
     <div className="flex items-center justify-between mb-1"><h2 className="font-medium">Abonament și factură</h2><Pill tone={TONE[status]}>{LABEL[status]}</Pill></div>
     <p className="text-sm text-gray-500 mb-4">Factura este emisă de Next Level în Signal și devine disponibilă clientului în Bookeasy.</p>
+    {p.campaignManaged && <p className="mb-4 rounded-xl bg-[var(--accent-soft)] p-3 text-xs leading-relaxed">Tariful și scadența sunt gestionate automat. Înregistrează încasările în cardul campaniei de mai sus. Datele juridice și emiterea facturii rămân disponibile aici.</p>}
+    {p.billingMode === 'FREE' && <p className="mb-4 rounded-xl bg-[var(--accent-soft)] p-3 text-xs leading-relaxed">Acest cont este gratuit. Pentru facturare, schimbă tipul contului în „Cu plată” folosind cardul de mai sus.</p>}
     {p.paymentState && <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
       <strong>BT iPay:</strong> {p.paymentState}{p.paidAt ? ` · achitată ${new Date(p.paidAt).toLocaleString('ro-RO')}` : ''}
       {p.paymentError && p.paymentState !== 'DEPOSITED' ? <span className="block mt-1 text-red-700">{p.paymentError}</span> : null}
     </div>}
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-      <div><label className="text-sm text-gray-500 block mb-1.5">Plan</label><Input placeholder="ex: Standard" value={planName} onChange={(e) => setPlanName(e.target.value)} /></div>
-      <div><label className="text-sm text-gray-500 block mb-1.5">Status plată</label><select value={status} onChange={(e) => setStatus(e.target.value)} className="input-field w-full">{Object.entries(LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+    <fieldset disabled={p.billingMode !== 'PAID'} className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 disabled:opacity-75">
+      <div><label className="text-sm text-gray-500 block mb-1.5">Plan</label><Input value={p.initialPlanName ?? ''} disabled /></div>
+      <div><label className="text-sm text-gray-500 block mb-1.5">Status plată</label><select value={status} onChange={(e) => setStatus(e.target.value)} className="input-field w-full">{Object.entries(LABEL).filter(([value]) => value !== 'GRATUIT' || p.billingMode === 'FREE').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
       <div><label className="text-sm text-gray-500 block mb-1.5">Valoare fără TVA (RON)</label><Input type="number" min="0.01" step="0.01" value={subtotal} onChange={(e) => setSubtotal(e.target.value)} /></div>
       <div><label className="text-sm text-gray-500 block mb-1.5">TVA</label><select value={vatRate} onChange={(e) => setVatRate(e.target.value)} className="input-field w-full">{[21, 19, 11, 9, 5, 0].map((value) => <option key={value} value={value}>{value}%</option>)}</select></div>
       <div><label className="text-sm text-gray-500 block mb-1.5">Scadență</label><Input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} /></div>
       <div><label className="text-sm text-gray-500 block mb-1.5">Total estimat</label><Input value={`${estimatedTotal.toFixed(2)} RON`} disabled /></div>
-    </div>
+    </fieldset>
     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Date juridice și de facturare</p>
     <p className="mb-3 text-sm text-gray-500">Se folosesc pe factură și în contracte. Numele brandului afișat în marketplace se editează separat, sus.</p>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -122,7 +125,7 @@ export default function BillingSection(p: Props) {
     <label className="text-sm text-gray-500 block mb-1.5">Notă internă (opțional)</label><Input placeholder="ex: abonament septembrie" value={note} onChange={(e) => setNote(e.target.value)} className="mb-3" />
     <div className="flex flex-wrap items-center gap-3">
       <Button variant="secondary" onClick={save} disabled={saving}>{saving ? 'Se procesează...' : 'Salvează datele'}</Button>
-      <Button onClick={generateInvoice} disabled={saving || Boolean(invoiceName)}>{invoiceName ? 'Factură deja emisă' : 'Emite factura în Signal'}</Button>
+      <Button onClick={generateInvoice} disabled={saving || p.billingMode === 'FREE' || Boolean(invoiceName) || (p.campaignManaged && !p.initialAmount)}>{invoiceName ? 'Factură deja emisă' : 'Emite factura în Signal'}</Button>
       {invoiceName && <a href={`/api/billing/invoice/${p.businessId}`} className="text-sm text-[var(--accent)] hover:underline">Descarcă {invoiceName}</a>}
     </div>
     <details className="mt-4 rounded-xl border border-gray-200 p-3">

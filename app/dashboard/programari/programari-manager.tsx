@@ -1,15 +1,20 @@
 'use client'
 
+import BookingSmsHistory from '@/components/booking-sms-history'
+import { useSmsAllowances } from '@/components/use-sms-allowances'
+import { useSmsAvailability } from '@/components/use-sms-availability'
 import { useState, useEffect, Fragment } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button'
-import { Pill } from '@/components/ui/input'
+
 import { PrintButton } from '@/components/print-button'
 import { CheckCircle2, Clock } from 'lucide-react'
 import { WorkingRange } from '@/components/working-date-time-picker'
+import { bookingTerminology, isAppointmentCategory, isPatientCategory, offerLabel, practitionerLabel, type BusinessCategory } from '@/lib/business-categories'
+import Link from 'next/link'
 
 type Booking = {
   id: string
@@ -38,26 +43,12 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const CHANNEL_LABEL: Record<string, string> = {
-  WHATSAPP: 'WhatsApp',
+  SMS: 'SMS',
   INSTAGRAM: 'Instagram',
   FACEBOOK: 'Facebook',
   GOOGLE_BUSINESS: 'Google',
   WEB: 'Site',
   MANUAL: 'Manual',
-}
-
-function reconfirmationChannelLabel(channel: string) {
-  if (channel === 'FACEBOOK') return 'Messenger'
-  if (channel === 'INSTAGRAM') return 'Instagram'
-  return 'WhatsApp'
-}
-
-const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
-  PENDING: 'warning',
-  CONFIRMED: 'success',
-  CANCELLED: 'danger',
-  COMPLETED: 'neutral',
-  NO_SHOW: 'danger',
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -71,7 +62,7 @@ const STATUS_COLOR: Record<string, string> = {
 // Saloanele și clinicile au servicii cu durată fixă (Telefon), spațiile de evenimente
 // au săli/resurse (Sală) — dimensiune independentă de teamSize
 function isAppointmentBased(category: string) {
-  return category === 'SALON' || category === 'CLINICA'
+  return isAppointmentCategory(category)
 }
 
 function SortableHeader({
@@ -100,6 +91,10 @@ function SortableHeader({
 
 export default function ProgramariManager({
   category,
+  canUseStandard,
+  smsReconfirmationEnabled,
+  initialSmsAvailable,
+  messengerReconfirmationEnabled,
   isMultiPractitioner,
   bookings,
   customers,
@@ -111,7 +106,11 @@ export default function ProgramariManager({
   filters,
   newlyConfirmedIds,
 }: {
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  category: BusinessCategory
+  canUseStandard: boolean
+  smsReconfirmationEnabled: boolean
+  initialSmsAvailable: boolean
+  messengerReconfirmationEnabled: boolean
   isMultiPractitioner: boolean
   bookings: Booking[]
   customers: { id: string; name: string }[]
@@ -124,9 +123,12 @@ export default function ProgramariManager({
   newlyConfirmedIds: string[]
 }) {
   const router = useRouter()
+  const smsAvailable = useSmsAvailability(initialSmsAvailable)
+  const sms = useSmsAllowances(bookings.map(b => b.id), smsAvailable)
   const searchParams = useSearchParams()
   const [adding, setAdding] = useState(searchParams.get('add') === '1')
   const [sendingConfirmId, setSendingConfirmId] = useState<string | null>(null)
+  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null)
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortAsc, setSortAsc] = useState(true)
 
@@ -138,10 +140,9 @@ export default function ProgramariManager({
       setSortAsc(true)
     }
   }
-  const isClinic = category === 'CLINICA'
+  const isClinic = isPatientCategory(category)
   const appointmentBased = isAppointmentBased(category)
-  const bookingPlural = appointmentBased ? 'programări' : 'rezervări'
-  const bookingSingular = appointmentBased ? 'programare' : 'rezervare'
+  const { singular: bookingSingular, plural: bookingPlural, heading: bookingHeading } = bookingTerminology(category)
   const customerSingular = isClinic ? 'pacient' : 'client'
   // 8 coloane (fără Sală/Medic) sau 9 (cu Sală sau Medic)
   const colCount = appointmentBased && !isMultiPractitioner ? 8 : 9
@@ -189,22 +190,40 @@ export default function ProgramariManager({
     }
   }
 
-  async function sendConfirmationRequest(id: string) {
+  async function sendConfirmationRequest(id: string, channel: 'SMS' | 'FACEBOOK' | 'INSTAGRAM' = 'SMS') {
     setSendingConfirmId(id)
     try {
-      const res = await fetchWithTimeout(`/api/business/bookings/${id}/send-confirmation-request`, { method: 'POST' })
+      const res = await fetchWithTimeout(`/api/business/bookings/${id}/send-confirmation-request`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         alert(data.error ?? 'Nu am putut trimite cererea de confirmare.')
         return
       }
-      const sentChannel = CHANNEL_LABEL[data.channel] ?? reconfirmationChannelLabel(data.channel)
-      alert(`Cerere de reconfirmare trimisă pe ${sentChannel} — clientul poate confirma sau anula direct din conversație.`)
+      alert(channel === 'INSTAGRAM' ? 'Cererea de reconfirmare a fost trimisă pe Instagram.' : channel === 'FACEBOOK' ? 'Cererea de reconfirmare a fost trimisă pe Messenger.' : data.message || 'SMS adăugat în coadă. Așteaptă preluarea de către telefonul gateway.')
       router.refresh()
     } catch {
       alert('Conexiune eșuată. Încearcă din nou.')
     } finally {
+      sms.refresh()
       setSendingConfirmId(null)
+    }
+  }
+
+  async function sendReminder(id: string) {
+    setSendingReminderId(id)
+    try {
+      const res = await fetchWithTimeout(`/api/business/bookings/${id}/send-reminder`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data.error ?? 'Nu am putut trimite reminderul SMS.')
+        return
+      }
+      alert(data.message || 'SMS adăugat în coadă. Așteaptă preluarea de către telefonul gateway.')
+    } catch {
+      alert('Conexiune eșuată. Încearcă din nou.')
+    } finally {
+      sms.refresh()
+      setSendingReminderId(null)
     }
   }
 
@@ -261,18 +280,25 @@ export default function ProgramariManager({
             )}
           </div>
         </td>
-        <td className="pr-5 text-right whitespace-nowrap">
+        <td className="pr-5 text-right whitespace-nowrap">{smsAvailable && <BookingSmsHistory allowance={sms.allowances[b.id]} />}
           {(b.status === 'PENDING' || b.status === 'CONFIRMED') &&
             new Date(b.startAt).getTime() > Date.now() &&
             b.customerConfirmed !== true && (
-            <button
-              onClick={() => sendConfirmationRequest(b.id)}
-              disabled={sendingConfirmId === b.id}
-              className="text-xs text-[var(--accent)] font-medium mr-3"
+            <>{smsAvailable && canUseStandard && smsReconfirmationEnabled && (sms.allowances[b.id]?.reconfirmationsLeft ?? 0) > 0 && <button
+              onClick={() => sendConfirmationRequest(b.id)} disabled={sendingConfirmId === b.id || sendingReminderId === b.id || !sms.allowances[b.id]?.canReconfirm}
+              className="text-xs text-[var(--accent)] font-medium mr-3 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {sendingConfirmId === b.id
                 ? 'Se trimite...'
-                : `${b.confirmationRequestSent ? 'Retrimite reconfirmarea' : 'Cere reconfirmare'} · ${reconfirmationChannelLabel(b.channel)}`}
+                : 'Reconfirmare SMS'}
+            </button>}{canUseStandard && (b.channel === 'INSTAGRAM' || messengerReconfirmationEnabled) && <button type="button" onClick={() => sendConfirmationRequest(b.id, b.channel === 'INSTAGRAM' ? 'INSTAGRAM' : 'FACEBOOK')} disabled={sendingConfirmId === b.id || sendingReminderId === b.id} className="mr-3 text-xs font-medium text-[var(--accent)]">{b.channel === 'INSTAGRAM' ? 'Cere reconfirmare pe Instagram' : 'Cere reconfirmare pe Messenger'}</button>}</>
+          )}
+          {smsAvailable && canUseStandard && (b.status === 'PENDING' || b.status === 'CONFIRMED') && new Date(b.startAt).getTime() > Date.now() && (sms.allowances[b.id]?.remindersLeft ?? 0) > 0 && (
+            <button
+              onClick={() => sendReminder(b.id)} disabled={sendingReminderId === b.id || sendingConfirmId === b.id || !sms.allowances[b.id]?.canRemind}
+              className="text-xs text-[var(--accent)] font-medium mr-3 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {sendingReminderId === b.id ? 'Se trimite...' : 'SMS reminder'}
             </button>
           )}
           {b.status !== 'CANCELLED' && (
@@ -321,9 +347,16 @@ export default function ProgramariManager({
             {b.customerConfirmed ? 'Confirmată de client' : 'Așteaptă clientul'}
           </span>}
         </div>
-        {canReconfirm && <button type="button" onClick={() => sendConfirmationRequest(b.id)} disabled={sendingConfirmId === b.id} className="mt-3 min-h-11 w-full rounded-xl bg-[var(--accent-soft)] px-3 text-left font-medium text-[var(--accent)]">
-          {sendingConfirmId === b.id ? 'Se trimite...' : `${b.confirmationRequestSent ? 'Retrimite reconfirmarea' : 'Cere reconfirmare'} · ${reconfirmationChannelLabel(b.channel)}`}
-        </button>}
+        {smsAvailable && <BookingSmsHistory allowance={sms.allowances[b.id]} />}
+        {(canReconfirm || ((b.status === 'PENDING' || b.status === 'CONFIRMED') && date.getTime() > Date.now())) && <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {smsAvailable && canUseStandard && canReconfirm && smsReconfirmationEnabled && (sms.allowances[b.id]?.reconfirmationsLeft ?? 0) > 0 && <button type="button" onClick={() => sendConfirmationRequest(b.id)} disabled={sendingConfirmId === b.id || sendingReminderId === b.id || !sms.allowances[b.id]?.canReconfirm} className="min-h-11 w-full rounded-xl bg-[var(--accent-soft)] px-3 py-2 text-center font-medium text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50">
+            {sendingConfirmId === b.id ? 'Se trimite...' : b.confirmationRequestSent ? 'Retrimite SMS de reconfirmare' : 'Cere SMS de reconfirmare'}
+          </button>}
+          {canUseStandard && canReconfirm && (b.channel === 'INSTAGRAM' || messengerReconfirmationEnabled) && <button type="button" onClick={() => sendConfirmationRequest(b.id, b.channel === 'INSTAGRAM' ? 'INSTAGRAM' : 'FACEBOOK')} disabled={sendingConfirmId === b.id || sendingReminderId === b.id} className="min-h-11 w-full rounded-xl bg-[var(--accent-soft)] px-3 py-2 text-center font-medium text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50">{b.channel === 'INSTAGRAM' ? 'Cere reconfirmare pe Instagram' : 'Cere reconfirmare pe Messenger'}</button>}
+          {smsAvailable && canUseStandard && (b.status === 'PENDING' || b.status === 'CONFIRMED') && date.getTime() > Date.now() && (sms.allowances[b.id]?.remindersLeft ?? 0) > 0 && <button type="button" onClick={() => sendReminder(b.id)} disabled={sendingReminderId === b.id || sendingConfirmId === b.id || !sms.allowances[b.id]?.canRemind} className="min-h-11 w-full rounded-xl bg-[var(--accent-soft)] px-3 py-2 text-center font-medium text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-50">
+            {sendingReminderId === b.id ? 'Se trimite...' : 'SMS reminder'}
+          </button>}
+        </div>}
         <details className="mt-3 border-t border-[var(--border-soft)] pt-2">
           <summary className="cursor-pointer py-2 text-sm font-semibold text-[var(--accent)]">Detalii și acțiuni</summary>
           <div className="flex flex-col gap-2 pb-1 text-sm">
@@ -339,8 +372,9 @@ export default function ProgramariManager({
 
   return (
     <div className="dashboard-page">
+      {!canUseStandard && <Link href="/dashboard/planuri" className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-950"><span><strong>Reconfirmări și remindere</strong> pentru programări</span><span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-bold text-teal-800">STANDARD ↗</span></Link>}
       <div className="flex flex-col gap-3 mb-4 md:flex-row md:flex-wrap md:items-center md:gap-2 md:mb-5">
-        <h1 className="text-2xl font-semibold mr-1">{appointmentBased ? 'Programări' : 'Rezervări'}</h1>
+        <h1 className="text-2xl font-semibold mr-1">{bookingHeading}</h1>
         <span className="text-sm text-gray-500 mr-1 whitespace-nowrap">{bookings.length} {bookingPlural}</span>
         <form method="get" className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 md:contents">
           <Input name="q" defaultValue={filters.q} placeholder={`Caută ${customerSingular}...`} className="col-span-2 w-full md:col-auto md:w-40" />
@@ -394,11 +428,11 @@ export default function ProgramariManager({
             <tr className="text-left border-b border-[var(--border-soft)]">
               <SortableHeader label="#" column="sequenceNumber" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('sequenceNumber')} />
               <SortableHeader label={isClinic ? 'Pacient' : 'Client'} column="customerName" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('customerName')} />
-              <SortableHeader label="Serviciu" column="serviceName" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('serviceName')} />
+              <SortableHeader label={offerLabel(category).heading} column="serviceName" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('serviceName')} />
               <SortableHeader label="Data" column="startAt" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('startAt')} />
               {isMultiPractitioner ? (
                 <>
-                  <SortableHeader label="Medic" column="practitionerName" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('practitionerName')} />
+                  <SortableHeader label={practitionerLabel(category).singular} column="practitionerName" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('practitionerName')} />
                   <SortableHeader label="Telefon" column="customerPhone" sortColumn={sortColumn} sortAsc={sortAsc} onClick={() => toggleSort('customerPhone')} />
                 </>
               ) : appointmentBased ? (
@@ -510,7 +544,7 @@ function NewBookingForm({
   slotIntervalMinutes,
   onDone,
 }: {
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  category: BusinessCategory
   isMultiPractitioner: boolean
   customers: { id: string; name: string }[]
   services: { id: string; name: string; durationMin: number | null }[]
@@ -520,10 +554,8 @@ function NewBookingForm({
   slotIntervalMinutes: number
   onDone: () => void
 }) {
-  const isClinic = category === 'CLINICA'
-  const appointmentBased = isAppointmentBased(category)
-  const bookingSingular = appointmentBased ? 'programare' : 'rezervare'
-  const bookingPlural = appointmentBased ? 'programări' : 'rezervări'
+  const isClinic = isPatientCategory(category)
+  const { singular: bookingSingular, plural: bookingPlural } = bookingTerminology(category)
   const [customerId, setCustomerId] = useState('')
   const [newCustomerMode, setNewCustomerMode] = useState(false)
   const [newCustomerName, setNewCustomerName] = useState('')
@@ -692,9 +724,9 @@ function NewBookingForm({
             {practitioners.length === 0 && (
               <p className="text-sm text-amber-600 sm:col-span-2">
                 Nicio persoană activă — adaugă una din{' '}
-                <a href="/dashboard/medici" className="underline">
-                  {isClinic ? 'Medici' : 'Echipă'}
-                </a>{' '}
+                <Link href="/dashboard/medici" className="underline">
+                  {practitionerLabel(category).plural}
+                </Link>{' '}
                 ca să poți programa.
               </p>
             )}

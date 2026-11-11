@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Building2, Cookie, FileCheck2, FileText, LockKeyhole, Scale, ShieldCheck } from 'lucide-react'
 import { PublicHeader } from '@/components/ui/public-header'
-import { PublicFooter } from '@/components/ui/public-footer'
 import { company } from '@/lib/company'
 
 export const metadata: Metadata = {
@@ -60,7 +59,6 @@ export default function LegalHubPage() {
         </section>
         <p className="mt-6 flex items-center justify-center gap-2 text-center text-xs text-gray-400"><ShieldCheck size={14} /> Documente actualizate la 5 octombrie 2026.</p>
       </main>
-      <PublicFooter />
     </div>
   )
 }

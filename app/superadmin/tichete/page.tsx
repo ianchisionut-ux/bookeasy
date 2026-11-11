@@ -1,24 +1,2 @@
-import { prisma } from '@/lib/prisma'
-import TicketsManager from './tickets-manager'
-
-export default async function TichetePage() {
-  const tickets = await prisma.supportTicket.findMany({
-    include: { business: { select: { id: true, name: true } } },
-    orderBy: { createdAt: 'desc' },
-  })
-
-  return (
-    <TicketsManager
-      tickets={tickets.map((t) => ({
-        id: t.id,
-        businessId: t.business.id,
-        businessName: t.business.name,
-        subject: t.subject,
-        message: t.message,
-        status: t.status,
-        reply: t.reply,
-        createdAt: t.createdAt.toISOString(),
-      }))}
-    />
-  )
-}
+import HelpChat from '@/components/help-chat'
+export default function TichetePage(){return <div className="dashboard-page !p-2 h-[calc(100dvh-132px)] lg:!p-8 lg:h-screen min-h-0 flex flex-col"><h1 className="shrink-0 text-2xl font-semibold">Suport tehnic</h1><p className="mb-4 mt-2 shrink-0 text-sm text-gray-500">Conversații cu afacerile. Răspunde direct sau pornește de la un șablon.</p><HelpChat admin/></div>}

@@ -1,37 +1,26 @@
-// Limitator simplu, în memorie — suficient cât timp rulăm pe o singură regiune Vercel cu
-// trafic moderat. Dacă traficul crește mult sau rulăm pe mai multe regiuni, ar trebui
-// înlocuit cu unul distribuit (ex: Upstash Redis), pentru că memoria nu e împărtășită
-// între instanțe serverless diferite — dar chiar și așa, reduce semnificativ abuzul simplu.
+import { createHash } from 'crypto'
+import { prisma } from './prisma'
 
-const buckets = new Map<string, { count: number; resetAt: number }>()
-
-// curățare periodică, ca să nu crească Map-ul la nesfârșit
-setInterval(() => {
-  const now = Date.now()
-  for (const [key, bucket] of buckets) {
-    if (bucket.resetAt < now) buckets.delete(key)
-  }
-}, 5 * 60 * 1000).unref?.()
-
-export function rateLimit(key: string, limit: number, windowMs: number): { allowed: boolean; remaining: number } {
-  const now = Date.now()
-  const bucket = buckets.get(key)
-
-  if (!bucket || bucket.resetAt < now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs })
-    return { allowed: true, remaining: limit - 1 }
-  }
-
-  if (bucket.count >= limit) {
+// Atomic counters shared across serverless instances; hashed keys contain no PII.
+export async function rateLimit(key: string, limit: number, windowMs: number): Promise<{ allowed: boolean; remaining: number }> {
+  const bucketKey = createHash('sha256').update(key).digest('hex')
+  try {
+    const rows = await prisma.$queryRaw<{ count: number }[]>`
+      INSERT INTO "RateLimitBucket" ("key", "count", "resetAt")
+      VALUES (${bucketKey}, 1, clock_timestamp() + ${windowMs} * interval '1 millisecond')
+      ON CONFLICT ("key") DO UPDATE SET
+        "count" = CASE WHEN "RateLimitBucket"."resetAt" <= clock_timestamp() THEN 1 ELSE LEAST("RateLimitBucket"."count" + 1, ${limit + 1}) END,
+        "resetAt" = CASE WHEN "RateLimitBucket"."resetAt" <= clock_timestamp() THEN clock_timestamp() + ${windowMs} * interval '1 millisecond' ELSE "RateLimitBucket"."resetAt" END
+      RETURNING "count"
+    `
+    const count = rows[0]?.count ?? limit + 1
+    return { allowed: count <= limit, remaining: Math.max(0, limit - count) }
+  } catch {
+    console.error('[rate-limit] Shared counter unavailable')
     return { allowed: false, remaining: 0 }
   }
-
-  bucket.count++
-  return { allowed: true, remaining: limit - bucket.count }
 }
 
-// extrage un identificator rezonabil de client din request — IP-ul din headerele
-// standard puse de Vercel în fața funcțiilor serverless
 export function getClientIp(req: Request): string {
   const forwarded = req.headers.get('x-forwarded-for')
   if (forwarded) return forwarded.split(',')[0].trim()

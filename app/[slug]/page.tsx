@@ -1,22 +1,24 @@
 import { publicReviewName } from '@/lib/review-privacy'
+import { redirectPublicAlias } from '@/lib/business-public-slug'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import NearbyBusinesses from '@/components/nearby-businesses'
+import BusinessDirections from '@/components/business-directions'
 import { PublicHeader } from '@/components/ui/public-header'
-import { PublicFooter } from '@/components/ui/public-footer'
 import { BackLink } from '@/components/ui/back-link'
-import { ArrowRight, CalendarCheck2, Clock3, MapPin, Phone, ShieldCheck, Star } from 'lucide-react'
+import { ArrowRight, CalendarCheck2, CheckCircle2, Clock3, MapPin, Phone, ShieldCheck, Star } from 'lucide-react'
+import { CATEGORY_LABEL, isAppointmentCategory } from '@/lib/business-categories'
+import { auth } from '@/lib/auth'
+import { canPreviewBusiness } from '@/lib/business-preview'
+import BusinessPreviewNotice from '@/components/business-preview-notice'
 
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Salon',
-  EVENT_VENUE: 'Spațiu pentru evenimente',
-  CLINICA: 'Clinică medicală',
-}
+export const dynamic = 'force-dynamic'
 
-export default async function PublicBusinessPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function PublicBusinessPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { slug } = await params
+  await redirectPublicAlias(slug, '', (await searchParams) ?? {})
   const business = await prisma.business.findUnique({
     where: { slug },
     include: {
@@ -26,27 +28,33 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
     },
   })
 
-  if (!business || !business.publicListed) notFound()
+  if (!business) notFound()
+  const preview = !business.publicListed || !business.accountActive
+  if (preview && !canPreviewBusiness(business.id, await auth())) notFound()
   if (business.category === 'HOTEL' || business.category === 'PENSIUNE') notFound()
 
   const accent = business.brandColor || 'var(--accent)'
   const accentSoft = business.brandColor ? `${business.brandColor}1a` : 'var(--accent-soft)'
   const initials = business.name.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase()
-  const bookingLabel = business.category === 'CLINICA' ? 'Programează-te acum' : 'Rezervă acum'
+  const bookingLabel = isAppointmentCategory(business.category) ? 'Programează-te acum' : 'Rezervă acum'
+  const hasCoordinates = business.latitude !== null && business.longitude !== null
+    && Number.isFinite(business.latitude) && Number.isFinite(business.longitude)
+    && Math.abs(business.latitude) <= 90 && Math.abs(business.longitude) <= 180
 
   return (
     <div className="themed-static-bg min-h-screen">
       <PublicHeader />
+      {preview && <div className="px-3 sm:px-6"><BusinessPreviewNotice onboardingDone={business.onboardingDone} onboardingStep={business.onboardingStep} accountActive={business.accountActive} /></div>}
 
       <div className="px-3 pt-4 sm:px-6 sm:pt-8">
         <section className="relative mx-auto min-h-[260px] max-w-6xl overflow-hidden rounded-[22px] shadow-xl sm:min-h-[340px] sm:rounded-[26px]">
           {business.heroImageUrl && (
             <Image src={business.heroImageUrl} unoptimized={business.heroImageUrl.startsWith('/api/storage/public/')} alt={business.name} fill className="object-cover" priority quality={95} />
           )}
-          <div className="absolute inset-0" style={{ background: business.heroImageUrl ? 'linear-gradient(90deg, rgba(38,59,63,.94) 0%, rgba(38,59,63,.72) 52%, rgba(38,59,63,.2) 100%)' : `linear-gradient(125deg, var(--brand-ink) 0%, ${accent} 150%)` }} />
+          <div className="absolute inset-0" style={{ background: business.heroImageUrl ? 'linear-gradient(90deg, rgba(38,59,63,.66) 0%, rgba(38,59,63,.5) 30%, rgba(38,59,63,.12) 58%, transparent 80%)' : `linear-gradient(125deg, var(--brand-ink) 0%, ${accent} 150%)` }} />
           <div className="relative flex min-h-[260px] max-w-3xl flex-col justify-end p-5 text-white sm:min-h-[340px] sm:p-9 lg:p-11">
             <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-white/20 bg-white/15 text-lg font-semibold shadow-inner backdrop-blur sm:h-16 sm:w-16 sm:text-xl">{initials}</div>
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/65">{CATEGORY_LABEL[business.category] ?? 'Servicii locale'}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/65">{CATEGORY_LABEL[business.category]}</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-4xl">{business.name}</h1>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-white/75">
               {(business.address || business.city) && <span className="flex items-center gap-1.5"><MapPin size={15} />{business.address ?? business.city}</span>}
@@ -108,7 +116,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
           <section className="card min-w-0 overflow-hidden p-4 sm:p-7">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Recenzii {business.reviewCount ? `(${business.reviewCount})` : ''}</h2>
-              <Link href={`/${slug}/recenzie`} className="shrink-0 text-sm font-medium" style={{ color: accent }}>Lasă o recenzie</Link>
+              {!preview && <Link href={`/${slug}/recenzie`} className="shrink-0 text-sm font-medium" style={{ color: accent }}>Lasă o recenzie</Link>}
             </div>
             {business.reviews.length === 0 ? (
               <p className="text-sm text-gray-500">Nicio recenzie încă — fii primul!</p>
@@ -121,6 +129,7 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
                       <p className="flex shrink-0 gap-0.5">{Array.from({ length: 5 }).map((_, index) => <Star key={index} size={13} fill={index < review.rating ? '#eab308' : 'none'} color={index < review.rating ? '#eab308' : '#d1d5db'} />)}</p>
                     </div>
                     {review.comment && <p className="break-words text-sm leading-relaxed text-gray-600">{review.comment}</p>}
+                    {review.verifiedByGoogle && <p className="mt-2 flex items-center gap-1 text-xs font-medium text-teal-700"><CheckCircle2 size={13} /> Recenzie verificată prin rezervare</p>}
                     <p className="mt-2 text-xs text-gray-400">{review.createdAt.toLocaleDateString('ro-RO', { dateStyle: 'medium', timeZone: 'Europe/Bucharest' })}</p>
                     {review.reply && <div className="mt-3 rounded-xl p-3" style={{ background: accentSoft }}><p className="mb-1 text-xs font-medium" style={{ color: accent }}>Răspunsul afacerii</p><p className="break-words text-sm text-gray-600">{review.reply}</p></div>}
                   </article>
@@ -144,10 +153,10 @@ export default async function PublicBusinessPage({ params }: { params: Promise<{
             <Link href={`/${business.slug}/rezerva`} className="btn-primary mt-5 flex w-full items-center justify-center gap-2">{bookingLabel} <ArrowRight size={15} /></Link>
             {business.contactPhone && <a href={`tel:${business.contactPhone}`} className="btn-secondary mt-2 flex w-full items-center justify-center gap-2"><Phone size={15} /> {business.contactPhone}</a>}
           </div>
+          {hasCoordinates && <BusinessDirections name={business.name} address={business.address ?? business.city} latitude={business.latitude!} longitude={business.longitude!} />}
         </aside>
       </main>
 
-      <PublicFooter />
     </div>
   )
 }

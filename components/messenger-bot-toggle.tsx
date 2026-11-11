@@ -3,7 +3,17 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function MessengerBotToggle({ channelId, enabled, businessId }: { channelId: string; enabled: boolean; businessId?: string }) {
+export default function MessengerBotToggle({
+  channelId,
+  enabled,
+  channelName = 'Messenger',
+  businessId,
+}: {
+  channelId: string
+  enabled: boolean
+  channelName?: 'Messenger' | 'Instagram'
+  businessId?: string
+}) {
   const [on, setOn] = useState(enabled)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -20,11 +30,11 @@ export default function MessengerBotToggle({ channelId, enabled, businessId }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabledByOwner: next }),
       })
-      if (!response.ok) throw new Error('Setarea botului Messenger nu a putut fi salvată.')
+      if (!response.ok) throw new Error(`Setarea botului ${channelName} nu a putut fi salvată.`)
       setOn(next)
       router.refresh()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Setarea botului Messenger nu a putut fi salvată.')
+      setError(cause instanceof Error ? cause.message : `Setarea botului ${channelName} nu a putut fi salvată.`)
     } finally {
       setBusy(false)
     }
@@ -34,17 +44,21 @@ export default function MessengerBotToggle({ channelId, enabled, businessId }: {
     <div className="rounded-xl border border-[var(--border-soft)] p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium">Bot Messenger</p>
-          <p className="text-xs text-gray-500">{on ? 'Răspunde automat mesajelor paginii.' : 'Oprit: mesajele ajung în Mesaje pentru răspuns manual.'}</p>
+          <p className="text-sm font-medium">Bot {channelName}</p>
+          <p className="text-xs text-gray-500">
+            {on
+              ? `Răspunde automat pe ${channelName}. Conversația apare în Mesaje numai după ce clientul apasă „Operator”.`
+              : 'Oprit: botul nu răspunde, iar conversațiile noi nu apar în BookEasy fără o cerere „Operator”.'}
+          </p>
         </div>
-        <button type="button" role="switch" aria-label="Bot Messenger" aria-checked={on} onClick={toggle} disabled={busy}
+        <button type="button" role="switch" aria-label={`Bot ${channelName}`} aria-checked={on} onClick={toggle} disabled={busy}
           className="relative h-8 w-14 shrink-0 rounded-full transition-colors disabled:opacity-50"
           style={{ background: on ? 'var(--accent)' : '#d1d5db' }}>
           <span className="absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-transform"
             style={{ transform: on ? 'translateX(24px)' : 'translateX(0)' }} />
         </button>
       </div>
-      <p className="mt-2 text-xs text-gray-500">Conexiunea Paginii rămâne activă; mesajele profilului personal nu sunt afectate. Răspunsurile și reconfirmările manuale rămân disponibile.</p>
+      <p className="mt-2 text-xs text-gray-500">Conexiunea rămâne activă. Răspunsurile și reconfirmările manuale rămân disponibile.</p>
       {error && <p role="alert" className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   )

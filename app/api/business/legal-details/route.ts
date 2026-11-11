@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { prisma } from '@/lib/prisma'
 
 const optional = z.string().trim().max(200).optional()

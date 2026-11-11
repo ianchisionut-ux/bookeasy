@@ -2,238 +2,54 @@ import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { processIncomingMessage } from '@/lib/bot-engine'
-import { syncBookingToGoogle } from '@/lib/google-calendar'
-import { sendMessage, sendWhatsAppButtons } from '@/lib/channel-senders'
 
 export async function GET(req: NextRequest) {
   const mode = req.nextUrl.searchParams.get('hub.mode')
   const token = req.nextUrl.searchParams.get('hub.verify_token')
   const challenge = req.nextUrl.searchParams.get('hub.challenge')
 
-  if (mode === 'subscribe' && token === process.env.META_VERIFY_TOKEN) {
+  const validToken = Boolean(token) && (
+    token === process.env.META_VERIFY_TOKEN || token === process.env.INSTAGRAM_VERIFY_TOKEN
+  )
+  if (mode === 'subscribe' && validToken && challenge) {
     return new NextResponse(challenge, { status: 200 })
   }
   return new NextResponse('Forbidden', { status: 403 })
 }
 
 export async function POST(req: NextRequest) {
-  const appSecret = process.env.META_APP_SECRET
-  if (!appSecret) return NextResponse.json({ error: 'Meta nu este configurat.' }, { status: 503 })
-
   const rawBody = await req.text()
-
-  const signature = req.headers.get('x-hub-signature-256')
-  const expected =
-    'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex')
-
-  if (signature !== expected) {
-    return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
+  let body: any
+  try {
+    body = JSON.parse(rawBody)
+  } catch {
+    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
   }
-
-  const body = JSON.parse(rawBody)
+  const signature = req.headers.get('x-hub-signature-256')
+  const signedBy = new Set(Object.entries({ meta: process.env.META_APP_SECRET, instagram: process.env.INSTAGRAM_APP_SECRET }).filter(([, secret]) => {
+    if (!secret || !signature) return false
+    const expected = Buffer.from('sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex'))
+    const received = Buffer.from(signature)
+    return received.length === expected.length && crypto.timingSafeEqual(received, expected)
+  }).map(([provider]) => provider))
+  if (!signedBy.size) return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
 
   for (const entry of body.entry ?? []) {
-    if (body.object === 'whatsapp_business_account') {
-      await handleWhatsAppEntry(entry)
-    } else if (body.object === 'instagram') {
-      await handleMessengerEntry(entry, 'INSTAGRAM')
-    } else if (body.object === 'page') {
-      await handleMessengerEntry(entry, 'FACEBOOK')
+    if (body.object === 'instagram') {
+      await handleMessengerEntry(entry, 'INSTAGRAM', signedBy)
+    } else if (body.object === 'page' && signedBy.has('meta')) {
+      await handleMessengerEntry(entry, 'FACEBOOK', signedBy)
     }
   }
 
   return NextResponse.json({ received: true })
 }
 
-async function handleWhatsAppEntry(entry: any) {
-  const value = entry.changes?.[0]?.value
-  const message = value?.messages?.[0]
-  if (!message) return
-
-  const action = message.interactive?.button_reply?.id ?? message.interactive?.list_reply?.id ?? ''
-  const match = /^(REMINDER_CONFIRM|REMINDER_RESCHEDULE|REMINDER_CANCEL)_(.+)$/.exec(action)
-  if (message.id && !(await markMessageProcessed(message.id))) return
-
-  const phoneNumberId = value.metadata?.phone_number_id
-  if (!phoneNumberId) return
-  const channel = await prisma.channel.findUnique({
-    where: { type_externalId: { type: 'WHATSAPP', externalId: phoneNumberId } },
-  })
-  if (!channel) return
-
-  // Botul conversațional WhatsApp rămâne dezactivat. Păstrăm doar meniul scurt
-  // care trimite clientul la un operator sau la formularul public de programare.
-  if (!match) {
-    await handleWhatsAppStaticMenu({ channel, message, action })
-    return
-  }
-
-  const payload = match[2]
-  const separator = payload.lastIndexOf('.')
-  const bookingId = separator > 0 ? payload.slice(0, separator) : payload
-  const confirmationToken = separator > 0 ? payload.slice(separator + 1) : '__legacy_message__'
-  const booking = await prisma.booking.findFirst({
-    where: { id: bookingId, businessId: channel.businessId },
-    include: { business: { select: { slug: true } } },
-  })
-  if (!booking) return
-
-  const actionType = match[1]
-  const claimed = await prisma.booking.updateMany({
-    where: {
-      id: booking.id,
-      businessId: channel.businessId,
-      confirmationRequestToken: confirmationToken,
-      confirmationRequestSent: true,
-      customerConfirmed: null,
-      status: { in: ['PENDING', 'CONFIRMED'] },
-    },
-    data:
-      actionType === 'REMINDER_CONFIRM'
-        ? { status: 'CONFIRMED', customerConfirmed: true, confirmationSeenByAdmin: false }
-        : { status: 'CANCELLED', customerConfirmed: false, confirmationSeenByAdmin: false },
-  })
-  if (claimed.count === 0) {
-    await sendMessage({
-      channel: 'WHATSAPP',
-      channelId: channel.id,
-      to: message.from,
-      text: 'Răspunsul pentru această programare a fost deja înregistrat și nu mai poate fi schimbat din mesajul vechi.',
-    }).catch(() => undefined)
-    return
-  }
-
-  const friendlyText =
-    actionType === 'REMINDER_CONFIRM'
-      ? 'A confirmat programarea'
-      : actionType === 'REMINDER_RESCHEDULE'
-        ? 'A cerut reprogramarea'
-        : 'A anulat programarea'
-
-  await prisma.chatMessage.create({
-    data: {
-      businessId: channel.businessId,
-      channel: 'WHATSAPP',
-      externalUserId: message.from,
-      direction: 'IN',
-      text: friendlyText,
-    },
-  })
-  await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync WhatsApp reconfirmation:', error))
-
-  if (actionType === 'REMINDER_RESCHEDULE') {
-    const bookingUrl = `${process.env.APP_URL}/${booking.business.slug}/rezerva`
-    const responseText = `Programarea veche a fost anulată. Alege noua dată și oră aici: ${bookingUrl}`
-    await sendMessage({ channel: 'WHATSAPP', channelId: channel.id, to: message.from, text: responseText })
-    await prisma.chatMessage.create({
-      data: { businessId: channel.businessId, channel: 'WHATSAPP', externalUserId: message.from, direction: 'OUT', text: responseText },
-    })
-  }
+async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK', signedBy: Set<string>) {
+  for (const messaging of entry.messaging ?? []) await handleMessengerMessage(entry, messaging, type, signedBy)
 }
 
-async function handleWhatsAppStaticMenu({
-  channel,
-  message,
-  action,
-}: {
-  channel: { id: string; businessId: string }
-  message: any
-  action: string
-}) {
-  const incomingText = whatsappIncomingLogText(message, action)
-  const incomingMessage = await prisma.chatMessage.create({
-    data: {
-      businessId: channel.businessId,
-      channel: 'WHATSAPP',
-      externalUserId: message.from,
-      direction: 'IN',
-      text: incomingText,
-    },
-  })
-
-  const conversation = await prisma.conversation.findFirst({
-    where: { businessId: channel.businessId, channel: 'WHATSAPP', externalUserId: message.from },
-    orderBy: { updatedAt: 'desc' },
-  })
-
-  if (action === 'OPERATOR') {
-    const operatorRequestedAt = conversation?.needsOperator && conversation.operatorRequestedAt
-      ? conversation.operatorRequestedAt
-      : incomingMessage.createdAt
-
-    if (conversation) {
-      await prisma.conversation.update({
-        where: { id: conversation.id },
-        data: { state: { step: 'IDLE' }, needsOperator: true, operatorRequestedAt },
-      })
-    } else {
-      await prisma.conversation.create({
-        data: {
-          businessId: channel.businessId,
-          channel: 'WHATSAPP',
-          externalUserId: message.from,
-          state: { step: 'IDLE' },
-          needsOperator: true,
-          operatorRequestedAt,
-        },
-      })
-    }
-
-    const responseText = 'Am anunțat un operator. Vei primi răspuns aici cât mai curând.'
-    await sendMessage({ channel: 'WHATSAPP', channelId: channel.id, to: message.from, text: responseText })
-    await logWhatsAppOutgoing(channel.businessId, message.from, responseText)
-    return
-  }
-
-  // Cât timp un operator a preluat conversația, mesajele clientului ajung în inbox
-  // fără răspunsuri automate care să întrerupă discuția.
-  if (conversation?.needsOperator) return
-
-  if (action === 'LINK_REZERVARE') {
-    const business = await prisma.business.findUnique({
-      where: { id: channel.businessId },
-      select: { slug: true },
-    })
-    if (!business) return
-
-    const appUrl = (process.env.APP_URL ?? 'https://bookeasy.ro').replace(/\/$/, '')
-    const responseText = `Poți face programarea online aici: ${appUrl}/${business.slug}/rezerva`
-    await sendMessage({ channel: 'WHATSAPP', channelId: channel.id, to: message.from, text: responseText })
-    await logWhatsAppOutgoing(channel.businessId, message.from, responseText)
-    return
-  }
-
-  const bodyText = 'Bună! Cum te putem ajuta?'
-  await sendWhatsAppButtons({
-    channelId: channel.id,
-    to: message.from,
-    bodyText,
-    options: [
-      { id: 'OPERATOR', title: 'Operator' },
-      { id: 'LINK_REZERVARE', title: 'Programare pe site' },
-    ],
-  })
-  await logWhatsAppOutgoing(
-    channel.businessId,
-    message.from,
-    `${bodyText}\n[opțiuni: Operator / Programare pe site]`,
-  )
-}
-
-async function logWhatsAppOutgoing(businessId: string, externalUserId: string, text: string) {
-  await prisma.chatMessage.create({
-    data: { businessId, channel: 'WHATSAPP', externalUserId, direction: 'OUT', text },
-  })
-}
-
-function whatsappIncomingLogText(message: any, action: string) {
-  if (action === 'OPERATOR') return '[a apăsat: Operator]'
-  if (action === 'LINK_REZERVARE') return '[a apăsat: Programare pe site]'
-  return message.text?.body ?? extractNonTextContent(message)
-}
-
-async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') {
-  const messaging = entry.messaging?.[0]
+async function handleMessengerMessage(entry: any, messaging: any, type: 'INSTAGRAM' | 'FACEBOOK', signedBy: Set<string>) {
   // Mesajele expediate de operator/pagină revin ca ecouri prin webhook.
   if (messaging?.message?.is_echo) return
   // apăsarea pe un buton de carousel vine ca "postback", nu ca "message" — trebuie
@@ -242,12 +58,11 @@ async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') 
   if (!messaging || (!messaging.message && !messaging.postback)) return
 
   const messageId = messaging.message?.mid ?? messaging.postback?.mid
-  if (messageId && !(await markMessageProcessed(messageId))) return
-
   const pageId = entry.id
   const channel = await prisma.channel.findUnique({ where: { type_externalId: { type, externalId: pageId } } })
-  if (!channel) return
+  if (!channel || channel.status === 'DISCONNECTED' || !signedBy.has(type === 'INSTAGRAM' && channel.authProvider === 'instagram' ? 'instagram' : 'meta')) return
 
+  await processWebhookOnce(messageId, async () => {
   await processIncomingMessage({
     businessId: channel.businessId,
     channel: type,
@@ -255,23 +70,36 @@ async function handleMessengerEntry(entry: any, type: 'INSTAGRAM' | 'FACEBOOK') 
     text: effectiveText ?? '[atașament]',
     channelId: channel.id,
   })
+  })
 }
 
-// întoarce true dacă e prima oară când vedem acest ID de mesaj (deci trebuie procesat),
-// și false dacă l-am mai procesat deja (deci sărim peste el). Bazat pe constrângerea
-// unică din baza de date — sigur chiar și dacă mai multe cereri ajung simultan
-async function markMessageProcessed(messageId: string): Promise<boolean> {
+async function processWebhookOnce(messageId: string | undefined, process: () => Promise<void>) {
+  if (!messageId) { await process(); return }
+  const claimToken = crypto.randomUUID()
+  const now = new Date()
+  const leaseUntil = new Date(now.getTime() + 5 * 60_000)
   try {
-    await prisma.processedWebhookMessage.create({ data: { id: messageId } })
-    return true
-  } catch {
-    // eroare de constrângere unică — ID-ul există deja, e un duplicat
-    return false
+    await prisma.processedWebhookMessage.create({ data: { id: messageId, status: 'PROCESSING', claimToken, leaseUntil } })
+  } catch (error) {
+    if ((error as { code?: string }).code !== 'P2002') throw error
+    const claimed = await prisma.processedWebhookMessage.updateMany({
+      where: { id: messageId, status: 'PROCESSING', leaseUntil: { lt: now } },
+      data: { claimToken, leaseUntil },
+    })
+    if (!claimed.count) {
+      const existing = await prisma.processedWebhookMessage.findUnique({ where: { id: messageId } })
+      if (existing?.status === 'DONE') return
+      throw new Error('Webhook processing is still in progress; retry required')
+    }
   }
-}
-
-function extractNonTextContent(message: any) {
-  if (message.type === 'audio') return '[mesaj audio]'
-  if (message.type === 'image') return '[imagine]'
-  return '[conținut nesuportat]'
+  try {
+    await process()
+    await prisma.processedWebhookMessage.updateMany({
+      where: { id: messageId, claimToken, status: 'PROCESSING' },
+      data: { status: 'DONE', processedAt: new Date(), leaseUntil: null, claimToken: null },
+    })
+  } catch (error) {
+    await prisma.processedWebhookMessage.deleteMany({ where: { id: messageId, claimToken, status: 'PROCESSING' } })
+    throw error
+  }
 }

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { z } from 'zod'
 
 const schema = z.object({
   name: z.string().min(1),
-  durationMin: z.number().nullable(),
+  durationMin: z.number().int().min(5).max(1440),
   price: z.number().nullable(),
 })
 

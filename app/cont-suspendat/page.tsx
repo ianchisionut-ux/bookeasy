@@ -20,6 +20,7 @@ export default async function ContSuspendatPage() {
         <Link href="/" className="btn-secondary">
           Înapoi la pagina principală
         </Link>
+        {(session as any)?.role === 'OWNER' && <Link href="/stergere-cont#stergere-cont-afacere" className="text-sm text-red-700 underline">Șterge definitiv contul afacerii</Link>}
       </div>
     </main>
   )

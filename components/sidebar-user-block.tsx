@@ -1,12 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { User, MessageCircle } from 'lucide-react'
 import { SignOutButton } from './sign-out-button'
 import { SupportChatPanel } from './support-chat-button'
 
-export function SidebarUserBlock({ label, status = 'Activ', showSupport = false }: { label: string; status?: string; showSupport?: boolean }) {
+export function SidebarUserBlock({ label, status = 'Activ', showSupport = false, supportUnread = 0 }: { label: string; status?: string; showSupport?: boolean; supportUnread?: number }) {
   const [supportOpen, setSupportOpen] = useState(false)
+  const [unread, setUnread] = useState(supportUnread)
+  useEffect(() => {
+    if (!showSupport) return
+    const counts = (event:Event) => setUnread((event as CustomEvent).detail?.supportUnread ?? 0)
+    const refresh = () => { void fetch('/api/business/notification-counts').then(r=>r.ok?r.json():null).then(data=>{if(data)setUnread(data.supportUnread??0)}).catch(()=>{}) }
+    window.addEventListener('bookeasy-notification-counts',counts);window.addEventListener('bookeasy-support-changed',refresh)
+    return()=>{window.removeEventListener('bookeasy-notification-counts',counts);window.removeEventListener('bookeasy-support-changed',refresh)}
+  },[showSupport])
 
   return (
     <div className="pt-2">
@@ -28,7 +36,7 @@ export function SidebarUserBlock({ label, status = 'Activ', showSupport = false 
           onClick={() => setSupportOpen(true)}
           className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-white hover:shadow-sm transition mb-1"
         >
-          <MessageCircle size={15} /> Suport tehnic
+          <MessageCircle size={15} /> Suport tehnic {unread>0&&<span aria-label={`${unread} conversații necitite`} className="ml-auto min-w-5 rounded-full bg-red-600 px-1.5 text-center text-xs text-white">{unread}</span>}
         </button>
       )}
       <SignOutButton className="w-full" />

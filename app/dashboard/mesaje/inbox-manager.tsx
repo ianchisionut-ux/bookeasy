@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { MessageCircle, Send, CheckCircle2, FileText, X, CalendarPlus, RotateCcw } from 'lucide-react'
-import { WorkingRange } from '@/components/working-date-time-picker'
+import { MessageCircle, Send, CheckCircle2, FileText, X, CalendarPlus, RotateCcw, MoreHorizontal, UserRound } from 'lucide-react'
+import { isDoctorCategory, practitionerLabel, type BusinessCategory } from '@/lib/business-categories'
 
 type ConversationSummary = {
   id: string
@@ -20,10 +20,9 @@ type Message = { id: string; direction: 'IN' | 'OUT'; text: string; createdAt: s
 type Template = { id: string; title: string; text: string }
 
 const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', INSTAGRAM: 'Instagram', FACEBOOK: 'Messenger' }
-type BusinessCategory = 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
 
 function getQuickReplies(category: BusinessCategory) {
-  if (category === 'CLINICA') return [
+  if (isDoctorCategory(category)) return [
     { label: '👋 Salut', text: 'Bună ziua! Cu ce vă putem ajuta?' },
     { label: '🔎 Verific medicul', text: 'Verific disponibilitatea medicului și revin imediat cu intervalele libere.' },
     { label: '📅 Alte intervale', text: 'Intervalul solicitat nu mai este disponibil. Vă pot propune o altă oră pentru consultație.' },
@@ -47,10 +46,10 @@ function getQuickReplies(category: BusinessCategory) {
 
   return [
     { label: '👋 Salut', text: 'Bună! Cu ce te putem ajuta?' },
-    { label: '🔎 Verific', text: 'Verific disponibilitatea specialistului și revin imediat cu orele libere.' },
+    { label: '🔎 Verific', text: `Verific disponibilitatea ${practitionerLabel(category).definite} și revin imediat cu orele libere.` },
     { label: '📅 Altă oră', text: 'Ora solicitată nu mai este disponibilă. Îți pot propune un alt interval.' },
     { label: '✅ Confirmată', text: 'Programarea ta este confirmată. Te așteptăm!' },
-    { label: '✂️ Ce serviciu?', text: 'Pentru ce serviciu dorești programarea și ce zi ți-ar fi potrivită?' },
+    { label: '📋 Ce serviciu?', text: 'Pentru ce serviciu dorești programarea și ce zi ți-ar fi potrivită?' },
     { label: '⌛ Întârziere', text: 'Ne cerem scuze pentru întârziere și îți mulțumim pentru răbdare.' },
     { label: '🔁 Reprogramare', text: 'Sigur, te ajutăm cu reprogramarea. Ce zi sau interval orar preferi?' },
     { label: '🙏 Mulțumim', text: 'Mulțumim! Te mai așteptăm cu drag.' },
@@ -75,6 +74,8 @@ export default function InboxManager({ businessId, category, isClinic, isAppoint
   const [templates, setTemplates] = useState<Template[]>([])
   const [showTemplates, setShowTemplates] = useState(false)
   const [showBookingModal, setShowBookingModal] = useState(false)
+  const [showMobileActions, setShowMobileActions] = useState(false)
+  const [showMobileOperator, setShowMobileOperator] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const quickReplies = getQuickReplies(category)
 
@@ -84,7 +85,7 @@ export default function InboxManager({ businessId, category, isClinic, isAppoint
       .then((res) => res.json())
       .then((data) => setTemplates(data.templates ?? []))
       .catch(() => setTemplates([]))
-  }, [])
+  }, [operatorNameKey])
 
   function updateOperatorName(name: string) {
     setOperatorName(name)
@@ -197,14 +198,46 @@ export default function InboxManager({ businessId, category, isClinic, isAppoint
   const anyNeedsOperator = conversations.some((c) => c.needsOperator)
 
   return (
-    <div className="dashboard-page h-[calc(100vh-56px)] lg:h-screen min-h-0 flex flex-col">
-      <div className="mb-4 shrink-0">
-        <h1 className="text-xl lg:text-2xl font-semibold">Mesaje</h1>
-        <p className="mt-1 text-sm text-gray-500">Toate conversațiile de pe Messenger, Instagram și WhatsApp, într-un singur loc.</p>
+    <div className="dashboard-page !p-2 h-[calc(100dvh-132px)] lg:!p-8 lg:h-screen min-h-0 flex flex-col">
+      <div className="mb-2 lg:mb-4 shrink-0">
+        <h1 className="text-lg lg:text-2xl font-semibold">Mesaje</h1>
+        <p className="mt-1 hidden lg:block text-sm text-gray-500">Conversațiile Messenger și Instagram apar aici după ce clientul cere un operator.</p>
       </div>
       <div className="card min-h-0 flex-1 overflow-hidden flex flex-col lg:flex-row border border-[var(--border-soft)]">
+      <div className="lg:hidden relative flex shrink-0 items-center gap-2 border-b border-[var(--border-soft)] bg-white px-2 py-2">
+        <select
+          aria-label="Alege conversația"
+          value={selectedId ?? ''}
+          onChange={(event) => { setSelectedId(event.target.value); setShowMobileActions(false) }}
+          disabled={conversations.length === 0}
+          className="input-field min-w-0 flex-1 !py-2 text-sm"
+        >
+          <option value="" disabled>{conversations.length === 0 ? 'Nicio conversație' : 'Alege conversația'}</option>
+          {conversations.map((conversation) => (
+            <option key={conversation.id} value={conversation.id}>
+              {conversation.needsOperator ? '● ' : ''}{conversation.customerName ?? conversation.externalUserId} · {CHANNEL_LABEL[conversation.channel]}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => { setShowMobileOperator((value) => !value); setShowMobileActions(false) }}
+          aria-label="Numele operatorului"
+          aria-expanded={showMobileOperator}
+          className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${operatorName.trim() ? 'border-[var(--border-soft)]' : 'border-amber-300 bg-amber-50'}`}
+        >
+          <UserRound size={18} />
+          {!operatorName.trim() && <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amber-500" />}
+        </button>
+        {showMobileOperator && (
+          <div className="absolute inset-x-2 top-full z-30 rounded-b-xl border border-[var(--border-soft)] bg-white p-3 shadow-lg">
+            <label htmlFor="mobile-operator-name" className="mb-1 block text-xs font-medium">Numele tău (apare la client)</label>
+            <input id="mobile-operator-name" value={operatorName} onChange={(event) => updateOperatorName(event.target.value)} placeholder="Numele operatorului" className="input-field w-full text-sm" />
+          </div>
+        )}
+      </div>
       {/* lista de conversații */}
-      <div className="lg:w-[300px] shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--border-soft)] flex flex-col bg-white max-h-56 lg:max-h-none">
+      <div className="hidden lg:w-[300px] shrink-0 border-b lg:border-b-0 lg:border-r border-[var(--border-soft)] lg:flex flex-col bg-white max-h-56 lg:max-h-none">
         <div className="p-4 border-b border-[var(--border-soft)]">
           <label className="mb-1.5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
             Numele tău (apare la client)
@@ -266,12 +299,15 @@ export default function InboxManager({ businessId, category, isClinic, isAppoint
           </div>
         ) : (
           <>
-            <div className="px-4 py-3.5 border-b border-[var(--border-soft)] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white">
-              <div>
-                <p className="font-medium">{selected.customerName ?? selected.externalUserId}</p>
+            <div className="relative shrink-0 px-3 py-2 lg:px-4 lg:py-3.5 border-b border-[var(--border-soft)] flex items-center justify-between gap-2 bg-white">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium lg:text-base">{selected.customerName ?? selected.externalUserId}</p>
                 <p className="text-xs text-gray-500">{CHANNEL_LABEL[selected.channel]}</p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => setShowMobileActions((value) => !value)} aria-label="Acțiuni conversație" aria-expanded={showMobileActions} className="lg:hidden flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border-soft)]">
+                <MoreHorizontal size={19} />
+              </button>
+              <div className={`${showMobileActions ? 'flex' : 'hidden'} absolute right-2 top-full z-20 w-56 flex-col gap-1 rounded-xl border border-[var(--border-soft)] bg-white p-2 shadow-lg lg:static lg:flex lg:w-auto lg:flex-row lg:flex-wrap lg:items-center lg:gap-2 lg:border-0 lg:p-0 lg:shadow-none`}>
                 <button onClick={() => setShowBookingModal(true)} className="btn-secondary !px-3 !py-2 text-xs whitespace-nowrap flex items-center gap-1.5">
                   <CalendarPlus size={14} /> {isAppointmentBased ? 'Programare nouă' : 'Rezervare nouă'}
                 </button>
@@ -283,10 +319,11 @@ export default function InboxManager({ businessId, category, isClinic, isAppoint
                 <button onClick={markResolved} className="btn-secondary !px-3 !py-2 text-xs flex items-center gap-1.5 whitespace-nowrap">
                   <RotateCcw size={14} /> {selected.channel === 'WHATSAPP' ? 'Încheie conversația' : 'Repornește botul'}
                 </button>
+                <button type="button" onClick={(event) => selected && deleteConversation(selected.id, event)} className="lg:hidden rounded-lg px-3 py-2 text-left text-xs text-red-600">Șterge conversația</button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 lg:p-5 flex flex-col gap-5">
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 lg:p-5 flex flex-col gap-4 lg:gap-5">
               {loadingMessages ? (
                 <p className="text-sm text-gray-400">Se încarcă...</p>
               ) : messages.length === 0 ? (
@@ -340,7 +377,7 @@ export default function InboxManager({ businessId, category, isClinic, isAppoint
               </div>
             )}
 
-            <div className="border-t border-[var(--border-soft)] bg-white px-3 py-2 flex gap-2 overflow-x-auto no-scrollbar">
+            <div className="shrink-0 border-t border-[var(--border-soft)] bg-white px-2 py-1.5 lg:px-3 lg:py-2 flex gap-2 overflow-x-auto no-scrollbar">
               {quickReplies.map((reply) => (
                 <button key={reply.label} onClick={() => setDraft(reply.text)} className="shrink-0 rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] transition">
                   {reply.label}
@@ -348,7 +385,7 @@ export default function InboxManager({ businessId, category, isClinic, isAppoint
               ))}
             </div>
 
-            <div className="px-3 py-3 border-t border-[var(--border-soft)] bg-white flex items-end gap-2">
+            <div className="shrink-0 px-2 py-2 lg:px-3 lg:py-3 border-t border-[var(--border-soft)] bg-white flex items-end gap-2">
               {templates.length > 0 && (
                 <button
                   onClick={() => setShowTemplates((v) => !v)}
@@ -416,8 +453,6 @@ function QuickBookingModal({
   const [services, setServices] = useState<{ id: string; name: string; durationMin: number | null }[]>([])
   const [practitioners, setPractitioners] = useState<{ id: string; name: string }[]>([])
   const [isMultiPractitioner, setIsMultiPractitioner] = useState(false)
-  const [workingHours, setWorkingHours] = useState<WorkingRange[]>([])
-  const [slotIntervalMinutes, setSlotIntervalMinutes] = useState(10)
   const [loadingData, setLoadingData] = useState(true)
 
   const [customerName, setCustomerName] = useState(conversation.customerName ?? '')
@@ -441,8 +476,6 @@ function QuickBookingModal({
         setServices(data.services ?? [])
         setPractitioners(data.practitioners ?? [])
         setIsMultiPractitioner(!!data.isMultiPractitioner)
-        setWorkingHours(data.workingHours ?? [])
-        setSlotIntervalMinutes(data.slotIntervalMinutes ?? 10)
         if (data.practitioners?.length === 1) setPractitionerId(data.practitioners[0].id)
       })
       .catch(() => setError('Nu am putut încărca serviciile.'))

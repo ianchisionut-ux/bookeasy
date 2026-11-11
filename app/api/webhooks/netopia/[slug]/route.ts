@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Ipn } from 'netopia-payment2'
+import { resolvePublicSlug } from '@/lib/business-public-slug'
 import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/crypto'
 
@@ -13,7 +14,7 @@ const STATUS_CONFIRMED = 5
 // îi aparține notificarea.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const business = await prisma.business.findUnique({ where: { slug } })
+  const business = await prisma.business.findUnique({ where: { slug: await resolvePublicSlug(slug) } })
   if (!business || !business.netopiaPublicKey || !business.netopiaPosSignature) {
     return new NextResponse(null, { status: 404 })
   }

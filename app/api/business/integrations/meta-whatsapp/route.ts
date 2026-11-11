@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { connectMetaWhatsApp, MetaOnboardingError } from '@/lib/meta-whatsapp-onboarding'
 
 const schema = z.object({
@@ -10,7 +10,7 @@ const schema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
+  const session = await auth('STANDARD')
   const businessId = (session as any)?.businessId as string | undefined
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { z } from 'zod'
 
 const schema = z.object({ name: z.string().min(1).optional(), active: z.boolean().optional() })
@@ -11,7 +11,7 @@ async function assertOwnership(id: string, businessId: string) {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
+  const session = await auth('STANDARD')
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const { id } = await params
@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
+  const session = await auth('STANDARD')
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const { id } = await params

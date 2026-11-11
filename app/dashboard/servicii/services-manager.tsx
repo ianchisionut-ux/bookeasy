@@ -6,6 +6,7 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { CardInteractive, Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { isAppointmentCategory, offerLabel, type BusinessCategory } from '@/lib/business-categories'
 
 type Service = { id: string; name: string; durationMin: number | null; price: number | null; active: boolean }
 type Resource = { id: string; name: string; capacity: number | null; basePrice: number | null }
@@ -15,11 +16,12 @@ export default function ServicesManager({
   services,
   resources,
 }: {
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  category: BusinessCategory
   services: Service[]
   resources: Resource[]
 }) {
-  const isSalon = category === 'SALON' || category === 'CLINICA'
+  const isSalon = isAppointmentCategory(category)
+  const offer = offerLabel(category)
   const router = useRouter()
 
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -35,24 +37,29 @@ export default function ServicesManager({
     setEditingId(item.id)
     setDraft({
       name: item.name,
-      durationMin: isSalon ? String((item as Service).durationMin ?? '') : '',
+      durationMin: isSalon ? String((item as Service).durationMin ?? 30) : '',
       price: isSalon ? String((item as Service).price ?? '') : String((item as Resource).basePrice ?? ''),
       capacity: !isSalon ? String((item as Resource).capacity ?? '') : '',
     })
   }
 
   async function saveEdit(id: string) {
+    if (isSalon && (!draft.durationMin || Number(draft.durationMin) < 5 || Number(draft.durationMin) > 1440)) {
+      alert('Introdu o durată între 5 și 1440 de minute pentru calculul orelor disponibile.')
+      return
+    }
     setSaving(true)
     const payload = isSalon
       ? { name: draft.name, durationMin: draft.durationMin ? Number(draft.durationMin) : null, price: draft.price ? Number(draft.price) : null }
       : { name: draft.name, capacity: draft.capacity ? Number(draft.capacity) : null, basePrice: draft.price ? Number(draft.price) : null }
 
     try {
-      await fetchWithTimeout(`${endpoint}/${id}`, {
+      const response = await fetchWithTimeout(`${endpoint}/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
+      if (!response.ok) throw new Error('Datele nu au putut fi salvate.')
       setEditingId(null)
       router.refresh()
     } catch {
@@ -74,17 +81,22 @@ export default function ServicesManager({
 
   async function createItem() {
     if (!newItem.name.trim()) return
+    if (isSalon && (!newItem.durationMin || Number(newItem.durationMin) < 5 || Number(newItem.durationMin) > 1440)) {
+      alert('Introdu o durată între 5 și 1440 de minute pentru calculul orelor disponibile.')
+      return
+    }
     setSaving(true)
     const payload = isSalon
       ? { name: newItem.name, durationMin: newItem.durationMin ? Number(newItem.durationMin) : null, price: newItem.price ? Number(newItem.price) : null }
       : { name: newItem.name, capacity: newItem.capacity ? Number(newItem.capacity) : null, basePrice: newItem.price ? Number(newItem.price) : null }
 
     try {
-      await fetchWithTimeout(endpoint, {
+      const response = await fetchWithTimeout(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
+      if (!response.ok) throw new Error('Datele nu au putut fi salvate.')
       setNewItem({ name: '', durationMin: '', price: '', capacity: '' })
       setAdding(false)
       router.refresh()
@@ -96,19 +108,19 @@ export default function ServicesManager({
   }
 
   return (
-    <section className="min-w-0">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
-        <h1 className="text-2xl font-semibold">{isSalon ? 'Servicii' : 'Săli'}</h1>
-        <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : `+ Adaugă ${isSalon ? 'serviciu' : 'sală'}`}</Button>
+    <section className="card min-w-0 p-5">
+      <div className="mb-1 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+        <h3 className="font-medium">{offer.heading}</h3>
+        <Button onClick={() => setAdding((v) => !v)}>{adding ? 'Anulează' : `+ Adaugă ${offer.singular}`}</Button>
       </div>
-      <p className="text-sm text-gray-500 mb-6">{items.length} {isSalon ? 'servicii' : 'săli'}</p>
+      <p className="mb-4 text-sm text-gray-500">{items.length} {offer.plural}</p>
 
       {adding && (
         <Card className="mb-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-            <Input placeholder={isSalon ? 'Numele serviciului' : 'Numele sălii'} value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
+            <Input placeholder={`Denumire ${offer.singular}`} value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
             {isSalon ? (
-              <Input type="number" placeholder="Durată (min)" value={newItem.durationMin} onChange={(e) => setNewItem({ ...newItem, durationMin: e.target.value })} />
+              <Input type="number" min={5} max={1440} placeholder="Durată obligatorie (min)" value={newItem.durationMin} onChange={(e) => setNewItem({ ...newItem, durationMin: e.target.value })} />
             ) : (
               <Input type="number" placeholder="Capacitate" value={newItem.capacity} onChange={(e) => setNewItem({ ...newItem, capacity: e.target.value })} />
             )}
@@ -122,7 +134,7 @@ export default function ServicesManager({
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3">
         {items.map((item) => (
           <CardInteractive key={item.id}>
             {editingId === item.id ? (
@@ -130,7 +142,7 @@ export default function ServicesManager({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
                   <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
                   {isSalon ? (
-                    <Input type="number" placeholder="Durată (min)" value={draft.durationMin} onChange={(e) => setDraft({ ...draft, durationMin: e.target.value })} />
+                    <Input type="number" min={5} max={1440} placeholder="Durată obligatorie (min)" value={draft.durationMin} onChange={(e) => setDraft({ ...draft, durationMin: e.target.value })} />
                   ) : (
                     <Input type="number" placeholder="Capacitate" value={draft.capacity} onChange={(e) => setDraft({ ...draft, capacity: e.target.value })} />
                   )}
@@ -152,7 +164,7 @@ export default function ServicesManager({
                   <div className="text-right text-sm text-gray-500">
                     {isSalon ? (
                       <>
-                        <p>{(item as Service).durationMin ? `${(item as Service).durationMin} min` : '—'}</p>
+                        <p>{(item as Service).durationMin ? `${(item as Service).durationMin} min` : '30 min implicit'}</p>
                         <p className="font-medium text-gray-900">{(item as Service).price ? `${(item as Service).price} lei` : ''}</p>
                       </>
                     ) : (
@@ -176,7 +188,7 @@ export default function ServicesManager({
           </CardInteractive>
         ))}
         {items.length === 0 && !adding && (
-          <p className="text-sm text-gray-500">Niciun {isSalon ? 'serviciu' : 'sală'} adăugat încă.</p>
+          <p className="text-sm text-gray-500">Nu ai adăugat încă {offer.plural}.</p>
         )}
       </div>
     </section>

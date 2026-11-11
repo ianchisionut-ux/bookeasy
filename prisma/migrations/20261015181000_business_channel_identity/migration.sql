@@ -1,0 +1,6 @@
+ALTER TABLE "Channel" ADD COLUMN IF NOT EXISTS "authProvider" TEXT NOT NULL DEFAULT 'meta';
+ALTER TABLE "Channel" ADD COLUMN IF NOT EXISTS "displayName" TEXT;
+
+ALTER TABLE "ProcessedWebhookMessage" ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'DONE';
+ALTER TABLE "ProcessedWebhookMessage" ADD COLUMN IF NOT EXISTS "leaseUntil" TIMESTAMP(3);
+ALTER TABLE "ProcessedWebhookMessage" ADD COLUMN IF NOT EXISTS "claimToken" TEXT;

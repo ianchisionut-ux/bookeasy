@@ -7,6 +7,10 @@ import { calculateAdaptiveSlotStep } from '@/lib/availability'
 // CalendarClientLoader dezactivează SSR pentru acest component (ssr:false nu e
 // permis direct într-un Server Component, de-aia trece printr-un wrapper 'use client').
 import CalendarClient from './calendar-client-loader'
+import Link from 'next/link'
+import { Apple, CalendarDays, Dumbbell } from 'lucide-react'
+import '@/components/fitness/fitness.css'
+import { isPlatformSmsReady } from '@/lib/sms-routing'
 
 function computeMinMax(hours: { startTime: string; endTime: string }[], fallbackMin = '08:00', fallbackMax = '20:00') {
   if (hours.length === 0) return { minTime: fallbackMin, maxTime: fallbackMax }
@@ -20,15 +24,16 @@ export default async function CalendarPage() {
   const session = await auth()
   const businessId = (session as any)?.businessId ?? ''
 
-  const business = await prisma.business.findUnique({
+  const [business, platformSmsReady] = await Promise.all([prisma.business.findUnique({
     where: { id: businessId },
     include: {
       workingHours: true,
-      services: { where: { active: true, type: 'APPOINTMENT' }, select: { durationMin: true } },
+      services: { where: { active: true }, select: { id: true, name: true, type: true, durationMin: true } },
+      resources: { select: { id: true, name: true } },
     },
-  })
+  }), isPlatformSmsReady()])
 
-  const isMultiPractitioner = (business?.teamSize ?? 1) > 1
+  const isMultiPractitioner = business?.category !== 'FITNESS' && (business?.teamSize ?? 1) > 1
   const now = new Date()
   const initialFrom = new Date(now)
   initialFrom.setDate(initialFrom.getDate() - 45)
@@ -57,18 +62,27 @@ export default async function CalendarPage() {
     customerId: b.customerId,
     customerName: b.customer.name ?? b.customer.phone ?? 'Fără nume',
     customerPhone: b.customer.phone ?? '',
+    customerCreatedAt: b.customer.createdAt.toISOString(),
+    serviceId: b.serviceId,
     serviceName: b.service.name,
+    resourceId: b.resourceId,
     practitionerId: b.practitionerId,
     practitionerName: b.practitioner?.name ?? null,
     confirmationRequestSent: b.confirmationRequestSent,
     customerConfirmed: b.customerConfirmed,
+    arrivedAt: b.arrivedAt?.toISOString() ?? null,
   }))
 
   const { minTime, maxTime } = computeMinMax(business?.workingHours ?? [])
 
   return (
+    <>
+    {business?.category === 'FITNESS' && <nav className="fitness-calendar-tabs" aria-label="Calendare Fitness"><Link href="/dashboard/calendar" aria-current="page"><CalendarDays size={15} />Ședințe</Link><Link href="/dashboard/fitness"><Dumbbell size={15} />Antrenamente</Link><Link href="/dashboard/fitness"><Apple size={15} />Nutriție</Link></nav>}
     <CalendarClient
+      initialSmsAvailable={Boolean(platformSmsReady && business?.smsGatewayEnabled && business?.accountActive)}
       category={business?.category ?? 'SALON'}
+      services={(business?.services ?? []).map((service) => ({ id: service.id, name: service.name }))}
+      resources={business?.resources ?? []}
       events={events}
       blockedSlots={blockedSlots.map((b) => ({
         id: b.id,
@@ -88,7 +102,7 @@ export default async function CalendarPage() {
         business?.category === 'EVENT_VENUE'
           ? 60
           : calculateAdaptiveSlotStep(
-              business?.services.map((service) => service.durationMin) ?? [],
+              business?.services.filter((service) => service.type === 'APPOINTMENT').map((service) => service.durationMin) ?? [],
               business?.slotIntervalMinutes
             )
       }
@@ -105,5 +119,6 @@ export default async function CalendarPage() {
         }
       })}
     />
+    </>
   )
 }

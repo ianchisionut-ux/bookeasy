@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { hasFunctionalConsent } from '@/lib/cookie-consent'
 import { CalendarDays, Check, Clock3, ShieldCheck, UserRound } from 'lucide-react'
+import { bookingTerminology, isAppointmentCategory, offerLabel, practitionerLabel, type BusinessCategory } from '@/lib/business-categories'
+import type { ClientArrival } from '@/lib/client-arrival'
+import ArrivalOptIn from '@/components/arrival-opt-in'
 
 type Service = {
   id: string
@@ -50,14 +53,19 @@ export default function BookingFlow({
 }: {
   businessId: string
   businessSlug: string
-  category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA'
+  category: BusinessCategory
   isMultiPractitioner: boolean
   services: Service[]
   accentColor: string
   accentSoftColor: string
 }) {
-  const isAppointment = category === 'SALON' || category === 'CLINICA'
+  const isAppointment = isAppointmentCategory(category)
   const isVenue = category === 'EVENT_VENUE'
+  const staff = practitionerLabel(category)
+  const offer = offerLabel(category)
+  const booking = bookingTerminology(category)
+  const bookingDefinite = category === 'FITNESS' ? 'ședința' : category === 'CURSURI' ? 'înscrierea' : booking.singular === 'rezervare' ? 'rezervarea' : 'programarea'
+  const bookingGenitive = category === 'FITNESS' ? 'ședinței' : category === 'CURSURI' ? 'înscrierii' : booking.singular === 'rezervare' ? 'rezervării' : 'programării'
   const days = useMemo(() => buildNextDays(30), [])
 
   const [service, setService] = useState<Service | null>(services[0] ?? null)
@@ -74,6 +82,8 @@ export default function BookingFlow({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [arrival, setArrival] = useState<ClientArrival | null>(null)
+  const [walletUrl, setWalletUrl] = useState<string | null>(null)
   const daysScrollRef = useRef<HTMLDivElement>(null)
 
   function scrollDays(direction: 'left' | 'right') {
@@ -127,7 +137,7 @@ export default function BookingFlow({
       .then((data) => setDaySlots(data.allSlots ?? []))
       .catch(() => setDaySlots([]))
       .finally(() => setLoadingSlots(false))
-  }, [service, selectedDate, businessId, isAppointment, isVenue, isMultiPractitioner, practitionerId, practitionersLoaded, venueDurationHours])
+  }, [service, selectedDate, businessId, isAppointment, isVenue, isMultiPractitioner, practitionerId, practitionersLoaded, practitioners.length, venueDurationHours])
 
   function selectService(s: Service) {
     setService(s)
@@ -182,6 +192,10 @@ export default function BookingFlow({
         return
       }
 
+      if (data.arrival?.token && data.bookingId && (isAppointment || isVenue)) {
+        setArrival({ bookingId: data.bookingId, token: data.arrival.token, startAt: data.arrival.startAt })
+      }
+      setWalletUrl(typeof data.walletUrl === 'string' ? data.walletUrl : null)
       setDone(true)
     } catch {
       setError('Conexiune eșuată. Încearcă din nou.')
@@ -194,27 +208,33 @@ export default function BookingFlow({
     return (
       <div className="py-10 text-center">
         <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full text-white shadow-lg" style={{ background: accentColor }}><Check size={28} /></div>
-        <h2 className="text-2xl font-semibold">{category === 'CLINICA' ? 'Programare confirmată!' : 'Rezervare confirmată!'}</h2>
+        <h2 className="text-2xl font-semibold">{category === 'FITNESS' ? 'Ședință confirmată!' : category === 'CURSURI' ? 'Înscriere confirmată!' : booking.singular === 'rezervare' ? 'Rezervare confirmată!' : 'Programare confirmată!'}</h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">Te așteptăm — vei primi confirmarea și pe telefonul indicat.</p>
-        <a href={`/${businessSlug}`} className="btn-secondary mt-6 inline-flex">Înapoi la pagina afacerii</a>
+        {walletUrl && <a href={walletUrl} target="_blank" rel="noopener noreferrer" className="btn-primary mx-auto mt-5 inline-flex min-h-11 items-center justify-center">Adaugă rezervarea în Google Wallet</a>}
+        {arrival && <ArrivalOptIn arrival={arrival} />}
+        <div className="public-flow-actions mt-6"><a href={`/${businessSlug}`} className="btn-secondary">Înapoi la pagina afacerii</a></div>
       </div>
     )
+  }
+
+  if (services.length === 0) {
+    return <div role="status" className="rounded-2xl bg-[var(--surface-muted)] p-5"><h2 className="font-semibold">{booking.heading} online nu sunt disponibile momentan.</h2><p className="mt-2 text-sm text-gray-500">Revino mai târziu sau contactează direct afacerea pentru detalii.</p><div className="public-flow-actions mt-4"><a href={`/${businessSlug}`} className="btn-secondary">Înapoi la pagina afacerii</a></div></div>
   }
 
   return (
     <div className="min-w-0 max-w-full overflow-hidden flex flex-col gap-6 sm:gap-7">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: accentColor }}>Rezervare rapidă</p>
-        <h2 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">Alege detaliile programării</h2>
+        <h2 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">Alege detaliile {bookingGenitive}</h2>
         <div className="mt-4 grid min-w-0 grid-cols-3 gap-1.5 sm:mt-5 sm:gap-2">
-          <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[10px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: service ? accentSoftColor : 'var(--surface-muted)', color: service ? accentColor : '#8b91a0' }}><CalendarDays size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">Serviciu</span></div>
+          <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[10px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: service ? accentSoftColor : 'var(--surface-muted)', color: service ? accentColor : '#8b91a0' }}><CalendarDays size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">{offer.heading}</span></div>
           <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[10px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: selectedSlot ? accentSoftColor : 'var(--surface-muted)', color: selectedSlot ? accentColor : '#8b91a0' }}><Clock3 size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">Data și ora</span></div>
           <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[10px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: name.trim() && phone.trim().length >= 6 ? accentSoftColor : 'var(--surface-muted)', color: name.trim() && phone.trim().length >= 6 ? accentColor : '#8b91a0' }}><UserRound size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">Datele tale</span></div>
         </div>
       </div>
       {/* Alege serviciul */}
       <div>
-        <h2 className="font-semibold mb-3">{isAppointment ? 'Alege serviciul' : 'Alege sala/pachetul'}</h2>
+        <h2 className="font-semibold mb-3">Alege din {offer.plural}</h2>
         <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
           {services.map((s) => {
             const active = service?.id === s.id
@@ -237,14 +257,14 @@ export default function BookingFlow({
               </button>
             )
           })}
-          {services.length === 0 && <p className="text-sm text-gray-500">Momentan niciun serviciu disponibil.</p>}
+          {services.length === 0 && <p className="text-sm text-gray-500">Momentan nu există {offer.plural} disponibile.</p>}
         </div>
       </div>
 
       {/* Alege medicul/persoana — doar dacă businessul are mai multe persoane */}
       {isMultiPractitioner && practitioners.length > 0 && (
         <div>
-          <h2 className="font-semibold mb-3">Alege persoana</h2>
+          <h2 className="font-semibold mb-3">Alege {staff.definite}</h2>
           <div className="flex flex-wrap gap-2">
             {practitioners.map((p) => {
               const active = practitionerId === p.id
@@ -334,7 +354,7 @@ export default function BookingFlow({
           {loadingSlots ? (
             <p className="text-sm text-gray-500">Se încarcă orele...</p>
           ) : daySlots.length === 0 ? (
-            <p className="text-sm text-gray-500">Nicio oră de lucru în această zi. Alege altă dată.</p>
+            <p className="text-sm text-gray-500">Nicio oră disponibilă în această zi. Alege altă dată.</p>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {daySlots.map((slot) => {
@@ -382,15 +402,15 @@ export default function BookingFlow({
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-10 rounded-2xl border border-white/80 bg-white/90 p-2.5 shadow-xl backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
-        {service && selectedSlot && <p className="mb-2 text-center text-xs text-gray-500">{service.name} · {new Date(selectedSlot).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })}</p>}
+      <div className="relative rounded-2xl border border-white/80 bg-white p-2.5 sm:border-0 sm:bg-transparent sm:p-0">
+        {service && selectedSlot && <p className="mb-2 break-words text-center text-xs text-gray-500">{service.name} · {new Date(selectedSlot).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })}</p>}
         <Button
           onClick={submitBooking}
           disabled={submitting}
-          className="mx-auto block w-auto min-w-[220px] px-6 py-2.5 text-sm sm:w-full sm:py-3.5 sm:text-base"
+          className="block w-full min-w-0 whitespace-normal px-4 py-3 text-sm sm:py-3.5 sm:text-base"
           style={{ background: 'var(--brand-teal-dark)', borderColor: 'var(--brand-teal-dark)' }}
         >
-          {submitting ? 'Se trimite...' : category === 'CLINICA' ? 'Confirmă programarea' : 'Confirmă rezervarea'}
+          {submitting ? 'Se trimite...' : `Confirmă ${bookingDefinite}`}
         </Button>
       </div>
     </div>

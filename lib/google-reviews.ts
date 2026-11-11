@@ -1,3 +1,4 @@
+import { refreshGoogleBusinessToken } from './google-business-oauth'
 import { prisma } from './prisma'
 import { encrypt, decrypt } from './crypto'
 
@@ -15,18 +16,7 @@ async function getValidAccessToken(channel: { id: string; accessToken: string; r
   const isExpired = channel.expiresAt && channel.expiresAt.getTime() < Date.now() + 60_000
   if (!isExpired || !channel.refreshToken) return decrypt(channel.accessToken)
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      refresh_token: decrypt(channel.refreshToken),
-      grant_type: 'refresh_token',
-    }),
-  })
-  const data = await res.json()
-  if (!data.access_token) throw new Error('Reîmprospătarea token-ului Google a eșuat.')
+  const data = await refreshGoogleBusinessToken(decrypt(channel.refreshToken))
 
   await prisma.channel.update({
     where: { id: channel.id },

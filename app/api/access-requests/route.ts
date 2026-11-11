@@ -4,24 +4,25 @@ import { sendAccessRequestNotification } from '@/lib/email'
 import { withEmailTimeout } from '@/lib/password-tokens'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { z } from 'zod'
+import { BUSINESS_CATEGORIES } from '@/lib/business-categories'
 
 const schema = z.object({
-  name: z.string().min(1),
-  businessName: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().min(6),
-  category: z.enum(['SALON', 'EVENT_VENUE', 'HOTEL', 'PENSIUNE', 'CLINICA']).optional(),
+  name: z.string().trim().min(1).max(120),
+  businessName: z.string().trim().min(1).max(180),
+  email: z.string().trim().email().max(254),
+  phone: z.string().trim().min(6).max(30),
+  category: z.enum(BUSINESS_CATEGORIES).optional(),
   message: z.string().max(1000).optional(),
 })
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req)
-  const { allowed } = rateLimit(`access-request:${ip}`, 3, 60 * 60 * 1000) // 3/oră/IP
+  const { allowed } = await rateLimit(`access-request:${ip}`, 3, 60 * 60 * 1000) // 3/oră/IP
   if (!allowed) {
     return NextResponse.json({ error: 'Prea multe încercări. Așteaptă puțin.' }, { status: 429 })
   }
 
-  const body = await req.json()
+  const body = await req.json().catch(() => null)
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Completează toate câmpurile obligatorii.' }, { status: 400 })
 

@@ -5,18 +5,28 @@ import { prisma } from '@/lib/prisma'
 import { rateLimit } from '@/lib/rate-limit'
 import { createSignalInvoice } from '@/lib/signal-billing'
 import { resetIpayPaymentFields } from '@/lib/billing-ipay'
+import { lockLaunchBusiness, refreshLaunchIfDue } from '@/lib/launch-campaign'
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!(session as any)?.isSuperAdmin)
     return NextResponse.json({ error: 'Neautorizat.' }, { status: 401 })
   const { id } = await params
-  const { allowed } = rateLimit(`signal-invoice:${id}`, 10, 60 * 60 * 1000)
+  const { allowed } = await rateLimit(`signal-invoice:${id}`, 10, 60 * 60 * 1000)
   if (!allowed)
     return NextResponse.json({ error: 'Prea multe încercări. Reîncearcă mai târziu.' }, { status: 429 })
 
   try {
-    let business = await prisma.business.findUnique({ where: { id } })
+    await refreshLaunchIfDue(id)
+    const snapshot = await prisma.$transaction(async tx => {
+      await lockLaunchBusiness(tx, id)
+      const business = await tx.business.findUnique({ where: { id } })
+      const enrollment = await tx.launchEnrollment.findUnique({ where: { businessId: id } })
+      const period = enrollment && !enrollment.cancelledAt && enrollment.billingCycle !== null ? await tx.launchBillingPeriod.findUnique({ where: { enrollmentId_cycle: { enrollmentId: enrollment.id, cycle: enrollment.billingCycle } } }) : null
+      return { business, period }
+    })
+    let business = snapshot.business
+    const period = snapshot.period
     if (!business) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
     if (business.billingInvoiceUrl)
       return NextResponse.json({ error: 'Există deja o factură pentru ciclul curent.' }, { status: 409 })
@@ -28,13 +38,13 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'CIF-ul este obligatoriu pentru persoana juridică.' }, { status: 400 })
 
     if (!business.billingInvoiceExternalId) {
-      const externalId = `subscription-${business.id}-${randomUUID()}`
-      await prisma.business.updateMany({
-        where: { id, billingInvoiceExternalId: null },
+      const externalId = period ? `launch-period-${period.id}` : `subscription-${business.id}-${randomUUID()}`
+      const reserved = await prisma.business.updateMany({
+        where: { id, billingInvoiceExternalId: null, billingInvoiceUrl: null, billingDueAt: business.billingDueAt, billingAmount: business.billingAmount },
         data: { billingInvoiceExternalId: externalId },
       })
-      business = await prisma.business.findUnique({ where: { id } })
-      if (!business?.billingInvoiceExternalId) throw new Error('Identificatorul facturii nu a putut fi rezervat.')
+      if (!reserved.count) return NextResponse.json({ error: 'Facturarea s-a actualizat. Reîncarcă pagina înainte de emitere.' }, { status: 409 })
+      business = { ...business, billingInvoiceExternalId: externalId }
     }
 
     const vatRate = Number(business.billingVatRate)
@@ -71,18 +81,18 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       }],
     })
 
-    await prisma.business.update({
-      where: { id },
+    if (period) await prisma.launchBillingPeriod.update({ where: { id: period.id }, data: { invoiceUrl: `signal:${result.externalId}`, invoiceName: `${result.reference.replace(/\s+/g, '_')}.pdf`, invoiceExternalId: result.externalId } })
+    await prisma.business.updateMany({
+      where: { id, ...(period ? { billingInvoiceExternalId: business.billingInvoiceExternalId, billingDueAt: business.billingDueAt } : {}) },
       data: {
         billingAmount: result.total,
         billingInvoiceUrl: `signal:${result.externalId}`,
         billingInvoiceName: `${result.reference.replace(/\s+/g, '_')}.pdf`,
         billingInvoiceUploadedAt: new Date(),
-        billingStatus: 'NEPLATIT',
+        ...(!period ? { billingStatus: 'NEPLATIT' as const, billingPaidAt: null } : {}),
         billingDueNotifiedAt: null,
         billingStripeCheckoutSessionId: null,
         billingStripePaymentIntentId: null,
-        billingPaidAt: null,
         ...resetIpayPaymentFields(),
       },
     })

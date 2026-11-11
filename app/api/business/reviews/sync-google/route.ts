@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { syncGoogleReviews } from '@/lib/google-reviews'
 
 export async function POST() {
-  const session = await auth()
+  const session = await auth('STANDARD')
   const businessId = (session as any)?.businessId
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 

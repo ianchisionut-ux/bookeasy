@@ -1,6 +1,7 @@
+import { isBookingConflict } from '@/lib/booking-conflict'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { hasActiveBookingConflict, isIntervalBlocked, isWithinWorkingHours } from '@/lib/availability'
 import { z } from 'zod'
 import { syncBookingToGoogle } from '@/lib/google-calendar'
@@ -19,6 +20,7 @@ async function assertOwnership(id: string, businessId: string) {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
@@ -97,6 +99,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   await prisma.booking.update({ where: { id }, data })
   await syncBookingToGoogle(id).catch((error) => console.error('[google-calendar] sync update:', error))
   return NextResponse.json({ success: true })
+  } catch (error) {
+    if (isBookingConflict(error)) return NextResponse.json({ error: 'Intervalul tocmai a fost ocupat. Alege altă oră.' }, { status: 409 })
+    throw error
+  }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

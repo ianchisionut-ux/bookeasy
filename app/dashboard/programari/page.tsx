@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import ProgramariManager from './programari-manager'
 import { calculateAdaptiveSlotStep } from '@/lib/availability'
+import { effectiveBusinessPlan } from '@/lib/business-plans'
+import { isPlatformSmsReady } from '@/lib/sms-routing'
 
 export default async function ProgramariPage({
   searchParams,
@@ -20,18 +22,19 @@ export default async function ProgramariPage({
   // "nevăzute", highlight-ul dispare automat — exact comportamentul dorit.
   // business.findUnique nu depinde de nimic aici, deci rulează în paralel — dar
   // updateMany trebuie să rămână STRICT după citire, altfel stricăm exact logica de mai sus
-  const [newlyConfirmed, business] = await Promise.all([
+  const [newlyConfirmed, business, platformSmsReady] = await Promise.all([
     prisma.booking.findMany({
       where: { businessId, confirmationSeenByAdmin: false },
       select: { id: true },
     }),
-    prisma.business.findUnique({ where: { id: businessId }, select: { category: true, teamSize: true, workingHours: true, slotIntervalMinutes: true } }),
+    prisma.business.findUnique({ where: { id: businessId }, select: { category: true, teamSize: true, workingHours: true, slotIntervalMinutes: true, smsGatewayEnabled: true, accountActive: true, smsReconfirmationEnabled: true, messengerReconfirmationEnabled: true, planName: true, billingStatus: true, launchEnrollment: { select: { cancelledAt: true } } } }),
+    isPlatformSmsReady(),
   ])
   const newlyConfirmedIds = newlyConfirmed.map((b) => b.id)
 
   await prisma.booking.updateMany({ where: { businessId, confirmationSeenByAdmin: false }, data: { confirmationSeenByAdmin: true } })
 
-  const isMultiPractitioner = (business?.teamSize ?? 1) > 1
+  const isMultiPractitioner = business?.category !== 'FITNESS' && (business?.teamSize ?? 1) > 1
 
   const [bookings, customers, services, blockedSlots, practitioners] = await Promise.all([
     prisma.booking.findMany({
@@ -58,6 +61,10 @@ export default async function ProgramariPage({
     <ProgramariManager
       newlyConfirmedIds={newlyConfirmedIds}
       category={business?.category ?? 'SALON'}
+      canUseStandard={business ? effectiveBusinessPlan(business, (session as any)?.isSuperAdmin) !== 'FREE' : false}
+      smsReconfirmationEnabled={business?.smsReconfirmationEnabled ?? true}
+      initialSmsAvailable={Boolean(platformSmsReady && business?.smsGatewayEnabled && business?.accountActive)}
+      messengerReconfirmationEnabled={business?.messengerReconfirmationEnabled ?? true}
       isMultiPractitioner={isMultiPractitioner}
       bookings={bookings.map((b) => ({
         id: b.id,

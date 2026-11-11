@@ -1,3 +1,4 @@
+import { ensureReadablePublicSlug } from '@/lib/business-public-slug'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
@@ -6,11 +7,20 @@ import { PublicPageLinkCard } from './public-page-link-card'
 import { SubscriptionCard } from './subscription-card'
 import BrandColorCard from './brand-color-card'
 import PasswordForm from './password-form'
-import MessengerBotToggle from '@/components/messenger-bot-toggle'
 import IntegrationsCard from './integrations-card'
 import { buildContractDocument, contractMissingFields, documentHash } from '@/lib/business-contracts'
 import { LegalDetailsForm } from './legal-details-form'
 import { ContractCenter } from './contract-center'
+import { isPatientCategory } from '@/lib/business-categories';
+import { instagramLoginConfigured } from '@/lib/instagram-login'
+import { getLaunchDetails, refreshLaunchIfDue } from '@/lib/launch-campaign'
+import { LaunchBusinessCard } from '@/components/launch-campaign-card'
+import AccountDeletionCard from '@/components/account-deletion-card'
+import { effectiveBusinessPlan } from '@/lib/business-plans'
+import Link from 'next/link'
+import { isPlatformSmsReady } from '@/lib/sms-routing'
+import ServicesManager from '../servicii/services-manager'
+import BusinessPhotosUploader from '@/components/business-photos-uploader'
 
 // Luni primul, Duminică ultima — ordinea de afișare a programului de lucru
 // (valorile 'weekday' rămân 0=Duminică...6=Sâmbătă, standardul JS getDay(), doar ordinea vizuală se schimbă)
@@ -21,15 +31,17 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
   const query = await searchParams
   const businessId = (session as any)?.businessId
   if (!businessId) redirect('/login')
+  await refreshLaunchIfDue(businessId)
+  await ensureReadablePublicSlug(businessId)
 
-  const [business, channels, practitioners, signatures] = await Promise.all([
+  const [business, channels, practitioners, signatures, platformSmsReady] = await Promise.all([
     prisma.business.findUnique({
       where: { id: businessId },
-      include: { workingHours: true },
+      include: { workingHours: true, services: { orderBy: { name: 'asc' } }, resources: { orderBy: { name: 'asc' } }, photos: { orderBy: { createdAt: 'desc' } }, launchEnrollment: { select: { cancelledAt: true } }, _count: { select: { services: { where: { active: true } } } } },
     }),
     prisma.channel.findMany({
       where: { businessId },
-      select: { id: true, type: true, status: true, externalId: true, enabledByOwner: true },
+      select: { id: true, type: true, status: true, externalId: true, displayName: true, authProvider: true, enabledByOwner: true },
       orderBy: { connectedAt: 'desc' },
     }),
     prisma.practitioner.findMany({
@@ -42,9 +54,12 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
       orderBy: { createdAt: 'asc' },
     }),
     prisma.contractSignature.findMany({ where: { businessId }, orderBy: { customerSignedAt: 'desc' }, select: { id: true, type: true, documentHash: true, customerSignedAt: true, providerSignedAt: true } }),
+    isPlatformSmsReady(),
   ])
   if (!business) redirect('/login')
-  const messengerChannel = channels.find((channel) => channel.type === 'FACEBOOK' && channel.status === 'ACTIVE')
+  const currentPlan = effectiveBusinessPlan(business, Boolean((session as any).isSuperAdmin))
+  const launch = await getLaunchDetails(businessId)
+  const freePeriod = launch?.managed && (launch.stage === 'FREE' || launch.stage === 'ONBOARDING') || business.billingStatus === 'GRATUIT'
 
   const workingHours = WEEKDAYS_DISPLAY_ORDER.map((weekday) => {
     const existing = business.workingHours.find((wh) => wh.weekday === weekday)
@@ -67,7 +82,14 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
       </div>
 
       <div className="columns-1 gap-5 md:columns-2 2xl:columns-3">
-        <PublicPageLinkCard slug={business.slug} isClinic={business.category === 'CLINICA'} usesAppointments={business.category === 'SALON' || business.category === 'CLINICA'} />
+        <div id="servicii" className="mb-5 break-inside-avoid scroll-mt-6">
+          <ServicesManager category={business.category} services={business.services.map(service => ({ id: service.id, name: service.name, durationMin: service.durationMin, price: service.price ? Number(service.price) : null, active: service.active }))} resources={business.resources.map(resource => ({ id: resource.id, name: resource.name, capacity: resource.capacity, basePrice: resource.basePrice ? Number(resource.basePrice) : null }))} />
+        </div>
+        <div className="mb-5 break-inside-avoid">
+          <BusinessPhotosUploader heroImageUrl={business.heroImageUrl} gallery={business.photos.map(photo => ({ id: photo.id, url: photo.url }))} />
+        </div>
+        {launch && <div className="break-inside-avoid"><LaunchBusinessCard details={launch} businessId={businessId} /></div>}
+        <PublicPageLinkCard businessName={business.name} canEdit={(session as any).role === 'OWNER'} slug={business.slug} category={business.category} isClinic={isPatientCategory(business.category)} publicListed={business.publicListed} accountActive={business.accountActive} onboardingDone={business.onboardingDone} onboardingStep={business.onboardingStep} activeServiceCount={business._count.services} />
 
         <SubscriptionCard
           businessId={business.id}
@@ -84,18 +106,25 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
         />
 
         <SettingsForm
-          isClinic={business.category === 'CLINICA'}
+          smsAvailable={Boolean(platformSmsReady && business.smsGatewayEnabled && business.accountActive)}
+          advancedLocked={currentPlan === 'FREE'}
+          category={business.category}
+          isClinic={isPatientCategory(business.category)}
           isEventVenue={business.category === 'EVENT_VENUE'}
-          isMultiPractitioner={business.teamSize > 1}
+          isMultiPractitioner={business.category !== 'FITNESS' && business.teamSize > 1}
           business={{
             name: business.name,
             contactPhone: business.contactPhone ?? '',
             city: business.city ?? '',
             address: business.address ?? '',
+            latitude: business.latitude,
+            longitude: business.longitude,
             publicListed: business.publicListed,
             slotIntervalMinutes: business.slotIntervalMinutes,
             minLeadTimeMinutes: business.minLeadTimeMinutes,
             reminderMinutesBefore: business.reminderMinutesBefore,
+            smsReconfirmationEnabled: business.smsReconfirmationEnabled,
+            messengerReconfirmationEnabled: business.messengerReconfirmationEnabled,
             operatorSilenceMinutes: business.operatorSilenceMinutes,
             botBookingEnabled: business.botBookingEnabled,
             break1Start: business.break1Start,
@@ -108,23 +137,27 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
           workingHours={workingHours}
         />
 
-        <BrandColorCard initialColor={business.brandColor} usesAppointments={business.category === 'SALON' || business.category === 'CLINICA'} />
-        <IntegrationsCard
+        {currentPlan === 'FREE' ? <div className="card mb-5 break-inside-avoid border border-[#bde3da] bg-[#f4fbf9] p-5">
+          <span className="rounded-full bg-[#d9f1e9] px-2.5 py-1 text-xs font-bold text-[#107973]">STANDARD</span>
+          <h2 className="mt-3 font-semibold">Culoarea și identitatea paginii</h2>
+          <p className="mt-2 text-sm text-gray-600">Personalizează aspectul paginii publice în planul Standard.</p>
+          <Link href="/dashboard/planuri" className="mt-3 inline-block text-sm font-semibold text-[#147f83] underline">Vezi opțiunile de upgrade</Link>
+        </div> : <BrandColorCard initialColor={business.brandColor} category={business.category} />}
+        {currentPlan === 'FREE' ? <div className="card mb-5 break-inside-avoid border border-[#bde3da] bg-[#f4fbf9] p-5">
+          <span className="rounded-full bg-[#d9f1e9] px-2.5 py-1 text-xs font-bold text-[#107973]">STANDARD</span>
+          <h2 className="mt-3 font-semibold">Integrări și canale</h2>
+          <p className="mt-2 text-sm text-gray-600">Conectează Google Calendar, mesageria și celelalte integrări disponibile pentru afacerea ta.</p>
+          <Link href="/dashboard/planuri" className="mt-3 inline-block text-sm font-semibold text-[#147f83] underline">Vezi opțiunile de upgrade</Link>
+        </div> : <IntegrationsCard
+          platformSmsReady={platformSmsReady}
           channels={channels}
           practitioners={practitioners}
           businessName={business.name}
           businessCategory={business.category}
-          isIndividual={business.teamSize <= 1}
-          instagramOAuthEnabled={process.env.META_INSTAGRAM_OAUTH_ENABLED === 'true'}
-          metaAppId={process.env.META_APP_ID ?? ''}
-          metaV4ConfigId={process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_V4_CONFIG_ID ?? process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ?? ''}
-        />
-        {messengerChannel && (
-          <div className="card p-5 mb-5 break-inside-avoid">
-            <h2 className="font-medium mb-3">Messenger</h2>
-            <MessengerBotToggle channelId={messengerChannel.id} enabled={messengerChannel.enabledByOwner} />
-          </div>
-        )}
+          isIndividual={business.category === 'FITNESS' || business.teamSize <= 1}
+          instagramOAuthEnabled={instagramLoginConfigured()}
+          smsGateway={{ apiUrl: business.smsGatewayApiUrl, hasApiKey: Boolean(business.smsGatewayApiKey), deviceId: business.smsGatewayDeviceId, phone: business.smsGatewayPhone, enabled: business.smsGatewayEnabled, testedAt: business.smsGatewayTestedAt, lastError: business.smsGatewayLastError, mode: business.smsGatewayMode, paired: Boolean(business.smsDeviceTokenHash), lastSeenAt: business.smsDeviceLastSeenAt }}
+        />}
 
         <div className="card p-5 mb-5 break-inside-avoid">
           <h2 className="font-medium mb-1">Cont</h2>
@@ -132,7 +165,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
           <PasswordForm />
         </div>
       </div>
-      <div className="mt-5">
+      {!freePeriod && <div className="mt-5">
         <LegalDetailsForm canEdit={(session as any).role === 'OWNER' && !(session as any).isSuperAdmin} initial={{
           billingClientType: business.billingClientType,
           billingLegalName: business.billingLegalName ?? '',
@@ -159,7 +192,8 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
             } : null }
           })}
         />
-      </div>
+      </div>}
+      {(session as any).role === 'OWNER' && !(session as any).isSuperAdmin && !(session as any).isImpersonatingBusiness && <div className="card mt-6 p-5"><AccountDeletionCard kind="business" accountName={business.name} /></div>}
     </div>
   )
 }

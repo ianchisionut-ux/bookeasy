@@ -7,12 +7,14 @@ import { OnboardingProgress } from '@/components/onboarding-progress'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { isAppointmentCategory, offerLabel, type BusinessCategory } from '@/lib/business-categories'
 
 type Item = { name: string; durationMin?: string; price?: string; capacity?: string }
 
-export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VENUE' | 'HOTEL' | 'PENSIUNE' | 'CLINICA' }) {
+export default function Step3Form({ category }: { category: BusinessCategory }) {
   const router = useRouter()
-  const isSalon = category === 'SALON' || category === 'CLINICA'
+  const isSalon = isAppointmentCategory(category)
+  const offer = offerLabel(category)
   const [items, setItems] = useState<Item[]>([])
   const [draft, setDraft] = useState<Item>({ name: '', durationMin: '', price: '', capacity: '' })
   const [loading, setLoading] = useState(false)
@@ -20,6 +22,11 @@ export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VEN
 
   function addItem() {
     if (!draft.name.trim()) return
+    if (isSalon && (!draft.durationMin || Number(draft.durationMin) < 5 || Number(draft.durationMin) > 1440)) {
+      setError('Introdu o durată între 5 și 1440 de minute pentru a putea calcula orele disponibile.')
+      return
+    }
+    setError('')
     setItems((prev) => [...prev, draft])
     setDraft({ name: '', durationMin: '', price: '', capacity: '' })
   }
@@ -39,14 +46,15 @@ export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VEN
     }))
 
     try {
-      await fetchWithTimeout('/api/onboarding', {
+      const response = await fetchWithTimeout('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ step: 3, data: { services } }),
       })
+      if (!response.ok) { const result = await response.json(); throw new Error(typeof result.error === 'string' ? result.error : 'Serviciile nu au putut fi salvate.') }
       router.push('/onboarding/step-5')
-    } catch {
-      setError('Conexiune eșuată. Încearcă din nou.')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Conexiune eșuată. Încearcă din nou.')
       setLoading(false)
     }
   }
@@ -55,10 +63,10 @@ export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VEN
     <Card>
       <OnboardingProgress step={3} />
       <p className="text-xs text-gray-500 mb-1">Pasul 3 din 4</p>
-      <h1 className="text-xl font-semibold mb-1">{isSalon ? 'Ce servicii oferi?' : 'Ce săli ai disponibile?'}</h1>
+      <h1 className="text-xl font-semibold mb-1">{isSalon ? `Ce ${offer.plural} oferi?` : 'Ce săli ai disponibile?'}</h1>
       <p className="text-sm text-gray-500 mb-6">
         {isSalon
-          ? 'Adaugă serviciile ca botul să poată propune programări — sau sari peste, le adaugi oricând mai târziu din Servicii.'
+          ? `Adaugă ${offer.plural} și durata lor pentru orele disponibile online. Le poți completa și mai târziu din ${offer.heading}.`
           : 'Adaugă cel puțin o sală, cu capacitatea și prețul ei.'}
       </p>
 
@@ -83,17 +91,19 @@ export default function Step3Form({ category }: { category: 'SALON' | 'EVENT_VEN
       )}
 
       <div className="rounded-2xl border border-dashed border-[var(--border-soft)] p-4">
-        <p className="text-sm font-medium mb-2.5">{isSalon ? 'Adaugă serviciu' : 'Adaugă sală'}</p>
+        <p className="text-sm font-medium mb-2.5">Adaugă {offer.singular}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
           <Input
-            placeholder={isSalon ? 'Numele serviciului' : 'Numele sălii'}
+            placeholder={`Denumire ${offer.singular}`}
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />
           {isSalon ? (
             <Input
               type="number"
-              placeholder="Durată (min)"
+              placeholder="Durată obligatorie (min)"
+              min={5}
+              max={1440}
               value={draft.durationMin}
               onChange={(e) => setDraft({ ...draft, durationMin: e.target.value })}
             />

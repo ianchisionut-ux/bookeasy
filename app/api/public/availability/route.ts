@@ -5,7 +5,7 @@ import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req)
-  const { allowed } = rateLimit(`public-availability:${ip}`, 60, 60 * 1000) // 60/minut/IP — generos pt navigare normală
+  const { allowed } = await rateLimit(`public-availability:${ip}`, 60, 60 * 1000) // 60/minut/IP — generos pt navigare normală
   if (!allowed) {
     return NextResponse.json({ error: 'Prea multe cereri. Așteaptă puțin.' }, { status: 429 })
   }
@@ -23,13 +23,14 @@ export async function GET(req: NextRequest) {
   }
 
   const business = await prisma.business.findUnique({ where: { id: businessId } })
-  if (!business || !business.publicListed) {
+  if (!business || !business.publicListed || !business.accountActive) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
   // parsăm explicit ca UTC (sufix Z) — indiferent de fusul cu care rulează efectiv
   // procesul Node.js pe server, ziua calendaristică rămâne mereu cea corectă
   const date = new Date(`${dateParam}T00:00:00Z`)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== dateParam) return NextResponse.json({ error: 'Data invalidă.' }, { status: 400 })
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
   if (date < todayStart) {

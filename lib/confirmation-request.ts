@@ -1,95 +1,24 @@
-import { sendMessengerButtons, sendWhatsAppButtons } from './channel-senders'
-import { prisma } from './prisma'
+import { sendBusinessSms } from '@/lib/sms-gateway'
+import { confirmationSms } from '@/lib/sms-policy'
+import { compactConfirmationToken } from '@/lib/confirmation-link'
+import { smsJobMessage } from '@/lib/sms-job-status'
 
-type ReconfirmationChannel = 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
-
-const CHANNEL_NAME: Record<ReconfirmationChannel, string> = {
-  WHATSAPP: 'WhatsApp',
-  INSTAGRAM: 'Instagram',
-  FACEBOOK: 'Messenger',
-}
-
-export async function sendConfirmationRequest(
-  booking: any
-): Promise<{ success: boolean; error?: string; channel?: ReconfirmationChannel }> {
-  // O programare venită din Messenger/Instagram trebuie reconfirmată în aceeași
-  // conversație. Pentru site, Google sau programări introduse manual păstrăm
-  // comportamentul existent: WhatsApp, folosind numărul clientului.
-  const preferredChannel: ReconfirmationChannel =
-    booking.channel === 'FACEBOOK' || booking.channel === 'INSTAGRAM' ? booking.channel : 'WHATSAPP'
-  const recipient =
-    preferredChannel === 'FACEBOOK'
-      ? booking.customer?.facebookUserId
-      : preferredChannel === 'INSTAGRAM'
-        ? booking.customer?.instagramUserId
-        : booking.customer?.phone
-
-  if (!recipient) {
-    const missingIdentity =
-      preferredChannel === 'WHATSAPP'
-        ? 'un număr de telefon'
-        : preferredChannel === 'FACEBOOK'
-          ? 'un profil Messenger asociat'
-          : 'un profil Instagram asociat'
-    return { success: false, error: `Clientul nu are ${missingIdentity}.` }
-  }
-
-  const channel = booking.business.channels.find(
-    (candidate: any) =>
-      candidate.type === preferredChannel && candidate.status === 'ACTIVE' && (preferredChannel === 'FACEBOOK' || candidate.enabledByOwner)
-  )
-  if (!channel) {
-    return {
-      success: false,
-      error: `Canalul ${CHANNEL_NAME[preferredChannel]} nu este conectat sau activ pentru această afacere.`,
-    }
-  }
+export async function sendConfirmationRequest(booking: any): Promise<{ success: boolean; error?: string; channel?: 'SMS'; jobId?: string; status?: string; message?: string }> {
+  const recipient = booking.customer?.phone
+  if (!recipient) return { success: false, error: 'Clientul nu are un număr de telefon.' }
+  if (!booking.confirmationRequestToken) return { success: false, error: 'Linkul de confirmare nu a putut fi generat.' }
 
   const dateTime = booking.startAt.toLocaleString('ro-RO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'Europe/Bucharest',
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: booking.business.timezone || 'Europe/Bucharest',
   })
-
-  const bodyText = [
-    '*Confirmă programarea*',
-    '',
-    `Serviciu: ${booking.service.name}`,
-    `Data: ${dateTime}`,
-    `Locație: ${booking.business.name}`,
-  ].join('\n')
-
-  const options = [
-    { id: `REMINDER_CONFIRM_${booking.id}.${booking.confirmationRequestToken}`, title: 'Confirmă programarea' },
-    { id: `REMINDER_RESCHEDULE_${booking.id}.${booking.confirmationRequestToken}`, title: 'Reprogramează' },
-    { id: `REMINDER_CANCEL_${booking.id}.${booking.confirmationRequestToken}`, title: 'Anulează programarea' },
-  ]
-
   try {
-    if (preferredChannel === 'WHATSAPP') {
-      await sendWhatsAppButtons({ channelId: channel.id, to: recipient, bodyText, options })
-    } else {
-      await sendMessengerButtons({ channelId: channel.id, to: recipient, bodyText, options })
-    }
-
-    await prisma.chatMessage.create({
-      data: {
-        businessId: booking.businessId,
-        channel: preferredChannel,
-        externalUserId: recipient,
-        direction: 'OUT',
-        text: `${bodyText}\n\nConfirmă programarea / Reprogramează / Anulează programarea`,
-      },
-    }).catch((error) => console.error('[reconfirmation] Nu am putut salva mesajul în inbox:', error))
-
-    return { success: true, channel: preferredChannel }
-  } catch (err: any) {
-    // aici ajunge acum mesajul REAL de la Meta (ex: număr neverificat, token expirat) —
-    // nu mai ascundem cauza sub un mesaj generic
-    return { success: false, error: err?.message ?? 'Eroare necunoscută la trimitere.' }
+    const appUrl = (process.env.APP_URL || 'https://bookeasy.ro').replace(/\/$/, '').replace('https://www.bookeasy.ro', 'https://bookeasy.ro')
+    const link = `${appUrl}/confirmare/${compactConfirmationToken(booking.confirmationRequestToken)}`
+    const text = confirmationSms(booking.business.name, dateTime, link, booking.service.name)
+    const job = await sendBusinessSms({ business: booking.business, to: recipient, text, bookingId: booking.id, kind: 'RECONFIRMATION', expiresAt: booking.startAt, idempotencyKey: `confirm-${booking.id}-${booking.confirmationRequestToken}` })
+    return { success: true, channel: 'SMS', jobId: job.id, status: job.status, message: smsJobMessage(job.status) }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Eroare necunoscută la trimiterea SMS-ului.' }
   }
 }

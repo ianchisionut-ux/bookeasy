@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -69,7 +69,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const body = await req.json()
   const parsed = schema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ error: 'Date invalide.' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: `Verifică ${parsed.error.issues[0]?.path.join('.') || 'fișa medicală'}: ${parsed.error.issues[0]?.message || 'valoare invalidă'}.` }, { status: 400 })
 
   const record = await prisma.patientMedicalRecord.upsert({
     where: { customerId: id },

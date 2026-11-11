@@ -3,16 +3,16 @@ import { prisma } from '@/lib/prisma'
 import { sendUnconfirmedBookingAlert } from '@/lib/email'
 import { isAuthorizedCronRequest } from '@/lib/cron-auth'
 import { isAuthorizedGithubCronRequest } from '@/lib/github-cron-auth'
+import { sendScheduledReconfirmations } from '@/lib/scheduled-reconfirmation'
 
 export async function GET(req: NextRequest) {
   if (!isAuthorizedCronRequest(req) && !await isAuthorizedGithubCronRequest(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  // WhatsApp nu mai trimite reminder-e automate. Cron-ul păstrează numai alerta
-  // internă prin email pentru cererile de reconfirmare trimise manual de administrator.
-  const results = { unconfirmedAlerts: 0 }
-  await sendUnconfirmedAlerts(new Date(), results)
+  const now = new Date()
+  const results = { ...await sendScheduledReconfirmations(now), unconfirmedAlerts: 0 }
+  await sendUnconfirmedAlerts(now, results)
   return NextResponse.json(results)
 }
 
@@ -20,7 +20,8 @@ async function sendUnconfirmedAlerts(now: Date, results: { unconfirmedAlerts: nu
   const windowEnd = new Date(now.getTime() + 3 * 60 * 60 * 1000)
   const bookings = await prisma.booking.findMany({
     where: {
-      status: 'PENDING',
+      status: { in: ['PENDING', 'CONFIRMED'] },
+      business: { accountActive: true },
       confirmationRequestSent: true,
       customerConfirmed: null,
       unconfirmedAlertSent: false,
@@ -49,4 +50,3 @@ async function sendUnconfirmedAlerts(now: Date, results: { unconfirmedAlerts: nu
     results.unconfirmedAlerts++
   }
 }
-

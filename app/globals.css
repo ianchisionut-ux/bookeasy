@@ -59,6 +59,7 @@ body {
 }
 
 .btn-primary {
+  text-align: center;
   background: linear-gradient(135deg, var(--brand-teal-dark), var(--brand-teal));
   color: white;
   border-radius: var(--radius-pill);
@@ -79,6 +80,7 @@ body {
 }
 
 .btn-secondary {
+  text-align: center;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(38, 59, 63, 0.13);
   border-radius: var(--radius-pill);
@@ -92,6 +94,35 @@ body {
   background: white;
   transform: translateY(-1px);
 }
+
+/* Layout utilities such as flex, block and w-full can override these defaults. */
+@layer components {
+  .btn-primary, .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.public-flow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+.public-flow-actions > :is(a, button) {
+  max-width: 100%;
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Shared alignment for account/confirmation pages; admin layouts do not use it. */
+.public-flow-page { text-align:center; }
+.public-flow-page :is(h1,h2,h3,p,label) { text-align:center; }
+.public-flow-page form > :is(.btn-primary,.btn-secondary) { margin-inline:auto; }
 
 .accent-pill {
   background: var(--accent);
@@ -113,12 +144,11 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
-/* Cadru unic pentru toate paginile de administrare: fluid pe telefon,
-   centrat și suficient de lat pe desktop ca să nu rămână conținutul lipit în stânga. */
+/* Cadru unic pentru toate paginile de administrare: fluid și pe telefon,
+   și pe desktop, cu margini interioare constante. */
 .dashboard-page {
   width: 100%;
-  max-width: 1560px;
-  margin-inline: auto;
+  max-width: none;
   padding: 1rem;
 }
 
@@ -174,7 +204,8 @@ body {
 }
 .app-shell-content {
   position: relative;
-  z-index: 1;
+  /* Let modal dialogs rise above the shared header and bottom navigation. */
+  z-index: auto;
 }
 .app-shell-content > * {
   position: relative;
@@ -390,11 +421,16 @@ body {
 .calendar-event-top { display:flex; align-items:center; justify-content:space-between; font-size:11px; }
 .calendar-event-name { font-weight:700; font-size:12px; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .calendar-event-service,.calendar-event-meta { font-size:10px; color:#676d7a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:3px; }
+.calendar-arrival-note { display:flex; align-items:center; gap:4px; margin-top:2px; color:#0f766e; font-size:10px; font-weight:700; white-space:nowrap; }
+.calendar-arrival-dot { width:6px; height:6px; flex:none; border-radius:50%; background:#0d9488; }
+.calendar-arrived-event { animation:calendar-arrival-glow 2.6s ease-in-out 3; }
+@keyframes calendar-arrival-glow { 50% { box-shadow:0 0 0 3px rgba(13,148,136,.25); } }
+@media (prefers-reduced-motion: reduce) { .calendar-arrived-event { animation:none; } }
 .calendar-break-card { height:100%; display:flex; align-items:center; justify-content:space-between; gap:6px; padding:2px 4px; font-size:11px; font-weight:700; overflow:hidden; }
 .calendar-break-card span { font-size:10px; font-weight:500; white-space:nowrap; }
 .rbc-background-event { left:0 !important; width:100% !important; margin:0 !important; box-sizing:border-box; }
 .status-dot { width:7px; height:7px; border-radius:50%; background:#ef4444; position:absolute; right:2px; top:2px; }.status-confirmed{background:#16a34a}.status-pending{background:#eab308}.status-completed{background:#6b7280}
-.calendar-drawer { animation:drawer-in .18s ease-out; border-left:1px solid var(--border-soft); box-shadow:-20px 0 50px rgba(38,59,63,.12); }
+.calendar-drawer { background:#fff; animation:drawer-in .18s ease-out; border-left:1px solid var(--border-soft); box-shadow:-20px 0 50px rgba(38,59,63,.12); }
 @keyframes drawer-in { from { transform:translateX(30px); opacity:.5 } }
 .rbc-calendar { color:#36394a; }.rbc-toolbar { margin-bottom:12px; }.rbc-toolbar button { border-color:var(--border-soft); border-radius:10px; padding:6px 11px; }.rbc-toolbar button.rbc-active { background:var(--accent-soft); color:var(--accent-hover); box-shadow:none; }
 .rbc-time-view,.rbc-month-view { border-color:var(--border-soft); border-radius:14px; overflow:hidden; }.rbc-timeslot-group { border-color:#f0f1f3; }.rbc-time-content>*+*>* { border-color:#f0f1f3; }.rbc-header { border-color:var(--border-soft); padding:9px 4px; font-size:12px; }.rbc-today { background:#f8fbf4; }.rbc-current-time-indicator { height:2px; background:var(--accent); box-shadow:0 0 0 1px white; }.rbc-current-time-indicator:before { content:''; position:absolute; width:9px; height:9px; left:-4px; top:-3px; border-radius:50%; background:var(--accent); }.rbc-event-label { display:none; }.rbc-event { min-height:23px; box-shadow:0 2px 7px rgba(38,59,63,.05); }
@@ -723,3 +759,121 @@ body {
 @media print {
   .booking-table-print { display: block !important; }
 }
+
+/* Calendarul afacerii: același limbaj vizual pe desktop și pe telefon. */
+.calendar-modern { min-width:0; color:#14243c; }
+.calendar-overview { display:grid; grid-template-columns:minmax(230px,1fr) minmax(0,2fr); align-items:center; gap:16px; }
+.calendar-overview-title h1 { margin:0; font-size:clamp(20px,2vw,27px); font-weight:800; line-height:1.2; }
+.calendar-overview-title p { margin-top:5px; color:#64748b; font-size:12px; line-height:1.35; }
+.calendar-summary-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; }
+.calendar-summary-card { display:flex; align-items:center; gap:9px; min-width:0; min-height:64px; padding:9px; border:1px solid #edf2f6; border-radius:13px; background:#fff; box-shadow:0 5px 15px rgba(28,62,80,.04); }
+.calendar-summary-card strong { display:block; font-size:20px; line-height:1; }
+.calendar-summary-card small { display:block; overflow:hidden; margin-top:4px; color:#64748b; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+.calendar-summary-icon { display:grid; flex:none; width:38px; height:38px; place-items:center; border-radius:10px; }
+.calendar-summary-teal { background:#d5f4f1; color:#078c90; }.calendar-summary-violet { background:#f0e9ff; color:#8b5cf6; }.calendar-summary-amber { background:#fff0cd; color:#d97706; }.calendar-summary-green { background:#d8f8e6; color:#16a34a; }
+.calendar-modern-commandbar { margin:0; padding:10px 12px; border-radius:15px; background:#fff; }
+.calendar-modern-commandbar .input-field { min-height:39px; max-width:165px; padding:7px 10px; }
+.calendar-modern-commandbar .btn-primary,.calendar-modern-commandbar .btn-secondary { min-height:39px; padding:8px 13px; }
+.calendar-modern-commandbar .calendar-search { margin-left:0; min-height:39px; }
+.calendar-visible-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; min-width:0; }
+.calendar-visible-actions .calendar-search { flex:1 1 180px; width:180px; min-width:0; max-width:280px; }
+.calendar-visible-actions > button { flex:none; gap:6px; white-space:nowrap; }
+@media (min-width:1024px) { .calendar-mobile-actions { display:none; } }
+@media (max-width:1023px) {
+  .calendar-mobile-actions { display:flex; margin-top:8px; justify-content:center; }
+  .calendar-mobile-actions .calendar-search { flex-basis:100%; width:100%; max-width:none; order:0; }
+  .calendar-mobile-actions > button { flex:1 1 auto; }
+}
+.calendar-icon-button { display:inline-grid; flex:none; width:39px; height:39px; place-items:center; border:1px solid #e1e9ef; border-radius:10px; background:#fff; color:#28435a; }
+.calendar-icon-button:hover,.calendar-period-bar button:hover { background:#eaf8f7; }
+.calendar-filter-details { position:relative; }.calendar-filter-details summary { list-style:none; }.calendar-filter-details summary::-webkit-details-marker { display:none; }
+.calendar-filter-popover { position:absolute; right:0; top:44px; z-index:40; display:grid; width:min(280px,calc(100vw - 32px)); gap:9px; padding:12px; border:1px solid #d9e7e7; border-radius:14px; background:#fff; box-shadow:0 12px 30px rgba(18,53,67,.16); }
+.calendar-filter-popover .input-field { width:100%; max-width:none; }
+.calendar-workspace { display:flex; gap:12px; }
+.calendar-sidebar { display:none; width:220px; flex:none; flex-direction:column; gap:10px; overflow-y:auto; }
+.calendar-sidebar-card { padding:12px; border:1px solid #edf2f6; border-radius:15px; background:#fff; box-shadow:0 4px 14px rgba(28,62,80,.04); }
+.calendar-sidebar-card h2 { margin:0 0 10px; font-size:14px; font-weight:800; }
+.calendar-mini-heading { display:flex; align-items:center; justify-content:space-between; gap:4px; margin-bottom:10px; text-transform:capitalize; font-size:13px; }
+.calendar-mini-heading span { display:flex; }.calendar-mini-heading button { display:grid; width:25px; height:25px; place-items:center; border-radius:7px; }.calendar-mini-heading button:hover { background:#eaf8f7; }
+.calendar-mini-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:2px; text-align:center; }
+.calendar-mini-grid button,.calendar-mini-weekday { display:grid; height:26px; place-items:center; font-size:11px; }.calendar-mini-weekday { color:#64748b; font-size:10px; }
+.calendar-mini-grid button { border-radius:50%; }.calendar-mini-grid button:hover { background:#eaf8f7; }.calendar-mini-grid button.outside { color:#b0bdc8; }.calendar-mini-grid button.selected { background:#128f93; color:#fff; font-weight:700; }
+.calendar-filter-check { display:flex; align-items:center; gap:8px; min-height:30px; cursor:pointer; font-size:11px; }.calendar-filter-check input { flex:none; accent-color:#128f93; }.calendar-avatar { display:grid; flex:none; width:26px; height:26px; place-items:center; border-radius:50%; font-size:10px; font-weight:700; }
+.calendar-period-bar { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:42px; padding:2px 6px 9px; }.calendar-period-bar>div:first-child { min-width:0; }.calendar-period-bar strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-transform:capitalize; font-size:13px; }.calendar-period-bar button { display:grid; flex:none; width:28px; height:28px; place-items:center; border-radius:7px; }
+.calendar-view-switch { display:flex; align-items:center; gap:2px; border-radius:9px; background:#f1f5f7; padding:3px; }.calendar-view-switch button { width:auto; min-width:45px; height:30px; padding:0 9px; border-radius:7px; font-size:11px; white-space:nowrap; }.calendar-view-switch button.active { background:#0d969a; color:#fff; box-shadow:0 2px 6px rgba(13,150,154,.2); }
+@media (min-width:768px) { .calendar-modern > .calendar-view-switch { display:none; } }
+@media (max-width:767px) { .calendar-period-bar .calendar-view-switch { display:none; } }
+.calendar-modern .calendar-print-sheet { display:flex; flex-direction:column; background:#fff; }
+.calendar-modern .calendar-print-sheet .rbc-calendar { min-height:0; flex:1; }
+.calendar-modern .rbc-timeslot-group { min-height:70px; }.calendar-modern .rbc-header { background:#fff; color:#36506a; font-weight:700; }.calendar-modern .rbc-today { background:#eaf9fd; }
+.calendar-modern .calendar-event-card { padding:1px 2px; }.calendar-modern .calendar-event-time { overflow:hidden; font-size:9px; line-height:1.05; white-space:nowrap; }.calendar-modern .calendar-event-name { margin-top:1px; font-size:10px; line-height:1.1; }.calendar-modern .calendar-event-service { margin-top:1px; font-size:9px; line-height:1.05; }
+.calendar-modern .status-dot { width:5px; height:5px; }
+@media (min-width:1100px) { .calendar-sidebar { display:flex; } }
+@media (max-width:1099px) and (min-width:768px) { .calendar-overview { grid-template-columns:1fr; }.calendar-overview-title p { display:none; } }
+@media (max-width:767px) {
+  .calendar-modern { min-height:calc(100dvh - 160px); padding-bottom:62px; gap:8px; }
+  .calendar-overview { display:block; }.calendar-overview-title h1 { font-size:20px; }.calendar-overview-title p { display:none; }
+  .calendar-summary-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; margin-top:10px; }
+  .calendar-summary-card { min-height:53px; gap:5px; padding:6px; }.calendar-summary-icon { width:27px; height:27px; }.calendar-summary-icon svg { width:15px; height:15px; }.calendar-summary-card strong { font-size:15px; }.calendar-summary-card small { font-size:9px; }
+  .calendar-modern-commandbar { padding:7px; }.calendar-modern-commandbar .input-field { max-width:none; min-height:38px; }
+  .calendar-view-switch { justify-content:space-between; }.calendar-view-switch button { flex:1; }
+  .calendar-workspace { min-height:0; }.calendar-modern .calendar-print-sheet { border-radius:12px; padding:4px; }.calendar-period-bar { justify-content:center; }.calendar-period-bar strong { font-size:12px; }
+  .calendar-modern .rbc-timeslot-group { min-height:70px; }.calendar-modern .rbc-time-gutter { min-width:42px; }.calendar-modern .rbc-label { font-size:10px; }.calendar-modern .rbc-header { padding:5px 1px; font-size:10px; }
+  .calendar-mobile-add { position:fixed; right:16px; bottom:76px; left:16px; z-index:36; min-height:46px; border-radius:999px; box-shadow:0 8px 20px rgba(11,130,133,.22); }
+}
+
+/* Mobile controls must stay inside their cards and outside the iPhone system bars. */
+.integration-calendar-actions { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; min-width:0; width:100%; }
+.integration-calendar-actions > :first-child { justify-self:start; }
+.integration-calendar-actions a,.integration-calendar-actions button { display:flex; align-items:center; justify-content:center; min-height:44px; max-width:100%; width:100%; margin:0; white-space:normal; overflow-wrap:anywhere; text-align:center; }
+@media (min-width:640px) { .integration-calendar-actions { display:flex; flex-wrap:wrap; align-items:center; width:auto; } .integration-calendar-actions a,.integration-calendar-actions button { width:auto; } }
+@media (max-width:1023px) {
+  .app-shell-theme { --app-safe-top:env(safe-area-inset-top,0px); --app-safe-bottom:env(safe-area-inset-bottom,0px); }
+  .native-ios-shell { --app-safe-top:max(env(safe-area-inset-top,0px),59px); --app-safe-bottom:max(env(safe-area-inset-bottom,0px),24px); }
+  .app-shell-mobile-header { padding-top:var(--app-safe-top); }
+  .app-shell-theme .mobile-bottom-nav { padding-bottom:max(6px,var(--app-safe-bottom)); }
+  .app-shell-theme .app-shell-content { padding-bottom:calc(92px + var(--app-safe-bottom)); }
+  .app-shell-account-sheet { padding-top:calc(16px + var(--app-safe-top)); padding-bottom:calc(16px + var(--app-safe-bottom)); }
+}
+@media screen and (max-width:767px) {
+  .app-shell-theme .calendar-mobile-add { bottom:calc(76px + var(--app-safe-bottom)); }
+  .calendar-modern .rbc-agenda-view { overflow-x:hidden; }
+  .calendar-modern .rbc-agenda-view table.rbc-agenda-table { width:100%; table-layout:fixed; }
+  .calendar-modern .rbc-agenda-view .rbc-agenda-time-cell,.calendar-modern .rbc-agenda-view thead th:nth-child(2) { display:none; }
+  .calendar-modern .rbc-agenda-view .rbc-agenda-date-cell,.calendar-modern .rbc-agenda-view thead th:first-child { width:76px; padding:8px 5px; white-space:normal; font-size:11px; }
+  .calendar-modern .rbc-agenda-view .rbc-agenda-event-cell { min-width:0; padding:8px; white-space:normal; overflow-wrap:anywhere; }
+  .calendar-modern .rbc-agenda-view .calendar-event-name,.calendar-modern .rbc-agenda-view .calendar-event-service { white-space:normal; }
+}
+
+@media screen and (max-width:1023px) {
+  .app-shell-theme { min-width:0; max-width:100%; }
+  .app-shell-content { min-width:0; max-width:100%; overflow-x:clip; }
+  .app-shell-theme .mobile-bottom-nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); width:100%; max-width:100vw; box-sizing:border-box; gap:2px; }
+  .app-shell-theme .mobile-bottom-nav-item { width:100%; min-width:0; padding:5px 2px; text-align:center; }
+  .app-shell-theme .mobile-bottom-nav-item > span:last-child { max-width:100%; overflow-wrap:anywhere; }
+}
+
+.client-bottom-nav-spacer { height:calc(4rem + env(safe-area-inset-bottom,0px)); }
+@media screen and (max-width:1023px) {
+  .bookeasy-native-ios { --native-safe-top:max(env(safe-area-inset-top,0px),59px); --native-safe-bottom:max(env(safe-area-inset-bottom,0px),24px); }
+  /* Safari may already reserve the status bar in an installed PWA. Only native
+     Capacitor uses a fallback; adding 59px to a PWA creates a second top inset. */
+  .bookeasy-standalone-ios { --native-safe-top:env(safe-area-inset-top,0px); --native-safe-bottom:max(env(safe-area-inset-bottom,0px),24px); }
+  :is(.bookeasy-native-ios,.bookeasy-standalone-ios) .app-shell-theme { --app-safe-top:var(--native-safe-top); --app-safe-bottom:var(--native-safe-bottom); }
+  .bookeasy-native-ios body::before { content:''; position:fixed; inset:0 0 auto; height:var(--native-safe-top); z-index:9999; background:#fff; pointer-events:none; }
+  :is(.bookeasy-native-ios,.bookeasy-standalone-ios) .marketplace-header { padding-top:var(--native-safe-top); }
+  :is(.bookeasy-native-ios,.bookeasy-standalone-ios) .client-public-header { padding-top:calc(12px + var(--native-safe-top)); background:#fff; }
+  :is(.bookeasy-native-ios,.bookeasy-standalone-ios) .client-bottom-nav { padding-bottom:var(--native-safe-bottom); }
+  :is(.bookeasy-native-ios,.bookeasy-standalone-ios) .client-bottom-nav-spacer { height:calc(4rem + var(--native-safe-bottom)); }
+  .app-shell-theme .calendar-drawer { padding-top:calc(24px + var(--app-safe-top,0px)); padding-bottom:calc(24px + var(--app-safe-bottom,0px)); }
+}
+@media screen and (min-width:640px) and (max-width:1023px) {
+  :is(.bookeasy-native-ios,.bookeasy-standalone-ios) .client-public-header { padding-top:calc(16px + var(--native-safe-top)); }
+}
+
+.calendar-booking-datetime { display:grid; grid-template-columns:minmax(0,1fr) 96px; gap:8px; }
+.calendar-booking-actions { display:grid; gap:8px; }
+.calendar-booking-actions > button { min-height:44px; width:100%; }
+.calendar-booking-actions > div { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.calendar-booking-actions > div > button { width:100%; min-width:0; min-height:44px; padding-inline:12px; white-space:normal; }
+@media (min-width:640px) { .calendar-booking-datetime { grid-template-columns:minmax(0,1fr) 120px; } }

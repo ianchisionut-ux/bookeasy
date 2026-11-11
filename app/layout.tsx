@@ -1,9 +1,12 @@
 import './globals.css'
+import CustomerSession from '@/components/customer-session'
 import { Manrope } from 'next/font/google'
 import type { Metadata, Viewport } from 'next'
 import PwaManager from '@/components/pwa-manager'
 import CookieConsent from '@/components/cookie-consent'
 import ClientBottomNav from '@/components/client-bottom-nav'
+import ClientArrivalMonitor from '@/components/client-arrival-monitor'
+import SiteAnalytics from '@/components/site-analytics'
 
 const manrope = Manrope({ subsets: ['latin', 'latin-ext'], variable: '--font-manrope' })
 
@@ -38,10 +41,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ro" className={manrope.variable}>
       <body>
+        <CustomerSession>
         {children}
         <PwaManager />
         <CookieConsent />
         <ClientBottomNav />
+        <ClientArrivalMonitor />
+        <SiteAnalytics />
+        </CustomerSession>
       </body>
     </html>
   )

@@ -42,7 +42,7 @@ export default function CustomerEditForm({
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error ?? 'A apărut o eroare.')
+        setError(typeof data.error === 'string' ? data.error : 'Verifică datele introduse și încearcă din nou.')
         return
       }
       setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' }))
@@ -56,6 +56,7 @@ export default function CustomerEditForm({
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-3 flex-wrap"><Button variant="secondary" onClick={handleSave} disabled={saving}>{saving ? 'Se salvează...' : 'Salvează modificările'}</Button>{savedAt && <span className="text-xs text-green-700">Salvat la {savedAt}</span>}</div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-sm text-gray-500 block mb-1.5">Nume</label>

@@ -1,9 +1,28 @@
 {
-  "buildCommand": "node scripts/vercel-build.mjs",
-  "regions": ["fra1"],
+  "buildCommand": "node scripts/vercel-release-build.mjs",
+  "regions": [
+    "fra1"
+  ],
   "crons": [
-    { "path": "/api/cron/check-tokens", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/sync-google-reviews", "schedule": "0 7 * * *" },
-    { "path": "/api/cron/billing", "schedule": "0 5 * * *" }
+    {
+      "path": "/api/cron/launch-campaign",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/check-tokens",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-google-reviews",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/billing",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/account-cleanup",
+      "schedule": "0 4 * * *"
+    }
   ]
 }

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { encrypt } from '@/lib/crypto'
+
+import { assertMetaAccountAvailable, saveMetaAccounts, MetaConnectionError } from '@/lib/business-meta'
 
 export class MetaOnboardingError extends Error {
   constructor(message: string, readonly status = 400) {
@@ -45,6 +46,9 @@ export async function connectMetaWhatsApp({
     throw new MetaOnboardingError(phones.error?.message ?? 'Numărul WhatsApp nu aparține contului autorizat.')
   }
 
+  try { await assertMetaAccountAvailable(businessId, 'WHATSAPP', phoneNumberId) }
+  catch (error) { throw new MetaOnboardingError(error instanceof MetaConnectionError ? error.message : 'Contul WhatsApp nu poate fi verificat.', 409) }
+
   const subscribeResponse = await fetch(
     `https://graph.facebook.com/v21.0/${encodeURIComponent(wabaId)}/subscribed_apps`,
     { method: 'POST', headers: { Authorization: `Bearer ${tokenData.access_token}` } }
@@ -54,12 +58,9 @@ export async function connectMetaWhatsApp({
     throw new MetaOnboardingError(subscription.error?.message ?? 'Abonarea webhook-ului WhatsApp a eșuat.')
   }
 
-  await prisma.channel.upsert({
-    where: { type_externalId: { type: 'WHATSAPP', externalId: phoneNumberId } },
-    create: { businessId, type: 'WHATSAPP', externalId: phoneNumberId, wabaId, accessToken: encrypt(tokenData.access_token) },
-    update: { businessId, wabaId, accessToken: encrypt(tokenData.access_token), status: 'ACTIVE', enabledByOwner: true },
-  })
-
   const phone = phones.data.find((item: { id: string }) => item.id === phoneNumberId)
+  try {
+    await saveMetaAccounts(businessId, [{ type: 'WHATSAPP', externalId: phoneNumberId, wabaId, displayName: phone?.display_phone_number ?? phoneNumberId, accessToken: tokenData.access_token, authProvider: 'meta', expiresAt: Number(tokenData.expires_in) > 0 ? new Date(Date.now() + Number(tokenData.expires_in) * 1000) : null }])
+  } catch (error) { throw new MetaOnboardingError(error instanceof MetaConnectionError ? error.message : 'Conexiunea WhatsApp nu a putut fi salvată.', 409) }
   return { phone: phone?.display_phone_number ?? phoneNumberId }
 }

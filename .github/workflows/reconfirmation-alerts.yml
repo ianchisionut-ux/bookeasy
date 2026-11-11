@@ -24,4 +24,3 @@ jobs:
           curl --fail-with-body --silent --show-error --retry 2 --max-time 120 \
             --header "Authorization: Bearer $oidc_token" \
             https://bookeasy.ro/api/cron/reminders
-

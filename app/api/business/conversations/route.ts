@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/business-auth'
 
 export async function GET() {
-  const session = await auth()
+  const session = await auth('STANDARD')
   const businessId = (session as any)?.businessId
   if (!businessId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const conversations = await prisma.conversation.findMany({
-    where: { businessId, operatorRequestedAt: { not: null } },
+    where: { businessId, channel: { in: ['FACEBOOK', 'INSTAGRAM'] }, operatorRequestedAt: { not: null } },
     orderBy: { updatedAt: 'desc' },
     take: 100,
   })
@@ -21,9 +21,6 @@ export async function GET() {
   const messagePairs = conversations.map((c) => ({
     channel: c.channel,
     externalUserId: c.externalUserId,
-    // păstrăm exact același prag ca înainte — altfel ar reapărea conversația cu botul
-    // dinainte de cererea de operator, bug-ul reparat separat
-    ...(c.operatorRequestedAt ? { createdAt: { gte: c.operatorRequestedAt } } : {}),
   }))
   const customerOrConditions = conversations.map((c) =>
     c.channel === 'WHATSAPP'

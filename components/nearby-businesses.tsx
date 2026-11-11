@@ -1,10 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
-
-const CATEGORY_LABEL: Record<string, string> = {
-  SALON: 'Salon',
-  EVENT_VENUE: 'Spații evenimente',
-}
+import { CATEGORY_LABEL } from '@/lib/business-categories'
 
 export default async function NearbyBusinesses({ businessId }: { businessId: string }) {
   const current = await prisma.business.findUnique({ where: { id: businessId } })

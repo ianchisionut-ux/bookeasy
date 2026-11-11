@@ -2,6 +2,9 @@ import { prisma } from './prisma'
 import { getAvailableSlots, isSlotStillAvailable, getPractitionerDaySlotsWithStatus, isPractitionerSlotStillAvailable } from './availability'
 import { getNextSequenceNumber } from './booking-number'
 import { syncBookingToGoogle } from './google-calendar'
+import { practitionerLabel } from './business-categories'
+import { canonicalCustomerPhone } from './customer-phone'
+import { findCustomerByPhone } from './customer-lookup'
 
 // fluxul botului folosește opțiuni interactive tappable (listă pe WhatsApp, carousel pe
 // Messenger/Instagram) — clientul apasă direct pe alegere. Rămâne și un fallback pe
@@ -141,6 +144,17 @@ export async function runBotStep({
 
   switch (currentState.step) {
     case 'IDLE': {
+      // Un payload de buton rămâne valid chiar dacă între timp conversația a fost
+      // resetată sau botul a fost oprit. O singură apăsare pe „Operator” trebuie să
+      // deschidă imediat conversația în inbox.
+      if (incomingText.trim() === 'OPERATOR') {
+        await notifyOwnerOperatorRequest(businessId, channel, externalUserId)
+        const silentUntil = new Date(Date.now() + (business.operatorSilenceMinutes ?? 30) * 60000).toISOString()
+        return {
+          reply: { kind: 'text', text: 'Te punem în legătură cu un coleg — te contactăm în cel mai scurt timp posibil!' },
+          newState: { step: 'OPERATOR_SILENCE', silentUntil },
+        }
+      }
       if (incomingText.trim() === 'NEW_BOOKING' && business.botBookingEnabled) return showServiceMenu(business.services)
       if (incomingText.trim() === 'VIEW_ACTIVE_BOOKING') {
         const upcoming = await findUpcomingBooking(businessId, channel, externalUserId)
@@ -202,7 +216,7 @@ export async function runBotStep({
       if (!choice) return showWelcome(business.name, business.slug, business.botBookingEnabled)
 
       if (isMultiPractitioner) {
-        return proceedToPractitionerSelection(businessId, { ...currentState, serviceId: choice }, business.category === 'CLINICA')
+        return proceedToPractitionerSelection(businessId, { ...currentState, serviceId: choice }, business.category)
       }
       return proceedToDaySelection(businessId, { ...currentState, serviceId: choice }, null)
     }
@@ -246,11 +260,9 @@ export async function runBotStep({
       // dacă a mai rezervat vreodată la această afacere, îl recunoaștem automat după
       // numărul de telefon (WhatsApp) sau ID-ul de platformă (Messenger/Instagram) —
       // nu-l mai punem să scrie din nou numele și telefonul
-      const knownCustomer = await prisma.customer.findFirst({
+      const knownCustomer = channel === 'WHATSAPP' ? await findCustomerByPhone(businessId, externalUserId) : await prisma.customer.findFirst({
         where:
-          channel === 'WHATSAPP'
-            ? { businessId, phone: externalUserId }
-            : channel === 'INSTAGRAM'
+          channel === 'INSTAGRAM'
               ? { businessId, instagramUserId: externalUserId }
               : { businessId, facebookUserId: externalUserId },
       })
@@ -375,7 +387,7 @@ async function findUpcomingBooking(businessId: string, channel: 'WHATSAPP' | 'IN
       businessId,
       status: { in: ['PENDING', 'CONFIRMED'] },
       startAt: { gte: new Date() },
-      customer: channel === 'WHATSAPP' ? { phone: externalUserId } : channel === 'INSTAGRAM' ? { instagramUserId: externalUserId } : { facebookUserId: externalUserId },
+      customer: channel === 'WHATSAPP' ? { phone: { in: [externalUserId, canonicalCustomerPhone(externalUserId)] } } : channel === 'INSTAGRAM' ? { instagramUserId: externalUserId } : { facebookUserId: externalUserId },
     },
     include: { service: true },
     orderBy: { startAt: 'asc' },
@@ -421,9 +433,10 @@ function showServiceMenu(services: { id: string; name: string; durationMin: numb
   }
 }
 
-async function proceedToPractitionerSelection(businessId: string, state: ConversationState, isClinic: boolean) {
-  const label = isClinic ? 'medic' : 'profesionist'
-  const labelPlural = isClinic ? 'Medici' : 'Profesioniști'
+async function proceedToPractitionerSelection(businessId: string, state: ConversationState, category: string) {
+  const staff = practitionerLabel(category)
+  const label = staff.singular
+  const labelPlural = staff.plural
 
   const associations = await prisma.servicePractitioner.findMany({
     where: { serviceId: state.serviceId! },
@@ -451,7 +464,7 @@ async function proceedToPractitionerSelection(businessId: string, state: Convers
       kind: 'choices' as const,
       text: `La ce ${label} dorești programarea?`,
       header: labelPlural,
-      buttonLabel: `Alege ${isClinic ? 'medicul' : 'profesionistul'}`,
+      buttonLabel: `Alege ${staff.definite}`,
       groups: [{ label: labelPlural, options }],
     },
     newState: { ...state, step: 'SELECTING_PRACTITIONER' as const, practitionerOptions: options },
@@ -560,13 +573,13 @@ async function notifyOwnerOperatorRequest(businessId: string, channel: string, e
 function proceedToConfirmation(business: { services: any[]; category: string }, state: ConversationState) {
   const service = business.services.find((s: any) => s.id === state.serviceId)
   const practitioner = state.practitionerId ? state.practitionerOptions?.find((p) => p.id === state.practitionerId) : null
-  const practitionerLabel = business.category === 'CLINICA' ? 'Medic' : 'Profesionist'
+  const staffLabel = practitionerLabel(business.category).singular
 
   const lines = [
     '*Confirmă programarea*',
     '',
     `Serviciu: ${service?.name ?? ''}`,
-    ...(practitioner ? [`${practitionerLabel}: ${practitioner.title}`] : []),
+    ...(practitioner ? [`${staffLabel.charAt(0).toLocaleUpperCase('ro') + staffLabel.slice(1)}: ${practitioner.title}`] : []),
     `Data: ${formatDate(state.startAt!)}`,
     `Nume: ${state.customerName}`,
     `Telefon: ${state.customerPhone}`,
@@ -597,6 +610,7 @@ async function createBooking({
   channel: 'WHATSAPP' | 'INSTAGRAM' | 'FACEBOOK'
   externalUserId: string
 }): Promise<{ success: boolean; reason?: 'phone_in_use' | 'slot_unavailable' }> {
+  customerPhone = canonicalCustomerPhone(customerPhone)
   const service = await prisma.service.findUnique({ where: { id: serviceId } })
   if (!service) return { success: false, reason: 'slot_unavailable' }
 
@@ -622,7 +636,7 @@ async function createBooking({
   if (channel !== 'WHATSAPP') {
     const [channelCustomer, phoneCustomer] = await Promise.all([
       prisma.customer.findFirst({ where: { businessId, ...channelIdField }, select: { id: true } }),
-      prisma.customer.findUnique({ where: { businessId_phone: { businessId, phone: customerPhone } }, select: { id: true } }),
+      findCustomerByPhone(businessId, customerPhone),
     ])
     if (phoneCustomer && phoneCustomer.id !== channelCustomer?.id) {
       return { success: false, reason: 'phone_in_use' }
@@ -631,15 +645,16 @@ async function createBooking({
 
   let customer: { id: string }
   try {
+    const phoneCustomer = channel === 'WHATSAPP' ? await findCustomerByPhone(businessId, externalUserId) : null
     customer = await prisma.customer.upsert({
       where:
         channel === 'WHATSAPP'
-          ? { businessId_phone: { businessId, phone: externalUserId } }
+          ? phoneCustomer ? { id: phoneCustomer.id } : { businessId_phone: { businessId, phone: canonicalCustomerPhone(externalUserId) } }
           : channel === 'INSTAGRAM'
             ? { businessId_instagramUserId: { businessId, instagramUserId: externalUserId } }
             : { businessId_facebookUserId: { businessId, facebookUserId: externalUserId } },
       create: { businessId, name: customerName, phone: customerPhone, ...channelIdField },
-      update: { name: customerName, phone: customerPhone },
+      update: { name: customerName, phone: customerPhone, archivedAt: null },
     })
   } catch (error) {
     // Acoperă cazul în care altă cerere ocupă numărul între verificare și upsert.
