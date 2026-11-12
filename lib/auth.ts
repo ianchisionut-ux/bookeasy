@@ -52,7 +52,7 @@ const nextAuth = NextAuth({
         if ((user.role === 'CUSTOMER') !== (accountKind === 'CUSTOMER')) return null
         const valid = await bcrypt.compare(credentials?.password as string, user.password)
         if (!valid) return null
-        if (user.emailVerificationRequired && !user.emailVerifiedAt) throw new EmailNotVerified()
+        if (accountKind === 'CUSTOMER' && user.emailVerificationRequired && !user.emailVerifiedAt) throw new EmailNotVerified()
         return { id: user.id, email: user.email, businessId: user.businessId, role: user.role } as any
       },
     }),

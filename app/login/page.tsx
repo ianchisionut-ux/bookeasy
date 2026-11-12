@@ -108,7 +108,6 @@ export default function LoginPage() {
               <Button type="submit" disabled={loading} className="mt-1 w-full">
                 {loading ? 'Se conectează...' : 'Intră în cont'}
               </Button>
-              {accountType === 'business' && <Link href="/verify-email" className="text-center text-xs text-[var(--accent-hover)] underline">Retrimite emailul de confirmare</Link>}
             </form>
             <div className="mt-5 border-t border-[var(--border-soft)] pt-4 text-center text-sm">
               <Link href={accountType === 'customer' ? '/cont' : '/signup'} className="font-semibold text-[var(--accent-hover)] underline">{accountType === 'customer' ? 'Creează cont de utilizator sau continuă cu Google' : 'Creează cont de afacere'}</Link>

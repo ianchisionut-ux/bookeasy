@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import {formatPlanPrice,type PlanPrices} from '@/lib/plan-pricing-display'
 import PromoCodeField,{type PromoOffer} from '@/components/promo-code-field'
 import { useRouter } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Input } from '@/components/ui/input'
@@ -68,7 +69,12 @@ export default function SignupForm({ launchOpen, lockedPromoCode,prices }: { lau
     }
 
     completeSignupPixel()
-    router.push(`/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}${data.emailSent === false ? '&delivery=failed' : ''}`)
+    const result = await signIn('credentials', { email, password, accountType: 'business', redirect: false }).catch(() => null)
+    if (!result || result.error) {
+      router.push('/login?registered=1')
+      return
+    }
+    router.push('/onboarding/step-1')
     router.refresh()
     } catch {
       setError('Conexiunea a eșuat. Încearcă din nou.')
@@ -87,7 +93,7 @@ export default function SignupForm({ launchOpen, lockedPromoCode,prices }: { lau
 
         <Card className="w-full">
           <h1 className="text-lg font-semibold mb-1">Creează cont</h1>
-          <p className="text-sm text-gray-500 mb-4">Creezi contul, confirmi adresa de email, apoi configurezi afacerea ta.</p>
+          <p className="text-sm text-gray-500 mb-4">Creezi contul și configurezi direct afacerea ta, fără confirmare prin email.</p>
 
           <form method="post" onSubmit={handleSubmit} className="flex flex-col gap-3">
             <div>

@@ -5,7 +5,6 @@ import { z } from 'zod'
 import { getClientIp, rateLimit } from '@/lib/rate-limit'
 import { randomBytes } from 'node:crypto'
 import { LaunchSignupError, launchSignupData } from '@/lib/launch-campaign'
-import { sendVerificationEmail } from '@/lib/email-verification'
 import { recordSignupFunnel } from '@/lib/signup-funnel'
 
 const schema = z.object({
@@ -43,7 +42,7 @@ export async function POST(req: NextRequest) {
   if (!campaignData.launchEnrollment && parsed.data.acceptLaunchTerms) return NextResponse.json({ error: 'Oferta gratuită se aplică numai cu un cod promoțional valid. Reîncarcă pagina.' }, { status: 409 })
   const hashedPassword = await bcrypt.hash(password, 12)
   // Nested creation is atomic: no ownerless business after a duplicate email.
-  const business = await prisma.business.create({
+  await prisma.business.create({
     data: {
       name: 'Afacerea mea',
       slug: provisionalSlug(),
@@ -52,18 +51,15 @@ export async function POST(req: NextRequest) {
       onboardingStep: 1,
       onboardingDone: false,
       ...campaignData,
-      users: { create: { email, password: hashedPassword, role: 'OWNER', emailVerificationRequired: true } },
+      users: { create: { email, password: hashedPassword, role: 'OWNER', emailVerificationRequired: false } },
     },
-    include: { users: { select: { id: true } } },
   })
 
   // Measurement must never turn a successfully created account into an error.
   try { await recordSignupFunnel('created', parsed.data.promoCode, parsed.data.utmCampaign) }
   catch { console.error('[signup-funnel] Created counter unavailable') }
 
-  let emailSent = true
-  try { await sendVerificationEmail(business.users[0].id, email) } catch { emailSent = false; console.error('[business-register] Verification email failed; resend available') }
-  return NextResponse.json({ success: true, requiresEmailVerification: true, emailSent })
+  return NextResponse.json({ success: true, requiresEmailVerification: false })
   } catch (error) {
     if (error instanceof LaunchSignupError) return NextResponse.json({ error: error.message }, { status: error.status })
     if ((error as { code?: string }).code === 'P2002') return NextResponse.json({ error: 'Există deja un cont cu acest email.' }, { status: 409 })
