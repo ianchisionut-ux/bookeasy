@@ -35,6 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (mode === currentMode && (parsed.data.mode !== 'CAMPAIGN' || enrollment?.campaignId === parsed.data.campaignId)) return { status: 200, success: true }
     if(enrollment?.freeUntilNotice&&!enrollment.cancelledAt&&mode!=='CAMPAIGN'&&mode!=='FREE')return {status:409,error:'Campania gratuită nu poate fi trecută direct la plată. Este necesară notificarea și acceptarea expresă a noii oferte de către afacere.'}
     const prices=await getPlanPrices(tx)
+    if (mode === 'PRO' && prices.proMinor === null) return { status: 409, error: 'Configurează tariful PRO în Planuri și prețuri înainte de schimbarea planului.' }
     const recordChange = () => tx.billingModeChange.create({ data: {
       businessId, fromMode: currentMode, toMode: mode,
       fromCampaignId: currentMode === 'CAMPAIGN' ? enrollment?.campaignId : null,
@@ -90,10 +91,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (enrollment && !enrollment.cancelledAt) {
       await syncLaunchInTransaction(tx, businessId, now)
       await tx.launchEnrollment.update({ where: { id: enrollment.id }, data: { cancelledAt: now, nextSyncAt: null } })
-    }
-    if (mode === 'PRO' && currentMode === 'STANDARD') {
-      await tx.business.update({ where: { id: businessId }, data: { planName: 'Pro' } })
-      return { status: 200, success: true }
     }
     const paid = mode !== 'FREE'
     const amount = mode === 'STANDARD' ? prices.standardMinor / 100 : mode === 'PRO' ? prices.proMinor===null?null:prices.proMinor/100 : 0

@@ -81,6 +81,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       }],
     })
 
+    const recordedAmountMinor = business.billingAmount === null ? null : Math.round(Number(business.billingAmount) * 100)
+    const invoiceAmountMinor = Math.round(Number(result.total) * 100)
+    const preservePaid = business.billingStatus === 'PLATIT' && Boolean(business.billingPaidAt) && recordedAmountMinor === invoiceAmountMinor
+
     if (period) await prisma.launchBillingPeriod.update({ where: { id: period.id }, data: { invoiceUrl: `signal:${result.externalId}`, invoiceName: `${result.reference.replace(/\s+/g, '_')}.pdf`, invoiceExternalId: result.externalId } })
     await prisma.business.updateMany({
       where: { id, ...(period ? { billingInvoiceExternalId: business.billingInvoiceExternalId, billingDueAt: business.billingDueAt } : {}) },
@@ -89,7 +93,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         billingInvoiceUrl: `signal:${result.externalId}`,
         billingInvoiceName: `${result.reference.replace(/\s+/g, '_')}.pdf`,
         billingInvoiceUploadedAt: new Date(),
-        ...(!period ? { billingStatus: 'NEPLATIT' as const, billingPaidAt: null } : {}),
+        ...(!period && !preservePaid ? { billingStatus: 'NEPLATIT' as const, billingPaidAt: null } : {}),
         billingDueNotifiedAt: null,
         billingStripeCheckoutSessionId: null,
         billingStripePaymentIntentId: null,

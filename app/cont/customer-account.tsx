@@ -112,7 +112,7 @@ export default function CustomerAccount({ email, name, googleAccount, businessSe
       }
       setPassword('')
       setConfirm('')
-      window.location.assign(returnTo === '/fitness' ? '/cont?next=/fitness' : '/cont')
+      window.location.assign(returnTo === '/fitness' ? '/cont?next=/fitness' : returnTo)
     } catch {
       setError('Conexiunea a fost întreruptă. Încearcă din nou.')
     } finally { setBusy(false) }

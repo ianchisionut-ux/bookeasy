@@ -494,10 +494,31 @@ function combineDateAndTime(date: Date, time: string): Date {
   const y = date.getUTCFullYear()
   const m = String(date.getUTCMonth() + 1).padStart(2, '0')
   const d = String(date.getUTCDate()).padStart(2, '0')
-  const offset = bucharestOffsetString(date)
-  // construim direct momentul UTC corect pentru "HH:MM ora României", fără să trecem
-  // deloc prin interpretarea locală a serverului (care s-a dovedit a fi UTC, nu București)
-  return new Date(`${y}-${m}-${d}T${time}:00${offset}`)
+  const desired = `${y}-${m}-${d}T${time}`
+  const localAsUtc = new Date(`${desired}:00Z`)
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  })
+  // Offset-ul se poate schimba în cursul zilei. Verificăm fiecare candidat în
+  // fusul real, inclusiv în duminicile când se schimbă ora.
+  const offsets = new Set([-86400000, 0, 86400000].map((delta) => {
+    const match = /^([+-])(\d{2}):(\d{2})$/.exec(bucharestOffsetString(new Date(localAsUtc.getTime() + delta)))!
+    return (match[1] === '+' ? 1 : -1) * (Number(match[2]) * 60 + Number(match[3]))
+  }))
+  for (let skippedMinutes = 0; skippedMinutes <= 180; skippedMinutes++) {
+    const intended = new Date(localAsUtc.getTime() + skippedMinutes * 60000)
+    const expected = intended.toISOString().slice(0, 16)
+    const candidates = [...offsets].map((minutes) => new Date(intended.getTime() - minutes * 60000))
+      .filter((candidate) => {
+        const parts = formatter.formatToParts(candidate)
+        const part = (type: string) => parts.find((item) => item.type === type)?.value
+        return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}` === expected
+      })
+      .sort((left, right) => left.getTime() - right.getTime())
+    if (candidates.length) return candidates[0]
+  }
+  throw new Error(`Ora locală ${desired} nu a putut fi convertită.`)
 }
 
 function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {

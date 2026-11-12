@@ -49,9 +49,11 @@ export default function ForgotPasswordPage() {
           </div>
 
           {sent ? (
-            <p className="text-sm text-gray-600 mt-3">
-              Dacă există un cont cu acest email, ai primit un link de resetare. Verifică și folderul de spam.
-            </p>
+            <div className="mt-3 space-y-3 text-sm text-gray-600">
+              <p>Dacă adresa există și emailul poate fi trimis, vei primi un link de resetare. Verifică și folderul Spam.</p>
+              <p>Dacă nu ajunge, încearcă din nou mai târziu sau <Link href="/contact" className="underline">contactează-ne</Link>.</p>
+              <button type="button" onClick={() => setSent(false)} className="text-[var(--accent-hover)] underline">Cere alt link</button>
+            </div>
           ) : (
             <>
               <p className="text-sm text-gray-500 mb-4">Introdu emailul contului tău, îți trimitem un link de resetare.</p>

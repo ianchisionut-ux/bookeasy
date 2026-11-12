@@ -34,7 +34,10 @@ const schema = z.object({
   customerPhone: z.string().trim().max(30).refine((value) => /^\d{7,15}$/.test(value.replace(/[^\d]/g, ''))).transform(canonicalCustomerPhone),
   customerEmail: z.string().trim().email().max(254).optional(),
   paymentMethod: z.enum(['CASH', 'ONLINE']).optional(),
+  reschedule: z.object({ bookingId: z.string().min(1), token: z.string().uuid() }).optional(),
 })
+
+class RescheduleConflict extends Error {}
 
 export async function POST(req: NextRequest) {
   try {
@@ -54,6 +57,19 @@ export async function POST(req: NextRequest) {
   const business = await prisma.business.findUnique({ where: { id: businessId }, include: { launchEnrollment: { select: { cancelledAt: true } } } })
   if (!business || !business.publicListed || !business.accountActive) {
     return NextResponse.json({ error: 'Afacerea nu este disponibilă pentru rezervări.' }, { status: 404 })
+  }
+
+  const reschedule = parsed.data.reschedule
+  if (reschedule) {
+    const previous = await prisma.booking.findUnique({
+      where: { id: reschedule.bookingId },
+      select: { businessId: true, status: true, startAt: true, confirmationRequestToken: true, confirmationRequestSent: true, customerConfirmed: true },
+    })
+    if (!previous || previous.businessId !== businessId || previous.confirmationRequestToken !== reschedule.token ||
+        !previous.confirmationRequestSent || previous.customerConfirmed !== null ||
+        !['PENDING', 'CONFIRMED'].includes(previous.status) || previous.startAt <= new Date()) {
+      return NextResponse.json({ error: 'Linkul de reprogramare nu mai este valabil.' }, { status: 409 })
+    }
   }
 
   const service = await prisma.service.findUnique({ where: { id: serviceId } })
@@ -160,32 +176,51 @@ export async function POST(req: NextRequest) {
     update: { archivedAt: null }, // O rezervare nouă readuce fișa în lista activă fără a schimba datele existente.
   })
 
-  const sequenceNumber = await getNextSequenceNumber(businessId, startAt)
+  const sequenceNumber = await getNextSequenceNumber(businessId)
   const reviewerGoogleSub = (session as any)?.role === 'CUSTOMER' && typeof (session as any)?.googleSub === 'string'
     ? (session as any).googleSub as string
     : null
   const arrivalToken = randomBytes(32).toString('hex')
 
-  const booking = await prisma.booking.create({
-    data: {
-      businessId,
-      customerId: customer.id,
-      contactName: customerName,
-      contactEmail: customerEmail ?? null,
-      clientProfileId: profile?.id ?? null,
-      reviewerGoogleSub,
-      arrivalTokenHash: createHash('sha256').update(arrivalToken).digest('hex'),
-      serviceId,
-      resourceId,
-      practitionerId: practitionerId ?? null,
-      startAt,
-      endAt,
-      status: 'PENDING',
-      channel: 'WEB',
-      sequenceNumber,
-      confirmationSeenByAdmin: false,
-    },
-  })
+  const bookingData = {
+    businessId,
+    customerId: customer.id,
+    contactName: customerName,
+    contactEmail: customerEmail ?? null,
+    clientProfileId: profile?.id ?? null,
+    reviewerGoogleSub,
+    arrivalTokenHash: createHash('sha256').update(arrivalToken).digest('hex'),
+    serviceId,
+    resourceId,
+    practitionerId: practitionerId ?? null,
+    startAt,
+    endAt,
+    status: 'PENDING' as const,
+    channel: 'WEB' as const,
+    sequenceNumber,
+    confirmationSeenByAdmin: false,
+  }
+  const booking = reschedule
+    ? await prisma.$transaction(async (tx) => {
+        const changed = await tx.booking.updateMany({
+          where: {
+            id: reschedule.bookingId,
+            businessId,
+            confirmationRequestToken: reschedule.token,
+            confirmationRequestSent: true,
+            customerConfirmed: null,
+            status: { in: ['PENDING', 'CONFIRMED'] },
+            startAt: { gt: new Date() },
+          },
+          data: { status: 'CANCELLED', customerConfirmed: false, confirmationSeenByAdmin: false },
+        })
+        if (changed.count !== 1) throw new RescheduleConflict()
+        // Dacă rezervarea nouă e respinsă (inclusiv de protecția la suprapuneri),
+        // tranzacția restaurează automat rezervarea veche.
+        return tx.booking.create({ data: bookingData })
+      })
+    : await prisma.booking.create({ data: bookingData })
+  if (reschedule) await syncBookingToGoogle(reschedule.bookingId).catch((error) => console.error('[google-calendar] sync rescheduled booking:', error))
   await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync public booking:', error))
 
   let walletUrl: string | null = null
@@ -204,6 +239,7 @@ export async function POST(req: NextRequest) {
       : null,
   }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
+    if (error instanceof RescheduleConflict) return NextResponse.json({ error: 'Programarea inițială a fost deja modificată. Reîncarcă pagina.' }, { status: 409 })
     if (isBookingConflict(error)) return NextResponse.json({ error: 'Intervalul tocmai a fost ocupat. Alege altă oră.' }, { status: 409 })
     throw error
   }

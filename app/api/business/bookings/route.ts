@@ -177,7 +177,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const sequenceNumber = await getNextSequenceNumber(businessId, new Date())
+  const sequenceNumber = await getNextSequenceNumber(businessId)
 
   const booking = await prisma.booking.create({
     data: {

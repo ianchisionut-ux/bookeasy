@@ -11,7 +11,7 @@ import { isAppointmentCategory, offerLabel, type BusinessCategory } from '@/lib/
 
 type Item = { name: string; durationMin?: string; price?: string; capacity?: string }
 
-export default function Step3Form({ category }: { category: BusinessCategory }) {
+export default function Step3Form({ category, existingVenueRooms = 0 }: { category: BusinessCategory; existingVenueRooms?: number }) {
   const router = useRouter()
   const isSalon = isAppointmentCategory(category)
   const offer = offerLabel(category)
@@ -37,6 +37,10 @@ export default function Step3Form({ category }: { category: BusinessCategory }) 
   }
 
   async function handleSubmit() {
+    if (category === 'EVENT_VENUE' && items.length === 0 && existingVenueRooms === 0) {
+      setError('Adaugă cel puțin o sală înainte de a continua.')
+      return
+    }
     setLoading(true)
     setError('')
     const services = items.map((i) => ({
@@ -70,6 +74,7 @@ export default function Step3Form({ category }: { category: BusinessCategory }) 
           ? `Adaugă ${offer.plural} și durata lor pentru orele disponibile online. Le poți completa și mai târziu din ${offer.heading}.`
           : 'Adaugă cel puțin o sală, cu capacitatea ei.'}
       </p>
+      {category === 'EVENT_VENUE' && existingVenueRooms > 0 && <p className="mb-4 text-sm text-gray-600">{existingVenueRooms} {existingVenueRooms === 1 ? 'sală salvată' : 'săli salvate'} deja. Poți adăuga alte săli sau continua.</p>}
 
       <label className="mb-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={showServicePrices} onChange={e => setShowServicePrices(e.target.checked)} /> Afișează prețurile serviciilor (opțional)</label>
       {items.length > 0 && (

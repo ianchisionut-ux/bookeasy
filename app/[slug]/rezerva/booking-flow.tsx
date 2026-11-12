@@ -45,6 +45,8 @@ function toDateParam(d: Date) {
 export default function BookingFlow({
   businessId,
   businessSlug,
+  rescheduleBookingId,
+  rescheduleToken,
   category,
   isMultiPractitioner,
   services,
@@ -53,6 +55,8 @@ export default function BookingFlow({
 }: {
   businessId: string
   businessSlug: string
+  rescheduleBookingId: string | null
+  rescheduleToken: string | null
   category: BusinessCategory
   isMultiPractitioner: boolean
   services: Service[]
@@ -183,6 +187,9 @@ export default function BookingFlow({
           startAt,
           customerName: name,
           customerPhone: phone,
+          reschedule: rescheduleBookingId && rescheduleToken
+            ? { bookingId: rescheduleBookingId, token: rescheduleToken }
+            : undefined,
         }),
       })
       const data = await res.json()
@@ -208,8 +215,8 @@ export default function BookingFlow({
     return (
       <div className="py-10 text-center">
         <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full text-white shadow-lg" style={{ background: accentColor }}><Check size={28} /></div>
-        <h2 className="text-2xl font-semibold">{category === 'FITNESS' ? 'Ședință confirmată!' : category === 'CURSURI' ? 'Înscriere confirmată!' : booking.singular === 'rezervare' ? 'Rezervare confirmată!' : 'Programare confirmată!'}</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">Te așteptăm — vei primi confirmarea și pe telefonul indicat.</p>
+        <h2 className="text-2xl font-semibold">{rescheduleBookingId ? 'Reprogramare înregistrată!' : category === 'FITNESS' ? 'Ședință înregistrată!' : category === 'CURSURI' ? 'Înscriere înregistrată!' : booking.singular === 'rezervare' ? 'Rezervare înregistrată!' : 'Programare înregistrată!'}</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">{rescheduleBookingId ? 'Noua oră a fost rezervată, iar intervalul vechi a fost eliberat.' : 'Afacerea vede cererea ta în BookEasy și te poate contacta la numărul indicat.'}</p>
         {walletUrl && <a href={walletUrl} target="_blank" rel="noopener noreferrer" className="btn-primary mx-auto mt-5 inline-flex min-h-11 items-center justify-center">Adaugă rezervarea în Google Wallet</a>}
         {arrival && <ArrivalOptIn arrival={arrival} />}
         <div className="public-flow-actions mt-6"><a href={`/${businessSlug}`} className="btn-secondary">Înapoi la pagina afacerii</a></div>
@@ -392,12 +399,13 @@ export default function BookingFlow({
 
       {/* Detaliile tale */}
       <div>
+        {rescheduleBookingId && rescheduleToken && <p className="mb-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">Programarea actuală rămâne valabilă până când confirmi o nouă oră aici.</p>}
         <h2 className="font-semibold mb-3">Detaliile tale</h2>
         <div className="grid gap-2 sm:grid-cols-2">
           <Input placeholder="Numele tău" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="Telefon" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
-        <p className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-400"><ShieldCheck size={13} /> Primești confirmarea la numărul introdus.</p>
+        <p className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-400"><ShieldCheck size={13} /> Afacerea te poate contacta la numărul introdus.</p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}

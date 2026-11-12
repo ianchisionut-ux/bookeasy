@@ -47,7 +47,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = patchSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const current = await prisma.business.findUnique({ where: { id }, select: { category: true, billingSuspendedAt: true, billingDueAt: true, billingInvoiceUrl: true, billingAmount: true, billingSubtotal: true, billingStatus: true } })
+  const current = await prisma.business.findUnique({ where: { id }, select: { category: true, billingSuspendedAt: true, billingDueAt: true, billingInvoiceUrl: true, billingAmount: true, billingSubtotal: true, billingVatRate: true, billingStatus: true } })
   if (!current) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
   const campaign = await prisma.launchEnrollment.findUnique({ where: { businessId: id }, select: { cancelledAt: true } })
   if (campaign && !campaign.cancelledAt && ['planName', 'billingStatus', 'billingAmount', 'billingSubtotal', 'billingVatRate', 'billingDueAt'].some(key => key in parsed.data)) return NextResponse.json({ error: 'Tariful este gestionat de campanie. Înregistrează plata în cardul campaniei sau treci afacerea la facturare manuală.' }, { status: 409 })
@@ -64,11 +64,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     ...input,
     ...(billingDueAt !== undefined ? { billingDueAt: billingDueAt ? new Date(billingDueAt) : null } : {}),
   }
+  if (parsed.data.billingSubtotal !== undefined || parsed.data.billingVatRate !== undefined) {
+    const subtotal = parsed.data.billingSubtotal === undefined ? (current.billingSubtotal === null ? null : Number(current.billingSubtotal)) : parsed.data.billingSubtotal
+    const vatRate = parsed.data.billingVatRate ?? Number(current.billingVatRate)
+    data.billingAmount = subtotal === null ? null : Number((subtotal * (1 + vatRate / 100)).toFixed(2))
+  }
+  const monetaryChanged =
+    (data.billingAmount !== undefined && (current.billingAmount === null ? null : Number(current.billingAmount)) !== data.billingAmount) ||
+    (parsed.data.billingSubtotal !== undefined && (current.billingSubtotal === null ? null : Number(current.billingSubtotal)) !== parsed.data.billingSubtotal) ||
+    (parsed.data.billingVatRate !== undefined && Number(current.billingVatRate) !== parsed.data.billingVatRate)
+  if (current.billingInvoiceUrl && monetaryChanged) {
+    return NextResponse.json({ error: current.billingInvoiceUrl.startsWith('signal:')
+      ? 'Factura a fost deja emisă în Signal. Corecteaz-o prin storno înainte de schimbarea sumei.'
+      : 'Elimină factura încărcată și încarcă documentul corect înainte de schimbarea sumei.' }, { status: 409 })
+  }
   if (targetCategory === 'FITNESS') data.teamSize = 1
   if (parsed.data.category && parsed.data.category !== 'CLINICA') data.dentalClinic = false
   const billingChanged =
-    (parsed.data.billingAmount !== undefined && Number(current.billingAmount) !== parsed.data.billingAmount) ||
-    (parsed.data.billingSubtotal !== undefined && Number(current.billingSubtotal) !== parsed.data.billingSubtotal) ||
+    monetaryChanged ||
     (parsed.data.billingDueAt !== undefined && current.billingDueAt?.toISOString() !== parsed.data.billingDueAt) ||
     (parsed.data.billingStatus === 'NEPLATIT' && current.billingStatus !== 'NEPLATIT')
   if (billingChanged) {
@@ -77,7 +90,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.billingPaidAt = null
     Object.assign(data, resetIpayPaymentFields())
   }
-  if (parsed.data.billingStatus === 'PLATIT') {
+  if (monetaryChanged) data.billingStatus = 'NEPLATIT'
+  if (data.billingStatus === 'PLATIT') {
     data.billingDueNotifiedAt = null
     data.billingPaidAt = new Date()
     Object.assign(data, resetIpayPaymentFields())
@@ -85,7 +99,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data.accountActive = true
       data.billingSuspendedAt = null
     }
-  } else if (parsed.data.billingDueAt !== undefined || parsed.data.billingStatus === 'NEPLATIT') {
+  } else if (parsed.data.billingDueAt !== undefined || data.billingStatus === 'NEPLATIT') {
     data.billingDueNotifiedAt = null
   }
   if (parsed.data.accountActive === true) data.billingSuspendedAt = null

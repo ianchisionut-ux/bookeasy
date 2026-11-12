@@ -664,7 +664,7 @@ async function createBooking({
     throw error
   }
 
-  const sequenceNumber = await getNextSequenceNumber(businessId, startDate)
+  const sequenceNumber = await getNextSequenceNumber(businessId)
 
   const booking = await prisma.booking.create({
     data: {

@@ -90,6 +90,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Completează durata fiecărui serviciu (între 5 și 1440 de minute) pentru calculul orelor disponibile.' }, { status: 400 })
     }
   }
+  if (step === 3 && business.category === 'EVENT_VENUE' && business._count.resources === 0 && (parsed.data as { services: unknown[] }).services.length === 0) {
+    return NextResponse.json({ error: 'Adaugă cel puțin o sală înainte de a continua.' }, { status: 400 })
+  }
+  if (step === 5 && business.category === 'EVENT_VENUE' && business._count.resources === 0) {
+    return NextResponse.json({ error: 'Adaugă cel puțin o sală înainte de activarea paginii.' }, { status: 400 })
+  }
 
   if (step === 1) {
     const stepData = parsed.data as { city: string; category?: string }

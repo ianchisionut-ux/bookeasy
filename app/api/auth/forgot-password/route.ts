@@ -16,6 +16,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null)
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Email invalid.' }, { status: 400 })
+  // A configuration failure applies to every request, so reporting it cannot reveal whether an account exists.
+  if (!process.env.RESEND_API_KEY) return NextResponse.json({ error: 'Serviciul de email nu este disponibil. Încearcă mai târziu.' }, { status: 503 })
 
   // limitare și pe email — ca cineva să nu poată bombarda inbox-ul unei singure victime
   const emailCheck = await rateLimit(`forgot-pw-email:${parsed.data.email.toLowerCase()}`, 3, 60 * 60 * 1000) // 3/oră/email
@@ -29,7 +31,8 @@ export async function POST(req: NextRequest) {
   // existența unui cont, ca să nu putem fi folosiți pentru a "ghici" clienți înregistrați
   if (user) {
     const token = await createPasswordToken(user.id)
-    await withEmailTimeout(sendPasswordResetEmail(user.email, token, parsed.data.accountType))
+    const delivered = await withEmailTimeout(sendPasswordResetEmail(user.email, token, parsed.data.accountType))
+    if (delivered === null) console.error('[password-reset] Email delivery failed or timed out')
   }
 
   return NextResponse.json({ success: true })

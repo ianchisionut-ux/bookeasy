@@ -30,7 +30,8 @@ function summarizeOpenDays(workingHours: { weekday: number }[]) {
 
 export default async function RezervaPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { slug } = await params
-  await redirectPublicAlias(slug, '/rezerva', (await searchParams) ?? {})
+  const query = (await searchParams) ?? {}
+  await redirectPublicAlias(slug, '/rezerva', query)
   const business = await prisma.business.findUnique({
     where: { slug },
     include: {
@@ -107,6 +108,8 @@ export default async function RezervaPage({ params, searchParams }: { params: Pr
           <BookingFlow
             businessId={business.id}
             businessSlug={business.slug}
+            rescheduleBookingId={typeof query.rescheduleId === 'string' ? query.rescheduleId : null}
+            rescheduleToken={typeof query.rescheduleToken === 'string' ? query.rescheduleToken : null}
             category={business.category}
             isMultiPractitioner={business.category !== 'FITNESS' && business.teamSize > 1}
             accentColor={accent}

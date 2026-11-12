@@ -8,8 +8,8 @@ export default async function OnboardingStep3() {
   const businessId = (session as any)?.businessId
   if (!businessId) redirect('/login')
 
-  const business = await prisma.business.findUnique({ where: { id: businessId } })
+  const business = await prisma.business.findUnique({ where: { id: businessId }, include: { _count: { select: { resources: true } } } })
   if (!business) redirect('/login')
 
-  return <Step3Form category={business.category} />
+  return <Step3Form category={business.category} existingVenueRooms={business._count.resources} />
 }

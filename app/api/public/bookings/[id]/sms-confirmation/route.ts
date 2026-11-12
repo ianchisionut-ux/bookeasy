@@ -13,6 +13,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!booking || booking.confirmationRequestToken !== input.data.token || !booking.confirmationRequestSent) return NextResponse.json({ error: 'Linkul nu mai este valabil.' }, { status: 404 })
   if (booking.startAt <= new Date()) return NextResponse.json({ error: 'Programarea a trecut deja.' }, { status: 409 })
 
+  // Alegerea reprogramării deschide formularul, fără să elibereze încă ora veche.
+  // Anularea se face numai după ce o nouă rezervare a fost creată cu succes.
+  if (input.data.action === 'RESCHEDULE') {
+    if (booking.customerConfirmed !== null || !['PENDING', 'CONFIRMED'].includes(booking.status)) {
+      return NextResponse.json({ error: 'Răspunsul pentru această programare a fost deja înregistrat.' }, { status: 409 })
+    }
+    return NextResponse.json({
+      success: true,
+      action: 'RESCHEDULE',
+      rebookUrl: `/${booking.business.slug}/rezerva?rescheduleId=${encodeURIComponent(id)}&rescheduleToken=${encodeURIComponent(input.data.token)}`,
+    })
+  }
+
   const data = input.data.action === 'CONFIRM'
     ? { status: 'CONFIRMED' as const, customerConfirmed: true, confirmationSeenByAdmin: false }
     : { status: 'CANCELLED' as const, customerConfirmed: false, confirmationSeenByAdmin: false }
@@ -22,5 +35,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   })
   if (!updated.count) return NextResponse.json({ error: 'Răspunsul pentru această programare a fost deja înregistrat.' }, { status: 409 })
   await syncBookingToGoogle(id).catch((error) => console.error('[google-calendar] sync SMS confirmation:', error))
-  return NextResponse.json({ success: true, action: input.data.action, rebookUrl: input.data.action === 'RESCHEDULE' ? `/${booking.business.slug}/rezerva` : null })
+  return NextResponse.json({ success: true, action: input.data.action })
 }
