@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Download, Smartphone } from 'lucide-react'
+import { Smartphone } from 'lucide-react'
 import { PublicHeader } from '@/components/ui/public-header'
 
-export const metadata: Metadata = { title: 'Aplicații BookEasy', description: 'Descarcă aplicația BookEasy pentru Android și gestionează programările de pe telefon.', alternates: { canonical: 'https://www.bookeasy.ro/aplicatii' } }
+export const metadata: Metadata = { title: 'Aplicații BookEasy', description: 'Accesează BookEasy și gestionează programările de pe telefon.', alternates: { canonical: 'https://www.bookeasy.ro/aplicatii' } }
 
 export default function ApplicationsPage() {
   return <div className="themed-static-bg min-h-screen">
@@ -16,12 +16,10 @@ export default function ApplicationsPage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-[var(--brand-teal-dark)]">Pentru utilizatorii BookEasy</p>
           <h2 id="client-app" className="mt-2 text-2xl font-semibold">BookEasy</h2>
           <p className="mt-3 text-sm leading-relaxed text-gray-600">Descoperă afaceri, fă programări și accesează contul tău direct de pe telefon.</p>
-          <p className="mb-6 mt-4 text-xs text-gray-500">Android 8 sau mai nou · versiunea 1.2 · aproximativ 3,3 MB</p>
-          <a href="/downloads/bookeasy-android.apk" download className="btn-primary mt-auto inline-flex min-h-12 items-center justify-center gap-2"><Download size={18} aria-hidden="true" />Descarcă BookEasy pentru Android</a>
+          <p className="mt-4 text-sm leading-relaxed text-gray-600">Distribuția aplicației Android se face exclusiv prin Google Play. Descărcarea este momentan indisponibilă.</p>
           <Link href="/descopera" className="mt-4 py-2 text-center text-sm font-medium text-[var(--brand-teal-dark)]">Continuă în browser</Link>
         </section>
       </div>
-      <div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-[var(--border-soft)] bg-white/80 p-5 text-sm leading-relaxed text-gray-600"><p><strong className="text-[var(--brand-ink)]">Instalare pe Android:</strong> descarcă fișierul APK, deschide-l și permite instalarea din browser dacă telefonul îți cere acest lucru.</p></div>
     </main>
   </div>
 }
