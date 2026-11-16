@@ -17,6 +17,7 @@ import { effectiveBusinessPlan } from '@/lib/business-plans'
 import { isPlatformSmsReady } from '@/lib/sms-routing'
 import ServicesManager from '../servicii/services-manager'
 import BusinessPhotosUploader from '@/components/business-photos-uploader'
+import { PublicPageLinkCard } from './public-page-link-card'
 
 // Luni primul, Duminică ultima — ordinea de afișare a programului de lucru
 // (valorile 'weekday' rămân 0=Duminică...6=Sâmbătă, standardul JS getDay(), doar ordinea vizuală se schimbă)
@@ -83,6 +84,15 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
         <div className="mb-5 break-inside-avoid">
           <BusinessPhotosUploader heroImageUrl={business.heroImageUrl} gallery={business.photos.map(photo => ({ id: photo.id, url: photo.url }))} />
         </div>
+        <PublicPageLinkCard
+          slug={business.slug}
+          businessName={business.name}
+          canEdit={(session as any).role === 'OWNER'}
+          category={business.category}
+          isClinic={isPatientCategory(business.category)}
+          accountActive={business.accountActive}
+          activeServiceCount={business.category === 'EVENT_VENUE' ? business.resources.length : business._count.services}
+        />
         {launch && <div className="break-inside-avoid"><LaunchBusinessCard details={launch} businessId={businessId} /></div>}
 
         <SubscriptionCard
