@@ -7,8 +7,6 @@ import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
 import { hasFunctionalConsent } from '@/lib/cookie-consent'
 import { CalendarDays, Check, Clock3, ShieldCheck, UserRound } from 'lucide-react'
 import { bookingTerminology, isAppointmentCategory, offerLabel, practitionerLabel, type BusinessCategory } from '@/lib/business-categories'
-import type { ClientArrival } from '@/lib/client-arrival'
-import ArrivalOptIn from '@/components/arrival-opt-in'
 
 type Service = {
   id: string
@@ -86,7 +84,6 @@ export default function BookingFlow({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
-  const [arrival, setArrival] = useState<ClientArrival | null>(null)
   const [walletUrl, setWalletUrl] = useState<string | null>(null)
   const daysScrollRef = useRef<HTMLDivElement>(null)
 
@@ -199,9 +196,6 @@ export default function BookingFlow({
         return
       }
 
-      if (data.arrival?.token && data.bookingId && (isAppointment || isVenue)) {
-        setArrival({ bookingId: data.bookingId, token: data.arrival.token, startAt: data.arrival.startAt })
-      }
       setWalletUrl(typeof data.walletUrl === 'string' ? data.walletUrl : null)
       setDone(true)
     } catch {
@@ -218,7 +212,6 @@ export default function BookingFlow({
         <h2 className="text-2xl font-semibold">{rescheduleBookingId ? 'Reprogramare înregistrată!' : category === 'FITNESS' ? 'Ședință înregistrată!' : category === 'CURSURI' ? 'Înscriere înregistrată!' : booking.singular === 'rezervare' ? 'Rezervare înregistrată!' : 'Programare înregistrată!'}</h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">{rescheduleBookingId ? 'Noua oră a fost rezervată, iar intervalul vechi a fost eliberat.' : 'Afacerea vede cererea ta în BookEasy și te poate contacta la numărul indicat.'}</p>
         {walletUrl && <a href={walletUrl} target="_blank" rel="noopener noreferrer" className="btn-primary mx-auto mt-5 inline-flex min-h-11 items-center justify-center">Adaugă rezervarea în Google Wallet</a>}
-        {arrival && <ArrivalOptIn arrival={arrival} />}
         <div className="public-flow-actions mt-6"><a href={`/${businessSlug}/rezerva`} className="btn-secondary">Fă o altă programare</a></div>
       </div>
     )
