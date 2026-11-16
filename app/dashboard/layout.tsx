@@ -12,6 +12,7 @@ import { helpUnreadCount } from '@/lib/help-chat'
 import { effectiveBusinessPlan, hasBusinessPlan, type BusinessPlan } from '@/lib/business-plans'
 import { isWalletEligibleCategory } from '@/lib/wallet-eligibility'
 import { walletConfigured } from '@/lib/google-wallet'
+import PwaManager from '@/components/pwa-manager'
 
 // layout-ul se randează mereu din nou, la fiecare cerere — fără nicio cache, ca
 // setări cum e culoarea businessului să apară imediat, nu doar la un moment ulterior
@@ -27,7 +28,6 @@ const NAV_ITEMS = [
   { href: '/dashboard/statistici', label: 'Statistici', icon: 'statistici' },
   { href: '/dashboard/setari', label: 'Setări', icon: 'setari' },
   { href: '/dashboard/ghid-utilizare', label: 'Ghid de utilizare', icon: 'ghid' },
-  { href: '/dashboard/planuri', label: 'Planuri și upgrade', icon: 'planuri' },
 ]
 
 const REQUIRED_PLAN: Record<string, BusinessPlan> = {
@@ -129,6 +129,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin', badge: undefined, icon: 'superadmin', lockedTo: undefined }] : [])
 
   return (
+    <>
     <ResponsiveShell
       logoHref="/dashboard"
       logoLabel="bookeasy.ro"
@@ -148,5 +149,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       {billingAlert && <div className="mx-4 mt-4 lg:mx-8 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 flex items-center justify-between gap-3 flex-wrap"><span><strong>Abonament scadent.</strong> {billingAlert.amount !== null ? `${billingAlert.amount.toLocaleString('ro-RO')} RON · ` : ''}Plătește în maximum 15 zile de la scadență pentru a evita suspendarea.</span><Link href="/dashboard/setari" className="font-medium underline">Vezi factura</Link></div>}
       {children}
     </ResponsiveShell>
+    <PwaManager />
+    </>
   )
 }

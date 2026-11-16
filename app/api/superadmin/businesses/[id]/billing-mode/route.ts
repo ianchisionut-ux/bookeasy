@@ -23,6 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (req.headers.get('origin') !== req.nextUrl.origin) return NextResponse.json({ error: 'Origine invalidă.' }, { status: 403 })
   const parsed = schema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Alege tipul contului și, pentru campanie, codul promoțional.' }, { status: 400 })
+  if (['CAMPAIGN'].includes(parsed.data.mode)) return NextResponse.json({ error: 'Campaniile noi nu mai sunt disponibile.' }, { status: 409 })
   const { id: businessId } = await params
   const now = new Date()
   const result = await prisma.$transaction(async tx => {

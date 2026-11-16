@@ -1,11 +1,8 @@
-import { ensureReadablePublicSlug } from '@/lib/business-public-slug'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import SettingsForm from './settings-form'
-import { PublicPageLinkCard } from './public-page-link-card'
 import { SubscriptionCard } from './subscription-card'
-import BrandColorCard from './brand-color-card'
 import PasswordForm from './password-form'
 import IntegrationsCard from './integrations-card'
 import { buildContractDocument, contractMissingFields, documentHash } from '@/lib/business-contracts'
@@ -17,7 +14,6 @@ import { getLaunchDetails, refreshLaunchIfDue } from '@/lib/launch-campaign'
 import { LaunchBusinessCard } from '@/components/launch-campaign-card'
 import AccountDeletionCard from '@/components/account-deletion-card'
 import { effectiveBusinessPlan } from '@/lib/business-plans'
-import Link from 'next/link'
 import { isPlatformSmsReady } from '@/lib/sms-routing'
 import ServicesManager from '../servicii/services-manager'
 import BusinessPhotosUploader from '@/components/business-photos-uploader'
@@ -32,7 +28,6 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
   const businessId = (session as any)?.businessId
   if (!businessId) redirect('/login')
   await refreshLaunchIfDue(businessId)
-  await ensureReadablePublicSlug(businessId)
 
   const [business, channels, practitioners, signatures, platformSmsReady] = await Promise.all([
     prisma.business.findUnique({
@@ -76,7 +71,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
       <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold mb-1">Setări</h1>
-          <p className="text-sm text-gray-500">Datele profilului, programul de lucru și vizibilitatea publică.</p>
+          <p className="text-sm text-gray-500">Datele afacerii și programul de lucru.</p>
         </div>
         <div id="settings-save-slot" className="flex items-center gap-3 shrink-0" />
       </div>
@@ -89,7 +84,6 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
           <BusinessPhotosUploader heroImageUrl={business.heroImageUrl} gallery={business.photos.map(photo => ({ id: photo.id, url: photo.url }))} />
         </div>
         {launch && <div className="break-inside-avoid"><LaunchBusinessCard details={launch} businessId={businessId} /></div>}
-        <PublicPageLinkCard businessName={business.name} canEdit={(session as any).role === 'OWNER'} slug={business.slug} category={business.category} isClinic={isPatientCategory(business.category)} publicListed={business.publicListed} accountActive={business.accountActive} onboardingDone={business.onboardingDone} onboardingStep={business.onboardingStep} activeServiceCount={business._count.services} />
 
         <SubscriptionCard
           businessId={business.id}
@@ -137,18 +131,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
           workingHours={workingHours}
         />
 
-        {currentPlan === 'FREE' ? <div className="card mb-5 break-inside-avoid border border-[#bde3da] bg-[#f4fbf9] p-5">
-          <span className="rounded-full bg-[#d9f1e9] px-2.5 py-1 text-xs font-bold text-[#107973]">STANDARD</span>
-          <h2 className="mt-3 font-semibold">Culoarea și identitatea paginii</h2>
-          <p className="mt-2 text-sm text-gray-600">Personalizează aspectul paginii publice în planul Standard.</p>
-          <Link href="/dashboard/planuri" className="mt-3 inline-block text-sm font-semibold text-[#147f83] underline">Vezi opțiunile de upgrade</Link>
-        </div> : <BrandColorCard initialColor={business.brandColor} category={business.category} />}
-        {currentPlan === 'FREE' ? <div className="card mb-5 break-inside-avoid border border-[#bde3da] bg-[#f4fbf9] p-5">
-          <span className="rounded-full bg-[#d9f1e9] px-2.5 py-1 text-xs font-bold text-[#107973]">STANDARD</span>
-          <h2 className="mt-3 font-semibold">Integrări și canale</h2>
-          <p className="mt-2 text-sm text-gray-600">Conectează Google Calendar, mesageria și celelalte integrări disponibile pentru afacerea ta.</p>
-          <Link href="/dashboard/planuri" className="mt-3 inline-block text-sm font-semibold text-[#147f83] underline">Vezi opțiunile de upgrade</Link>
-        </div> : <IntegrationsCard
+        {currentPlan !== 'FREE' && <IntegrationsCard
           platformSmsReady={platformSmsReady}
           channels={channels}
           practitioners={practitioners}
