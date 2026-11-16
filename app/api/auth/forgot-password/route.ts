@@ -4,7 +4,7 @@ import { createPasswordToken, sendPasswordResetEmail, withEmailTimeout } from '@
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { z } from 'zod'
 
-const schema = z.object({ email: z.string().trim().toLowerCase().email().max(254), accountType: z.enum(['customer', 'business']).default('business') })
+const schema = z.object({ email: z.string().trim().toLowerCase().email().max(254), accountType: z.literal('business').default('business') })
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req)
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true }) // răspuns normal, nu confirmăm limita — nu vrem să dezvăluim nimic
   }
 
-  const user = await prisma.user.findUnique({ where: { email_accountKind: { email: parsed.data.email, accountKind: parsed.data.accountType === 'customer' ? 'CUSTOMER' : 'BUSINESS' } } })
+  const user = await prisma.user.findUnique({ where: { email_accountKind: { email: parsed.data.email, accountKind: 'BUSINESS' } } })
 
   // răspundem la fel indiferent dacă emailul există sau nu — nu confirmăm/infirmăm
   // existența unui cont, ca să nu putem fi folosiți pentru a "ghici" clienți înregistrați

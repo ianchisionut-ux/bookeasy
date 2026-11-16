@@ -2,9 +2,11 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { redirect } from 'next/navigation'
 
 export default async function ContSuspendatPage() {
   const session = await auth()
+  if (!session) redirect('/login')
   const businessId = (session as any)?.businessId as string | undefined
   const billing = businessId ? await prisma.business.findUnique({ where: { id: businessId }, select: { billingSuspendedAt: true, billingAmount: true, billingInvoiceName: true } }) : null
   const suspendedForBilling = Boolean(billing?.billingSuspendedAt)
@@ -17,8 +19,8 @@ export default async function ContSuspendatPage() {
           {suspendedForBilling ? 'Contul a fost suspendat deoarece factura a rămas neachitată mai mult de 15 zile de la scadență. După înregistrarea plății, contul poate fi reactivat.' : 'Contul tău a fost dezactivat de echipa bookeasy.ro. Te rugăm să ne contactezi pentru detalii sau pentru reactivare.'}
         </p>
         {suspendedForBilling && billing?.billingInvoiceName && businessId && <a href={`/api/billing/invoice/${businessId}`} className="btn-primary">Descarcă factura</a>}
-        <Link href="/" className="btn-secondary">
-          Înapoi la pagina principală
+        <Link href="/login" className="btn-secondary">
+          Înapoi la autentificare
         </Link>
         {(session as any)?.role === 'OWNER' && <Link href="/stergere-cont#stergere-cont-afacere" className="text-sm text-red-700 underline">Șterge definitiv contul afacerii</Link>}
       </div>

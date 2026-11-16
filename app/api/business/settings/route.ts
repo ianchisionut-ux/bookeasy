@@ -65,6 +65,7 @@ export async function PATCH(req: NextRequest) {
   const manualLocationProvided = Object.prototype.hasOwnProperty.call(parsed.data, 'manualLocation')
   const { workingHours, manualLocation, ...businessData } = parsed.data
   businessData.city = city
+  businessData.publicListed = false
 
   // re-geocodificăm doar dacă adresa sau orașul chiar s-au schimbat față de ce era
   // salvat — evită apeluri API inutile la fiecare simplă salvare de setări

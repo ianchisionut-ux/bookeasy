@@ -178,11 +178,11 @@ export default function SettingsForm({
   return (
     <>
       <Card className="mb-5 break-inside-avoid">
-        <h2 className="font-medium mb-1">Profil public</h2>
-        <p className="mb-4 text-sm text-gray-500">Numele brandului apare în marketplace, pe pagina publică și în rezervări. Datele de facturare se completează separat mai jos.</p>
+        <h2 className="font-medium mb-1">Profilul afacerii</h2>
+        <p className="mb-4 text-sm text-gray-500">Datele afacerii și informațiile de contact.</p>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="text-sm text-gray-500 block mb-1.5">Nume afișat public (brand)</label>
+            <label className="text-sm text-gray-500 block mb-1.5">Numele afacerii</label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -368,7 +368,7 @@ export default function SettingsForm({
       </Card>
 
       <div className="relative">
-      {advancedLocked && <div className="mb-3 rounded-xl border border-[#bde3da] bg-[#eef8f5] p-4 text-sm text-[#247975]"><strong>STANDARD</strong> · Reconfirmările și automatizările se activează odată cu planul Standard. <Link href="/dashboard/planuri" className="underline">Vezi planurile</Link></div>}
+      {advancedLocked && <div className="mb-3 rounded-xl border border-[#bde3da] bg-[#eef8f5] p-4 text-sm text-[#247975]">Reconfirmările și automatizările nu sunt active pentru acest cont. Contactează Super Admin dacă ai nevoie de acces.</div>}
       <fieldset disabled={advancedLocked} className={advancedLocked ? 'opacity-55' : ''}>
       <Card className="mb-5 break-inside-avoid">
         <h2 className="font-medium mb-1">Reconfirmarea {bookingWords.plural}</h2>
@@ -445,31 +445,6 @@ export default function SettingsForm({
       </Card>
       </fieldset>
       </div>
-
-      <Card id="settings-visibility" className="mb-5 break-inside-avoid scroll-mt-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-medium">Vizibil pe harta publică</h2>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Afacerea apare pe /harta și pe pagina publică bookeasy.ro
-            </p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-label="Vizibil pe harta publică"
-            aria-checked={form.publicListed}
-            onClick={() => setForm({ ...form, publicListed: !form.publicListed })}
-            className="pill w-11 h-6 flex items-center px-0.5 transition"
-            style={{ background: form.publicListed ? 'var(--accent)' : '#e5e5ea' }}
-          >
-            <span
-              className="pill w-5 h-5 bg-white transition-transform"
-              style={{ transform: form.publicListed ? 'translateX(20px)' : 'translateX(0)' }}
-            />
-          </button>
-        </div>
-      </Card>
 
       {saveSlot &&
         createPortal(

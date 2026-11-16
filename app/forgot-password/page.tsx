@@ -1,7 +1,7 @@
 'use client'
 
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Input } from '@/components/ui/input'
@@ -13,8 +13,6 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [accountType, setAccountType] = useState<'business' | 'customer'>('business')
-  useEffect(() => { if (new URLSearchParams(window.location.search).get('type') === 'customer') setAccountType('customer') }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -24,7 +22,7 @@ export default function ForgotPasswordPage() {
       const response = await fetchWithTimeout('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, accountType }),
+        body: JSON.stringify({ email, accountType: 'business' }),
       })
       if (!response.ok) throw new Error('Request failed')
       setSent(true)
@@ -44,14 +42,11 @@ export default function ForgotPasswordPage() {
 
         <Card className="w-full">
           <h1 className="text-lg font-semibold mb-1">Am uitat parola</h1>
-          <div className="my-4 flex rounded-full bg-gray-100 p-1" role="group" aria-label="Tipul contului">
-            {(['customer', 'business'] as const).map(type => <button key={type} type="button" aria-pressed={accountType === type} onClick={() => { setAccountType(type); setSent(false) }} className={`min-h-10 flex-1 rounded-full px-3 text-sm font-semibold ${accountType === type ? 'bg-white text-[var(--accent-hover)] shadow-sm' : 'text-gray-600'}`}>{type === 'customer' ? 'Client' : 'Business'}</button>)}
-          </div>
 
           {sent ? (
             <div className="mt-3 space-y-3 text-sm text-gray-600">
               <p>Dacă adresa există și emailul poate fi trimis, vei primi un link de resetare. Verifică și folderul Spam.</p>
-              <p>Dacă nu ajunge, încearcă din nou mai târziu sau <Link href="/contact" className="underline">contactează-ne</Link>.</p>
+              <p>Dacă nu ajunge, contactează Super Admin.</p>
               <button type="button" onClick={() => setSent(false)} className="text-[var(--accent-hover)] underline">Cere alt link</button>
             </div>
           ) : (
@@ -68,7 +63,7 @@ export default function ForgotPasswordPage() {
           )}
         </Card>
 
-        <Link href={accountType === 'customer' ? '/cont' : '/login'} className="text-sm text-gray-500">
+        <Link href="/login" className="text-sm text-gray-500">
           ← Înapoi la login
         </Link>
       </div>

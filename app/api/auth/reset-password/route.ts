@@ -19,6 +19,8 @@ export async function POST(req: NextRequest) {
   if (!record || record.usedAt || record.expiresAt < new Date()) {
     return NextResponse.json({ error: 'Linkul a expirat sau a fost deja folosit. Cere unul nou.' }, { status: 400 })
   }
+  const user = await prisma.user.findUnique({ where: { id: record.userId }, select: { accountKind: true } })
+  if (user?.accountKind !== 'BUSINESS') return NextResponse.json({ error: 'Link invalid.' }, { status: 400 })
 
   const hashed = await bcrypt.hash(parsed.data.newPassword, 10)
 

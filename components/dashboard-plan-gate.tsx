@@ -1,8 +1,7 @@
-import Link from 'next/link'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { effectiveBusinessPlan, hasBusinessPlan, type BusinessPlan } from '@/lib/business-plans'
-import { LockKeyhole, ArrowRight } from 'lucide-react'
+import { LockKeyhole } from 'lucide-react'
 
 export async function DashboardPlanGate({
   required,
@@ -33,8 +32,7 @@ export async function DashboardPlanGate({
         <span className="mt-5 inline-block rounded-full bg-[#e8f7f4] px-3 py-1 text-xs font-extrabold tracking-widest text-[#147f83]">{required}</span>
         <h1 className="mt-4 text-2xl font-bold">{title}</h1>
         <p className="mt-3 text-sm leading-7 text-gray-600">{description}</p>
-        <p className="mt-5 text-xs text-gray-500">Planul tău actual: {current}. Poți vedea această funcție, dar activarea ei necesită schimbarea planului.</p>
-        <Link href="/dashboard/planuri" className="btn-primary mt-7 inline-flex items-center gap-2">Vezi planurile <ArrowRight size={17} /></Link>
+        <p className="mt-5 text-xs text-gray-500">Funcția nu este activă pentru acest cont. Contactează Super Admin dacă ai nevoie de acces.</p>
       </div>
     </div>
   )
