@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   }
 
   const business = await prisma.business.findUnique({ where: { id: businessId } })
-  if (!business || !business.publicListed || !business.accountActive) {
+  if (!business || !business.accountActive) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 

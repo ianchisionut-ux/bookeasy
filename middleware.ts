@@ -23,6 +23,7 @@ export function middleware(request: NextRequest) {
     // NextAuth routes are dynamic, but registration and native Google login are not.
     if (/^\/api\/auth\/(?:callback|session|signin|signout|csrf|providers|error)(?:\/|$)/.test(path)) return NextResponse.next()
     if (recoveryApis.has(path) || under(path, '/api/invitations')) return NextResponse.next()
+    if (path === '/api/public/availability' || path === '/api/public/practitioners' || path === '/api/public/bookings' || /^\/api\/public\/bookings\/[^/]+\/arrival$/.test(path)) return NextResponse.next()
     if (under(path, '/api/webhooks') || under(path, '/api/cron') || under(path, '/api/sms-device')) return NextResponse.next()
     if (privateApis.some(prefix => under(path, prefix))) return NextResponse.next()
     return new NextResponse(null, { status: 404 })
@@ -30,6 +31,7 @@ export function middleware(request: NextRequest) {
   if (path === '/robots.txt' || path === '/sitemap.xml' || /\.(?:png|jpg|jpeg|webp|svg|ico|woff2?|ttf|mp4|webmanifest|js|css|glb|pdf|vtt|txt)$/.test(path)) return NextResponse.next()
   if (retiredPages.some(prefix => under(path, prefix))) return NextResponse.redirect(new URL(path.startsWith('/superadmin') ? '/superadmin/afaceri' : '/dashboard/setari', request.url))
   if (openPages.has(path) || under(path, '/invitatie-afacere')) return NextResponse.next()
+  if (/^\/[^/]+\/rezerva$/.test(path)) return NextResponse.next()
   if (privatePages.some(prefix => under(path, prefix))) return NextResponse.next()
   return NextResponse.redirect(new URL('/login', request.url))
 }
