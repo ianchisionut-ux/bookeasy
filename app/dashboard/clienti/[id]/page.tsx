@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import CustomerEditForm from './customer-edit-form'
 import PatientDetailTabs from './patient-detail-tabs'
+import BookingSeriesCard from './booking-series-card'
 import { Card } from '@/components/ui/card'
 import { Pill } from '@/components/ui/input'
 import { BackLink } from '@/components/ui/back-link'
@@ -30,10 +31,20 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
   if (!customer) notFound()
 
-  const [medicalRecord, documents, letters] = await Promise.all([
+  const [medicalRecord, documents, letters, bookingSeries] = await Promise.all([
     prisma.patientMedicalRecord.findUnique({ where: { customerId: customer.id } }),
     prisma.patientDocument.findMany({ where: { customerId: customer.id, businessId }, orderBy: { uploadedAt: 'desc' } }),
     prisma.medicalLetter.findMany({ where: { customerId: customer.id, businessId }, orderBy: { createdAt: 'desc' } }),
+    prisma.bookingSeries.findMany({
+      where: { businessId, customerId: customer.id, stoppedAt: null },
+      include: { bookings: {
+        where: { startAt: { gt: new Date() }, status: { in: ['CONFIRMED', 'PENDING'] } },
+        include: { service: true, practitioner: true },
+        orderBy: { startAt: 'asc' },
+      } },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    }),
   ])
   const isClinic = isPatientCategory(business?.category)
   const patientName = customer.name ?? customer.phone ?? 'Fără nume'
@@ -78,6 +89,20 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           <CustomerEditForm customerId={customer.id} isClinic={isClinic} initial={simpleInitial} />
         </Card>
       )}
+
+      <BookingSeriesCard
+        customerId={customer.id}
+        isClinic={isClinic}
+        series={bookingSeries.filter((item) => item.bookings.length > 0).map((item) => ({
+          id: item.id,
+          frequency: item.frequency,
+          untilDate: item.untilDate.toISOString().slice(0, 10),
+          nextAt: item.bookings[0].startAt.toISOString(),
+          remaining: item.bookings.length,
+          serviceName: item.bookings[0].service.name,
+          practitionerName: item.bookings[0].practitioner?.name ?? null,
+        }))}
+      />
 
       <div className="screen-only">
         <h2 className="text-lg font-medium mb-3 mt-8">Istoric {bookingTerminology(business?.category).plural}</h2>

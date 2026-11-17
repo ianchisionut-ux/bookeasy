@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { canonicalCustomerPhone, duplicateCustomerGroups } from '@/lib/customer-phone'
 
-const relations = ['booking', 'waitlistEntry', 'patientMedicalRecord', 'patientDocument', 'medicalLetter', 'fitnessMember'] as const
+const relations = ['booking', 'bookingSeries', 'waitlistEntry', 'patientMedicalRecord', 'patientDocument', 'medicalLetter', 'fitnessMember'] as const
 const include = { medicalRecord: { select: { id: true } }, fitnessMember: { select: { id: true } } } as const
 const textFields = ['name', 'email', 'instagramUserId', 'facebookUserId'] as const
 const noteFields = ['notes', 'allergies', 'medicalNotes'] as const

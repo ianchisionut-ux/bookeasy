@@ -82,6 +82,7 @@ export default async function ProgramariPage({
         channel: b.channel,
         confirmationRequestSent: b.confirmationRequestSent,
         customerConfirmed: b.customerConfirmed,
+        seriesId: b.seriesId,
       }))}
       customers={customers.map((c) => ({ id: c.id, name: c.name ?? c.phone ?? 'Fără nume' }))}
       services={services.map((s) => ({ id: s.id, name: s.name, durationMin: s.durationMin }))}

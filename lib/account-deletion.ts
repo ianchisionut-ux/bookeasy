@@ -125,6 +125,7 @@ async function deleteBusiness(tx: Prisma.TransactionClient, target: DeletionTarg
   await tx.businessPhoto.deleteMany({ where: { businessId } })
   await tx.conversation.deleteMany({ where: { businessId } })
   await tx.booking.deleteMany({ where: { businessId } })
+  await tx.bookingSeries.deleteMany({ where: { businessId } })
   await tx.waitlistEntry.deleteMany({ where: { businessId } })
   await tx.googleCalendarConnection.deleteMany({ where: { businessId } })
   await tx.servicePractitioner.deleteMany({ where: { practitioner: { businessId } } })

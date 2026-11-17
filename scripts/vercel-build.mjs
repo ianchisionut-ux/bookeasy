@@ -23,6 +23,7 @@ if (process.env.VERCEL_ENV === 'production' && process.env.BOOKEASY_SKIP_DB_RELE
     '../prisma/migrations/20261016170000_customer_merge_archive/migration.sql',
     '../prisma/migrations/20261019150000_customer_archive/migration.sql',
     '../prisma/migrations/20261105110000_signup_funnel/migration.sql',
+    '../prisma/migrations/20261117180000_recurring_bookings/migration.sql',
   ]
   const migrations = await Promise.all(migrationFiles.map((file) => readFile(new URL(file, import.meta.url), 'utf8')))
   const client = new Client({ connectionString: process.env.DATABASE_URL })

@@ -149,6 +149,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         await tx.businessPhoto.deleteMany({ where: { businessId } })
         await tx.conversation.deleteMany({ where: { businessId } })
         await tx.booking.deleteMany({ where: { businessId } })
+        await tx.bookingSeries.deleteMany({ where: { businessId } })
         // Lista de așteptare referă simultan business-ul, clientul și serviciul.
         // Trebuie eliminată înaintea medicilor, clienților și serviciilor.
         await tx.waitlistEntry.deleteMany({ where: { businessId } })

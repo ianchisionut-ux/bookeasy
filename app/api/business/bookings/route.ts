@@ -1,5 +1,5 @@
 import { isBookingConflict } from '@/lib/booking-conflict'
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/business-auth'
 import { hasActiveBookingConflict, isIntervalBlocked, isWithinWorkingHours } from '@/lib/availability'
@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { syncBookingToGoogle } from '@/lib/google-calendar'
 import { canonicalCustomerPhone } from '@/lib/customer-phone'
 import { findCustomerByPhone } from '@/lib/customer-lookup'
+import { buildRecurringSlots, type RecurringSlot } from '@/lib/booking-recurrence'
 
 const schema = z
   .object({
@@ -20,6 +21,10 @@ const schema = z
     practitionerId: z.string().nullable().optional(),
     startAt: z.string(),
     endAt: z.string(),
+    recurrence: z.object({
+      frequency: z.enum(['WEEKLY', 'BIWEEKLY', 'MONTHLY']),
+      untilDate: z.string(),
+    }).optional(),
   })
   .refine((data) => data.customerId || (data.customerName && data.customerPhone), {
     message: 'Alege un client existent sau completează numele și telefonul pentru unul nou.',
@@ -29,6 +34,8 @@ const rangeSchema = z.object({
   from: z.string().datetime(),
   to: z.string().datetime(),
 })
+
+export const maxDuration = 300
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -60,6 +67,7 @@ export async function GET(req: NextRequest) {
       serviceId: true,
       resourceId: true,
       practitionerId: true,
+      seriesId: true,
       confirmationRequestSent: true,
       customerConfirmed: true,
       arrivedAt: true,
@@ -86,6 +94,7 @@ export async function GET(req: NextRequest) {
       serviceName: booking.service.name,
       resourceId: booking.resourceId,
       practitionerId: booking.practitionerId,
+      seriesId: booking.seriesId,
       practitionerName: booking.practitioner?.name ?? null,
       confirmationRequestSent: booking.confirmationRequestSent,
       customerConfirmed: booking.customerConfirmed,
@@ -147,6 +156,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Intervalul se suprapune cu o altă programare.' }, { status: 409 })
   }
 
+  let recurringSlots: RecurringSlot[] | null = null
+  if (parsed.data.recurrence) {
+    try {
+      recurringSlots = buildRecurringSlots(startDate, service.durationMin ?? 30, parsed.data.recurrence.frequency, parsed.data.recurrence.untilDate)
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : 'Seria nu este validă.' }, { status: 400 })
+    }
+    const unavailable: string[] = []
+    // Check every occurrence before creating a customer or any booking.
+    for (let index = 0; index < recurringSlots.length; index += 6) {
+      const results = await Promise.all(recurringSlots.slice(index, index + 6).map(async (slot) => {
+        const [blocked, withinHours, conflict] = await Promise.all([
+          isIntervalBlocked(businessId, slot.startAt, slot.endAt),
+          isWithinWorkingHours(businessId, parsed.data.practitionerId, slot.startAt, slot.endAt),
+          hasActiveBookingConflict(businessId, parsed.data.practitionerId, slot.startAt, slot.endAt),
+        ])
+        return blocked || !withinHours || conflict ? slot.localDate : null
+      }))
+      unavailable.push(...results.filter((date): date is string => date !== null))
+    }
+    if (unavailable.length) {
+      return NextResponse.json({
+        error: `Seria nu a fost creată. ${unavailable.length} ${unavailable.length === 1 ? 'dată este indisponibilă' : 'date sunt indisponibile'}: ${unavailable.slice(0, 5).join(', ')}${unavailable.length > 5 ? '…' : ''}. Alege altă oră sau altă perioadă.`,
+        unavailableDates: unavailable,
+      }, { status: 409 })
+    }
+  }
+
   // client existent (ales din listă) sau creat/regăsit pe loc, după numărul de telefon —
   // ca administratorul să nu mai trebuiască să treacă prin /Clienti separat
   let customerId = parsed.data.customerId
@@ -178,6 +215,69 @@ export async function POST(req: NextRequest) {
   }
 
   const sequenceNumber = await getNextSequenceNumber(businessId)
+
+  if (recurringSlots && parsed.data.recurrence) {
+    const slots = recurringSlots
+    const recurrence = parsed.data.recurrence
+    try {
+      const series = await prisma.$transaction(async (tx) => {
+        const existing = await tx.booking.findMany({
+          where: {
+            businessId,
+            ...(parsed.data.practitionerId ? { OR: [{ practitionerId: parsed.data.practitionerId }, { practitionerId: null }] } : {}),
+            status: { in: ['CONFIRMED', 'PENDING'] },
+            startAt: { lt: slots[slots.length - 1].endAt },
+            endAt: { gt: slots[0].startAt },
+          },
+          select: { startAt: true, endAt: true },
+        })
+        if (slots.some((slot) => existing.some((booking) => slot.startAt < booking.endAt && booking.startAt < slot.endAt))) {
+          throw new Error('RECURRENCE_CONFLICT')
+        }
+        const created = await tx.bookingSeries.create({
+          data: {
+            businessId,
+            customerId: customerId!,
+            serviceId: parsed.data.serviceId,
+            practitionerId: parsed.data.practitionerId ?? null,
+            frequency: recurrence.frequency,
+            firstStartAt: slots[0].startAt,
+            untilDate: new Date(`${recurrence.untilDate}T00:00:00Z`),
+          },
+        })
+        await tx.booking.createMany({ data: slots.map((slot, index) => ({
+          businessId,
+          customerId: customerId!,
+          serviceId: parsed.data.serviceId,
+          staffId: parsed.data.staffId ?? null,
+          resourceId: parsed.data.resourceId ?? null,
+          practitionerId: parsed.data.practitionerId ?? null,
+          startAt: slot.startAt,
+          endAt: slot.endAt,
+          status: 'CONFIRMED',
+          channel: 'MANUAL',
+          sequenceNumber: sequenceNumber + index,
+          seriesId: created.id,
+        })) })
+        return created
+      }, { timeout: 30_000 })
+
+      after(async () => {
+        const calendarConnected = await prisma.googleCalendarConnection.count({ where: { businessId, syncEnabled: true } })
+        if (!calendarConnected) return
+        const createdBookings = await prisma.booking.findMany({ where: { seriesId: series.id }, select: { id: true } })
+        for (let index = 0; index < createdBookings.length; index += 5) {
+          await Promise.all(createdBookings.slice(index, index + 5).map((booking) => syncBookingToGoogle(booking.id)))
+        }
+      })
+      return NextResponse.json({ seriesId: series.id, count: slots.length })
+    } catch (error) {
+      if (error instanceof Error && error.message === 'RECURRENCE_CONFLICT') {
+        return NextResponse.json({ error: 'Unul dintre intervale tocmai a fost ocupat. Seria nu a fost creată.' }, { status: 409 })
+      }
+      throw error
+    }
+  }
 
   const booking = await prisma.booking.create({
     data: {

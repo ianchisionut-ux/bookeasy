@@ -32,6 +32,7 @@ type Booking = {
   channel: string
   confirmationRequestSent: boolean
   customerConfirmed: boolean | null
+  seriesId: string | null
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -166,7 +167,7 @@ export default function ProgramariManager({
   }
 
   async function cancelBooking(id: string) {
-    if (!confirm(`Anulezi această ${bookingSingular}?`)) return
+    if (!confirm(`Anulezi această ${bookingSingular}${bookings.find((booking) => booking.id === id)?.seriesId ? ' din serie? Celelalte date rămân programate' : ''}?`)) return
     try {
       await fetchWithTimeout(`/api/business/bookings/${id}`, { method: 'DELETE' })
       router.refresh()
@@ -243,7 +244,7 @@ export default function ProgramariManager({
             {b.customerName}
           </a>
         </td>
-        <td>{b.serviceName}</td>
+        <td>{b.serviceName}{b.seriesId && <span title="Programare dintr-o serie recurentă" className="ml-2 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-xs text-[var(--accent)]">↻</span>}</td>
         <td className="text-gray-500">{new Date(b.startAt).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short', hour12: false, timeZone: 'Europe/Bucharest' })}</td>
         {isMultiPractitioner ? (
           <>
@@ -330,7 +331,7 @@ export default function ProgramariManager({
           </div>
           {b.sequenceNumber && <span className="shrink-0 text-xs text-gray-400">#{String(b.sequenceNumber).padStart(3, '0')}</span>}
         </div>
-        <p className="mt-1 text-sm font-medium text-[var(--foreground)]">{b.serviceName}</p>
+        <p className="mt-1 text-sm font-medium text-[var(--foreground)]">{b.serviceName}{b.seriesId && <span className="ml-2 text-xs text-[var(--accent)]">↻ Recurentă</span>}</p>
         {(b.practitionerName || b.resourceName) && <p className="mt-1 text-sm text-gray-500">{b.practitionerName ?? b.resourceName}</p>}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <select
@@ -396,6 +397,7 @@ export default function ProgramariManager({
 
       {adding && (
         <NewBookingForm
+          initialCustomerId={customers.some((customer) => customer.id === searchParams.get('customerId')) ? searchParams.get('customerId')! : ''}
           category={category}
           isMultiPractitioner={isMultiPractitioner}
           customers={customers}
@@ -534,6 +536,7 @@ function weekRangeLabel(bookings: Booking[]) {
 }
 
 function NewBookingForm({
+  initialCustomerId,
   category,
   isMultiPractitioner,
   customers,
@@ -544,6 +547,7 @@ function NewBookingForm({
   slotIntervalMinutes,
   onDone,
 }: {
+  initialCustomerId: string
   category: BusinessCategory
   isMultiPractitioner: boolean
   customers: { id: string; name: string }[]
@@ -556,7 +560,7 @@ function NewBookingForm({
 }) {
   const isClinic = isPatientCategory(category)
   const { singular: bookingSingular, plural: bookingPlural } = bookingTerminology(category)
-  const [customerId, setCustomerId] = useState('')
+  const [customerId, setCustomerId] = useState(initialCustomerId)
   const [newCustomerMode, setNewCustomerMode] = useState(false)
   const [newCustomerName, setNewCustomerName] = useState('')
   const [newCustomerPhone, setNewCustomerPhone] = useState('')
@@ -571,6 +575,8 @@ function NewBookingForm({
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [frequency, setFrequency] = useState<'NONE' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'>('NONE')
+  const [untilDate, setUntilDate] = useState('')
 
   useEffect(() => {
     if (!serviceId || !slotDate || (isMultiPractitioner && !practitionerId)) {
@@ -606,6 +612,10 @@ function NewBookingForm({
       setError('Alege persoana.')
       return
     }
+    if (frequency !== 'NONE' && !untilDate) {
+      setError('Alege data până la care se repetă programarea.')
+      return
+    }
 
     const service = services.find((s) => s.id === serviceId)
     const start = new Date(selectedSlot)
@@ -639,8 +649,9 @@ function NewBookingForm({
           practitionerId: isMultiPractitioner ? practitionerId : undefined,
           startAt: start.toISOString(),
           endAt: end.toISOString(),
+          recurrence: frequency === 'NONE' ? undefined : { frequency, untilDate },
         }),
-      })
+      }, frequency === 'NONE' ? 20_000 : 90_000)
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -648,6 +659,10 @@ function NewBookingForm({
         return
       }
 
+      if (frequency !== 'NONE') {
+        const data = await res.json()
+        alert(`${data.count} programări recurente au fost create și confirmate.`)
+      }
       onDone()
     } catch {
       setError('Conexiune eșuată. Încearcă din nou.')
@@ -791,7 +806,22 @@ function NewBookingForm({
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
+      <div className="mb-4 rounded-xl border border-[var(--border-soft)] p-3">
+        <label htmlFor="booking-frequency" className="mb-2 block text-sm font-medium">Repetare</label>
+        <select id="booking-frequency" value={frequency} onChange={(event) => { setFrequency(event.target.value as typeof frequency); setUntilDate('') }} className="input-field w-full max-w-xs">
+          <option value="NONE">O singură dată</option>
+          <option value="WEEKLY">Săptămânal, în aceeași zi și la aceeași oră</option>
+          <option value="BIWEEKLY">La 2 săptămâni</option>
+          <option value="MONTHLY">Lunar, în aceeași zi a lunii</option>
+        </select>
+        {frequency !== 'NONE' && <div className="mt-3">
+          <label htmlFor="booking-until-date" className="mb-1 block text-sm text-gray-600">Repetă până la data (inclusiv)</label>
+          <input id="booking-until-date" type="date" min={slotDate} value={untilDate} onChange={(event) => setUntilDate(event.target.value)} className="input-field w-full max-w-xs" />
+          <p className="mt-2 text-xs text-gray-500">Se creează cel mult 53 de programări, pe maximum un an. Dacă o dată este ocupată sau în afara programului, nu se creează nimic. În lunile fără ziua aleasă, se folosește ultima zi a lunii.</p>
+        </div>}
+      </div>
+
+      {error && <p role="alert" className="text-sm text-red-600 mb-2">{error}</p>}
 
       <Button variant="secondary" onClick={submit} disabled={saving}>
         {saving ? 'Se salvează...' : `Salvează ${bookingSingular}a`}

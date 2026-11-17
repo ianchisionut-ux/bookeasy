@@ -574,6 +574,8 @@ model Booking {
   reviewerGoogleSub String? // contul Google conectat când clientul a făcut rezervarea
   clientProfileId String?
   clientProfile ClientProfile? @relation(fields: [clientProfileId], references: [id])
+  seriesId String?
+  series BookingSeries? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
   review          Review?
 
   // interogările reale (calendar, disponibilitate, reminder-e, statistici) filtrează
@@ -587,6 +589,29 @@ model Booking {
   @@index([clientProfileId, startAt])
   @@index([businessId, arrivedAt])
   @@index([practitionerId])
+  @@index([seriesId, startAt])
+}
+
+model BookingSeries {
+  id String @id @default(cuid())
+  businessId String
+  customerId String
+  serviceId String
+  practitionerId String?
+  frequency BookingSeriesFrequency
+  firstStartAt DateTime
+  untilDate DateTime @db.Date
+  createdAt DateTime @default(now())
+  stoppedAt DateTime?
+  bookings Booking[]
+
+  @@index([businessId, customerId, createdAt])
+}
+
+enum BookingSeriesFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
 }
 
 enum BookingStatus {
