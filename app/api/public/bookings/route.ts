@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   if (paymentMethod === 'ONLINE') return NextResponse.json({ error: 'Plata online este dezactivată. Fă rezervarea fără plată online.' }, { status: 410 })
 
   const business = await prisma.business.findUnique({ where: { id: businessId }, include: { launchEnrollment: { select: { cancelledAt: true } } } })
-  if (!business || !business.accountActive) {
+  if (!business || !business.publicListed || !business.accountActive) {
     return NextResponse.json({ error: 'Afacerea nu este disponibilă pentru rezervări.' }, { status: 404 })
   }
 

@@ -8,11 +8,12 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { BusinessCategoryOptions } from '@/components/business-category-options'
 import { type BusinessCategory } from '@/lib/business-categories'
+import PromoCodeField from '@/components/promo-code-field'
 
 export default function CreateBusinessButton() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ slug: '', name: '', email: '', category: 'SALON' as BusinessCategory })
+  const [form, setForm] = useState({ slug: '', name: '', email: '', category: 'SALON' as BusinessCategory, promoCode: '' })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -31,7 +32,7 @@ export default function CreateBusinessButton() {
         return
       }
       setOpen(false)
-      setForm({ slug: '', name: '', email: '', category: 'SALON' })
+      setForm({ slug: '', name: '', email: '', category: 'SALON', promoCode: '' })
       router.push(`/superadmin/afaceri/${data.business.id}`)
     } catch (err) {
       setError('Conexiune eșuată. Verifică internetul și încearcă din nou.')
@@ -65,6 +66,7 @@ export default function CreateBusinessButton() {
             <BusinessCategoryOptions />
           </select>
           <Input placeholder="Email owner" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <PromoCodeField value={form.promoCode} onChange={promoCode => setForm({ ...form, promoCode })} />
         </div>
 
         {error && <p className="text-sm text-red-600 mt-2">{error}</p>}

@@ -76,6 +76,7 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
   const [teamSaved, setTeamSaved] = useState(false)
   const [dentalClinic, setDentalClinic] = useState(business.dentalClinic)
   const [savingDentalClinic, setSavingDentalClinic] = useState(false)
+  const [demoLinkCopied, setDemoLinkCopied] = useState(false)
   const [openingDashboard, setOpeningDashboard] = useState(false)
   const teamModeChanged = teamMode !== (business.teamSize > 1)
 
@@ -172,6 +173,17 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
     }
   }
 
+  async function copyDemoLink() {
+    const demoUrl = `${window.location.origin}/demo/${business.slug}`
+    try {
+      await navigator.clipboard.writeText(demoUrl)
+      setDemoLinkCopied(true)
+      window.setTimeout(() => setDemoLinkCopied(false), 2500)
+    } catch {
+      window.prompt('Copiază linkul demonstrației:', demoUrl)
+    }
+  }
+
   async function openBusinessDashboard() {
     setOpeningDashboard(true)
     try {
@@ -197,7 +209,7 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
           <div>
             <div className="flex items-center gap-2 mb-1">
               {editing ? (
-                <Input aria-label="Numele afacerii" value={name} onChange={(e) => setName(e.target.value)} className="w-56" />
+                <Input aria-label="Nume afișat public (brand)" value={name} onChange={(e) => setName(e.target.value)} className="w-56" />
               ) : (
                 <h1 className="text-xl font-semibold">{business.name}</h1>
               )}
@@ -210,6 +222,28 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
             <p className="text-sm text-gray-500">
               {business.ownerEmail ?? 'fără cont owner'} · {business.planName ?? 'fără abonament'}
             </p>
+            <p className="mt-1 text-xs text-gray-500">Nume afișat public (brand). Datele juridice și de facturare se editează separat mai jos.</p>
+            <a
+              href={`/${business.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-[var(--accent)] hover:underline"
+            >
+              bookeasy.ro/{business.slug} ↗
+            </a>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <a
+                href={`/demo/${business.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-medium text-[var(--accent)] hover:underline"
+              >
+                Deschide modul demonstrație ↗
+              </a>
+              <button type="button" onClick={copyDemoLink} className="text-xs font-medium text-[var(--accent)] hover:underline">
+                {demoLinkCopied ? 'Link copiat ✓' : 'Copiază linkul demo'}
+              </button>
+            </div>
           </div>
           <div className="text-right text-sm">
             <p className="font-semibold">{business.bookingsCount} rezervări</p>

@@ -22,7 +22,6 @@ const digest=(token:string)=>createHash('sha256').update(token).digest('hex')
 export async function listInvitations(){return prisma.$queryRaw<Omit<Invitation,'tokenHash'>[]>`SELECT "id","email","name","offeredPlan","promoCode","headerImageUrl","expiresAt","acceptedAt","revokedAt","businessId","sentAt","lastError","createdAt" FROM "BusinessInvitation" WHERE "deletedAt" IS NULL ORDER BY "createdAt" DESC LIMIT 200`}
 export async function sendBusinessInvitation(email:string,name='',requestedPromoCode?:string,offeredPlan:InvitationPlan='STANDARD',requestedHeaderImageUrl?:string){
  if(!process.env.RESEND_API_KEY)throw new InvitationError('Trimiterea emailurilor nu este configurată.',503)
- if(['CAMPAIGN'].includes(offeredPlan)||requestedPromoCode)throw new InvitationError('Invitațiile cu campanii și coduri promoționale nu mai sunt disponibile.',409)
  const owner=await prisma.user.findUnique({where:{email_accountKind:{email,accountKind:'BUSINESS'}},select:{role:true,businessId:true}})
  if(owner&&(owner.role!=='OWNER'||!owner.businessId))throw new InvitationError(accountConflictMessage(owner.role,owner.businessId),409)
  if(owner&&(requestedPromoCode||offeredPlan!=='STANDARD'))throw new InvitationError('Pentru un cont existent, schimbă planul din administrarea afacerii.')
@@ -51,7 +50,6 @@ export async function invitationDetails(token:string){
  if(!/^[a-f0-9]{64}$/.test(token))return null
  const rows=await prisma.$queryRaw<Invitation[]>`SELECT * FROM "BusinessInvitation" WHERE "tokenHash"=${digest(token)} LIMIT 1`,row=rows[0]
  if(!row||row.deletedAt||row.revokedAt||row.acceptedAt||row.expiresAt<=new Date())return null
- if(row.offeredPlan==='CAMPAIGN')return null
  const owner=await prisma.user.findUnique({where:{email_accountKind:{email:row.email,accountKind:'BUSINESS'}},select:{role:true}})
  if(owner?.role&&owner.role!=='OWNER')return null
  return {email:row.email,name:row.name,offeredPlan:row.offeredPlan,promoCode:row.promoCode,prices:await getPlanPrices(),existing:Boolean(owner),expiresAt:row.expiresAt.toISOString()}
@@ -62,7 +60,6 @@ export async function acceptBusinessInvitation(token:string,input:{password?:str
  return prisma.$transaction(async tx=>{
   const rows=await tx.$queryRaw<Invitation[]>`SELECT * FROM "BusinessInvitation" WHERE "tokenHash"=${digest(token)} FOR UPDATE`,row=rows[0]
   if(!row||row.deletedAt||row.revokedAt||row.acceptedAt||row.expiresAt<=new Date())throw new InvitationError('Invitația a expirat sau a fost deja folosită. Cere o invitație nouă.')
-  if(['CAMPAIGN'].includes(row.offeredPlan))throw new InvitationError('Această campanie nu mai este disponibilă. Cere o invitație nouă.',409)
   const owner=await tx.user.findUnique({where:{email_accountKind:{email:row.email,accountKind:'BUSINESS'}}})
   if(owner){if(owner.role!=='OWNER'||!owner.businessId)throw new InvitationError(accountConflictMessage(owner.role,owner.businessId),409);await tx.user.update({where:{id:owner.id},data:{emailVerifiedAt:new Date()}});await tx.$executeRaw`UPDATE "BusinessInvitation" SET "acceptedAt"=clock_timestamp(),"businessId"=${owner.businessId} WHERE "id"=${row.id}`;return {existing:true}}
   if(!password||!input.acceptTerms)throw new InvitationError('Alege parola și acceptă condițiile abonamentului.')

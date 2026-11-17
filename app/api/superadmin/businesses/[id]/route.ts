@@ -26,6 +26,7 @@ const patchSchema = z.object({
   billingEmail: z.string().email().nullable().optional(),
   contractRepresentativeName: z.string().max(120).nullable().optional(),
   contractRepresentativeRole: z.string().max(120).nullable().optional(),
+  publicListed: z.boolean().optional(),
   accountActive: z.boolean().optional(),
   teamSize: z.number().min(1).max(200).optional(),
   dentalClinic: z.boolean().optional(),
@@ -61,7 +62,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { billingDueAt, ...input } = parsed.data
   const data: any = {
     ...input,
-    publicListed: false,
     ...(billingDueAt !== undefined ? { billingDueAt: billingDueAt ? new Date(billingDueAt) : null } : {}),
   }
   if (parsed.data.billingSubtotal !== undefined || parsed.data.billingVatRate !== undefined) {

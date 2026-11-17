@@ -22,7 +22,6 @@ if (process.env.VERCEL_ENV === 'production' && process.env.BOOKEASY_SKIP_DB_RELE
     '../prisma/migrations/20261016170000_bookeasy_sms_device/migration.sql',
     '../prisma/migrations/20261016170000_customer_merge_archive/migration.sql',
     '../prisma/migrations/20261019150000_customer_archive/migration.sql',
-    '../prisma/migrations/20261031150000_email_verification_public_slugs/migration.sql',
     '../prisma/migrations/20261105110000_signup_funnel/migration.sql',
   ]
   const migrations = await Promise.all(migrationFiles.map((file) => readFile(new URL(file, import.meta.url), 'utf8')))

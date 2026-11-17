@@ -49,6 +49,7 @@ export default function BillingModeCard({ businessId, initialMode, initialPlanNa
         ['FREE', 'FREE', 'Fără abonament lunar'],
         ['STANDARD', 'STANDARD', 'Tariful curent din Planuri și prețuri'],
         ['PRO', 'PRO', 'Tarif configurat manual'],
+        ['CAMPAIGN', 'CAMPANIE', 'Acces PRO · oferta codului'],
       ] as const).map(([value, label, description]) => <button key={value} type="button" onClick={() => setMode(value)} aria-pressed={mode === value} className={`rounded-xl border p-3 text-left transition ${mode === value ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-gray-200 bg-white'}`}>
         <strong className="block text-sm">{label}</strong><span className="mt-1 block text-xs text-gray-500">{description}</span>
       </button>)}

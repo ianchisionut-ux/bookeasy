@@ -1,11 +1,17 @@
-import NextAuth from 'next-auth'
+import NextAuth, { CredentialsSignin } from 'next-auth'
+import { consumeNativeGoogleFlow } from './native-google-auth'
 import Credentials from 'next-auth/providers/credentials'
+import Google from 'next-auth/providers/google'
 import { prisma } from './prisma'
 import bcrypt from 'bcryptjs'
 import { rateLimit } from './rate-limit'
 import { cookies } from 'next/headers'
 import { SUPERADMIN_BUSINESS_COOKIE } from './superadmin-business-access'
 import { accountSessionRevoked } from './session-revocation'
+
+class EmailNotVerified extends CredentialsSignin {
+  code = 'email_not_verified'
+}
 
 // Nu folosim PrismaAdapter — cu Credentials + strategie JWT nu e nevoie de el,
 // iar adapter-ul ar căuta tabele (Account, Session, VerificationToken) care
@@ -19,7 +25,14 @@ const nextAuth = NextAuth({
     Credentials({
       credentials: { email: {}, password: {}, accountType: {}, nativeFlowId: {}, nativeVerifier: {} },
       async authorize(credentials, request) {
-        if (credentials?.nativeFlowId || credentials?.nativeVerifier || credentials?.accountType === 'customer') return null
+        if (credentials?.nativeFlowId || credentials?.nativeVerifier) {
+          if (credentials.accountType !== 'customer') return null
+          const ip = request?.headers?.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+          if (!(await rateLimit(`native-google-claim:${ip}`, 30, 5 * 60 * 1000)).allowed) return null
+          const identity = await consumeNativeGoogleFlow(credentials.nativeFlowId, credentials.nativeVerifier)
+          if (!identity) return null
+          return identity
+        }
         if (typeof credentials?.email !== 'string' || typeof credentials?.password !== 'string' || !credentials.password) return null
         const email = credentials.email.toLowerCase().trim()
         if (!email || email.length > 254) return null
@@ -33,15 +46,21 @@ const nextAuth = NextAuth({
           throw new Error('Prea multe încercări. Așteaptă 15 minute și încearcă din nou.')
         }
 
-        const accountKind = 'BUSINESS'
+        const accountKind = credentials.accountType === 'customer' ? 'CUSTOMER' : 'BUSINESS'
         const user = await prisma.user.findUnique({ where: { email_accountKind: { email, accountKind } } })
         if (!user) return null
-        if (user.role === 'CUSTOMER') return null
+        if ((user.role === 'CUSTOMER') !== (accountKind === 'CUSTOMER')) return null
         const valid = await bcrypt.compare(credentials?.password as string, user.password)
         if (!valid) return null
+        if (accountKind === 'CUSTOMER' && user.emailVerificationRequired && !user.emailVerifiedAt) throw new EmailNotVerified()
         return { id: user.id, email: user.email, businessId: user.businessId, role: user.role } as any
       },
     }),
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? [Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: { params: { scope: 'openid email profile', prompt: 'select_account' } },
+    })] : []),
   ],
   callbacks: {
     async signIn({ account, profile }) {
@@ -67,7 +86,7 @@ const nextAuth = NextAuth({
         token.lastName = (user as any).lastName ?? ''
         token.customerPhone = (user as any).customerPhone ?? ''
       }
-      if (token.role === 'CUSTOMER' || await accountSessionRevoked(token)) return null
+      if (await accountSessionRevoked(token)) return null
       return token
     },
     async session({ session, token }) {
@@ -82,7 +101,7 @@ const nextAuth = NextAuth({
       return session
     },
   },
-  pages: { signIn: '/login', error: '/login' },
+  pages: { signIn: '/login', error: '/cont' },
 })
 
 export const { handlers, signIn, signOut } = nextAuth

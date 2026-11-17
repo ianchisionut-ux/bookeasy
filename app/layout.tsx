@@ -2,13 +2,17 @@ import './globals.css'
 import CustomerSession from '@/components/customer-session'
 import { Manrope } from 'next/font/google'
 import type { Metadata, Viewport } from 'next'
+import PwaManager from '@/components/pwa-manager'
+import CookieConsent from '@/components/cookie-consent'
+import ClientBottomNav from '@/components/client-bottom-nav'
+import ClientArrivalMonitor from '@/components/client-arrival-monitor'
+import SiteAnalytics from '@/components/site-analytics'
 
 const manrope = Manrope({ subsets: ['latin', 'latin-ext'], variable: '--font-manrope' })
 
 export const metadata: Metadata = {
   title: 'bookeasy.ro',
   description: 'Platformă pentru programări și rezervări, într-un singur calendar.',
-  robots: { index: false, follow: false },
   manifest: '/bookeasy-v2.webmanifest',
   applicationName: 'BookEasy',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'BookEasy' },
@@ -39,6 +43,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <CustomerSession>
         {children}
+        <PwaManager />
+        <CookieConsent />
+        <ClientBottomNav />
+        <ClientArrivalMonitor />
+        <SiteAnalytics />
         </CustomerSession>
       </body>
     </html>

@@ -372,6 +372,7 @@ export default function ProgramariManager({
 
   return (
     <div className="dashboard-page">
+      {!canUseStandard && <Link href="/dashboard/planuri" className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-950"><span><strong>Reconfirmări și remindere</strong> pentru programări</span><span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-bold text-teal-800">STANDARD ↗</span></Link>}
       <div className="flex flex-col gap-3 mb-4 md:flex-row md:flex-wrap md:items-center md:gap-2 md:mb-5">
         <h1 className="text-2xl font-semibold mr-1">{bookingHeading}</h1>
         <span className="text-sm text-gray-500 mr-1 whitespace-nowrap">{bookings.length} {bookingPlural}</span>

@@ -13,6 +13,7 @@ const schema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   category: z.enum(BUSINESS_CATEGORIES),
+  promoCode: z.string().trim().max(64).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
   const unusablePassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10)
   let business
   try {
-    const campaignData = await launchSignupData(undefined)
+    const campaignData = await launchSignupData(parsed.data.promoCode)
     business = await prisma.business.create({ data: { slug, name, category, categoryLocked: true, publicListed: false, onboardingStep: 1, onboardingDone: false, ...campaignData, users: { create: { email, password: unusablePassword, role: 'OWNER' } } }, include: { users: { select: { id: true } } } })
   } catch (error) {
     if (error instanceof LaunchSignupError) return NextResponse.json({ error: error.message }, { status: error.status })

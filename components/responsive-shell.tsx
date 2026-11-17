@@ -253,6 +253,10 @@ export function ResponsiveShell({
             </Link>
           )
         })}
+        {!sidebarCollapsed && currentPlan && <Link href="/dashboard/planuri" className="mx-1 mt-2 rounded-xl border border-[#bde3da] bg-[#eef8f5] px-3 py-3 text-xs leading-5 text-[#247975]">
+          <strong className="block">Planul tău: {currentPlan}</strong>
+          <span>{currentPlan === 'PRO' ? 'Vezi funcțiile incluse în plan →' : 'Descoperă funcțiile disponibile și opțiunile de upgrade →'}</span>
+        </Link>}
         {!sidebarCollapsed && <div className="mt-auto px-3 pb-2">
           <Image src="/logo.png" alt="bookeasy.ro" width={800} height={471} className="w-full h-auto opacity-50" />
         </div>}
