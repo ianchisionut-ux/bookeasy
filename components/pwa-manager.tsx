@@ -107,13 +107,14 @@ export default function PwaManager() {
   }
 
   const isClientPage = /^\/(descopera|harta|fitness|cont)(\/|$)/.test(pathname) || /^\/[^/]+\/(rezerva|recenzie)(\/|$)/.test(pathname)
+  const manualInstallOnly = isClientPage || /^\/dashboard\/(calendar|programari)(\/|$)/.test(pathname)
   useEffect(() => {
-    if (!isClientPage && online && (installPrompt || iosInstallable) && claimInstallSuggestion()) {
+    if (!manualInstallOnly && online && (installPrompt || iosInstallable) && claimInstallSuggestion()) {
       setDismissed(false)
     }
-  }, [isClientPage, online, installPrompt, iosInstallable])
+  }, [manualInstallOnly, online, installPrompt, iosInstallable])
 
-  const showInstallCard = online && !dismissed && !isStandaloneAppSafe() && (isClientPage ? manualInstall : Boolean(installPrompt || iosInstallable || manualInstall))
+  const showInstallCard = online && !dismissed && !isStandaloneAppSafe() && (manualInstall || (!manualInstallOnly && Boolean(installPrompt || iosInstallable)))
 
   return (
     <>

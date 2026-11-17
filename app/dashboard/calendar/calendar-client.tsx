@@ -435,6 +435,7 @@ export default function CalendarClient({
         <div className="calendar-overview-title">
           <h1>Calendar {bookingPlural}</h1>
           <p>Gestionează {bookingPlural}, {practitionerLabel(category).plural.toLowerCase()} și {resources.length ? 'sălile' : 'serviciile'} într-un singur loc.</p>
+          <button type="button" onClick={() => setShowBookingModal(true)} aria-label={`Adaugă ${bookingSingular}`} className="calendar-mobile-add btn-primary md:hidden">+ {bookingSingular}</button>
         </div>
         <div className="calendar-summary-grid">
           <CalendarSummary icon={<CalendarDays size={18}/>} value={todayEvents.length} label={`${bookingHeading} azi`} tone="teal" />
@@ -482,17 +483,27 @@ export default function CalendarClient({
               {practitioners.length > 0 && <select value={practitionerFilter} onChange={(e) => changePractitionerFilter(e.target.value)} className="input-field w-full text-sm" aria-label="Filtrează după persoană"><option value="all">{allPractitionersLabel(category)}</option>{practitioners.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select>}
               <select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="input-field w-full text-sm" aria-label="Filtrează după serviciu"><option value="all">Toate {offerLabel(category).plural}</option>{services.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}</select>
               {resources.length > 0 && <select value={resourceFilter} onChange={(e) => setResourceFilter(e.target.value)} className="input-field w-full text-sm" aria-label="Filtrează după sală"><option value="all">Toate sălile</option>{resources.map((resource) => <option key={resource.id} value={resource.id}>{resource.name}</option>)}</select>}
+              <div className="grid gap-2 md:hidden">
+                <button type="button" onClick={() => setCurrentDate(new Date())} className="btn-secondary">Astăzi</button>
+                <button type="button" onClick={(event) => {
+                  setBlockMode(value => !value)
+                  event.currentTarget.closest('details')?.removeAttribute('open')
+                }} className="btn-secondary gap-1.5" aria-pressed={blockMode}><Lock size={15}/>{blockMode ? 'Oprește blocarea' : 'Blochează intervale'}</button>
+                <PrintButton />
+              </div>
             </div>
           </details>
         </div>
         <div className="calendar-visible-actions calendar-mobile-actions lg:hidden">
           <label className="calendar-search"><Search size={16}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Caută ${customerSingular}...`} aria-label={`Caută ${customerSingular}`}/></label>
-          <button type="button" onClick={() => setBlockMode(value => !value)} className="btn-secondary gap-1.5 text-sm" aria-pressed={blockMode}><Lock size={15}/>{blockMode ? 'Oprește blocarea' : 'Blochează intervale'}</button>
-          <PrintButton />
+          <div className="hidden flex-wrap gap-2 md:flex">
+            <button type="button" onClick={() => setBlockMode(value => !value)} className="btn-secondary gap-1.5 text-sm" aria-pressed={blockMode}><Lock size={15}/>{blockMode ? 'Oprește blocarea' : 'Blochează intervale'}</button>
+            <PrintButton />
+          </div>
         </div>
       </div>
       <div className="calendar-view-switch screen-only md:hidden" role="group" aria-label="Vizualizare calendar">
-        {[[Views.DAY, 'Zi'], [Views.WEEK, 'Săptămână'], [Views.MONTH, 'Lună'], [Views.AGENDA, 'Agendă']].map(([value, label]) => <button type="button" key={value} onClick={() => setView(value)} className={view === value ? 'active' : ''}>{label}</button>)}
+        {[[Views.DAY, 'Zi'], [Views.WEEK, 'Săptămână'], [Views.MONTH, 'Lună'], [Views.AGENDA, 'Agendă']].map(([value, label]) => <button type="button" key={value} onClick={() => setView(value)} aria-pressed={view === value} className={view === value ? 'active' : ''}>{label}</button>)}
       </div>
       {blockMode && <p className="text-xs text-amber-700 screen-only">Selectează un interval din calendar pentru a-l bloca.</p>}
       {(busy || loadingRange) && <p className="text-xs text-gray-500 screen-only">Se actualizează calendarul...</p>}
@@ -510,9 +521,9 @@ export default function CalendarClient({
             {services.map((service, index) => <label key={service.id} className="calendar-filter-check"><input type="checkbox" checked={!hiddenServiceIds.includes(service.id)} onChange={(e) => setHiddenServiceIds((current) => e.target.checked ? current.filter((id) => id !== service.id) : [...current, service.id])} style={{ accentColor: SERVICE_COLORS[index % SERVICE_COLORS.length].border }} /><span className="truncate">{service.name}</span></label>)}
           </div>}
         </aside>
-        <div className="calendar-print-sheet card printable min-h-0 min-w-0 flex-1 overflow-x-auto p-2 lg:p-3">
+        <div className={`calendar-print-sheet card printable min-h-0 min-w-0 flex-1 overflow-x-auto p-2 lg:p-3 ${view === Views.DAY ? 'calendar-single-day' : ''}`}>
           <div className="calendar-period-bar screen-only">
-            <div className="flex items-center gap-2"><button type="button" onClick={() => navigatePeriod(-1)} aria-label="Intervalul anterior"><ChevronLeft size={17}/></button><strong>{periodLabel}</strong><button type="button" onClick={() => navigatePeriod(1)} aria-label="Intervalul următor"><ChevronRight size={17}/></button></div>
+            <div className="flex items-center gap-2"><button type="button" onClick={() => navigatePeriod(-1)} aria-label="Intervalul anterior"><ChevronLeft size={17}/></button><strong aria-live="polite">{periodLabel}</strong><button type="button" onClick={() => navigatePeriod(1)} aria-label="Intervalul următor"><ChevronRight size={17}/></button></div>
             <div className="calendar-view-switch hidden md:flex" role="group" aria-label="Vizualizare calendar">{[[Views.MONTH, 'Lună'], [Views.WEEK, 'Săptămână'], [Views.DAY, 'Zi'], [Views.AGENDA, 'Agendă']].map(([value, label]) => <button type="button" key={value} onClick={() => setView(value)} className={view === value ? 'active' : ''}>{label}</button>)}</div>
           </div>
         <DnDCalendar
@@ -592,8 +603,6 @@ export default function CalendarClient({
         </div>
       </div>
 
-      <button type="button" onClick={() => setShowBookingModal(true)} className="calendar-mobile-add btn-primary screen-only md:hidden">+ Adaugă {bookingSingular}</button>
-
       {selected && (
         <BookingEditModal
           smsAvailable={smsAvailable}
@@ -657,6 +666,14 @@ function CalendarSummary({ icon, value, label, tone }: { icon: ReactNode; value:
   return <div className="calendar-summary-card"><span className={`calendar-summary-icon calendar-summary-${tone}`} aria-hidden="true">{icon}</span><span><strong>{value}</strong><small>{label}</small></span></div>
 }
 
+const bookingTimeFormatter = new Intl.DateTimeFormat('ro-RO', {
+  timeZone: 'Europe/Bucharest', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+})
+
+function formatBookingTime(time: string) {
+  return bookingTimeFormatter.format(new Date(time))
+}
+
 function MiniCalendar({ date, onSelect }: { date: Date; onSelect: (date: Date) => void }) {
   const first = new Date(date.getFullYear(), date.getMonth(), 1)
   const offset = (first.getDay() + 6) % 7
@@ -717,33 +734,40 @@ function CalendarQuickBookingModal({ category, onClose, onCreated, initialStart,
 
   useEffect(() => {
     const selectedDate = isMultiPractitioner ? slotDate : simpleDate
+    setDaySlots([])
+    setSelectedSlot('')
     if (!serviceId || !selectedDate || (isMultiPractitioner && !practitionerId)) {
-      setDaySlots([])
+      setLoadingSlots(false)
       return
     }
+    const controller = new AbortController()
     setLoadingSlots(true)
-    setSelectedSlot('')
+    setError('')
     const practitionerParam = practitionerId ? `&practitionerId=${encodeURIComponent(practitionerId)}` : ''
-    fetchWithTimeout(`/api/business/practitioner-availability?serviceId=${encodeURIComponent(serviceId)}${practitionerParam}&date=${encodeURIComponent(selectedDate)}`)
-      .then((res) => res.json())
+    fetchWithTimeout(`/api/business/practitioner-availability?serviceId=${encodeURIComponent(serviceId)}${practitionerParam}&date=${encodeURIComponent(selectedDate)}`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error('availability_request_failed')
+        return res.json()
+      })
       .then((data) => {
-        const slots = data.allSlots ?? []
+        if (controller.signal.aborted) return
+        const slots: typeof daySlots = data.allSlots ?? []
         setDaySlots(slots)
-        if (!isMultiPractitioner && simpleTime) {
-          const selectedStillAvailable = slots.some((slot: { time: string; available: boolean }) =>
-            slot.available && new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' }) === simpleTime
-          )
-          if (!selectedStillAvailable) setSimpleDateTime(`${selectedDate}T`)
+        if (!isMultiPractitioner) {
+          setSimpleDateTime(current => {
+            const [date, time] = current.split('T')
+            if (date !== selectedDate || !time) return current
+            return slots.some(slot => slot.available && formatBookingTime(slot.time) === time) ? current : date
+          })
         }
       })
-      .catch(() => setDaySlots([]))
-      .finally(() => setLoadingSlots(false))
+      .catch(() => { if (!controller.signal.aborted) setError('Nu am putut încărca orele disponibile. Schimbă data sau serviciul și încearcă din nou.') })
+      .finally(() => { if (!controller.signal.aborted) setLoadingSlots(false) })
+    return () => controller.abort()
   }, [isMultiPractitioner, serviceId, practitionerId, slotDate, simpleDate])
 
   const availableDaySlots = daySlots.filter((slot) => slot.available)
-  const availableSimpleTimes = availableDaySlots.map((slot) =>
-    new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
-  )
+  const availableSimpleTimes = availableDaySlots.map(slot => formatBookingTime(slot.time))
 
   async function submit() {
     const hasDateInfo = isMultiPractitioner ? !!selectedSlot : !!simpleDateTime
@@ -755,13 +779,16 @@ function CalendarQuickBookingModal({ category, onClose, onCreated, initialStart,
       setError('Alege persoana.')
       return
     }
-    if (!isMultiPractitioner && !availableSimpleTimes.includes(simpleTime)) {
+    const slot = availableDaySlots.find(item =>
+      isMultiPractitioner ? item.time === selectedSlot : formatBookingTime(item.time) === simpleTime
+    )
+    if (!slot) {
       setError('Alege una dintre orele disponibile pentru această zi.')
       return
     }
 
     const service = services.find((s) => s.id === serviceId)
-    const start = isMultiPractitioner ? new Date(selectedSlot) : new Date(simpleDateTime)
+    const start = new Date(slot.time)
     const end = new Date(start.getTime() + (service?.durationMin ?? 30) * 60000)
 
     if (start < new Date()) {
@@ -798,10 +825,10 @@ function CalendarQuickBookingModal({ category, onClose, onCreated, initialStart,
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 max-h-[85vh] overflow-y-auto">
+      <div role="dialog" aria-modal="true" aria-labelledby="calendar-quick-booking-title" onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-xl w-full max-w-md p-4 sm:p-5 max-h-[85dvh] overflow-y-auto">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold">{booking.heading} noi</h2>
-          <button onClick={onClose} aria-label="Închide">
+          <h2 id="calendar-quick-booking-title" className="font-semibold">{booking.heading} noi</h2>
+          <button type="button" onClick={onClose} aria-label="Închide" className="grid size-11 place-items-center rounded-xl">
             <X size={18} />
           </button>
         </div>
@@ -824,9 +851,9 @@ function CalendarQuickBookingModal({ category, onClose, onCreated, initialStart,
                 {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name || 'Fără nume'}{customer.phone ? ` — ${customer.phone}` : ''}</option>)}
               </select>
             </label>}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <input aria-label={isClinic ? 'Nume pacient' : 'Nume client'} readOnly={!!customerId} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={isClinic ? 'Nume pacient' : 'Nume client'} className="input-field" />
-              <input aria-label="Telefon" readOnly={!!customerId} value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Telefon" className="input-field" />
+              <input aria-label="Telefon" type="tel" inputMode="tel" readOnly={!!customerId} value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Telefon" className="input-field" />
             </div>
 
             <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} className="input-field w-full">
@@ -860,13 +887,13 @@ function CalendarQuickBookingModal({ category, onClose, onCreated, initialStart,
                     ) : (
                       <div className="grid grid-cols-4 gap-2">
                         {availableDaySlots.map((slot) => {
-                          const time = new Date(slot.time).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' })
+                          const time = formatBookingTime(slot.time)
                           const active = selectedSlot === slot.time
                           return (
                             <button
                               key={slot.time}
                               onClick={() => setSelectedSlot(slot.time)}
-                              className="py-2 rounded-lg text-center text-sm font-medium border transition"
+                              className="min-h-11 rounded-lg border py-2 text-center text-sm font-medium transition"
                               style={active ? { background: 'var(--accent)', color: 'white', borderColor: 'var(--accent)' } : {}}
                             >
                               {time}
@@ -879,7 +906,7 @@ function CalendarQuickBookingModal({ category, onClose, onCreated, initialStart,
                 )}
               </>
             ) : (
-              <div className="grid grid-cols-[1fr_120px] gap-2">
+              <div className="calendar-booking-datetime">
                 <input
                   type="date"
                   value={simpleDate}
@@ -903,9 +930,9 @@ function CalendarQuickBookingModal({ category, onClose, onCreated, initialStart,
               </div>
             )}
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
-            <button onClick={submit} disabled={saving} className="btn-primary w-full">
+            <button onClick={submit} disabled={saving || loadingSlots} className="btn-primary min-h-11 w-full">
               {saving ? 'Se salvează...' : `Salvează ${definite}`}
             </button>
           </div>

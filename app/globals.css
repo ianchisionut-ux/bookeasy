@@ -815,15 +815,28 @@ body {
 @media (min-width:1100px) { .calendar-sidebar { display:flex; } }
 @media (max-width:1099px) and (min-width:768px) { .calendar-overview { grid-template-columns:1fr; }.calendar-overview-title p { display:none; } }
 @media (max-width:767px) {
-  .calendar-modern { min-height:calc(100dvh - 160px); padding-bottom:62px; gap:8px; }
-  .calendar-overview { display:block; }.calendar-overview-title h1 { font-size:20px; }.calendar-overview-title p { display:none; }
+  .calendar-modern { height:max(625px,calc(100dvh - 138px - var(--app-safe-top,0px) - var(--app-safe-bottom,0px))); gap:8px; }
+  .calendar-overview { display:block; }
+  .calendar-overview-title { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .calendar-overview-title h1 { min-width:0; font-size:clamp(16px,4.7vw,20px); }
+  .calendar-overview-title p { display:none; }
+  .calendar-overview-title .calendar-mobile-add { flex:none; min-height:44px; padding-inline:10px; font-size:12px; }
   .calendar-summary-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; margin-top:10px; }
   .calendar-summary-card { min-height:53px; gap:5px; padding:6px; }.calendar-summary-icon { width:27px; height:27px; }.calendar-summary-icon svg { width:15px; height:15px; }.calendar-summary-card strong { font-size:15px; }.calendar-summary-card small { font-size:9px; }
-  .calendar-modern-commandbar { padding:7px; }.calendar-modern-commandbar .input-field { max-width:none; min-height:38px; }
-  .calendar-view-switch { justify-content:space-between; }.calendar-view-switch button { flex:1; }
-  .calendar-workspace { min-height:0; }.calendar-modern .calendar-print-sheet { border-radius:12px; padding:4px; }.calendar-period-bar { justify-content:center; }.calendar-period-bar strong { font-size:12px; }
+  .calendar-summary-card > span:last-child { min-width:0; }
+  .calendar-summary-card small { white-space:normal; line-height:1.15; }
+  .calendar-modern-commandbar { padding:7px; }
+  .calendar-modern-commandbar :is(.input-field,.calendar-search,.calendar-icon-button) { max-width:none; min-height:44px; }
+  .calendar-modern-commandbar .calendar-icon-button { width:44px; }
+  .calendar-modern-commandbar .calendar-search input { min-width:0; font-size:16px; }
+  .calendar-filter-popover { top:calc(100% + 5px); }
+  .calendar-view-switch { justify-content:space-between; }
+  .calendar-view-switch button { flex:1; min-height:44px; padding-inline:4px; }
+  .calendar-modern .calendar-print-sheet { border-radius:12px; padding:4px; }
+  .calendar-period-bar { justify-content:center; min-height:28px; padding:0 4px 4px; }
+  .calendar-period-bar strong { font-size:12px; }
+  .calendar-period-bar > div:first-child button { display:none; }
   .calendar-modern .rbc-timeslot-group { min-height:70px; }.calendar-modern .rbc-time-gutter { min-width:42px; }.calendar-modern .rbc-label { font-size:10px; }.calendar-modern .rbc-header { padding:5px 1px; font-size:10px; }
-  .calendar-mobile-add { position:fixed; right:16px; bottom:76px; left:16px; z-index:36; min-height:46px; border-radius:999px; box-shadow:0 8px 20px rgba(11,130,133,.22); }
 }
 
 /* Mobile controls must stay inside their cards and outside the iPhone system bars. */
@@ -840,7 +853,7 @@ body {
   .app-shell-account-sheet { padding-top:calc(16px + var(--app-safe-top)); padding-bottom:calc(16px + var(--app-safe-bottom)); }
 }
 @media screen and (max-width:767px) {
-  .app-shell-theme .calendar-mobile-add { bottom:calc(76px + var(--app-safe-bottom)); }
+  .calendar-single-day .rbc-time-header:not(:has(.rbc-event,.rbc-show-more)) { display:none; }
   .calendar-modern .rbc-agenda-view { overflow-x:hidden; }
   .calendar-modern .rbc-agenda-view table.rbc-agenda-table { width:100%; table-layout:fixed; }
   .calendar-modern .rbc-agenda-view .rbc-agenda-time-cell,.calendar-modern .rbc-agenda-view thead th:nth-child(2) { display:none; }

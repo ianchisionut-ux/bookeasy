@@ -74,7 +74,10 @@ export default function BookingFlow({
 
   const [service, setService] = useState<Service | null>(services[0] ?? null)
   const [practitioners, setPractitioners] = useState<Practitioner[]>([])
-  const [practitionersLoaded, setPractitionersLoaded] = useState(false)
+  const [practitionerServiceId, setPractitionerServiceId] = useState<string | null>(null)
+  const [availabilityError, setAvailabilityError] = useState(false)
+  const [retryAvailability, setRetryAvailability] = useState(0)
+  const [retryPractitioners, setRetryPractitioners] = useState(0)
   const [practitionerId, setPractitionerId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date>(days[0])
   const [daySlots, setDaySlots] = useState<DaySlot[]>([])
@@ -112,36 +115,51 @@ export default function BookingFlow({
   // de persoane eligibile pentru acel serviciu
   useEffect(() => {
     if (!isMultiPractitioner || !service) return
+    const controller = new AbortController()
+    setPractitioners([])
     setPractitionerId(null)
-    setPractitionersLoaded(false)
-    fetchWithTimeout(`/api/public/practitioners?businessId=${businessId}&serviceId=${service.id}`)
-      .then((res) => res.json())
+    setPractitionerServiceId(null)
+    setAvailabilityError(false)
+    fetchWithTimeout(`/api/public/practitioners?businessId=${businessId}&serviceId=${service.id}`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error('practitioner_request_failed')
+        return res.json()
+      })
       .then((data) => {
+        if (controller.signal.aborted) return
         const list: Practitioner[] = data.practitioners ?? []
         setPractitioners(list)
-        if (list.length > 0) setPractitionerId(list[0].id)
+        setPractitionerId(list[0]?.id ?? null)
+        setPractitionerServiceId(service.id)
       })
-      .catch(() => setPractitioners([]))
-      .finally(() => setPractitionersLoaded(true))
-  }, [service, isMultiPractitioner, businessId])
+      .catch(() => { if (!controller.signal.aborted) setAvailabilityError(true) })
+    return () => controller.abort()
+  }, [service, isMultiPractitioner, businessId, retryPractitioners])
 
   useEffect(() => {
     if ((!isAppointment && !isVenue) || !service) return
     // așteptăm explicit ca lista de persoane să se termine de încărcat, altfel cererea
     // de ore ar cădea greșit pe programul general, nu pe cel al persoanei alese
-    if (isAppointment && isMultiPractitioner && (!practitionersLoaded || (practitioners.length > 0 && !practitionerId))) return
-    setLoadingSlots(true)
+    setDaySlots([])
     setSelectedSlot(null)
+    if (isAppointment && isMultiPractitioner && practitionerServiceId !== service.id) return
+    const controller = new AbortController()
+    setLoadingSlots(true)
+    setAvailabilityError(false)
     setError('')
 
     const practitionerParam = isAppointment && isMultiPractitioner && practitionerId ? `&practitionerId=${practitionerId}` : ''
     const venueParam = isVenue && service.resourceId ? `&resourceId=${service.resourceId}&durationMinutes=${venueDurationHours * 60}` : ''
-    fetchWithTimeout(`/api/public/availability?businessId=${businessId}&serviceId=${service.id}&date=${toDateParam(selectedDate)}${practitionerParam}${venueParam}`)
-      .then((res) => res.json())
-      .then((data) => setDaySlots(data.allSlots ?? []))
-      .catch(() => setDaySlots([]))
-      .finally(() => setLoadingSlots(false))
-  }, [service, selectedDate, businessId, isAppointment, isVenue, isMultiPractitioner, practitionerId, practitionersLoaded, practitioners.length, venueDurationHours])
+    fetchWithTimeout(`/api/public/availability?businessId=${businessId}&serviceId=${service.id}&date=${toDateParam(selectedDate)}${practitionerParam}${venueParam}`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error('availability_request_failed')
+        return res.json()
+      })
+      .then((data) => { if (!controller.signal.aborted) setDaySlots(data.allSlots ?? []) })
+      .catch(() => { if (!controller.signal.aborted) setAvailabilityError(true) })
+      .finally(() => { if (!controller.signal.aborted) setLoadingSlots(false) })
+    return () => controller.abort()
+  }, [service, selectedDate, businessId, isAppointment, isVenue, isMultiPractitioner, practitionerId, practitionerServiceId, venueDurationHours, retryAvailability])
 
   function selectService(s: Service) {
     setService(s)
@@ -152,11 +170,11 @@ export default function BookingFlow({
       setError('Alege un serviciu.')
       return
     }
-    if ((isAppointment || isVenue) && !selectedSlot) {
+    if ((isAppointment || isVenue) && !daySlots.some(slot => slot.available && slot.time === selectedSlot)) {
       setError('Alege o oră disponibilă.')
       return
     }
-    if (!name.trim() || phone.trim().length < 6) {
+    if (!name.trim() || !/^\d{7,15}$/.test(phone.replace(/[^\d]/g, ''))) {
       setError('Completează numele și un număr de telefon valid.')
       return
     }
@@ -358,9 +376,18 @@ export default function BookingFlow({
       {(isAppointment || isVenue) && (
         <div>
           <h2 className="font-semibold mb-3">Alege ora</h2>
-          {loadingSlots ? (
-            <p className="text-sm text-gray-500">Se încarcă orele...</p>
-          ) : daySlots.length === 0 ? (
+          {availabilityError ? (
+            <p role="alert" className="text-sm text-gray-700">Nu am putut încărca disponibilitatea. <button type="button" className="min-h-11 font-semibold text-[var(--accent)] underline" onClick={() => {
+              setAvailabilityError(false)
+              if (isAppointment && isMultiPractitioner && practitionerServiceId !== service?.id) {
+                setRetryPractitioners(value => value + 1)
+              } else {
+                setRetryAvailability(value => value + 1)
+              }
+            }}>Încearcă din nou</button></p>
+          ) : loadingSlots || (isAppointment && isMultiPractitioner && practitionerServiceId !== service?.id) ? (
+            <p role="status" className="text-sm text-gray-500">Se încarcă orele...</p>
+          ) : !daySlots.some(slot => slot.available) ? (
             <p className="text-sm text-gray-500">Nicio oră disponibilă în această zi. Alege altă dată.</p>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -408,14 +435,14 @@ export default function BookingFlow({
         <p className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-400"><ShieldCheck size={13} /> Afacerea te poate contacta la numărul introdus.</p>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       <div className="relative rounded-2xl border border-white/80 bg-white p-2.5 sm:border-0 sm:bg-transparent sm:p-0">
         {service && selectedSlot && <p className="mb-2 break-words text-center text-xs text-gray-500">{service.name} · {new Date(selectedSlot).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })}</p>}
         <Button
           onClick={submitBooking}
           disabled={submitting}
-          className="block w-full min-w-0 whitespace-normal px-4 py-3 text-sm sm:py-3.5 sm:text-base"
+          className="block min-h-11 w-full min-w-0 whitespace-normal px-4 py-3 text-sm sm:py-3.5 sm:text-base"
           style={{ background: 'var(--brand-teal-dark)', borderColor: 'var(--brand-teal-dark)' }}
         >
           {submitting ? 'Se trimite...' : `Confirmă ${bookingDefinite}`}
