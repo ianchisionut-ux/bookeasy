@@ -7,12 +7,14 @@ import CookieConsent from '@/components/cookie-consent'
 import ClientBottomNav from '@/components/client-bottom-nav'
 import ClientArrivalMonitor from '@/components/client-arrival-monitor'
 import SiteAnalytics from '@/components/site-analytics'
+import { SITE_DESCRIPTION, SITE_URL } from '@/lib/seo'
 
 const manrope = Manrope({ subsets: ['latin', 'latin-ext'], variable: '--font-manrope' })
 
 export const metadata: Metadata = {
-  title: 'bookeasy.ro',
-  description: 'Platformă pentru programări și rezervări, într-un singur calendar.',
+  metadataBase: new URL(SITE_URL),
+  title: 'BookEasy — programări și rezervări online',
+  description: SITE_DESCRIPTION,
   manifest: '/bookeasy-v2.webmanifest',
   applicationName: 'BookEasy',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'BookEasy' },

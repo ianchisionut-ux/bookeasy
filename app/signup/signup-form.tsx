@@ -84,7 +84,7 @@ export default function SignupForm({ launchOpen, lockedPromoCode,prices }: { lau
   }
 
   return (
-    <main className="public-flow-page themed-static-bg min-h-screen flex items-center justify-center px-6 py-10">
+    <main className="public-flow-page themed-static-bg flex min-h-screen items-center justify-center px-3 py-6 sm:px-6 sm:py-10">
       <div className="w-full max-w-sm flex flex-col items-center gap-6">
         <Link href="/" className="flex items-center gap-2">
           <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={32} height={32} />
@@ -116,7 +116,7 @@ export default function SignupForm({ launchOpen, lockedPromoCode,prices }: { lau
 
             <PromoCodeField value={promoCode} onChange={setPromoCode} open={launchOpen} onValidated={setPromoOffer} locked={Boolean(lockedPromoCode)} />
             {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-            <label className="flex items-start gap-2 text-xs leading-relaxed text-gray-600"><input type="checkbox" checked={termsAccepted} onChange={event => {setTermsAccepted(event.target.checked);setPromoAccepted(event.target.checked&&hasPromo)}} disabled={Boolean(promoCode.trim())&&!promoOffer} required className="mt-0.5" /><span>Accept <Link href="/termeni-si-conditii" className="underline" target="_blank" rel="noopener noreferrer">termenii de utilizare</Link>{promoOffer?.freeUntilNotice?<> și <Link href="/legal/termeni#campanie-gratuita" className="underline" target="_blank" rel="noopener noreferrer">condițiile campaniei gratuite</Link>, fără obligație de plată. Un plan plătit viitor necesită notificare cu minimum 30 de zile înainte și acordul meu expres.</>:promoCode.trim()&&!promoOffer?' și oferta care va fi afișată după verificarea codului.':promoOffer?` și oferta validată: ${promoOffer.freeMonths} luni gratuite, apoi ${formatPlanPrice(promoOffer.regularMinor)}.`:` și abonamentul Standard de ${formatPlanPrice(prices.standardMinor)}. Pot solicita oprirea înaintea următoarei perioade.`}</span></label>
+            <label className="flex min-h-11 items-start gap-3 text-xs leading-relaxed text-gray-600"><input type="checkbox" checked={termsAccepted} onChange={event => {setTermsAccepted(event.target.checked);setPromoAccepted(event.target.checked&&hasPromo)}} disabled={Boolean(promoCode.trim())&&!promoOffer} required className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--accent)]" /><span>Accept <Link href="/termeni-si-conditii" className="underline" target="_blank" rel="noopener noreferrer">termenii de utilizare</Link>{promoOffer?.freeUntilNotice?<> și <Link href="/legal/termeni#campanie-gratuita" className="underline" target="_blank" rel="noopener noreferrer">condițiile campaniei gratuite</Link>, fără obligație de plată. Un plan plătit viitor necesită notificare cu minimum 30 de zile înainte și acordul meu expres.</>:promoCode.trim()&&!promoOffer?' și oferta care va fi afișată după verificarea codului.':promoOffer?` și oferta validată: ${promoOffer.freeMonths} luni gratuite, apoi ${formatPlanPrice(promoOffer.regularMinor)}.`:` și abonamentul Standard de ${formatPlanPrice(prices.standardMinor)}. Pot solicita oprirea înaintea următoarei perioade.`}</span></label>
 
             <Button type="submit" disabled={loading||(Boolean(promoCode.trim())&&!promoOffer)} className="mt-2">
               {loading ? 'Se creează contul...' : 'Creează cont'}

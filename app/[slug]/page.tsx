@@ -13,8 +13,20 @@ import { CATEGORY_LABEL, isAppointmentCategory } from '@/lib/business-categories
 import { auth } from '@/lib/auth'
 import { canPreviewBusiness } from '@/lib/business-preview'
 import BusinessPreviewNotice from '@/components/business-preview-notice'
+import type { Metadata } from 'next'
+import { businessMetadata, jsonLd, SITE_URL } from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const business = await prisma.business.findUnique({
+    where: { slug },
+    select: { name: true, slug: true, category: true, city: true, heroImageUrl: true, publicListed: true, accountActive: true },
+  })
+  if (!business || business.category === 'HOTEL' || business.category === 'PENSIUNE') return { robots: { index: false, follow: false } }
+  return businessMetadata({ ...business, categoryLabel: CATEGORY_LABEL[business.category] })
+}
 
 export default async function PublicBusinessPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { slug } = await params
@@ -40,9 +52,22 @@ export default async function PublicBusinessPage({ params, searchParams }: { par
   const hasCoordinates = business.latitude !== null && business.longitude !== null
     && Number.isFinite(business.latitude) && Number.isFinite(business.longitude)
     && Math.abs(business.latitude) <= 90 && Math.abs(business.longitude) <= 180
+  const businessJsonLd = !preview ? {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    '@id': `${SITE_URL}/${encodeURIComponent(business.slug)}#business`,
+    name: business.name,
+    url: `${SITE_URL}/${encodeURIComponent(business.slug)}`,
+    ...(business.heroImageUrl ? { image: business.heroImageUrl.startsWith('http') ? business.heroImageUrl : `${SITE_URL}${business.heroImageUrl}` } : {}),
+    ...(business.contactPhone ? { telephone: business.contactPhone } : {}),
+    ...(business.address || business.city ? { address: { '@type': 'PostalAddress', ...(business.address ? { streetAddress: business.address } : {}), ...(business.city ? { addressLocality: business.city } : {}), addressCountry: 'RO' } } : {}),
+    ...(hasCoordinates ? { geo: { '@type': 'GeoCoordinates', latitude: business.latitude, longitude: business.longitude } } : {}),
+    ...(business.rating && business.reviewCount && business.reviewCount > 0 ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: Number(business.rating), reviewCount: business.reviewCount } } : {}),
+  } : null
 
   return (
     <div className="themed-static-bg min-h-screen">
+      {businessJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(businessJsonLd) }} />}
       <PublicHeader />
       {preview && <div className="px-3 sm:px-6"><BusinessPreviewNotice onboardingDone={business.onboardingDone} onboardingStep={business.onboardingStep} accountActive={business.accountActive} /></div>}
 
@@ -61,7 +86,7 @@ export default async function PublicBusinessPage({ params, searchParams }: { par
               {business.rating && <span className="flex items-center gap-1.5"><Star size={15} fill="#facc15" color="#facc15" />{business.rating.toString()} · {business.reviewCount ?? 0} recenzii</span>}
             </div>
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <Link href={`/${business.slug}/rezerva`} className="btn-primary inline-flex items-center justify-center gap-2 bg-white px-5 py-3 text-[var(--brand-ink)] shadow-lg hover:bg-white">
+              <Link href={`/${business.slug}/rezerva`} className="btn-primary inline-flex min-h-11 items-center justify-center gap-2 bg-white px-5 py-3 text-[var(--brand-ink)] shadow-lg hover:bg-white">
                 <CalendarCheck2 size={17} /> {bookingLabel} <ArrowRight size={16} />
               </Link>
               {business.contactPhone && <a href={`tel:${business.contactPhone}`} className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-medium text-white backdrop-blur transition hover:bg-white/20"><Phone size={15} /> Sună acum</a>}

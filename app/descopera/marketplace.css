@@ -281,9 +281,19 @@
 @media(max-width:1050px){.marketplace-how-it-works{grid-template-columns:1fr;padding-right:230px}}
 @media(max-width:640px){
  .marketplace-hero{background:#e9f7f3}
- .marketplace-hero-slideshow{height:190px}
+ .marketplace-hero-slideshow{height:150px}
  .marketplace-hero-slideshow:after{background:linear-gradient(180deg,transparent 55%,#e9f7f3 100%)}
  .marketplace-hero-videos video{object-position:center 42%}
+ .marketplace-hero-inner{padding-top:148px;padding-bottom:43px}
+ .marketplace-headline{font-size:clamp(26px,7vw,30px)}
+ .marketplace-search-card{padding:7px 9px 9px}
+ .marketplace-input{height:24px;font-size:16px;line-height:24px}
+ .marketplace-search-submit{min-height:48px}
+ .marketplace-filter-chip,.marketplace-filter-select,.marketplace-favorites-filter,.marketplace-category-group,.marketplace-categories-toggle{min-height:44px}
+ .marketplace-category-group{display:inline-flex;align-items:center}
+ .marketplace-book-button,.marketplace-details-button{min-height:44px;font-size:12px}
+ .marketplace-business-grid{gap:14px}
+ .marketplace-business-body{padding:15px}
  .marketplace-how-it-works{padding:22px 20px 200px;background-size:auto 220px;background-position:65% bottom}
  .marketplace-how-it-works:before{background:linear-gradient(180deg,#e8f5f0 0%,#e8f5f0 52%,#e8f5f0bb 65%,transparent 86%)}
 }

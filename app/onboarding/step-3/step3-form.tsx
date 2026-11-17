@@ -89,7 +89,7 @@ export default function Step3Form({ category, existingVenueRooms = 0 }: { catego
                     : `${item.capacity || '—'} persoane${showServicePrices && item.price ? ` · ${item.price} lei` : ''}`}
                 </p>
               </div>
-              <button onClick={() => removeItem(i)} className="text-gray-400 text-xs">
+              <button onClick={() => removeItem(i)} aria-label={`Elimină ${item.name}`} className="grid h-11 w-11 shrink-0 place-items-center text-gray-500">
                 ✕
               </button>
             </div>
@@ -123,14 +123,14 @@ export default function Step3Form({ category, existingVenueRooms = 0 }: { catego
             />
           )}
         </div>
-        <div className="grid grid-cols-[1fr_auto] gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
           {showServicePrices && <Input
             type="number"
             placeholder="Preț (lei)"
             value={draft.price}
             onChange={(e) => setDraft({ ...draft, price: e.target.value })}
           />}
-          <Button type="button" variant="secondary" onClick={addItem}>
+          <Button type="button" variant="secondary" className="min-h-11" onClick={addItem}>
             + Adaugă
           </Button>
         </div>

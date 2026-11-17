@@ -57,11 +57,11 @@ export default function AddCustomerForm({ isClinic = false }: { isClinic?: boole
     <Card className="mb-5 max-w-md w-full">
       <div className="flex flex-col gap-2">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <Input placeholder="Nume" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <Input placeholder="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <Input aria-label="Nume" autoComplete="name" placeholder="Nume" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <Input aria-label="Telefon" type="tel" inputMode="tel" autoComplete="tel" placeholder="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <Input placeholder="Email (opțional)" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Input aria-label="Email opțional" type="email" autoComplete="email" placeholder="Email (opțional)" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           {isClinic && (
             <div>
               <label className="text-xs text-gray-400 block mb-1">Data nașterii</label>
@@ -87,11 +87,11 @@ export default function AddCustomerForm({ isClinic = false }: { isClinic?: boole
         )}
 
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={handleSave} disabled={saving || !form.phone}>
+        <div className="grid grid-cols-2 gap-2 sm:flex">
+          <Button variant="secondary" className="min-h-11" onClick={handleSave} disabled={saving || !form.phone}>
             {saving ? 'Se salvează...' : 'Salvează'}
           </Button>
-          <Button variant="secondary" onClick={() => setOpen(false)}>
+          <Button variant="secondary" className="min-h-11" onClick={() => setOpen(false)}>
             Anulează
           </Button>
         </div>

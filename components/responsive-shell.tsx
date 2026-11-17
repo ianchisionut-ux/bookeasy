@@ -96,6 +96,22 @@ export function ResponsiveShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const pathname = usePathname()
+  useEffect(() => {
+    if (!accountOpen && !mobileMenuOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setAccountOpen(false)
+        setMobileMenuOpen(false)
+      }
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [accountOpen, mobileMenuOpen])
   const accent = accentColor || 'var(--accent)'
   const softTint = accentColor ? blendWithWhite(accentColor, 0.15) : 'var(--surface-muted)' // culoare solidă, opacă
 
@@ -147,9 +163,10 @@ export function ResponsiveShell({
     .filter((item) => pathname === item.href || pathname?.startsWith(item.href + '/'))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href
 
-  const dashboardMobileItems = displayNavItems.filter((item) =>
-    ['/dashboard/calendar', '/dashboard/mesaje', '/dashboard/programari'].includes(item.href)
-  )
+  const dashboardMobileOrder = ['/dashboard/calendar', '/dashboard/programari', '/dashboard/clienti', '/dashboard/mesaje']
+  const dashboardMobileItems = dashboardMobileOrder
+    .map((href) => displayNavItems.find((item) => item.href === href))
+    .filter((item): item is (typeof displayNavItems)[number] => Boolean(item))
   const primaryMobileItems = dashboardMobileItems.length > 0 ? dashboardMobileItems : displayNavItems.slice(0, 3)
   const otherMobileItems = displayNavItems.filter((item) => !primaryMobileItems.some((primary) => primary.href === item.href))
 
@@ -157,14 +174,15 @@ export function ResponsiveShell({
     <div className={`app-shell-theme ${nativeIos ? 'native-ios-shell' : ''} min-h-screen lg:grid transition-[grid-template-columns] ${sidebarCollapsed ? 'lg:grid-cols-[76px_1fr]' : 'lg:grid-cols-[188px_1fr]'}`}>
       {/* header mobil, doar sub lg */}
       <div className="app-shell-mobile-header lg:hidden sticky top-0 z-40 border-b border-white/70 bg-white screen-only">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Link href={logoHref} prefetch={false} className="flex items-center gap-2">
-            <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={24} height={24} /><span className="font-semibold">{logoLabel}</span>
+        <div className="flex min-h-[60px] items-center justify-between gap-3 px-4 py-2">
+          <Link href={logoHref} prefetch={false} className="flex min-w-0 items-center gap-2">
+            <Image src="/logo-mark-square.png" alt="bookeasy.ro" width={28} height={28} className="shrink-0" />
+            <span className="min-w-0 leading-tight"><span className="block text-xs font-semibold text-gray-500">{logoLabel}</span>{profileName && <span className="block truncate text-sm font-bold">{profileName}</span>}</span>
           </Link>
           <button
             onClick={() => setAccountOpen(true)}
             aria-label="Cont"
-            className="relative w-9 h-9 flex items-center justify-center rounded-full text-sm"
+            className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm"
             style={{ background: accentColor ? `${accentColor}22` : 'var(--accent-soft)' }}
           >
             <User size={16} />
@@ -174,7 +192,7 @@ export function ResponsiveShell({
 
       </div>
 
-      <nav aria-label="Navigare principală" className="mobile-bottom-nav lg:hidden screen-only">
+      <nav aria-label="Navigare principală" className={`mobile-bottom-nav lg:hidden screen-only ${dashboardMobileItems.length > 0 ? 'mobile-bottom-nav--five' : ''}`}>
         {primaryMobileItems.map((item) => {
           const Icon = item.icon ? NAV_ICONS[item.icon] : null
           return <Link key={item.href} href={item.href} prefetch={false} aria-current={item.href === activeHref ? 'page' : undefined} className={'mobile-bottom-nav-item' + (item.href === activeHref ? ' is-active' : '')}>
@@ -195,8 +213,8 @@ export function ResponsiveShell({
           <div className="grid grid-cols-2 gap-2">
             {otherMobileItems.map((item) => {
               const Icon = item.icon ? NAV_ICONS[item.icon] : null
-              return <Link key={item.href} href={item.href} prefetch={false} onClick={() => setMobileMenuOpen(false)} className="flex min-h-12 items-center gap-2 rounded-xl bg-[var(--surface-muted)] px-3 text-sm font-medium">
-                {Icon && <Icon size={18}/>}<span>{item.label}</span>{item.lockedTo && <span className="ml-auto rounded-full bg-[#e8f7f4] px-2 py-0.5 text-[10px] font-bold text-[#147f83]">{item.lockedTo}</span>}{!!item.badge && <span className="ml-auto rounded-full bg-red-600 px-1.5 text-xs text-white">{item.badge}</span>}
+              return <Link key={item.href} href={item.href} prefetch={false} onClick={() => setMobileMenuOpen(false)} className="flex min-h-12 min-w-0 items-center gap-2 rounded-xl bg-[var(--surface-muted)] px-3 text-sm font-medium">
+                {Icon && <Icon size={18}/>}<span className="min-w-0 break-words">{item.label}</span>{item.lockedTo && <span className="ml-auto rounded-full bg-[#e8f7f4] px-2 py-0.5 text-[10px] font-bold text-[#147f83]">{item.lockedTo}</span>}{!!item.badge && <span className="ml-auto rounded-full bg-red-600 px-1.5 text-xs text-white">{item.badge}</span>}
               </Link>
             })}
             <CookiePreferencesButton onOpen={() => setMobileMenuOpen(false)} className="flex min-h-12 items-center rounded-xl bg-[var(--surface-muted)] px-3 text-left text-sm font-medium" />

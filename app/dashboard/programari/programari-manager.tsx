@@ -387,7 +387,7 @@ export default function ProgramariManager({
               </option>
             ))}
           </select>
-          <button type="submit" className="btn-secondary whitespace-nowrap">
+          <button type="submit" className="btn-secondary min-h-11 whitespace-nowrap">
             Filtrează
           </button>
         </form>
@@ -786,7 +786,7 @@ function NewBookingForm({
                         key={slot.time}
                         type="button"
                         onClick={() => setSelectedSlot(slot.time)}
-                        className="py-2 rounded-lg text-center text-sm font-medium border transition"
+                        className="min-h-11 rounded-lg border py-2 text-center text-sm font-medium transition"
                         style={active ? { background: 'var(--accent)', color: 'white', borderColor: 'var(--accent)' } : {}}
                       >
                         {time}
@@ -802,7 +802,7 @@ function NewBookingForm({
         <div className="mb-3">
           <label className="text-sm text-gray-500 block mb-1.5">Data</label>
           <input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,10)} className="input-field w-full max-w-xs" />
-          {serviceId && <div className="mt-3"><label className="text-sm text-gray-500 block mb-2">Ore disponibile</label>{loadingSlots ? <p className="text-sm text-gray-400">Se încarcă orele...</p> : daySlots.filter(s=>s.available).length === 0 ? <p className="text-sm text-gray-500">Nu mai sunt ore disponibile în această zi.</p> : <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">{daySlots.filter(s=>s.available).map(slot=>{const time=new Date(slot.time).toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Bucharest'});const active=selectedSlot===slot.time;return <button key={slot.time} type="button" onClick={()=>setSelectedSlot(slot.time)} className="py-2 rounded-lg text-sm font-medium border" style={active?{background:'var(--accent)',color:'white',borderColor:'var(--accent)'}:{}}>{time}</button>})}</div>}</div>}
+          {serviceId && <div className="mt-3"><label className="text-sm text-gray-500 block mb-2">Ore disponibile</label>{loadingSlots ? <p className="text-sm text-gray-400">Se încarcă orele...</p> : daySlots.filter(s=>s.available).length === 0 ? <p className="text-sm text-gray-500">Nu mai sunt ore disponibile în această zi.</p> : <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">{daySlots.filter(s=>s.available).map(slot=>{const time=new Date(slot.time).toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Europe/Bucharest'});const active=selectedSlot===slot.time;return <button key={slot.time} type="button" onClick={()=>setSelectedSlot(slot.time)} className="min-h-11 rounded-lg border py-2 text-sm font-medium" style={active?{background:'var(--accent)',color:'white',borderColor:'var(--accent)'}:{}}>{time}</button>})}</div>}</div>}
         </div>
       )}
 
@@ -823,7 +823,7 @@ function NewBookingForm({
 
       {error && <p role="alert" className="text-sm text-red-600 mb-2">{error}</p>}
 
-      <Button variant="secondary" onClick={submit} disabled={saving}>
+      <Button variant="secondary" className="min-h-11 w-full sm:w-auto" onClick={submit} disabled={saving}>
         {saving ? 'Se salvează...' : `Salvează ${bookingSingular}a`}
       </Button>
     </Card>

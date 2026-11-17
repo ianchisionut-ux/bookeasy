@@ -65,7 +65,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         <BackLink href="/dashboard/clienti" label={`Înapoi la ${isClinic ? 'pacienți' : 'clienți'}`} />
       </div>
 
-      <div className="flex items-center justify-between gap-3 mb-6 screen-only"><h1 className="text-2xl font-semibold">{customer.name ?? 'Fără nume'}</h1><ArchiveCustomerButton id={customer.id} label={isClinic ? 'pacientul' : 'clientul'} /></div>
+      <div className="mb-5 flex min-w-0 flex-wrap items-center justify-between gap-3 screen-only"><h1 className="min-w-0 break-words text-2xl font-semibold">{customer.name ?? 'Fără nume'}</h1><ArchiveCustomerButton id={customer.id} label={isClinic ? 'pacientul' : 'clientul'} /></div>
       {business?.category === 'FITNESS' && <Link href={`/dashboard/fitness?client=${customer.id}`} className="card mb-5 flex items-center gap-3 p-5 text-[var(--brand-teal-dark)]"><Dumbbell size={23} /><span className="flex-1"><strong className="block text-sm">Fișa de coaching</strong><span className="text-xs text-gray-500">Planuri de antrenament, nutriție, sarcini și acces PWA</span></span><ArrowUpRight size={18} /></Link>}
 
       {business?.category === 'CLINICA' ? (
@@ -108,12 +108,12 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         <h2 className="text-lg font-medium mb-3 mt-8">Istoric {bookingTerminology(business?.category).plural}</h2>
         <div className="flex flex-col gap-2">
           {customer.bookings.map((b) => (
-            <Card key={b.id} className="flex items-center justify-between py-3">
-              <span className="font-medium">
+            <Card key={b.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-3">
+              <span className="w-full min-w-0 break-words font-medium sm:w-auto">
                 {b.service.name}
                 {b.practitioner ? ` · ${b.practitioner.name}` : ''}
               </span>
-              <span className="text-gray-500 text-sm">{b.startAt.toLocaleString('ro-RO', { hour12: false, timeZone: 'Europe/Bucharest' })}</span>
+              <span className="text-sm text-gray-500">{b.startAt.toLocaleString('ro-RO', { hour12: false, timeZone: 'Europe/Bucharest' })}</span>
               <Pill tone={b.status === 'CONFIRMED' ? 'success' : b.status === 'CANCELLED' ? 'danger' : 'neutral'}>
                 {b.status}
               </Pill>

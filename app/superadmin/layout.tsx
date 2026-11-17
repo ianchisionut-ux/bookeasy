@@ -4,6 +4,9 @@ import { prisma } from '@/lib/prisma'
 import { SidebarUserBlock } from '@/components/sidebar-user-block'
 import { ResponsiveShell } from '@/components/responsive-shell'
 import { helpUnreadCount } from '@/lib/help-chat'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = { robots: { index: false, follow: false } }
 
 const NAV_ITEMS = [
   { href: '/superadmin/afaceri', label: 'Afaceri', icon: 'afaceri' },

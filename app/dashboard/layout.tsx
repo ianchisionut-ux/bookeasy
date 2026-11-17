@@ -12,6 +12,9 @@ import { helpUnreadCount } from '@/lib/help-chat'
 import { effectiveBusinessPlan, hasBusinessPlan, type BusinessPlan } from '@/lib/business-plans'
 import { isWalletEligibleCategory } from '@/lib/wallet-eligibility'
 import { walletConfigured } from '@/lib/google-wallet'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = { robots: { index: false, follow: false } }
 
 // layout-ul se randează mereu din nou, la fiecare cerere — fără nicio cache, ca
 // setări cum e culoarea businessului să apară imediat, nu doar la un moment ulterior

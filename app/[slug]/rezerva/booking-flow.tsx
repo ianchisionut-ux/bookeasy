@@ -229,14 +229,14 @@ export default function BookingFlow({
   }
 
   return (
-    <div className="min-w-0 max-w-full overflow-hidden flex flex-col gap-6 sm:gap-7">
+    <div className="flex min-w-0 max-w-full flex-col gap-5 overflow-hidden sm:gap-7">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: accentColor }}>Rezervare rapidă</p>
         <h2 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">Alege detaliile {bookingGenitive}</h2>
         <div className="mt-4 grid min-w-0 grid-cols-3 gap-1.5 sm:mt-5 sm:gap-2">
-          <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[10px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: service ? accentSoftColor : 'var(--surface-muted)', color: service ? accentColor : '#8b91a0' }}><CalendarDays size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">{offer.heading}</span></div>
-          <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[10px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: selectedSlot ? accentSoftColor : 'var(--surface-muted)', color: selectedSlot ? accentColor : '#8b91a0' }}><Clock3 size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">Data și ora</span></div>
-          <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[10px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: name.trim() && phone.trim().length >= 6 ? accentSoftColor : 'var(--surface-muted)', color: name.trim() && phone.trim().length >= 6 ? accentColor : '#8b91a0' }}><UserRound size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">Datele tale</span></div>
+          <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[11px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: service ? accentSoftColor : 'var(--surface-muted)', color: service ? accentColor : '#8b91a0' }}><CalendarDays size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">{offer.heading}</span></div>
+          <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[11px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: selectedSlot ? accentSoftColor : 'var(--surface-muted)', color: selectedSlot ? accentColor : '#8b91a0' }}><Clock3 size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">Data și ora</span></div>
+          <div className="min-w-0 rounded-xl px-1.5 py-2 text-center text-[11px] font-medium sm:flex sm:items-center sm:gap-2 sm:px-3 sm:text-left sm:text-xs" style={{ background: name.trim() && phone.trim().length >= 6 ? accentSoftColor : 'var(--surface-muted)', color: name.trim() && phone.trim().length >= 6 ? accentColor : '#8b91a0' }}><UserRound size={14} className="mx-auto mb-1 sm:m-0" /><span className="block truncate">Datele tale</span></div>
         </div>
       </div>
       {/* Alege serviciul */}
@@ -279,7 +279,7 @@ export default function BookingFlow({
                 <button
                   key={p.id}
                   onClick={() => setPractitionerId(p.id)}
-                  className="text-left px-3.5 py-2 rounded-2xl border transition"
+                  className="min-h-11 rounded-2xl border px-3.5 py-2 text-left transition"
                   style={{
                     borderColor: active ? accentColor : 'var(--border-soft)',
                     background: active ? accentSoftColor : 'white',
@@ -381,7 +381,7 @@ export default function BookingFlow({
                   <button
                     key={slot.time}
                     onClick={() => setSelectedSlot(slot.time)}
-                    className="py-2.5 rounded-xl text-center text-sm font-medium border transition"
+                    className="min-h-11 rounded-xl border py-2.5 text-center text-sm font-medium transition"
                     style={{
                       borderColor: active ? accentColor : 'var(--border-soft)',
                       background: active ? accentColor : 'white',
@@ -402,8 +402,8 @@ export default function BookingFlow({
         {rescheduleBookingId && rescheduleToken && <p className="mb-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">Programarea actuală rămâne valabilă până când confirmi o nouă oră aici.</p>}
         <h2 className="font-semibold mb-3">Detaliile tale</h2>
         <div className="grid gap-2 sm:grid-cols-2">
-          <Input placeholder="Numele tău" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder="Telefon" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input aria-label="Numele tău" autoComplete="name" placeholder="Numele tău" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input aria-label="Telefon" placeholder="Telefon" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
         <p className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-400"><ShieldCheck size={13} /> Afacerea te poate contacta la numărul introdus.</p>
       </div>

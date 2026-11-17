@@ -75,7 +75,7 @@ export default function LoginPage() {
         </div>
       </section>
 
-      <section className="flex min-w-0 items-center justify-center px-5 py-20 sm:px-8 lg:px-12 lg:py-12">
+      <section className="flex min-w-0 items-center justify-center px-3 pb-10 pt-16 sm:px-8 sm:py-20 lg:px-12 lg:py-12">
         <div className="w-full max-w-md">
           <div className="mb-6 text-center">
             <Link href="/" className="mx-auto mb-5 inline-block" aria-label="BookEasy · pagina principală">

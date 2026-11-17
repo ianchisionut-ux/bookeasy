@@ -15,16 +15,20 @@ export default function MarketplaceHeroVideos() {
 
   useEffect(() => {
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setRunning(!preference.matches)
-    const reduceMotion = () => setRunning(!preference.matches)
-    preference.addEventListener('change', reduceMotion)
+    const compactScreen = window.matchMedia('(max-width: 640px)')
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection
+    const updatePlayback = () => setRunning(!preference.matches && !compactScreen.matches && !connection?.saveData && !['slow-2g', '2g'].includes(connection?.effectiveType ?? ''))
+    updatePlayback()
+    preference.addEventListener('change', updatePlayback)
+    compactScreen.addEventListener('change', updatePlayback)
     const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting))
     if (container.current) observer.observe(container.current)
     const visibility = () => setInView(!document.hidden && Boolean(container.current && container.current.getBoundingClientRect().bottom > 0))
     document.addEventListener('visibilitychange', visibility)
     return () => {
       observer.disconnect()
-      preference.removeEventListener('change', reduceMotion)
+      preference.removeEventListener('change', updatePlayback)
+      compactScreen.removeEventListener('change', updatePlayback)
       document.removeEventListener('visibilitychange', visibility)
     }
   }, [])
@@ -60,13 +64,13 @@ export default function MarketplaceHeroVideos() {
   return (
     <div ref={container} className="marketplace-hero-slideshow">
       <div className="marketplace-hero-videos" aria-hidden="true">
-        {clips.map((clip, index) => {
+        {running && clips.map((clip, index) => {
           return <video
             key={clip}
             ref={element => { videos.current[index] = element }}
             src={`/videos/hero/${clip}.mp4`}
             muted playsInline loop disablePictureInPicture
-            preload={index === current && running ? 'auto' : index === current || index === (current + 1) % clips.length ? 'metadata' : 'none'}
+            preload={running && inView && index === current ? 'metadata' : 'none'}
             tabIndex={-1}
             className={visible === index ? 'is-visible' : ''}
             onPlaying={() => { if (index === current) setVisible(index) }}

@@ -15,8 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   })
 
   return [
-    { url: origin, changeFrequency: 'weekly', priority: 1 },
-    { url: `${origin}/descopera`, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${origin}/descopera`, changeFrequency: 'daily', priority: 1 },
     { url: `${origin}/harta`, changeFrequency: 'daily', priority: 0.7 },
     { url: `${origin}/pentru-afaceri`, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${origin}/aplicatii`, changeFrequency: 'monthly', priority: 0.5 },

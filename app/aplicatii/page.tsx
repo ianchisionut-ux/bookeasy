@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Smartphone } from 'lucide-react'
 import { PublicHeader } from '@/components/ui/public-header'
 
-export const metadata: Metadata = { title: 'Aplicații BookEasy', description: 'Accesează BookEasy și gestionează programările de pe telefon.', alternates: { canonical: 'https://www.bookeasy.ro/aplicatii' } }
+export const metadata: Metadata = { title: 'Aplicații BookEasy', description: 'Accesează BookEasy și gestionează programările de pe telefon.', alternates: { canonical: 'https://bookeasy.ro/aplicatii' } }
 
 export default function ApplicationsPage() {
   return <div className="themed-static-bg min-h-screen">

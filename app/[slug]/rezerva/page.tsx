@@ -12,8 +12,20 @@ import CustomerGoogleAccount from '@/components/customer-google-account'
 import { canPreviewBusiness, businessSetupHref } from '@/lib/business-preview'
 import BusinessPreviewNotice from '@/components/business-preview-notice'
 import Link from 'next/link'
+import type { Metadata } from 'next'
+import { businessMetadata } from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const business = await prisma.business.findUnique({
+    where: { slug },
+    select: { name: true, slug: true, category: true, city: true, heroImageUrl: true, publicListed: true, accountActive: true },
+  })
+  if (!business || business.category === 'HOTEL' || business.category === 'PENSIUNE') return { robots: { index: false, follow: false } }
+  return businessMetadata({ ...business, categoryLabel: CATEGORY_LABEL[business.category] }, true)
+}
 
 const WEEKDAY_SHORT = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']
 
@@ -67,10 +79,10 @@ export default async function RezervaPage({ params, searchParams }: { params: Pr
       <PublicHeader />
       {preview && <div className="px-3 sm:px-6"><BusinessPreviewNotice onboardingDone={business.onboardingDone} onboardingStep={business.onboardingStep} accountActive={business.accountActive} /></div>}
 
-      <div className="px-3 pt-4 sm:px-6 sm:pt-8">
-        <div className="mx-auto max-w-6xl overflow-hidden rounded-[22px] px-4 py-5 shadow-xl sm:rounded-[26px] sm:px-8 sm:py-8" style={{ background: `linear-gradient(125deg, var(--brand-ink) 0%, ${accent} 150%)` }}>
+      <div className="px-3 pt-3 sm:px-6 sm:pt-8">
+        <div className="mx-auto max-w-6xl overflow-hidden rounded-[18px] px-4 py-3 shadow-lg sm:rounded-[26px] sm:px-8 sm:py-8" style={{ background: `linear-gradient(125deg, var(--brand-ink) 0%, ${accent} 150%)` }}>
           <div className="flex items-center gap-4">
-            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-white/20 bg-white/15 text-xl font-semibold text-white shadow-inner backdrop-blur">{initials}</div>
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-white/20 bg-white/15 text-base font-semibold text-white shadow-inner backdrop-blur sm:h-16 sm:w-16 sm:text-xl">{initials}</div>
             <div className="min-w-0">
               <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/60">{booking.heading} online</p>
               <h1 className="truncate text-xl font-semibold text-white sm:text-2xl">{business.name}</h1>
@@ -80,8 +92,8 @@ export default async function RezervaPage({ params, searchParams }: { params: Pr
         </div>
       </div>
 
-      <main className="mx-auto grid min-w-0 max-w-6xl gap-4 px-3 py-4 sm:gap-5 sm:px-6 sm:py-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
-        <aside className="card min-w-0 overflow-hidden p-4 sm:p-5 lg:sticky lg:top-6">
+      <main className="mx-auto grid min-w-0 max-w-6xl gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-8 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+        <aside className="card order-2 min-w-0 overflow-hidden p-4 sm:p-5 lg:order-1 lg:sticky lg:top-6">
           <BackLink href={`/${slug}`} label={`Înapoi la ${business.name}`} />
           <div className="mt-5 border-t border-[var(--border-soft)] pt-5">
             <h2 className="font-semibold">Rezervă în câteva momente</h2>
@@ -95,16 +107,12 @@ export default async function RezervaPage({ params, searchParams }: { params: Pr
           </div>
         </aside>
 
-        <section className="card min-w-0 overflow-hidden p-4 sm:p-7 lg:p-8">
+        <section className="card order-1 min-w-0 overflow-hidden p-4 sm:p-7 lg:order-2 lg:p-8">
           {preview ? <div className="py-6">
             <h2 className="text-xl font-semibold">{booking.heading} nu sunt încă deschise</h2>
             <p className="mt-2 text-sm text-gray-500">Configurează ofertele și programul de lucru, apoi publică pagina afacerii. În această previzualizare nu se pot trimite {booking.plural}.</p>
             {business.accountActive && <Link href={businessSetupHref(business.onboardingDone, business.onboardingStep)} className="btn-primary mt-4 inline-flex">{business.onboardingDone ? 'Deschide setările' : 'Continuă configurarea'}</Link>}
           </div> : <>
-          <div className="mb-6 rounded-2xl border border-[var(--border-soft)] bg-gray-50 p-4">
-            <p className="mb-3 text-sm text-gray-600">Conectează-te cu Google înainte de rezervare pentru a putea lăsa o recenzie verificată după vizită.</p>
-            <CustomerGoogleAccount email={googleEmail} available={googleAvailable} returnTo={`/${slug}/rezerva`} />
-          </div>
           <BookingFlow
             businessId={business.id}
             businessSlug={business.slug}
@@ -128,6 +136,10 @@ export default async function RezervaPage({ params, searchParams }: { params: Pr
               price: business.showServicePrices && service.price !== null ? Number(service.price) : null,
             })))}
           />
+          <div className="mt-6 rounded-2xl border border-[var(--border-soft)] bg-gray-50 p-4">
+            <p className="mb-3 text-sm text-gray-600">Opțional: conectează-te cu Google pentru a putea lăsa o recenzie verificată după vizită.</p>
+            <CustomerGoogleAccount email={googleEmail} available={googleAvailable} returnTo={`/${slug}/rezerva`} />
+          </div>
           </>}
         </section>
       </main>

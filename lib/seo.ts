@@ -13,6 +13,30 @@ export function publicMetadata(title: string, description: string, path: string)
   }
 }
 
+export function businessMetadata(business: {
+  name: string
+  slug: string
+  categoryLabel: string
+  city: string | null
+  heroImageUrl: string | null
+  publicListed: boolean
+  accountActive: boolean
+}, booking = false): Metadata {
+  const title = booking ? `Rezervă online la ${business.name} | BookEasy` : `${business.name}${business.city ? `, ${business.city}` : ''} | BookEasy`
+  const description = booking
+    ? `Alege serviciul, data și ora pentru ${business.name}${business.city ? ` din ${business.city}` : ''}. Programează-te online prin BookEasy.`
+    : `${business.name} — ${business.categoryLabel.toLowerCase()}${business.city ? ` în ${business.city}` : ''}. Vezi serviciile, programul și recenziile și rezervă online prin BookEasy.`
+  const path = `/${encodeURIComponent(business.slug)}${booking ? '/rezerva' : ''}`
+  const metadata = publicMetadata(title, description, path)
+  if (!business.publicListed || !business.accountActive) return { ...metadata, robots: { index: false, follow: false } }
+  if (business.heroImageUrl) {
+    const imageUrl = business.heroImageUrl.startsWith('http') ? business.heroImageUrl : `${SITE_URL}${business.heroImageUrl}`
+    metadata.openGraph = { ...metadata.openGraph, images: [{ url: imageUrl, alt: business.name }] }
+    metadata.twitter = { ...metadata.twitter, images: [imageUrl] }
+  }
+  return metadata
+}
+
 export function jsonLd(value: unknown) {
   return JSON.stringify(value).replace(/</g, '\\u003c')
 }

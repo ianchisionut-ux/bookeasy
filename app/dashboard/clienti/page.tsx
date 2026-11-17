@@ -44,20 +44,20 @@ export default async function ClientiPage({
 
   return (
     <div className="dashboard-page">
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <h1 className="text-2xl font-semibold mr-1">{label}</h1>
-        <span className="text-sm text-gray-500 mr-1 whitespace-nowrap">{customers.length} {label.toLowerCase()}</span>
-        <Link href={showingArchived ? '/dashboard/clienti' : '/dashboard/clienti?archived=1'} className="text-sm text-[var(--accent)]">{showingArchived ? 'Înapoi la lista activă' : 'Arhivă'}</Link>
-        <div className="flex items-center gap-2">
-          <form method="get" className="contents">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <h1 className="mr-1 text-2xl font-semibold">{label}</h1>
+        <span className="mr-1 whitespace-nowrap text-sm text-gray-500">{customers.length} {label.toLowerCase()}</span>
+        <Link href={showingArchived ? '/dashboard/clienti' : '/dashboard/clienti?archived=1'} className="ml-auto inline-flex min-h-11 items-center text-sm font-medium text-[var(--accent)]">{showingArchived ? 'Lista activă' : 'Arhivă'}</Link>
+        <div className="flex w-full min-w-0 items-center gap-2 md:w-auto">
+          <form method="get" role="search" className="min-w-0 flex-1 md:flex-none">
             {showingArchived && <input type="hidden" name="archived" value="1" />}
-            <Input type="text" name="q" defaultValue={query} placeholder="Caută nume, telefon, email..." className="w-52" />
+            <Input type="search" name="q" aria-label={`Caută ${label.toLowerCase()}`} defaultValue={query} placeholder="Caută nume, telefon, email..." className="w-full md:w-64" />
           </form>
-          <PrintButton />
+          <div className="hidden md:block"><PrintButton /></div>
         </div>
       </div>
 
-      <div className="mb-5">
+      <div className="mb-4 [&>button]:w-full md:[&>button]:w-auto">
         <AddCustomerForm isClinic={isClinic} />
       </div>
 
@@ -67,7 +67,25 @@ export default async function ClientiPage({
         </p>
       )}
 
-      <Card className="p-0 overflow-hidden printable">
+      <div className="space-y-2 md:hidden screen-only" aria-label={label}>
+        {customers.map((customer) => (
+          <Card key={customer.id} className="min-w-0 p-4">
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0">
+                {showingArchived ? <h2 className="break-words font-semibold">{customer.name ?? 'Fără nume'}</h2> : <Link href={`/dashboard/clienti/${customer.id}`} className="block min-h-11 break-words py-2 font-semibold text-[var(--accent)]">{customer.name ?? 'Fără nume'}</Link>}
+                <a href={`tel:${customer.phone}`} className="inline-flex min-h-10 items-center text-sm text-gray-700">{customer.phone}</a>
+                {customer.email && <p className="break-all text-xs text-gray-500">{customer.email}</p>}
+              </div>
+              <span className="shrink-0 rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-medium text-gray-600">{customer._count.bookings} {visitLabel.toLowerCase()}</span>
+            </div>
+            <div className="mt-3 border-t border-[var(--border-soft)] pt-2">
+              {showingArchived ? <RestoreCustomerButton id={customer.id} /> : <Link href={`/dashboard/clienti/${customer.id}`} className="inline-flex min-h-11 items-center font-medium text-[var(--accent)]">Vezi profilul și programează →</Link>}
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="hidden overflow-hidden p-0 printable md:block print:block">
         <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[640px]">
           <thead>
