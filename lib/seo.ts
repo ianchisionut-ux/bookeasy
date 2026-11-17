@@ -22,16 +22,18 @@ export function businessMetadata(business: {
   publicListed: boolean
   accountActive: boolean
 }, booking = false): Metadata {
-  const title = booking ? `Rezervă online la ${business.name} | BookEasy` : `${business.name}${business.city ? `, ${business.city}` : ''} | BookEasy`
+  const name = business.name.trim()
+  const city = business.city?.trim() || null
+  const title = booking ? `Rezervă online la ${name} | BookEasy` : `${name}${city ? `, ${city}` : ''} | BookEasy`
   const description = booking
-    ? `Alege serviciul, data și ora pentru ${business.name}${business.city ? ` din ${business.city}` : ''}. Programează-te online prin BookEasy.`
-    : `${business.name} — ${business.categoryLabel.toLowerCase()}${business.city ? ` în ${business.city}` : ''}. Vezi serviciile, programul și recenziile și rezervă online prin BookEasy.`
+    ? `Alege serviciul, data și ora pentru ${name}${city ? ` din ${city}` : ''}. Programează-te online prin BookEasy.`
+    : `${name} — ${business.categoryLabel.trim().toLowerCase()}${city ? ` în ${city}` : ''}. Vezi serviciile, programul și recenziile și rezervă online prin BookEasy.`
   const path = `/${encodeURIComponent(business.slug)}${booking ? '/rezerva' : ''}`
   const metadata = publicMetadata(title, description, path)
   if (!business.publicListed || !business.accountActive) return { ...metadata, robots: { index: false, follow: false } }
   if (business.heroImageUrl) {
     const imageUrl = business.heroImageUrl.startsWith('http') ? business.heroImageUrl : `${SITE_URL}${business.heroImageUrl}`
-    metadata.openGraph = { ...metadata.openGraph, images: [{ url: imageUrl, alt: business.name }] }
+    metadata.openGraph = { ...metadata.openGraph, images: [{ url: imageUrl, alt: name }] }
     metadata.twitter = { ...metadata.twitter, images: [imageUrl] }
   }
   return metadata

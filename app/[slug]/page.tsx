@@ -56,7 +56,7 @@ export default async function PublicBusinessPage({ params, searchParams }: { par
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
     '@id': `${SITE_URL}/${encodeURIComponent(business.slug)}#business`,
-    name: business.name,
+    name: business.name.trim(),
     url: `${SITE_URL}/${encodeURIComponent(business.slug)}`,
     ...(business.heroImageUrl ? { image: business.heroImageUrl.startsWith('http') ? business.heroImageUrl : `${SITE_URL}${business.heroImageUrl}` } : {}),
     ...(business.contactPhone ? { telephone: business.contactPhone } : {}),
