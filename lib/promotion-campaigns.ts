@@ -16,4 +16,13 @@ export async function hasOpenPromotion(db:DB=prisma){
  const rows=await db.$queryRaw<{open:boolean}[]>`SELECT EXISTS(SELECT 1 FROM "LaunchCampaign" WHERE "code" IS NOT NULL AND "deletedAt" IS NULL AND "enrollmentOpen" AND ("startsAt" IS NULL OR "startsAt"<=CURRENT_TIMESTAMP) AND ("endsAt" IS NULL OR "endsAt">CURRENT_TIMESTAMP)) AS open`
  return rows[0]?.open??false
 }
-export async function listPromotions(){return prisma.$queryRaw<(Promotion&{enrollments:number})[]>`SELECT c.*,count(e."id")::integer AS enrollments FROM "LaunchCampaign" c LEFT JOIN "LaunchEnrollment" e ON e."campaignId"=c."id" WHERE c."code" IS NOT NULL AND c."deletedAt" IS NULL GROUP BY c."id" ORDER BY c."updatedAt" DESC`}
+export async function listPromotions({ includeArchived = false } = {}) {
+ return prisma.$queryRaw<(Promotion & { enrollments: number })[]>`
+   SELECT c.*, count(e."id")::integer AS enrollments
+   FROM "LaunchCampaign" c
+   LEFT JOIN "LaunchEnrollment" e ON e."campaignId" = c."id"
+   WHERE c."code" IS NOT NULL AND (${includeArchived} OR c."deletedAt" IS NULL)
+   GROUP BY c."id"
+   ORDER BY c."updatedAt" DESC
+ `
+}
