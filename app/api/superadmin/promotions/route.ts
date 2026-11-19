@@ -55,7 +55,9 @@ async function duplicateCode(code: string) {
 async function save(req: NextRequest, editing: boolean) {
   const denied = await adminAction(req, true)
   if (denied) return denied
-  const parsed = (editing ? update : create).safeParse(await req.json().catch(() => null))
+  const input: unknown = await req.json().catch(() => null)
+  const edit = editing ? update.safeParse(input) : null
+  const parsed = edit ?? create.safeParse(input)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Verifică numele, codul, durata și prețul campaniei.' }, { status: 400 })
   }
@@ -70,15 +72,16 @@ async function save(req: NextRequest, editing: boolean) {
   const price = d.freeUntilNotice ? 0 : d.regularMinor
 
   try {
-    if ('id' in d) {
-      const restoring = d.restore === true
+    if (edit?.success) {
+      const { id, restore } = edit.data
+      const restoring = restore === true
       const count = await prisma.$executeRaw`
         UPDATE "LaunchCampaign"
         SET "name" = ${d.name}, "code" = ${code}, "freeMonths" = ${d.freeMonths},
             "freeUntilNotice" = ${d.freeUntilNotice}, "regularMinor" = ${price},
             "enrollmentOpen" = ${d.enrollmentOpen}, "startsAt" = ${starts}, "endsAt" = ${ends},
             "deletedAt" = NULL, "updatedAt" = clock_timestamp()
-        WHERE "id" = ${d.id} AND (
+        WHERE "id" = ${id} AND (
           (${restoring} AND "deletedAt" IS NOT NULL AND "code" = ${code})
           OR (NOT ${restoring} AND "deletedAt" IS NULL)
         )
