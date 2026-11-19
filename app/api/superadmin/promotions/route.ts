@@ -118,13 +118,23 @@ export const PATCH = (req: NextRequest) => save(req, true)
 export async function DELETE(req: NextRequest) {
   const denied = await adminAction(req, true)
   if (denied) return denied
-  const parsed = z.object({ id: campaignId }).safeParse(await req.json().catch(() => null))
+  const parsed = z.object({ id: campaignId, permanent: z.boolean().optional() }).safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Campanie invalidă.' }, { status: 400 })
+
+  if (parsed.data.permanent) {
+    // Drop the public code and keep the row referenced by historical enrollments.
+    const count = await prisma.$executeRaw`
+      UPDATE "LaunchCampaign"
+      SET "code" = NULL, "enrollmentOpen" = false, "updatedAt" = clock_timestamp()
+      WHERE "id" = ${parsed.data.id} AND "deletedAt" IS NOT NULL AND "code" IS NOT NULL
+    `
+    return NextResponse.json(count ? { success: true } : { error: 'Campania nu mai este în arhivă. Reîncarcă lista.' }, { status: count ? 200 : 409 })
+  }
 
   const count = await prisma.$executeRaw`
     UPDATE "LaunchCampaign"
     SET "deletedAt" = clock_timestamp(), "enrollmentOpen" = false, "updatedAt" = clock_timestamp()
-    WHERE "id" = ${parsed.data.id} AND "deletedAt" IS NULL
+    WHERE "id" = ${parsed.data.id} AND "deletedAt" IS NULL AND "code" IS NOT NULL
   `
   return NextResponse.json(count ? { success: true } : { error: 'Campania nu există.' }, { status: count ? 200 : 404 })
 }

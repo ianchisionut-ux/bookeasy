@@ -126,8 +126,11 @@ export default function PromotionManager() {
     }
   }
 
-  async function archive(campaign: Campaign) {
-    if (!window.confirm(`Arhivezi campania ${campaign.code}? Codul nu va mai accepta înscrieri noi până când îl restaurezi. Ofertele deja acordate se păstrează.`)) return
+  async function remove(campaign: Campaign, permanent = false) {
+    const message = permanent
+      ? `Ștergi definitiv campania ${campaign.code}? Campania dispare din arhivă și nu mai poate fi restaurată. Ofertele deja acordate se păstrează. Dacă refolosești codul, linkurile și codurile QR existente vor deschide oferta nouă.`
+      : `Arhivezi campania ${campaign.code}? Codul nu va mai accepta înscrieri noi până când îl restaurezi. Ofertele deja acordate se păstrează.`
+    if (!window.confirm(message)) return
     setBusy(true)
     setError('')
     setNotice('')
@@ -136,16 +139,16 @@ export default function PromotionManager() {
       const response = await fetchWithTimeout('/api/superadmin/promotions', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: campaign.id }),
+        body: JSON.stringify({ id: campaign.id, permanent }),
       })
       const data = await response.json()
       if (!response.ok) throw Error(data.error)
       if (editing?.id === campaign.id) resetForm()
       await refresh()
       router.refresh()
-      setNotice('Campania a fost mutată în arhivă. O poți restaura oricând.')
+      setNotice(permanent ? `Campania a fost ștearsă definitiv. Poți refolosi codul ${campaign.code}.` : 'Campania a fost mutată în arhivă. O poți restaura oricând.')
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Arhivarea nu a reușit.')
+      setError(error instanceof Error ? error.message : 'Operațiunea nu a reușit.')
     } finally {
       setBusy(false)
     }
@@ -241,7 +244,7 @@ export default function PromotionManager() {
               <div>Început înscrieri: {date(c.startsAt)}</div><div>Final înscrieri: {date(c.endsAt)}</div>
             </dl>
             <button type="button" disabled={busy} className="btn-secondary text-sm" onClick={() => startEditing({ id: c.id, archived: false }, c)}>Editează</button>
-            <button type="button" disabled={busy} className="ml-4 text-sm text-red-700 underline" onClick={() => void archive(c)}>Arhivează</button>
+            <button type="button" disabled={busy} className="ml-4 text-sm text-red-700 underline" onClick={() => void remove(c)}>Arhivează</button>
           </div>
           <div className="flex shrink-0 flex-col items-center gap-2">
             <a href={signupUrl(c.code)} target="_blank" rel="noopener noreferrer" aria-label={`Deschide pagina de înrolare cu codul ${c.code}`} className="rounded-xl border border-gray-200 bg-white p-2">
@@ -261,7 +264,10 @@ export default function PromotionManager() {
               <p className="font-medium">{c.name} <span className="font-mono text-sm text-teal-700">{c.code}</span></p>
               <p className="text-xs text-gray-500">{c.enrollments} afaceri înscrise · arhivată la {date(c.deletedAt)}</p>
             </div>
-            <button type="button" disabled={busy} className="btn-secondary text-sm" onClick={() => startEditing({ id: c.id, archived: true }, c)}>Restaurează {c.code}</button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="button" disabled={busy} className="btn-secondary min-h-11 text-sm" onClick={() => startEditing({ id: c.id, archived: true }, c)}>Restaurează {c.code}</button>
+              <button type="button" disabled={busy} aria-label={`Șterge definitiv ${c.code}`} className="min-h-11 px-2 text-sm text-red-700 underline" onClick={() => void remove(c, true)}>Șterge definitiv</button>
+            </div>
           </li>)}
         </ul>
       </details>}
