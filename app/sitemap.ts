@@ -1,15 +1,14 @@
 import type { MetadataRoute } from 'next'
 import { prisma } from '@/lib/prisma'
-import { PUBLIC_CATEGORIES } from '@/lib/business-categories'
+import { publicCities, publicCityPath, publicMarketplaceWhere } from '@/lib/public-marketplace'
+import { SITE_URL as origin } from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
 
-const origin = 'https://bookeasy.ro'
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const businesses = await prisma.business.findMany({
-    where: { publicListed: true, accountActive: true, category: { in: [...PUBLIC_CATEGORIES] } },
-    select: { slug: true },
+    where: publicMarketplaceWhere,
+    select: { slug: true, city: true },
     orderBy: { slug: 'asc' },
     take: 45_000,
   })
@@ -19,6 +18,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${origin}/harta`, changeFrequency: 'daily', priority: 0.7 },
     { url: `${origin}/pentru-afaceri`, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${origin}/contact`, changeFrequency: 'monthly', priority: 0.5 },
+    ...publicCities(businesses).slice(0, 49_996 - businesses.length).map(({ slug }) => ({
+      url: `${origin}${publicCityPath(slug)}`,
+      changeFrequency: 'daily' as const,
+    })),
     ...businesses.map(({ slug }) => ({
       url: `${origin}/${slug}`,
       changeFrequency: 'weekly' as const,

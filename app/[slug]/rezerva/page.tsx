@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     select: { name: true, slug: true, category: true, city: true, heroImageUrl: true, publicListed: true, accountActive: true },
   })
   if (!business || business.category === 'HOTEL' || business.category === 'PENSIUNE') return { robots: { index: false, follow: false } }
-  return businessMetadata({ ...business, categoryLabel: CATEGORY_LABEL[business.category] }, true)
+  return businessMetadata(business, true)
 }
 
 const WEEKDAY_SHORT = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm']

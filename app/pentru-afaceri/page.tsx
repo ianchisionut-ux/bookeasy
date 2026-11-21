@@ -23,8 +23,8 @@ import {
 } from 'lucide-react'
 
 export const metadata = publicMetadata(
-  'BookEasy pentru afaceri | Programări și planuri',
-  'Rezervări online, calendar, echipă și comunicare cu clienții. Vezi funcțiile BookEasy și planurile Free, Standard și Pro.',
+  'Sistem de programari online pentru afaceri | BookEasy',
+  'Primeste rezervari online si gestioneaza calendarul, echipa si clientii. BookEasy include notificari, reconfirmari si o pagina de rezervare pentru afacerea ta.',
   '/pentru-afaceri',
 )
 

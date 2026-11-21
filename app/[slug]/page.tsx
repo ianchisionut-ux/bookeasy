@@ -15,6 +15,7 @@ import { canPreviewBusiness } from '@/lib/business-preview'
 import BusinessPreviewNotice from '@/components/business-preview-notice'
 import type { Metadata } from 'next'
 import { businessMetadata, jsonLd, SITE_URL } from '@/lib/seo'
+import { publicCity, publicCityPath, publicMarketplaceWhere } from '@/lib/public-marketplace'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     select: { name: true, slug: true, category: true, city: true, heroImageUrl: true, publicListed: true, accountActive: true },
   })
   if (!business || business.category === 'HOTEL' || business.category === 'PENSIUNE') return { robots: { index: false, follow: false } }
-  return businessMetadata({ ...business, categoryLabel: CATEGORY_LABEL[business.category] })
+  return businessMetadata(business)
 }
 
 export default async function PublicBusinessPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
@@ -44,6 +45,9 @@ export default async function PublicBusinessPage({ params, searchParams }: { par
   const preview = !business.publicListed || !business.accountActive
   if (preview && !canPreviewBusiness(business.id, await auth())) notFound()
   if (business.category === 'HOTEL' || business.category === 'PENSIUNE') notFound()
+  const city = !preview && publicMarketplaceWhere.category.in.some((category) => category === business.category)
+    ? publicCity(business.city)
+    : undefined
 
   const accent = business.brandColor || 'var(--accent)'
   const accentSoft = business.brandColor ? `${business.brandColor}1a` : 'var(--accent-soft)'
@@ -179,6 +183,7 @@ export default async function PublicBusinessPage({ params, searchParams }: { par
             {business.contactPhone && <a href={`tel:${business.contactPhone}`} className="btn-secondary mt-2 flex w-full items-center justify-center gap-2"><Phone size={15} /> {business.contactPhone}</a>}
           </div>
           {hasCoordinates && <BusinessDirections name={business.name} address={business.address ?? business.city} latitude={business.latitude!} longitude={business.longitude!} />}
+          {city && <Link href={publicCityPath(city.slug)} className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--brand-teal-dark)] hover:underline">Alte servicii in {city.name} <ArrowRight size={16} aria-hidden="true" /></Link>}
         </aside>
       </main>
 

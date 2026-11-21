@@ -13,7 +13,7 @@ const manrope = Manrope({ subsets: ['latin', 'latin-ext'], variable: '--font-man
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'BookEasy — programări și rezervări online',
+  title: 'BookEasy - Programari online si rezervari',
   description: SITE_DESCRIPTION,
   manifest: '/bookeasy-v2.webmanifest',
   applicationName: 'BookEasy',

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import MarketplaceHeroVideos from '@/components/marketplace-hero-videos'
@@ -40,7 +40,7 @@ function shortGroupLabel(label: string) {
 const favoritesKey = 'bookeasy-client-favorites-v1'
 const preferredCityKey = 'bookeasy-client-preferred-city-v1'
 
-export default function MarketplaceClient({ businesses }: { businesses: Business[] }) {
+export default function MarketplaceClient({ businesses, children }: { businesses: Business[]; children?: ReactNode }) {
   const [category, setCategory] = useState<Category>('ALL')
   const [city, setCity] = useState('ALL')
   const [locating, setLocating] = useState(false)
@@ -204,9 +204,9 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
         <div className="marketplace-container marketplace-hero-inner">
           <div className="marketplace-hero-copy">
             <h1 id="marketplace-hero-heading" className="marketplace-headline">
-              Descoperă servicii locale. <span>Programează-te simplu.</span>
+              Programari online. <span>Servicii aproape de tine.</span>
             </h1>
-            <p className="marketplace-hero-description">Beauty, wellness, sănătate și experiențe în orașul tău.<br />Locuri de încredere. Rezervări online. Momente care contează.</p>
+            <p className="marketplace-hero-description">Rezervari online la saloane, clinici si alte afaceri locale. Alege orasul, serviciul si ora potrivita.</p>
             <div className="marketplace-hero-benefits" aria-label="Avantaje BookEasy">
               <span><CalendarDays size={19} aria-hidden="true" />Rezervare rapidă</span>
               <span><ShieldCheck size={19} aria-hidden="true" />Afaceri locale</span>
@@ -343,6 +343,7 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
         )}
       </section>
 
+      {children}
       <section className="marketplace-container marketplace-how-it-works" aria-labelledby="marketplace-how-title">
         <div className="marketplace-how-heading">
           <p className="marketplace-kicker">FĂRĂ COMPLICAȚII</p>
