@@ -9,7 +9,17 @@ export function PublicFooter() {
       <div className="mx-auto grid max-w-6xl gap-5 border-b border-white/10 pb-5 md:grid-cols-[1.2fr_1fr_1fr]">
         <div>
           <p className="max-w-sm text-sm leading-relaxed text-white/65">Platformă SaaS pentru programări, clienți, echipe și comunicare automată.</p>
-          <Link href="/aplicatii" className="mt-4 inline-flex min-h-11 items-center rounded-full border border-white/25 px-4 text-sm font-semibold text-white transition hover:bg-white/10">BookEasy pe telefon</Link>
+          {process.env.GOOGLE_PLAY_LISTING_AVAILABLE === 'true' && (
+            <a href="https://play.google.com/store/apps/details?id=ro.bookeasy.app" className="mt-3 inline-flex max-w-full rounded-md">
+              <Image
+                src="/google-play-badge-ro.png"
+                alt="Descarcă BookEasy de pe Google Play"
+                width={646}
+                height={250}
+                className="h-auto w-40 max-w-full"
+              />
+            </a>
+          )}
           <p className="mt-2 text-xs text-white/50">{company.legalName} · CUI {company.cui}<br />{company.tradeRegistryNumber}</p>
         </div>
         <div>

@@ -18,7 +18,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${origin}/descopera`, changeFrequency: 'daily', priority: 1 },
     { url: `${origin}/harta`, changeFrequency: 'daily', priority: 0.7 },
     { url: `${origin}/pentru-afaceri`, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${origin}/aplicatii`, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${origin}/contact`, changeFrequency: 'monthly', priority: 0.5 },
     ...businesses.map(({ slug }) => ({
       url: `${origin}/${slug}`,

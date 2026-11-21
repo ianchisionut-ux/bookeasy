@@ -192,7 +192,6 @@ export default function MarketplaceClient({ businesses }: { businesses: Business
             <a onClick={() => setMenuOpen(false)} href="#rezultate" className="flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold hover:bg-[var(--brand-teal-soft)]">Afaceri</a>
             {PUBLIC_CATEGORY_GROUPS.map((group) => <button key={group.id} type="button" onClick={() => chooseGroup(group.id)} className="min-h-11 rounded-xl px-4 text-left text-sm font-semibold hover:bg-[var(--brand-teal-soft)]">{group.label}</button>)}
             <Link onClick={() => setMenuOpen(false)} href="/harta" className="flex min-h-11 items-center gap-3 rounded-xl px-4 text-sm font-semibold hover:bg-[var(--brand-teal-soft)]"><MapPin size={18} />Hartă</Link>
-            <Link onClick={() => setMenuOpen(false)} href="/aplicatii" className="flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold hover:bg-[var(--brand-teal-soft)]">Aplicații BookEasy</Link>
             <div className="my-2 border-t border-[var(--border-soft)]" />
             <Link onClick={() => setMenuOpen(false)} href="/cont" className="min-h-11 rounded-xl px-4 py-3 text-sm font-semibold">Intră în cont</Link>
             <Link onClick={() => setMenuOpen(false)} href="/pentru-afaceri#cere-acces" className="marketplace-header-cta mx-3 my-1 rounded-xl px-4 py-3 text-center text-sm font-bold">Adaugă afacerea ta</Link>

@@ -16,6 +16,10 @@ const nextConfig = {
       has: [{ type: 'host', value: 'www.bookeasy.ro' }],
       destination: 'https://bookeasy.ro/:path*',
       permanent: true,
+    }, {
+      source: '/aplicatii',
+      destination: '/descopera',
+      permanent: true,
     }]
   },
   async headers() {
