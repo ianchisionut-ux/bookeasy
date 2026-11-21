@@ -1,8 +1,4 @@
-'use client'
-
 import Image from 'next/image'
-import { useState } from 'react'
-import { Pause, Play } from 'lucide-react'
 import styles from './integrations-marquee.module.css'
 
 const integrations = [
@@ -15,14 +11,12 @@ const integrations = [
 ]
 
 export function IntegrationsMarquee() {
-  const [paused, setPaused] = useState(false)
-
   return (
     <section className={styles.strip} aria-labelledby="bookeasy-integrations-title">
       <div className={styles.inner}>
         <h2 className={styles.heading} id="bookeasy-integrations-title">Integrări</h2>
         <div className={styles.viewport}>
-          <div className={styles.track} data-paused={paused}>
+          <div className={styles.track}>
             {[false, true].map((duplicate) => (
               <ul key={String(duplicate)} className={styles.logos} aria-hidden={duplicate || undefined}>
                 {integrations.map(({ name, logo, width, height, showName }) => (
@@ -41,15 +35,6 @@ export function IntegrationsMarquee() {
             ))}
           </div>
         </div>
-        <button
-          className={styles.control}
-          type="button"
-          onClick={() => setPaused((value) => !value)}
-          aria-label="Pauză pentru banda de integrări"
-          aria-pressed={paused}
-        >
-          {paused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
-        </button>
       </div>
     </section>
   )
