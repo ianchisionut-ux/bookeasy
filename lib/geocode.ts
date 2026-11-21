@@ -1,1 +1,0 @@
-export { geocodeAddress } from './geoapify'

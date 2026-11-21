@@ -234,7 +234,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     bookingId: booking.id,
     walletUrl,
-    arrival: business.latitude !== null && business.longitude !== null
+    arrival: business.mapLocationConfirmed && business.latitude !== null && business.longitude !== null
       ? { token: arrivalToken, startAt: booking.startAt.toISOString() }
       : null,
   }, { headers: { 'Cache-Control': 'private, no-store' } })

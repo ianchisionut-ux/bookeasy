@@ -22,18 +22,34 @@ const request = body => ({
 
 async function main() {
   let roomCount = 0
+  let savedProfile
+  const prisma = {
+    business: {
+      findUnique: async () => ({ category: 'EVENT_VENUE', categoryLocked: false, onboardingDone: false, city: 'Zalău', _count: { services: 0, resources: roomCount, workingHours: 1 } }),
+      findUniqueOrThrow: async () => ({ slug: 'test-venue' }),
+      update: async ({ data }) => { savedProfile = data },
+      updateMany: async () => ({ count: 1 }),
+    },
+    $executeRaw: async () => {},
+    $transaction: async (operation) => operation(prisma),
+  }
   const onboarding = load('app/api/onboarding/route.ts', {
     '@/lib/business-public-slug': { setPublicSlug: async () => {} },
     'next/server': { NextResponse: { json } },
-    '@/lib/prisma': { prisma: { business: { findUnique: async () => ({ category: 'EVENT_VENUE', categoryLocked: false, onboardingDone: false, city: 'Zalău', _count: { services: 0, resources: roomCount, workingHours: 1 } }) } } },
+    '@/lib/prisma': { prisma },
     '@/lib/business-auth': { auth: async () => ({ businessId: 'venue' }) },
-    '@/lib/geocode': { geocodeAddress: async () => null },
     '@/lib/venue-services': { ensureVenueService: async () => {} },
     '@/lib/romanian-cities': { canonicalCity: value => value },
     '@/lib/business-categories': { PUBLIC_CATEGORIES: ['SALON', 'EVENT_VENUE'], isAppointmentCategory: value => value === 'SALON' },
     '@/lib/launch-campaign': { LaunchSignupError: class extends Error {}, activateLaunch: async () => {}, activateStandardSubscription: async () => {}, launchSignupData: async () => ({}), lockLaunchBusiness: async () => {} },
     '@/lib/promotion-campaigns': { hasOpenPromotion: async () => false },
   })
+  const profile = { name: 'Afacere de test', city: 'Zalău', address: 'Adresă de test', contactPhone: '' }
+  const profileStep = await onboarding.POST(request({ step: 1, data: { ...profile, latitude: 47, longitude: 23, mapLocationConfirmed: true } }))
+  assert.equal(profileStep.status, 200)
+  assert.deepEqual(savedProfile, profile)
+  console.log('PASS onboarding saves the business address without setting a public pin')
+
   const emptyStep = await onboarding.POST(request({ step: 3, data: { services: [] } }))
   assert.equal(emptyStep.status, 400)
   assert.match(emptyStep.body.error, /cel puțin o sală/)

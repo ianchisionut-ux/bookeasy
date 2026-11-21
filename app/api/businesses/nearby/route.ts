@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   if (!businessId) return NextResponse.json({ error: 'businessId required' }, { status: 400 })
 
   const current = await prisma.business.findUnique({ where: { id: businessId } })
-  if (!current?.latitude || !current?.longitude) {
+  if (!current?.mapLocationConfirmed || !current.publicListed || !current.accountActive || current.latitude === null || current.longitude === null) {
     return NextResponse.json({ businesses: [] })
   }
 
@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
       id: { not: businessId },
       publicListed: true,
       accountActive: true,
+      mapLocationConfirmed: true,
       category: current.category,
       latitude: { gte: current.latitude - latDelta, lte: current.latitude + latDelta },
       longitude: { gte: current.longitude - lngDelta, lte: current.longitude + lngDelta },

@@ -14,8 +14,10 @@ import Link from 'next/link'
 const WEEKDAY_LABELS = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă']
 
 type WorkingHour = { weekday: number; startTime: string; endTime: string; closed: boolean }
+type MapPosition = { lat: number; lng: number }
 
 export default function SettingsForm({
+  canManageLocation,
   smsAvailable,
   category,
   business,
@@ -25,6 +27,7 @@ export default function SettingsForm({
   isEventVenue,
   advancedLocked,
 }: {
+  canManageLocation: boolean
   smsAvailable: boolean
   category: string
   business: {
@@ -32,8 +35,8 @@ export default function SettingsForm({
     contactPhone: string
     city: string
     address: string
-    latitude: number | null
-    longitude: number | null
+    mapLocation: MapPosition | null
+    hasUnconfirmedPin: boolean
     publicListed: boolean
     slotIntervalMinutes: number | null
     minLeadTimeMinutes: number
@@ -55,9 +58,12 @@ export default function SettingsForm({
   isEventVenue: boolean
   advancedLocked?: boolean
 }) {
-  const [form, setForm] = useState({ ...business, city: canonicalCity(business.city) ?? '' })
-  const [position, setPosition] = useState<{ lat: number; lng: number } | null>(business.latitude !== null && business.longitude !== null ? { lat: business.latitude, lng: business.longitude } : null)
-  const [manualPositionChanged, setManualPositionChanged] = useState(false)
+  const { mapLocation, hasUnconfirmedPin, ...initialForm } = business
+  const [form, setForm] = useState({ ...initialForm, city: canonicalCity(business.city) ?? '' })
+  const [savedPosition, setSavedPosition] = useState(mapLocation)
+  const [unconfirmedPin, setUnconfirmedPin] = useState(hasUnconfirmedPin)
+  const [draftPosition, setDraftPosition] = useState<MapPosition | null>()
+  const position = draftPosition === undefined ? savedPosition : draftPosition
   const [saveError, setSaveError] = useState('')
   const bookingWords = bookingTerminology(category)
   const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null)
@@ -78,7 +84,12 @@ export default function SettingsForm({
   const [savingBotBooking, setSavingBotBooking] = useState(false)
   const [botBookingError, setBotBookingError] = useState('')
   const [savedAt, setSavedAt] = useState<string | null>(null)
-  const [geocoded, setGeocoded] = useState(false)
+  const [savedPinMessage, setSavedPinMessage] = useState('')
+
+  function changePosition(next: MapPosition | null) {
+    setDraftPosition(next)
+    setSavedPinMessage('')
+  }
 
   function updateHour(weekday: number, patch: Partial<WorkingHour>) {
     setHours((prev) => prev.map((h) => (h.weekday === weekday ? { ...h, ...patch } : h)))
@@ -108,8 +119,9 @@ export default function SettingsForm({
   }
 
   async function handleSave() {
+    const submittedPosition = draftPosition
     setSaving(true)
-    setGeocoded(false)
+    setSavedPinMessage('')
     setSaveError('')
     if (!form.city) {
       setSaveError('Alege orașul din listă înainte de salvare.')
@@ -122,7 +134,7 @@ export default function SettingsForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
-          ...(manualPositionChanged ? { manualLocation: position } : {}),
+          ...(submittedPosition === undefined ? {} : { manualLocation: submittedPosition }),
           slotIntervalMinutes: form.slotIntervalMinutes,
           workingHours: hours,
           break1Start: break1Enabled ? form.break1Start : null,
@@ -136,9 +148,10 @@ export default function SettingsForm({
       if (res.ok) {
         const data = await res.json()
         setSavedAt(new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Bucharest' }))
-        setGeocoded(!!data.geocoded)
-        setPosition(data.location ?? null)
-        setManualPositionChanged(false)
+        setSavedPosition(data.location ?? null)
+        setUnconfirmedPin(data.hasUnconfirmedPin === true)
+        setDraftPosition((draft) => draft === submittedPosition ? undefined : draft)
+        if (data.locationChanged) setSavedPinMessage(data.location ? 'Pinul a fost salvat.' : 'Pinul a fost eliminat.')
       } else {
         setSaveError('Setările nu au putut fi salvate. Verifică orașul selectat.')
       }
@@ -203,26 +216,31 @@ export default function SettingsForm({
             <label className="text-sm text-gray-500 block mb-1.5">Adresă</label>
             <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
           </div>
-          <div className="border-t border-[var(--border-soft)] pt-3">
+          {canManageLocation && <div id="settings-map-location" className="scroll-mt-6 border-t border-[var(--border-soft)] pt-3">
             <div className="flex min-h-9 items-center justify-between gap-3">
               <p className="min-w-0 text-sm font-medium">Poziția pe hartă</p>
               <Button
                 type="button"
                 variant="secondary"
                 className="!inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap !px-4 !py-0 text-xs leading-none"
-                disabled={!position}
-                onClick={() => {
-                  setPosition(null)
-                  setManualPositionChanged(true)
-                  setGeocoded(false)
-                }}
+                disabled={!position && !(unconfirmedPin && draftPosition === undefined)}
+                onClick={() => changePosition(null)}
               >
-                Elimină pin
+                Elimină pinul
               </Button>
             </div>
-            <p className="mt-1 text-xs text-gray-500">Dacă adresa nu este găsită corect, alege manual locul exact.</p>
-            <BusinessLocationPicker value={position} city={form.city} onChange={(next) => { setPosition(next); setManualPositionChanged(true); setGeocoded(false) }} />
-          </div>
+            <BusinessLocationPicker value={position} city={form.city} onChange={changePosition} />
+            <div role="status" className="mt-2 space-y-1 text-xs">
+              {unconfirmedPin && draftPosition === undefined && <p className="text-amber-700">Pinul vechi este ascuns. Alege pe hartă intrarea afacerii și apasă „Salvează setările”.</p>}
+              {draftPosition !== undefined && <p className="text-amber-700">{draftPosition ? 'Poziția este în așteptarea salvării.' : 'Pinul va fi eliminat după salvare.'}</p>}
+              {draftPosition === undefined && savedPinMessage && <p className="text-green-700">{savedPinMessage}</p>}
+            </div>
+            {draftPosition !== undefined && (
+              <Button type="button" className="mt-2" onClick={handleSave} disabled={saving}>
+                {saving ? 'Se salvează...' : 'Salvează setările'}
+              </Button>
+            )}
+          </div>}
         </div>
         {saveError && <p role="alert" className="mt-2 text-sm text-red-600">{saveError}</p>}
       </Card>
@@ -451,7 +469,7 @@ export default function SettingsForm({
           <div>
             <h2 className="font-medium">Vizibil pe harta publică</h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              Afacerea apare pe /harta și pe pagina publică bookeasy.ro
+              Afișează afacerea pe BookEasy. Pentru a apărea pe hartă, salvează și un pin în secțiunea „Profil public”.
             </p>
           </div>
           <button
@@ -478,7 +496,6 @@ export default function SettingsForm({
               {saving ? 'Se salvează...' : 'Salvează setările'}
             </Button>
             {savedAt && <span className="text-xs text-gray-500 whitespace-nowrap">Salvat la {savedAt}</span>}
-            {geocoded && <span className="text-xs text-green-700 whitespace-nowrap">· locația a fost actualizată pe hartă</span>}
           </>,
           saveSlot
         )}

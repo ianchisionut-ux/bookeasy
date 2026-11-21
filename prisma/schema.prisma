@@ -89,6 +89,7 @@ model Business {
   city               String?
   latitude           Float?
   longitude          Float?
+  mapLocationConfirmed Boolean    @default(false)
   address            String?
   heroImageUrl       String?
   publicListed       Boolean      @default(true)

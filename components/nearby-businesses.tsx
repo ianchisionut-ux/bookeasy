@@ -4,7 +4,7 @@ import { CATEGORY_LABEL } from '@/lib/business-categories'
 
 export default async function NearbyBusinesses({ businessId }: { businessId: string }) {
   const current = await prisma.business.findUnique({ where: { id: businessId } })
-  if (!current?.latitude || !current?.longitude) return null
+  if (!current?.mapLocationConfirmed || current.latitude === null || current.longitude === null) return null
 
   const RADIUS_KM = 15
   const latDelta = RADIUS_KM / 111
@@ -15,6 +15,7 @@ export default async function NearbyBusinesses({ businessId }: { businessId: str
       id: { not: businessId },
       publicListed: true,
       accountActive: true,
+      mapLocationConfirmed: true,
       category: current.category,
       latitude: { gte: current.latitude - latDelta, lte: current.latitude + latDelta },
       longitude: { gte: current.longitude - lngDelta, lte: current.longitude + lngDelta },

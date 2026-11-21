@@ -57,6 +57,8 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
     isPlatformSmsReady(),
   ])
   if (!business) redirect('/login')
+  const canManageLocation = (session as any).role === 'OWNER' || Boolean((session as any).isSuperAdmin)
+  const hasStoredLocation = business.latitude !== null && business.longitude !== null
   const currentPlan = effectiveBusinessPlan(business, Boolean((session as any).isSuperAdmin))
   const launch = await getLaunchDetails(businessId)
   const freePeriod = launch?.managed && (launch.stage === 'FREE' || launch.stage === 'ONBOARDING') || business.billingStatus === 'GRATUIT'
@@ -106,6 +108,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
         />
 
         <SettingsForm
+          canManageLocation={canManageLocation}
           smsAvailable={Boolean(platformSmsReady && business.smsGatewayEnabled && business.accountActive)}
           advancedLocked={currentPlan === 'FREE'}
           category={business.category}
@@ -117,8 +120,10 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
             contactPhone: business.contactPhone ?? '',
             city: business.city ?? '',
             address: business.address ?? '',
-            latitude: business.latitude,
-            longitude: business.longitude,
+            mapLocation: canManageLocation && business.mapLocationConfirmed && business.latitude !== null && business.longitude !== null
+              ? { lat: business.latitude, lng: business.longitude }
+              : null,
+            hasUnconfirmedPin: canManageLocation && hasStoredLocation && !business.mapLocationConfirmed,
             publicListed: business.publicListed,
             slotIntervalMinutes: business.slotIntervalMinutes,
             minLeadTimeMinutes: business.minLeadTimeMinutes,

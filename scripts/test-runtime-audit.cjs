@@ -36,4 +36,65 @@ async function testMeta(){
  }finally{for(const [name,value] of Object.entries({META_APP_SECRET:previous.meta,INSTAGRAM_APP_SECRET:previous.instagram,META_VERIFY_TOKEN:previous.verify})){if(value===undefined)delete process.env[name];else process.env[name]=value}}
  console.log('PASS Meta: verification, signatures, Facebook/Instagram routing, duplicates, echo, provider isolation, buttons and retries. No messages sent.');
 }
-(async()=>{await testCancellation();await testMeta()})().catch(e=>{console.error(e);process.exitCode=1});
+async function testBusinessMapLocation() {
+  let role = 'OWNER'
+  const business = { latitude: 47, longitude: 23, mapLocationConfirmed: false, city: 'Zalău', address: '' }
+  const prisma = {
+    business: {
+      findUnique: async () => ({ ...business }),
+      update: async ({ data }) => ({ ...Object.assign(business, data) }),
+      findMany: async ({ where }) => {
+        assert.equal(where.mapLocationConfirmed, true)
+        return business.mapLocationConfirmed ? [{ latitude: business.latitude, longitude: business.longitude }] : []
+      },
+    },
+    workingHours: { deleteMany: async () => {}, createMany: async () => {} },
+    $transaction: async (operation) => operation(prisma),
+  }
+  const { PATCH } = load('app/api/business/settings/route.ts', {
+    '@/lib/prisma': { prisma },
+    '@/lib/business-auth': { auth: async () => ({ businessId: 'business', role }) },
+    '@/lib/romanian-cities': { canonicalCity: city => city },
+    '@/lib/business-plan-access': { businessHasPlan: async () => true },
+  })
+  const { GET } = load('app/api/businesses/map/route.ts', {
+    '@/lib/prisma': { prisma },
+    '@/lib/business-categories': { PUBLIC_CATEGORIES: ['SALON'] },
+  })
+  const profile = { name: 'Salon de test', city: 'Cluj-Napoca', address: 'Adresă de test', publicListed: true, workingHours: [] }
+  const save = changes => PATCH(new NextRequest('https://bookeasy.ro/api/business/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ ...profile, ...changes }),
+  }))
+  const visiblePins = async () => (await (await GET(new NextRequest('https://bookeasy.ro/api/businesses/map'))).json()).businesses
+
+  assert.deepEqual(await visiblePins(), [])
+  const textOnly = await save({ latitude: 40, longitude: 20, mapLocationConfirmed: true })
+  assert.equal(textOnly.status, 200)
+  assert.deepEqual(await textOnly.json(), { success: true, locationChanged: false, location: null, hasUnconfirmedPin: true })
+  assert.equal(business.latitude, 47)
+  assert.equal(business.longitude, 23)
+  assert.deepEqual(await visiblePins(), [])
+
+  const manualLocation = { lat: 46, lng: 24 }
+  role = 'STAFF'
+  assert.equal((await save({ manualLocation })).status, 403)
+  assert.deepEqual(await visiblePins(), [])
+  role = 'OWNER'
+  assert.equal((await save({ manualLocation: { lat: 100, lng: 24 } })).status, 400)
+  const confirmed = await save({ manualLocation })
+  assert.equal(confirmed.status, 200)
+  assert.deepEqual((await confirmed.json()).location, manualLocation)
+  assert.deepEqual(await visiblePins(), [{ latitude: 46, longitude: 24 }])
+  assert.equal((await save({ address: 'Text editat' })).status, 200)
+  assert.deepEqual(await visiblePins(), [{ latitude: 46, longitude: 24 }])
+
+  const cleared = await save({ manualLocation: null })
+  assert.equal(cleared.status, 200)
+  assert.deepEqual(await cleared.json(), { success: true, locationChanged: true, location: null, hasUnconfirmedPin: false })
+  assert.equal(business.latitude, null)
+  assert.equal(business.longitude, null)
+  assert.deepEqual(await visiblePins(), [])
+  console.log('PASS map pins: legacy hidden, address changes preserve coordinates, admin save publishes, explicit removal hides')
+}
+;(async()=>{await testCancellation();await testMeta();await testBusinessMapLocation()})().catch(e=>{console.error(e);process.exitCode=1});

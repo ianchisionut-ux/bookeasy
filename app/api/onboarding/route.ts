@@ -2,7 +2,6 @@ import { setPublicSlug } from '@/lib/business-public-slug'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/business-auth'
-import { geocodeAddress } from '@/lib/geocode'
 import { ensureVenueService } from '@/lib/venue-services'
 import { z } from 'zod'
 import { canonicalCity } from '@/lib/romanian-cities'
@@ -145,12 +144,11 @@ export async function POST(req: NextRequest) {
 
 async function saveOnboardingStep(businessId: string, step: number, data: any) {
   if (step === 1) {
-    const coords = await geocodeAddress(data.address || '', data.city)
     await prisma.$transaction(async tx => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(21420261031::bigint)`
       const current = await tx.business.findUniqueOrThrow({ where: { id: businessId }, select: { slug: true } })
       if (/-[a-f0-9]{12}$/.test(current.slug)) await setPublicSlug(tx, businessId, data.name, true)
-      await tx.business.update({ where: { id: businessId }, data: { ...data, ...(data.category === 'FITNESS' ? { teamSize: 1 } : {}), ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}) } })
+      await tx.business.update({ where: { id: businessId }, data: { ...data, ...(data.category === 'FITNESS' ? { teamSize: 1 } : {}) } })
     })
   }
 

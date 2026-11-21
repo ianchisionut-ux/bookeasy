@@ -11,6 +11,8 @@ export async function GET(req: NextRequest) {
   const businesses = await prisma.business.findMany({
     where: {
       publicListed: true,
+      accountActive: true,
+      mapLocationConfirmed: true,
       latitude: { not: null },
       longitude: { not: null },
       // Hotel/Pensiune există în sistem (pot fi create din superadmin), dar nu apar

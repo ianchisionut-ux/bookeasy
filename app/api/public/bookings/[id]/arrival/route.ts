@@ -32,10 +32,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     select: {
       id: true, status: true, startAt: true, arrivalTokenHash: true,
       arrivalCandidateAt: true, arrivalLastSeenAt: true, arrivalSamples: true, arrivedAt: true,
-      business: { select: { latitude: true, longitude: true } },
+      business: { select: { latitude: true, longitude: true, mapLocationConfirmed: true } },
     },
   })
-  if (!booking?.arrivalTokenHash || booking.business.latitude === null || booking.business.longitude === null) {
+  if (!booking?.arrivalTokenHash || !booking.business.mapLocationConfirmed || booking.business.latitude === null || booking.business.longitude === null) {
     return NextResponse.json({ error: 'Rezervarea nu permite verificarea sosirii.' }, { status: 404 })
   }
 

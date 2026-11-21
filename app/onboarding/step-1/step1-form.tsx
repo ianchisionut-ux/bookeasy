@@ -113,8 +113,9 @@ export default function Step1Form({ currentCategory, categoryLocked }: { current
         </div>
 
         <div>
-          <label className="text-sm text-gray-500 block mb-1.5">Adresă (opțional, pentru hartă)</label>
+          <label className="text-sm text-gray-500 block mb-1.5">Adresa publică a afacerii (opțional)</label>
           <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          <p className="mt-1 text-xs text-gray-500">Poți adăuga pinul pe hartă din Setări, după ce configurezi afacerea.</p>
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}

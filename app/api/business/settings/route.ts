@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/business-auth'
-import { geocodeAddress } from '@/lib/geocode'
 import { z } from 'zod'
 import { canonicalCity } from '@/lib/romanian-cities'
 import { businessHasPlan } from '@/lib/business-plan-access'
@@ -62,12 +61,13 @@ export async function PATCH(req: NextRequest) {
   const city = canonicalCity(parsed.data.city)
   if (!city) return NextResponse.json({ error: 'Alege un oraș din listă.' }, { status: 400 })
 
-  const manualLocationProvided = Object.prototype.hasOwnProperty.call(parsed.data, 'manualLocation')
   const { workingHours, manualLocation, ...businessData } = parsed.data
+  const locationChanged = manualLocation !== undefined
+  if (locationChanged && (session as any).role !== 'OWNER' && !(session as any).isSuperAdmin) {
+    return NextResponse.json({ error: 'Doar administratorul afacerii poate schimba pinul.' }, { status: 403 })
+  }
   businessData.city = city
 
-  // re-geocodificăm doar dacă adresa sau orașul chiar s-au schimbat față de ce era
-  // salvat — evită apeluri API inutile la fiecare simplă salvare de setări
   const current = await prisma.business.findUnique({ where: { id: businessId } })
   if (current && !(await businessHasPlan(businessId, 'STANDARD', Boolean((session as any).isSuperAdmin)))) {
     const advancedKeys = [
@@ -79,34 +79,35 @@ export async function PATCH(req: NextRequest) {
     }
   }
   if (current?.category === 'FITNESS') businessData.teamSize = 1
-  const addressChanged = current && (current.address !== businessData.address || current.city !== businessData.city)
-  const shouldUpdateLocation = manualLocationProvided || !!addressChanged
 
-  let coords: { lat: number; lng: number } | null = null
-  if (manualLocationProvided) {
-    coords = manualLocation ?? null
-  } else if (addressChanged && businessData.city) {
-    coords = await geocodeAddress(businessData.address || '', businessData.city)
-  }
-
-  await prisma.$transaction(async (tx) => {
-    await tx.business.update({
+  const updated = await prisma.$transaction(async (tx) => {
+    const business = await tx.business.update({
       where: { id: businessId },
       data: {
         ...businessData,
-        ...(shouldUpdateLocation ? { latitude: coords?.lat ?? null, longitude: coords?.lng ?? null } : {}),
+        ...(locationChanged ? {
+          latitude: manualLocation?.lat ?? null,
+          longitude: manualLocation?.lng ?? null,
+          mapLocationConfirmed: manualLocation !== null,
+        } : {}),
       },
+      select: { latitude: true, longitude: true, mapLocationConfirmed: true },
     })
     await tx.workingHours.deleteMany({ where: { businessId } })
     await tx.workingHours.createMany({
       data: workingHours.filter((wh) => !wh.closed).map((wh) => ({ businessId, weekday: wh.weekday, startTime: wh.startTime, endTime: wh.endTime })),
     })
+    return business
   })
 
-  const location = shouldUpdateLocation
-    ? coords
-    : current?.latitude != null && current?.longitude != null
-      ? { lat: current.latitude, lng: current.longitude }
-      : null
-  return NextResponse.json({ success: true, geocoded: !!coords, location })
+  const hasStoredLocation = updated.latitude !== null && updated.longitude !== null
+  const location = updated.mapLocationConfirmed && hasStoredLocation
+    ? { lat: updated.latitude, lng: updated.longitude }
+    : null
+  return NextResponse.json({
+    success: true,
+    locationChanged,
+    location,
+    hasUnconfirmedPin: hasStoredLocation && !updated.mapLocationConfirmed,
+  })
 }

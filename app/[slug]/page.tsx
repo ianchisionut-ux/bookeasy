@@ -54,7 +54,7 @@ export default async function PublicBusinessPage({ params, searchParams }: { par
   const accentSoft = business.brandColor ? `${business.brandColor}1a` : 'var(--accent-soft)'
   const initials = business.name.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase()
   const bookingLabel = isAppointmentCategory(business.category) ? 'Programează-te acum' : 'Rezervă acum'
-  const hasCoordinates = business.latitude !== null && business.longitude !== null
+  const hasCoordinates = business.mapLocationConfirmed && business.latitude !== null && business.longitude !== null
     && Number.isFinite(business.latitude) && Number.isFinite(business.longitude)
     && Math.abs(business.latitude) <= 90 && Math.abs(business.longitude) <= 180
   const businessJsonLd = !preview ? {
