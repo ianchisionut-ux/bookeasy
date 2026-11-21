@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import MarketplaceClient from './marketplace-client'
 import { PublicFooter } from '@/components/ui/public-footer'
-import { publicCities, publicCityPath, publicMarketplaceWhere } from '@/lib/public-marketplace'
+import { PUBLIC_CITY_DIRECTORY_PATH, publicCities, publicCityPath, publicMarketplaceWhere } from '@/lib/public-marketplace'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,11 +20,11 @@ export default async function DiscoverPage() {
         ...business,
         rating: business.rating === null ? null : Number(business.rating),
       }))}>
-        {cities.length > 0 && (
-          <section id="orase" className="marketplace-container mt-10" aria-labelledby="marketplace-cities-title">
-            <h2 id="marketplace-cities-title" className="marketplace-section-title">Programari online pe orase</h2>
+        <section id="orase" className="marketplace-container mt-10" aria-labelledby="marketplace-cities-title">
+          <h2 id="marketplace-cities-title" className="marketplace-section-title">Programari online pe orase</h2>
+          {cities.length > 0 && (
             <ul className="mt-3 flex flex-wrap gap-2">
-              {cities.map((city) => (
+              {cities.slice(0, 12).map((city) => (
                 <li key={city.slug}>
                   <Link href={publicCityPath(city.slug)} className="btn-secondary inline-flex min-h-11 items-center px-4 text-sm">
                     {city.name}
@@ -32,8 +32,9 @@ export default async function DiscoverPage() {
                 </li>
               ))}
             </ul>
-          </section>
-        )}
+          )}
+          <Link href={PUBLIC_CITY_DIRECTORY_PATH} className="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-[var(--brand-teal-dark)] hover:underline">Toate orasele din Romania</Link>
+        </section>
       </MarketplaceClient>
       <PublicFooter />
     </>

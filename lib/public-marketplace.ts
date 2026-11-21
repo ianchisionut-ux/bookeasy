@@ -1,5 +1,7 @@
 import { PUBLIC_CATEGORIES } from './business-categories'
-import { canonicalCity } from './romanian-cities'
+import { canonicalCity, ROMANIAN_CITIES } from './romanian-cities'
+
+export const PUBLIC_CITY_DIRECTORY_PATH = '/descopera/orase'
 
 export const publicMarketplaceWhere = {
   publicListed: true,
@@ -21,7 +23,7 @@ export function publicCityPath(slug: string) {
 
 export function publicCity(value: string | null) {
   if (!value?.trim()) return null
-  const name = withoutDiacritics(canonicalCity(value) ?? value.trim())
+  const name = withoutDiacritics((canonicalCity(value) ?? value).trim())
   const slug = publicCitySlug(name)
   return slug ? { slug, name } : null
 }
@@ -38,3 +40,6 @@ export function publicCities(rows: ReadonlyArray<{ city: string | null }>) {
   }
   return [...cities.values()].sort((a, b) => a.name.localeCompare(b.name, 'ro'))
 }
+
+export const romanianPublicCities = publicCities(ROMANIAN_CITIES.map((city) => ({ city })))
+  .map(({ slug, name }) => ({ slug, name }))
