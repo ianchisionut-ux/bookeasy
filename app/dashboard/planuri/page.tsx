@@ -5,9 +5,10 @@ import { prisma } from '@/lib/prisma'
 import { effectiveBusinessPlan, type BusinessPlan } from '@/lib/business-plans'
 import { isPatientCategory } from '@/lib/business-categories'
 import { isWalletEligibleCategory } from '@/lib/wallet-eligibility'
+import { walletAvailable } from '@/lib/google-wallet'
 import {
   ArrowRight, BarChart3, CalendarDays, Camera, Check, Clock3,
-  CreditCard, FileHeart, Globe2, HeartHandshake, Link2, LockKeyhole,
+  CreditCard, FileHeart, Globe2, HeartHandshake, Link2,
   Mail, MapPin, MessageCircle, Palette, ShieldCheck, Star, Users,
   WalletCards,
 } from 'lucide-react'
@@ -95,7 +96,7 @@ export default async function PlansPage() {
   }) : null
   const current = business ? effectiveBusinessPlan(business, Boolean((session as any)?.isSuperAdmin)) : 'FREE'
   const patientCategory = isPatientCategory(business?.category)
-  const walletCategory = isWalletEligibleCategory(business?.category)
+  const showWallet = walletAvailable() && isWalletEligibleCategory(business?.category)
 
   return <div className="dashboard-page">
     <div className="w-full min-w-0">
@@ -127,14 +128,14 @@ export default async function PlansPage() {
           {patientCategory && <article className="rounded-2xl border border-[#e1eae7] bg-white p-6"><FileHeart size={24} className="text-[#168d8d]" aria-hidden="true" /><h3 className="mt-4 font-semibold text-[#193c3e]">Instrumente pentru pacienți</h3><p className="mt-2 text-sm leading-6 text-gray-600">Fișă de pacient, istoric, documente și scrisori medicale într-un profil dedicat. Pentru cabinetele stomatologice există și odontogramă.</p><span className="mt-4 inline-block text-xs font-semibold text-[#147f83]">Disponibil pentru categoriile medicale potrivite</span></article>}
           {business?.category === 'FITNESS' && <article className="rounded-2xl border border-[#e1eae7] bg-white p-6"><HeartHandshake size={24} className="text-[#168d8d]" aria-hidden="true" /><h3 className="mt-4 font-semibold text-[#193c3e]">Fitness și coaching</h3><p className="mt-2 text-sm leading-6 text-gray-600">Planuri de antrenament și nutriție, sarcini zilnice și urmărirea progresului pentru persoanele invitate de instructor.</p><span className="mt-4 inline-block text-xs font-semibold text-[#147f83]">Modul dedicat categoriei Fitness</span></article>}
           <article className="rounded-2xl border border-[#e1eae7] bg-white p-6"><CreditCard size={24} className="text-[#168d8d]" aria-hidden="true" /><h3 className="mt-4 font-semibold text-[#193c3e]">Avansuri pentru rezervări</h3><p className="mt-2 text-sm leading-6 text-gray-600">Poți solicita un avans la rezervare acolo unde este configurat procesatorul de plăți pentru afacerea ta.</p><span className="mt-4 inline-block text-xs font-semibold text-[#147f83]">Necesită configurarea plăților</span></article>
-          {walletCategory && <article className="rounded-2xl border border-[#e1eae7] bg-white p-6"><WalletCards size={24} className="text-[#168d8d]" aria-hidden="true" /><h3 className="mt-4 font-semibold text-[#193c3e]">Google Wallet și cod QR</h3><p className="mt-2 text-sm leading-6 text-gray-600">Cardul de rezervare și verificarea prin QR sunt pregătite pentru categoriile eligibile, după aprobarea și activarea serviciului.</p><span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-gray-500"><LockKeyhole size={13} aria-hidden="true" />În pregătire · PRO</span></article>}
+          {showWallet && <article className="rounded-2xl border border-[#e1eae7] bg-white p-6"><WalletCards size={24} className="text-[#168d8d]" aria-hidden="true" /><h3 className="mt-4 font-semibold text-[#193c3e]">Google Wallet și cod QR</h3><p className="mt-2 text-sm leading-6 text-gray-600">Clienții își pot salva cardul rezervării, iar personalul poate scana codul QR la intrare.</p><span className="mt-4 inline-block text-xs font-semibold text-[#147f83]">Disponibil pe PRO</span></article>}
           <article className="rounded-2xl border border-[#e1eae7] bg-white p-6"><ShieldCheck size={24} className="text-[#168d8d]" aria-hidden="true" /><h3 className="mt-4 font-semibold text-[#193c3e]">Control și administrare</h3><p className="mt-2 text-sm leading-6 text-gray-600">Gestionezi setările afacerii, notificările, datele de facturare și documentele contractuale din propriul dashboard.</p><span className="mt-4 inline-block text-xs font-semibold text-[#147f83]">În contul afacerii</span></article>
         </div>
       </section>
 
       <section className="mt-10 grid gap-5 rounded-[28px] border border-[#bde3da] bg-[#f1faf7] p-6 lg:grid-cols-[1.3fr_1fr] lg:p-8" aria-labelledby="pro-heading">
         <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#168d8d]">PRO · planul maxim</p><h2 id="pro-heading" className="mt-2 text-2xl font-bold tracking-tight text-[#193c3e]">Ai nevoie de o configurare specială?</h2><p className="mt-3 max-w-3xl text-sm leading-7 text-[#536a65]">PRO include funcțiile Standard. Pentru integrări sau fluxuri suplimentare, analizăm cerința și îți confirmăm ce se poate activa, în ce condiții și la ce cost. Aceste opțiuni se stabilesc individual.</p></div>
-        <div className="flex flex-col justify-center rounded-2xl bg-white p-5"><p className="text-sm font-semibold text-[#193c3e]">Clar de la început</p><p className="mt-2 text-sm leading-6 text-gray-600">SMS, WhatsApp, procesatorii de plată și alte servicii externe pot avea costuri și aprobări proprii. Google Wallet rămâne în pregătire până la activarea serviciului.</p></div>
+        <div className="flex flex-col justify-center rounded-2xl bg-white p-5"><p className="text-sm font-semibold text-[#193c3e]">Clar de la început</p><p className="mt-2 text-sm leading-6 text-gray-600">SMS, WhatsApp, procesatorii de plată și alte servicii externe pot avea costuri și aprobări proprii.</p></div>
       </section>
 
       {current !== 'PRO' ? <div className="mt-10 rounded-[28px] bg-[#193c3e] p-6 text-white sm:p-8"><h2 className="text-xl font-bold">Vrei să activezi mai multe funcții?</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-white/75">Spune-ne cum lucrează afacerea ta. Îți confirmăm planul potrivit, funcțiile disponibile și pașii de activare.</p><Link href="/pentru-afaceri#cere-acces" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#147f83]">Solicită upgrade <ArrowRight size={16} aria-hidden="true" /></Link></div> : <div className="mt-10 rounded-[28px] bg-[#193c3e] p-6 text-white sm:p-8"><h2 className="text-xl font-bold">Planul PRO este activ</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-white/75">Poți folosi funcțiile disponibile pentru afacerea ta din meniu și din Setări. Pentru o integrare specială, ne poți scrie prin suportul din cont.</p><Link href="/dashboard/setari" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#147f83]">Deschide Setările <ArrowRight size={16} aria-hidden="true" /></Link></div>}

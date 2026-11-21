@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { decrypt } from '@/lib/crypto'
-import {walletConfigured} from '@/lib/google-wallet'
+import {walletAvailable,walletConfigured} from '@/lib/google-wallet'
 import {googleBusinessCredentials,refreshGoogleBusinessToken} from '@/lib/google-business-oauth'
 import {isPlatformSmsReady} from '@/lib/sms-routing'
 
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
       googleLoginAndCalendarConfigured:configured('GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET'),googleBusinessConfigured:Boolean(googleBusinessCredentials()),
       metaOAuthConfigured:configured('META_APP_ID','META_APP_SECRET'),metaWebhookVerificationConfigured:configured('META_VERIFY_TOKEN'),instagramDirectOAuthConfigured:configured('INSTAGRAM_APP_ID','INSTAGRAM_APP_SECRET'),
       smsReady:await isPlatformSmsReady(),geocoding,storageConfigured:configured('BLOB_READ_WRITE_TOKEN'),
-      wallet:{enabled:process.env.GOOGLE_WALLET_ENABLED==='true',credentialsConfigured:walletConfigured(),productionApproval:'Verify in Google Wallet Console; configuration alone does not prove approval.'},
+      wallet:{enabled:process.env.GOOGLE_WALLET_ENABLED==='true',credentialsConfigured:walletConfigured(),available:walletAvailable(),productionApproval:'Confirm publishing access in Google Wallet Console before enabling GOOGLE_WALLET_PUBLISHING_APPROVED.'},
       subscriptionOnlinePayments:'disabled',
     }
   }

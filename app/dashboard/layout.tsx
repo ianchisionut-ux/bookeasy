@@ -11,7 +11,7 @@ import { unreadGuideCount } from '@/lib/usage-guide'
 import { helpUnreadCount } from '@/lib/help-chat'
 import { effectiveBusinessPlan, hasBusinessPlan, type BusinessPlan } from '@/lib/business-plans'
 import { isWalletEligibleCategory } from '@/lib/wallet-eligibility'
-import { walletConfigured } from '@/lib/google-wallet'
+import { walletAvailable } from '@/lib/google-wallet'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = { robots: { index: false, follow: false } }
@@ -127,7 +127,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             : item.label,
     }))
     .concat([
-      ...(isWalletEligibleCategory(category) ? [{ href: '/dashboard/check-in', label: walletConfigured() ? 'Check-in Google Wallet' : 'Google Wallet (în pregătire)', icon: 'wallet', badge: undefined, lockedTo: hasBusinessPlan(currentPlan, 'PRO') ? undefined : 'PRO' as BusinessPlan }] : []),
+      ...(currentPlan === 'PRO' && isWalletEligibleCategory(category) && walletAvailable()
+        ? [{ href: '/dashboard/check-in', label: 'Check-in Google Wallet', icon: 'wallet', badge: undefined, lockedTo: undefined }]
+        : []),
     ])
     .concat(isSuperAdmin ? [{ href: '/superadmin', label: 'Super Admin', badge: undefined, icon: 'superadmin', lockedTo: undefined }] : [])
 

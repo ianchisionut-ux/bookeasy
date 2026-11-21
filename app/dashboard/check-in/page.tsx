@@ -2,19 +2,20 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { effectiveBusinessPlan } from '@/lib/business-plans'
 import { isWalletEligibleCategory } from '@/lib/wallet-eligibility'
-import { verifyWalletQr, walletConfigured } from '@/lib/google-wallet'
+import { verifyWalletQr, walletAvailable } from '@/lib/google-wallet'
+import { redirect } from 'next/navigation'
 import CheckInButton from './check-in-button'
 
 export const dynamic = 'force-dynamic'
 
 export default async function CheckInPage({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
+  if (!walletAvailable()) redirect('/dashboard/calendar')
   const session = await auth()
   const businessId = (session as { businessId?: string } | null)?.businessId
   if (!businessId) return null
   const business = await prisma.business.findUnique({ where: { id: businessId }, select: { category: true, planName: true, billingStatus: true, launchEnrollment: { select: { cancelledAt: true } } } })
   if (!business || effectiveBusinessPlan(business, Boolean((session as any)?.isSuperAdmin)) !== 'PRO') return null
-  if (!isWalletEligibleCategory(business.category)) return <div className="dashboard-page"><h1 className="text-2xl font-bold">Check-in Google Wallet</h1><p className="mt-3 text-sm text-gray-600">Această categorie nu folosește carduri QR în Google Wallet.</p></div>
-  if (!walletConfigured()) return <div className="dashboard-page"><h1 className="text-2xl font-bold">Check-in Google Wallet</h1><p className="mt-3 text-sm text-gray-600">Integrarea este în pregătire. Cardurile vor putea fi emise după aprobarea contului issuer și activarea serviciului.</p></div>
+  if (!isWalletEligibleCategory(business.category)) redirect('/dashboard/calendar')
 
   const { code } = await searchParams
   const bookingId = code ? verifyWalletQr(code, businessId) : null

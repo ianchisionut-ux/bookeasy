@@ -269,7 +269,6 @@ export default async function ForBusinessesPage() {
             {[
               ['Pot începe fără card?', 'Da. Înscrierea Standard nu presupune debitare automată. Condițiile de plată sunt prezentate la activarea afacerii.'],
               ['Primesc automat două luni gratuite?', 'Nu. Oferta de două luni se aplică doar dacă introduci un cod promoțional valid înainte de activarea afacerii.'],
-              ['Google Wallet și codurile QR sunt incluse?', 'Integrarea Google Wallet este în pregătire și nu este inclusă în planurile active. Nu publicăm o dată de lansare până la configurarea și aprobarea serviciului.'],
               ['Pot conecta mesageria și plățile?', 'Da, acolo unde integrarea este disponibilă pentru afacerea ta. Sunt necesare conturile și aprobările furnizorilor respectivi.'],
             ].map(([question, answer]) => (
               <details key={question} className="group rounded-2xl border border-[#dceae6] bg-white p-5">

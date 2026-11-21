@@ -1,12 +1,6 @@
-// Initial Wallet rollout: non-sensitive reservations where a pass or entry QR
-// provides a useful customer-facing check-in or appointment confirmation.
+// Passes are useful at venues or activities where staff verify entry or attendance.
 const WALLET_CATEGORIES = new Set([
-  'SALON', 'COAFURA_FRIZERIE', 'BARBER_SHOP', 'COSMETICA', 'NAILS',
-  'LASHES', 'MAKE_UP', 'EPILARE', 'MASAJ', 'SPA_WELLNESS',
-  'ESTETICA_REMODELARE', 'TATUAJE_PIERCING', 'STUDIO_BEAUTY',
-  'FITNESS', 'SPORT_BAZE', 'CURSURI', 'LOC_JOACA', 'ACCES_CLUB',
-  'EVENT_VENUE', 'MEDITATII', 'LIMBI_STRAINE', 'VETERINAR',
-  'SERVICE_AUTO', 'DETAILING_AUTO',
+  'EVENT_VENUE', 'SPORT_BAZE', 'FITNESS', 'CURSURI', 'LOC_JOACA', 'ACCES_CLUB',
 ])
 
 export function isWalletEligibleCategory(category: string | null | undefined) {

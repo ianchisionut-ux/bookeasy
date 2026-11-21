@@ -45,12 +45,18 @@ function config() {
 
 export function walletConfigured() { return Boolean(config()) }
 
+function publishedConfig() {
+  return process.env.GOOGLE_WALLET_PUBLISHING_APPROVED === 'true' ? config() : null
+}
+
+export function walletAvailable() { return Boolean(publishedConfig()) }
+
 function qrSignature(secret: string, bookingId: string, businessId: string) {
   return createHmac('sha256', secret).update(`${bookingId}:${businessId}`).digest('hex')
 }
 
 export function verifyWalletQr(code: string, businessId: string) {
-  const settings = config()
+  const settings = publishedConfig()
   if (!settings) return null
   const match = /^([A-Za-z0-9_-]{8,64})\.([a-f0-9]{64})$/.exec(code)
   if (!match) return null
@@ -101,7 +107,7 @@ async function signWalletJwt(payload: object, settings: NonNullable<ReturnType<t
 }
 
 export async function createBookingWalletLink(booking: WalletBooking, origin: string) {
-  const settings = config()
+  const settings = publishedConfig()
   if (!settings || !isWalletEligibleCategory(booking.business.category) || effectiveBusinessPlan(booking.business) !== 'PRO') return null
   if (!['https:', 'http:'].includes(new URL(origin).protocol)) return null
   const code = `${booking.id}.${qrSignature(settings.qrSecret, booking.id, booking.business.id)}`

@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/business-auth'
 import { prisma } from '@/lib/prisma'
 import { isWalletEligibleCategory } from '@/lib/wallet-eligibility'
-import { verifyWalletQr, walletConfigured } from '@/lib/google-wallet'
+import { verifyWalletQr, walletAvailable } from '@/lib/google-wallet'
 
 export async function POST(req: NextRequest) {
+  if (!walletAvailable()) return NextResponse.json({ error: 'Check-in indisponibil.' }, { status: 404 })
   const session = await auth('PRO')
   const businessId = (session as { businessId?: string } | null)?.businessId
   if (!businessId) return NextResponse.json({ error: 'Planul Pro este necesar.' }, { status: 403 })
   if (req.headers.get('origin') !== req.nextUrl.origin) return NextResponse.json({ error: 'Cerere invalidă.' }, { status: 403 })
-  if (!walletConfigured()) return NextResponse.json({ error: 'Google Wallet nu este încă activ.' }, { status: 503 })
   const input = await req.json().catch(() => ({})) as { code?: unknown }
   const bookingId = typeof input.code === 'string' ? verifyWalletQr(input.code, businessId) : null
   if (!bookingId) return NextResponse.json({ error: 'Cod QR invalid.' }, { status: 400 })

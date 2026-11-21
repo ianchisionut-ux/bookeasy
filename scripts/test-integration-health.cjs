@@ -5,7 +5,7 @@ let session={isSuperAdmin:true},fixture={status:401,body:{name:'restricted_api_k
 const mocks={
  '@/lib/auth':{auth:async()=>session},'@/lib/prisma':{prisma:{googleCalendarConnection:{findMany:async()=>[]},channel:{findMany:async()=>[]}}},
  '@/lib/crypto':{decrypt:()=>{throw Error('No credentials should be read for an unconnected business')}},
- '@/lib/google-wallet':{walletConfigured:()=>false},'@/lib/google-business-oauth':{googleBusinessCredentials:()=>null,refreshGoogleBusinessToken:()=>{throw Error('No refresh expected')}},
+ '@/lib/google-wallet':{walletAvailable:()=>false,walletConfigured:()=>false},'@/lib/google-business-oauth':{googleBusinessCredentials:()=>null,refreshGoogleBusinessToken:()=>{throw Error('No refresh expected')}},
  '@/lib/sms-routing':{isPlatformSmsReady:async()=>false},
 };
 const m={exports:{}};new Function('require','module','exports',ts.transpileModule(fs.readFileSync(path.join(__dirname,'../app/api/superadmin/integration-health/route.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText)(name=>name in mocks?mocks[name]:require(name),m,m.exports);
