@@ -5,6 +5,7 @@ export const COOKIE_CONSENT_CHANGED_EVENT = 'bookeasy:cookie-consent'
 export type CookieConsentValue = {
   essential: true
   functional: boolean
+  analytics: boolean
   marketing: boolean
   version: 2
   savedAt: string
@@ -15,7 +16,7 @@ export function readCookieConsent(): CookieConsentValue | null {
   try {
     const stored = JSON.parse(window.localStorage.getItem(COOKIE_CONSENT_KEY) ?? 'null') as Partial<CookieConsentValue> | null
     if (stored?.version !== 2 || stored.essential !== true || typeof stored.functional !== 'boolean' || typeof stored.marketing !== 'boolean') return null
-    return stored as CookieConsentValue
+    return { ...stored, analytics: stored.analytics === true } as CookieConsentValue
   } catch {
     return null
   }

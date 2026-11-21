@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import NearbyBusinesses from '@/components/nearby-businesses'
 import BusinessDirections from '@/components/business-directions'
+import { BusinessPhotoGallery } from '@/components/business-photo-gallery'
 import { PublicHeader } from '@/components/ui/public-header'
 import { BackLink } from '@/components/ui/back-link'
 import { ArrowRight, CalendarCheck2, CheckCircle2, Clock3, MapPin, Phone, ShieldCheck, Star } from 'lucide-react'
@@ -132,13 +133,7 @@ export default async function PublicBusinessPage({ params, searchParams }: { par
           {business.photos.length > 0 && (
             <section className="card min-w-0 overflow-hidden p-4 sm:p-7">
               <h2 className="mb-4 text-xl font-semibold">Galerie</h2>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {business.photos.map((photo, index) => (
-                  <div key={photo.id} className={`relative overflow-hidden rounded-xl ${index === 0 ? 'col-span-2 aspect-[2/1] sm:col-span-2' : 'aspect-square'}`}>
-                    <Image src={photo.url} unoptimized={photo.url.startsWith('/api/storage/public/')} alt={`${business.name} – fotografie ${index + 1}`} fill className="object-cover transition duration-300 hover:scale-[1.03]" quality={90} />
-                  </div>
-                ))}
-              </div>
+              <BusinessPhotoGallery photos={business.photos.map(({ id, url }) => ({ id, url }))} businessName={business.name} />
             </section>
           )}
 

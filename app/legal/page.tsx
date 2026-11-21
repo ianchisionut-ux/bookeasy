@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Building2, Cookie, FileCheck2, FileText, LockKeyhole, Scale, ShieldCheck } from 'lucide-react'
+import { Building2, Cookie, FileCheck2, FileText, LockKeyhole, Scale } from 'lucide-react'
 import { PublicHeader } from '@/components/ui/public-header'
-import { company } from '@/lib/company'
+import { company, consumerAuthorities } from '@/lib/company'
 
 export const metadata: Metadata = {
   title: 'Informații legale | BookEasy',
@@ -35,7 +35,7 @@ export default function LegalHubPage() {
             {[
               ['Denumire', company.legalName], ['CUI', company.cui], ['Nr. Registrul Comerțului', company.tradeRegistryNumber],
               ['Sediu social', company.registeredAddress], ['Activitate principală', `${company.mainActivity} (CAEN ${company.caen})`],
-              ['Contact legal și GDPR', company.legalEmail],
+              ['Contact legal și GDPR', company.legalEmail], ['Telefon de contact', company.supportPhone],
             ].map(([label, value]) => (
               <div key={label} className="grid gap-1 border-b border-[var(--border-soft)] py-3 last:border-0 sm:grid-cols-[190px_1fr]">
                 <dt className="text-xs font-bold uppercase tracking-[0.06em] text-gray-400">{label}</dt><dd className="font-medium text-[var(--brand-ink)]">{value}</dd>
@@ -55,9 +55,8 @@ export default function LegalHubPage() {
           </div>
         </section>
         <section className="mt-10 rounded-[22px] bg-[var(--brand-ink)] p-6 text-white sm:p-8">
-          <div className="flex items-start gap-3"><Scale className="mt-0.5 text-[var(--brand-green)]" size={22} /><div><h2 className="text-lg font-semibold">Drepturile consumatorilor</h2><p className="mt-2 text-sm leading-relaxed text-white/65">Dacă ești consumator și ai o reclamație nesoluționată, poți sesiza Autoritatea Națională pentru Protecția Consumatorilor sau platforma europeană SOL.</p><div className="mt-4 flex flex-wrap gap-3"><a href="https://anpc.ro/" target="_blank" rel="nofollow noopener noreferrer" className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-[var(--brand-ink)]">ANPC - anpc.ro</a><a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="nofollow noopener noreferrer" className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold">Platforma SOL</a></div></div></div>
+          <div className="flex items-start gap-3"><Scale className="mt-0.5 shrink-0 text-[var(--brand-green)]" size={22} /><div><h2 className="text-lg font-semibold">Drepturile consumatorilor</h2><p className="mt-2 text-sm leading-relaxed text-white/65">Pentru o reclamație legată de platformă, poți contacta BookEasy. Pentru serviciul rezervat, contactează afacerea care îl prestează. Consumatorii pot sesiza ANPC sau pot consulta platforma SAL, când procedura se aplică.</p><div className="mt-4 flex flex-wrap gap-3"><a href={consumerAuthorities.anpc} target="_blank" rel="nofollow noopener noreferrer" className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-[var(--brand-ink)]">ANPC</a><a href={consumerAuthorities.sal} target="_blank" rel="nofollow noopener noreferrer" className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold">Platforma SAL</a></div></div></div>
         </section>
-        <p className="mt-6 flex items-center justify-center gap-2 text-center text-xs text-gray-400"><ShieldCheck size={14} /> Documente actualizate la 5 octombrie 2026.</p>
       </main>
     </div>
   )

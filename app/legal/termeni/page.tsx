@@ -2,14 +2,14 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LegalPage } from '@/components/ui/legal-page'
 import {FREE_CAMPAIGN_TERMS} from '@/lib/free-campaign-terms'
-import { company } from '@/lib/company'
+import { company, consumerAuthorities } from '@/lib/company'
 
 export const metadata: Metadata = { title: 'Termeni și condiții | BookEasy', description: 'Condițiile de utilizare a platformei SaaS BookEasy.' }
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Termeni și condiții de utilizare" updatedAt="11 noiembrie 2026" version="2.3" description="Contractul aplicabil utilizării platformei SaaS BookEasy de către afaceri și utilizatorii autorizați.">
-      <div className="legal-callout"><strong>Important.</strong> Prin crearea unui cont, achiziționarea unui abonament sau continuarea utilizării BookEasy confirmi că ai citit și accepți acești termeni.</div>
+    <LegalPage title="Termeni și condiții de utilizare" updatedAt="21 noiembrie 2026" version="2.4" description="Regulile BookEasy pentru afaceri și pentru persoanele care fac rezervări.">
+      <div className="legal-callout">Dacă folosești BookEasy pentru a face o programare, consultă <a href="#rezervari-clienti">regulile pentru rezervările clienților</a>. Secțiunile despre abonamente se adresează afacerilor.</div>
       <nav className="legal-toc" aria-label="Cuprins"><strong>Cuprins</strong>{['Definiții','Obiectul contractului','Conturi și securitate','Nivelul serviciilor','Prețuri și plăți','Suspendare și încetare','Răspundere','Utilizare acceptabilă','Proprietate intelectuală','Modificări','Lege aplicabilă'].map((item, i) => <a key={item} href={`#cap-${i + 1}`}>{i + 1}. {item}</a>)}</nav>
       <h2 id="cap-1">1. Definiții</h2><p><strong>Platforma</strong> înseamnă serviciul software accesibil la bookeasy.ro, aplicația web progresivă, interfețele și funcțiile asociate. <strong>Furnizorul</strong> este {company.legalName}, CUI {company.cui}, {company.tradeRegistryNumber}, cu sediul în {company.registeredAddress}. <strong>Clientul</strong> este profesionistul sau persoana juridică ce contractează un abonament BookEasy. <strong>Utilizator final</strong> este persoana autorizată de Client să folosească Platforma.</p>
       <h2 id="cap-2">2. Obiectul contractului</h2><p>BookEasy oferă, în funcție de plan și configurare, administrarea programărilor, serviciilor, echipei, clienților, mesajelor, notificărilor, recenziilor, facturilor de abonament și integrărilor externe.</p><p>Furnizorul poate îmbunătăți, înlocui sau retrage funcții, cu informarea rezonabilă a Clientului atunci când schimbarea afectează material serviciul contractat.</p>
@@ -23,7 +23,13 @@ export default function TermsPage() {
       <h2 id="cap-8">8. Utilizare acceptabilă</h2><p>Este interzisă folosirea Platformei pentru activități ilegale, fraudă, spam, malware, acces neautorizat, colectare automată agresivă, eludarea controalelor de securitate, încălcarea drepturilor terților ori prelucrarea datelor fără un temei legal.</p>
       <h2 id="cap-9">9. Proprietate intelectuală</h2><p>Software-ul, marca, designul și documentația BookEasy aparțin Furnizorului sau licențiatorilor săi. Clientul primește un drept limitat, neexclusiv și netransferabil de utilizare pe durata abonamentului. Clientul rămâne titularul conținutului propriu și permite prelucrarea lui exclusiv pentru furnizarea serviciului.</p>
       <h2 id="cap-10">10. Modificarea termenilor</h2><p>Modificările importante vor fi comunicate, de regulă, cu cel puțin 15 zile înainte. Schimbările impuse de lege, securitate sau remedierea urgentă a unui risc pot intra în vigoare mai repede. Versiunea curentă este publicată pe această pagină.</p>
-      <h2 id="cap-11">11. Lege aplicabilă și contact</h2><p>Contractul este guvernat de legea română și normele obligatorii ale Uniunii Europene. Părțile vor încerca soluționarea amiabilă înaintea sesizării instanțelor competente. Consumatorii pot sesiza <a href="https://anpc.ro/" target="_blank" rel="nofollow noopener noreferrer">ANPC</a> sau platforma <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="nofollow noopener noreferrer">SOL</a>.</p><p>Contact: <a href={`mailto:${company.legalEmail}`}>{company.legalEmail}</a>. Prelucrarea datelor este descrisă în <Link href="/legal/confidentialitate">Politica de confidențialitate</Link> și în <Link href="/dpa">DPA</Link>.</p>
+      <h2 id="cap-11">11. Lege aplicabilă și contact</h2>
+      <p>Contractul este guvernat de legea română și normele obligatorii ale Uniunii Europene. Părțile pot încerca soluționarea amiabilă. Consumatorii pot sesiza <a href={consumerAuthorities.anpc} target="_blank" rel="nofollow noopener noreferrer">ANPC</a>, pot folosi <a href={consumerAuthorities.sal} target="_blank" rel="nofollow noopener noreferrer">platforma SAL</a> când procedura este aplicabilă și își pot exercita drepturile în fața instanțelor competente.</p>
+      <p>Poți contacta BookEasy la <a href={`mailto:${company.legalEmail}`}>{company.legalEmail}</a>. Prelucrarea datelor este descrisă în <Link href="/legal/confidentialitate">Politica de confidențialitate</Link> și în <Link href="/dpa">DPA</Link>.</p>
+      <h2 id="rezervari-clienti">12. Rezervările clienților</h2>
+      <p>BookEasy pune la dispoziție căutarea, contul și instrumentele de rezervare. Afacerea indicată pe pagina publică prestează serviciul ales și stabilește prețul, condițiile aplicabile, disponibilitatea și regulile de anulare. Pentru tarife sau condiții care nu sunt afișate, cere afacerii detaliile înainte de confirmare. Folosește opțiunile din confirmare sau contactează afacerea pentru a anula ori reprograma.</p>
+      <p>În pagina Descoperă, lista afacerilor este ordonată alfabetic după nume și se schimbă în funcție de oraș, categorie, căutare și filtrul de favorite. Planul abonamentului nu stabilește poziția în această listă.</p>
+      <p>Pentru probleme de cont, erori de rezervare sau conținut public pe care îl consideri ilegal, contactează <Link href="/contact#raporteaza-continut">echipa BookEasy</Link>. Drepturile obligatorii ale consumatorilor rămân aplicabile.</p>
     </LegalPage>
   )
 }

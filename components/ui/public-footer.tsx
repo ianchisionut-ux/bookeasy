@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { company } from '@/lib/company'
+import { company, consumerAuthorities } from '@/lib/company'
 import { CookiePreferencesButton } from '@/components/cookie-preferences-button'
 import { IntegrationsMarquee } from '@/components/ui/integrations-marquee'
 
@@ -38,42 +38,27 @@ export function PublicFooter() {
         </div>
         <div>
           <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--brand-green)]">Drepturi consumatori</h2>
-          <p className="mt-2 text-xs leading-relaxed text-white/65">Pentru reclamații nesoluționate poți apela la ANPC sau la platforma europeană SOL.</p>
+          <p className="mt-2 text-xs leading-relaxed text-white/65">Consumatorii pot sesiza ANPC sau pot consulta procedura de soluționare alternativă a litigiilor (SAL).</p>
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
-            <a href="https://anpc.ro/" target="_blank" rel="nofollow noopener noreferrer" className="rounded-full border border-white/15 px-3 py-1.5 text-white/80 hover:border-white/35 hover:text-white">ANPC</a>
-            <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="nofollow noopener noreferrer" className="rounded-full border border-white/15 px-3 py-1.5 text-white/80 hover:border-white/35 hover:text-white">SOL - Litigii online</a>
+            <a href={consumerAuthorities.anpc} target="_blank" rel="nofollow noopener noreferrer" className="rounded-full border border-white/15 px-3 py-1.5 text-white/80 hover:border-white/35 hover:text-white">ANPC</a>
           </div>
         </div>
       </div>
       <div className="mx-auto mt-4 flex max-w-6xl flex-wrap items-center justify-center gap-3">
         <a
-          href="https://anpc.ro/ce-este-sal/"
+          href={consumerAuthorities.sal}
           target="_blank"
           rel="nofollow noopener noreferrer"
           aria-label="Soluționarea Alternativă a Litigiilor prin ANPC"
-          className="rounded-xl bg-white p-1.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          className="block rounded-xl bg-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
         >
           <Image
-            src="/legal/anpc-sal.png"
+            src="/legal/anpc-sal-250x50.png"
             alt="Soluționarea Alternativă a Litigiilor"
-            width={500}
-            height={124}
-            className="h-auto w-[155px]"
-          />
-        </a>
-        <a
-          href="https://ec.europa.eu/consumers/odr"
-          target="_blank"
-          rel="nofollow noopener noreferrer"
-          aria-label="Soluționarea Online a Litigiilor"
-          className="rounded-xl bg-white p-1.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-        >
-          <Image
-            src="/legal/anpc-sol.png"
-            alt="Soluționarea Online a Litigiilor"
-            width={500}
-            height={124}
-            className="h-auto w-[155px]"
+            width={250}
+            height={50}
+            className="h-[50px] w-[250px]"
+            unoptimized
           />
         </a>
       </div>

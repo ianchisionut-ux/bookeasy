@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
+import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
@@ -439,6 +440,9 @@ export default function BookingFlow({
 
       <div className="relative rounded-2xl border border-white/80 bg-white p-2.5 sm:border-0 sm:bg-transparent sm:p-0">
         {service && selectedSlot && <p className="mb-2 break-words text-center text-xs text-gray-500">{service.name} · {new Date(selectedSlot).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Bucharest' })}</p>}
+        <p className="mb-3 text-center text-xs leading-relaxed text-gray-600">
+          Serviciul este prestat de afacerea aleasă. Consultă <Link href="/legal/termeni#rezervari-clienti" target="_blank" rel="noopener noreferrer" className="underline">regulile rezervării</Link> și <Link href="/legal/confidentialitate" target="_blank" rel="noopener noreferrer" className="underline">politica de confidențialitate</Link>.
+        </p>
         <Button
           onClick={submitBooking}
           disabled={submitting}

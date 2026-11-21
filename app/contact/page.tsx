@@ -25,7 +25,12 @@ export default function ContactPage() {
             <a href={`mailto:${company.legalEmail}`} className="rounded-2xl border border-[#dbeae5] bg-[#f4faf8] p-5 transition hover:border-[#168d8d]"><Mail size={22} className="text-[#168d8d]" aria-hidden="true" /><h2 className="mt-3 font-semibold">Scrie-ne un email</h2><p className="mt-1 break-all text-sm text-[#147f83]">{company.legalEmail}</p></a>
             <a href={`tel:${company.supportPhone}`} className="rounded-2xl border border-[#dbeae5] bg-[#f4faf8] p-5 transition hover:border-[#168d8d]"><Phone size={22} className="text-[#168d8d]" aria-hidden="true" /><h2 className="mt-3 font-semibold">Sună echipa BookEasy</h2><p className="mt-1 text-sm text-[#147f83]">{company.supportPhone}</p></a>
           </div>
-          <p className="mt-8 border-t border-[#e8efec] pt-5 text-xs leading-6 text-[#718681]">Operatorul platformei: {company.legalName} · CUI {company.cui} · {company.registeredAddress}</p>
+          <section id="raporteaza-continut" className="mt-8 border-t border-[#e8efec] pt-5" aria-labelledby="raporteaza-continut-titlu">
+            <h2 id="raporteaza-continut-titlu" className="font-semibold">Raportează conținut ilegal</h2>
+            <p className="mt-2 text-sm leading-6 text-[#536a65]">Trimite adresa exactă a paginii, explică de ce consideri conținutul ilegal și include datele de contact pentru răspuns, în măsura cerută de lege. Confirmă că informațiile trimise sunt, cu bună-credință, exacte și complete. Trimite doar datele necesare sesizării.</p>
+            <a className="mt-2 inline-block text-sm font-semibold text-[#147f83] underline" href={`mailto:${company.legalEmail}?subject=Raportare%20continut%20BookEasy`}>Trimite sesizarea</a>
+          </section>
+          <p className="mt-8 border-t border-[#e8efec] pt-5 text-xs leading-6 text-[#718681]">Operatorul platformei este {company.legalName} · CUI {company.cui} · {company.registeredAddress}.</p>
         </div>
       </div>
     </main>

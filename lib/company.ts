@@ -12,3 +12,8 @@ export const company = {
   supportPhone: '+40712345002',
   website: 'https://bookeasy.ro',
 } as const
+
+export const consumerAuthorities = {
+  anpc: 'https://anpc.ro/',
+  sal: 'https://reclamatiisal.anpc.ro/',
+} as const

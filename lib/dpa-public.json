@@ -1,0 +1,60 @@
+{
+  "version": "1.1",
+  "updatedAt": "21 noiembrie 2026",
+  "notice": "Acesta este un model public informativ. Pentru afacerea ta, consultă exemplarul completat și semnat în secțiunea Contracte și semnături din Setări. Acordul încheiat între părți se aplică prelucrării și prevalează dacă textele diferă.",
+  "sections": [
+    {
+      "heading": "1. Părțile, obiectul și durata",
+      "paragraphs": [
+        "Afacerea care folosește BookEasy stabilește scopurile și mijloacele prelucrării pentru activitatea sa și acționează ca operator. NEXTLEVEL AUTOMATION S.R.L. prelucrează datele în numele afacerii în calitate de persoană împuternicită, în condițiile acordului încheiat între părți.",
+        "Prelucrarea are loc pe durata serviciului și ulterior cât este necesar pentru returnarea ori ștergerea datelor sau pentru obligațiile de păstrare prevăzute de lege."
+      ]
+    },
+    {
+      "heading": "2. Natura, scopul și categoriile de date",
+      "paragraphs": [
+        "Operațiunile pot include colectare, înregistrare, organizare, stocare, consultare, transmitere, export și ștergere pentru programări, rezervări, comunicări, administrarea echipei și funcțiile activate de afacere.",
+        "Datele pot privi clienți, pacienți, potențiali clienți, reprezentanți și personal. Ele includ date de identificare și contact, detalii ale programărilor, conversații, documente și date de facturare, după caz. Dacă o clinică introduce date privind sănătatea, ea stabilește temeiul aplicabil, inclusiv condiția din art. 9 GDPR, informează pacienții și limitează accesul."
+      ]
+    },
+    {
+      "heading": "3. Instrucțiuni și confidențialitate",
+      "paragraphs": [
+        "Persoana împuternicită prelucrează datele potrivit instrucțiunilor documentate, inclusiv pentru transferuri. Informează operatorul dacă o instrucțiune încalcă legislația aplicabilă protecției datelor. Dacă legea impune altă prelucrare, informează operatorul în prealabil, în măsura permisă.",
+        "Persoanele autorizate să prelucreze datele sunt supuse obligațiilor de confidențialitate."
+      ]
+    },
+    {
+      "heading": "4. Securitatea prelucrării",
+      "paragraphs": [
+        "Măsurile se aplică în funcție de riscuri și includ controlul accesului, autentificarea, conexiuni criptate, separarea logică a datelor și protejarea documentelor. Operatorul administrează drepturile acordate personalului și securitatea dispozitivelor sale."
+      ]
+    },
+    {
+      "heading": "5. Subîmputerniciți și transferuri",
+      "paragraphs": [
+        "Subîmputerniciții se folosesc în baza autorizării operatorului. În cazul unei autorizări generale, operatorul este informat în prealabil despre adăugarea sau înlocuirea unui subîmputernicit și are posibilitatea de a formula obiecții. Subîmputerniciților li se impun obligații de protecție echivalente. Persoana împuternicită rămâne răspunzătoare față de operator pentru îndeplinirea acestor obligații.",
+        "Infrastructura BookEasy folosește Vercel pentru găzduire și stocarea fișierelor, Neon pentru baza de date și Resend pentru servicii de e-mail. Un furnizor folosit de afacere printr-o integrare poate avea un rol distinct. Transferurile în afara SEE urmează capitolul V din GDPR."
+      ]
+    },
+    {
+      "heading": "6. Drepturi, incidente și audit",
+      "paragraphs": [
+        "Ținând cont de natura prelucrării și informațiile disponibile, persoana împuternicită ajută operatorul să răspundă cererilor persoanelor vizate și să respecte obligațiile din art. 32-36 GDPR, inclusiv evaluările de impact și consultarea prealabilă când sunt necesare.",
+        "Persoana împuternicită informează operatorul fără întârzieri nejustificate după ce ia cunoștință de o încălcare a securității datelor. Pune la dispoziție informațiile necesare pentru a demonstra respectarea obligațiilor și contribuie la audituri, cu protejarea datelor celorlalți clienți."
+      ]
+    },
+    {
+      "heading": "7. Returnarea și ștergerea datelor",
+      "paragraphs": [
+        "După încetarea serviciului, operatorul poate alege între returnarea și ștergerea datelor prelucrate în numele său. Copiile existente se elimină, cu excepția păstrării impuse de lege. Copiile de siguranță sunt protejate și sunt eliminate conform ciclului documentat aplicabil serviciului."
+      ]
+    },
+    {
+      "heading": "8. Exemplarul semnat și contact",
+      "paragraphs": [
+        "Pentru datele prelucrate în numele afacerii se aplică acordul semnat de părți. Poți solicita detalii despre prelucrare, subîmputerniciți și transferuri la contact@bookeasy.ro."
+      ]
+    }
+  ]
+}
