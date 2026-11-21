@@ -2,9 +2,11 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { company } from '@/lib/company'
 import { CookiePreferencesButton } from '@/components/cookie-preferences-button'
+import { IntegrationsMarquee } from '@/components/ui/integrations-marquee'
 
 export function PublicFooter() {
-  return (
+  return <>
+    <IntegrationsMarquee />
     <footer className="border-t border-[var(--border-soft)] bg-[var(--brand-ink)] px-4 py-6 text-white sm:px-6">
       <div className="mx-auto grid max-w-6xl gap-5 border-b border-white/10 pb-5 md:grid-cols-[1.2fr_1fr_1fr]">
         <div>
@@ -93,5 +95,5 @@ export function PublicFooter() {
         </nav>
       </div>
     </footer>
-  )
+  </>
 }
