@@ -135,6 +135,79 @@ async function testSmsApi() {
   console.log('PASS SMSAPI: single-segment reminder, protected request, accepted, rejected, duplicate and ambiguous outcomes')
 }
 
+async function testSmsApiPreflight() {
+  const smsApi = load('lib/smsapi.ts')
+  const env = { SMSAPI_TOKEN: process.env.SMSAPI_TOKEN, SMSAPI_SENDER: process.env.SMSAPI_SENDER, BOOKEASY_SMS_PROVIDER: process.env.BOOKEASY_SMS_PROVIDER }
+  const originalFetch = global.fetch
+  let isSuperAdmin = false
+  let calls = 0
+  let providerResponse = () => Response.json({ count: 1, list: [{ id: 'dry-run-example' }] })
+  const { POST } = load('app/api/superadmin/sms/route.ts', {
+    '@/lib/private-json': load('lib/private-json.ts'),
+    '@/lib/prisma': { prisma: new Proxy({}, { get: () => assert.fail('Dry-run must not touch the database') }) },
+    '@/lib/auth': { auth: async () => ({ isSuperAdmin }) },
+    '@/lib/sms-gateway': { normalizeSmsPhone: value => value },
+    '@/lib/sms-device-auth': {},
+    '@/lib/sms-job-status': {},
+    '@/lib/smsapi': smsApi,
+  })
+  const endpoint = 'https://bookeasy.ro/api/superadmin/sms'
+  const request = (origin = 'https://bookeasy.ro', body = { action: 'test-smsapi' }) => new NextRequest(endpoint, {
+    method: 'POST', headers: { origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  })
+  try {
+    delete process.env.BOOKEASY_SMS_PROVIDER
+    delete process.env.SMSAPI_TOKEN
+    delete process.env.SMSAPI_SENDER
+    global.fetch = async (url, options) => {
+      calls++
+      assert.equal(url, 'https://api.smsapi.ro/sms.do')
+      assert.equal(options.method, 'POST')
+      assert.equal(options.headers.Authorization, 'Bearer fixture-token')
+      assert.equal(options.body.get('to'), '48500000000')
+      assert.equal(options.body.get('from'), 'BookEasy')
+      assert.equal(options.body.get('message'), 'Salon Demo: programare 25.11, 14:30.')
+      assert.equal(options.body.get('test'), '1')
+      assert.equal(options.body.get('max_parts'), '1')
+      return providerResponse()
+    }
+    assert.equal((await POST(request())).status, 403)
+    isSuperAdmin = true
+    assert.equal((await POST(request('https://example.invalid'))).status, 403)
+    assert.equal((await POST(request(undefined, { action: 'test-smsapi', to: '40700000000' }))).status, 400)
+    const unconfigured = await POST(request())
+    assert.equal(unconfigured.status, 409)
+    assert.equal((await unconfigured.json()).status, 'unconfigured')
+    assert.equal(calls, 0)
+
+    process.env.SMSAPI_TOKEN = 'fixture-token'
+    process.env.SMSAPI_SENDER = 'BookEasy'
+    const accepted = await POST(request())
+    assert.equal(accepted.status, 200)
+    assert.equal(accepted.headers.get('Cache-Control'), 'private, no-store')
+    assert.deepEqual(await accepted.json(), { status: 'accepted', message: 'SMSAPI a acceptat testul. Nu a fost trimis niciun SMS.' })
+    providerResponse = () => Response.json({ error: 14, message: 'secret upstream payload' })
+    const rejected = await POST(request())
+    assert.equal(rejected.status, 422)
+    const rejectedResult = await rejected.json()
+    assert.equal(rejectedResult.status, 'rejected')
+    assert.match(rejectedResult.message, /cod 14/)
+    assert.doesNotMatch(rejectedResult.message, /secret upstream payload/)
+    providerResponse = () => new Response('unknown payload')
+    const unavailable = await POST(request())
+    assert.equal(unavailable.status, 502)
+    assert.equal((await unavailable.json()).status, 'unavailable')
+    assert.equal(calls, 3)
+  } finally {
+    global.fetch = originalFetch
+    for (const [name, value] of Object.entries(env)) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+  }
+  console.log('PASS SMSAPI preflight: gated by role and origin, fixed no-send request, works while disabled, no database or raw provider data')
+}
+
 async function testSmsEconomy() {
   const smsApi = load('lib/smsapi.ts')
   const savedEnv = { provider: process.env.BOOKEASY_SMS_PROVIDER, limit: process.env.SMSAPI_DAILY_LIMIT, auto: process.env.SMSAPI_AUTO_RECONFIRMATION }
@@ -187,4 +260,4 @@ async function testSmsEconomy() {
   }
   console.log('PASS SMS economy: automation off, single booking allowance, idempotency and platform-wide quota')
 }
-;(async()=>{await testCancellation();await testMeta();await testBusinessMapLocation();await testSmsApi();await testSmsEconomy()})().catch(e=>{console.error(e);process.exitCode=1});
+;(async()=>{await testCancellation();await testMeta();await testBusinessMapLocation();await testSmsApi();await testSmsApiPreflight();await testSmsEconomy()})().catch(e=>{console.error(e);process.exitCode=1});

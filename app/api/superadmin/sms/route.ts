@@ -6,11 +6,12 @@ import { normalizeSmsPhone } from '@/lib/sms-gateway'
 import { createSmsDeviceToken } from '@/lib/sms-device-auth'
 import { z } from 'zod'
 import { smsJobMessage, visibleSmsStatus } from '@/lib/sms-job-status'
-import { smsApiConfig, usesSmsApi } from '@/lib/smsapi'
+import { smsApiConfig, testSmsApiConnection, usesSmsApi } from '@/lib/smsapi'
 
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('settings'), phone: z.string().transform(normalizeSmsPhone).refine(v => /^\+[1-9]\d{7,14}$/.test(v)), enabled: z.boolean() }),
   z.object({ action: z.literal('pair') }),
+  z.object({ action: z.literal('test-smsapi') }).strict(),
 ])
 export async function POST(req: NextRequest) {
   const session = await auth() as any
@@ -19,6 +20,11 @@ export async function POST(req: NextRequest) {
   const input = schema.safeParse(await req.json().catch(() => null))
   if (!input.success) return privateJson({ error: 'Date invalide.' }, { status: 400 })
   const data = input.data
+  if (data.action === 'test-smsapi') {
+    const result = await testSmsApiConnection()
+    const status = { accepted: 200, unconfigured: 409, rejected: 422, unavailable: 502 }[result.status]
+    return privateJson(result, { status })
+  }
   const existing = await prisma.platformSmsGateway.findUnique({ where: { id: 'central' } })
   if (data.action === 'settings') {
     const changed = existing?.phone !== data.phone
