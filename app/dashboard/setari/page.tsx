@@ -161,7 +161,7 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
           businessCategory={business.category}
           isIndividual={business.category === 'FITNESS' || business.teamSize <= 1}
           instagramOAuthEnabled={instagramLoginConfigured()}
-          smsGateway={{ apiUrl: business.smsGatewayApiUrl, hasApiKey: Boolean(business.smsGatewayApiKey), deviceId: business.smsGatewayDeviceId, phone: business.smsGatewayPhone, enabled: business.smsGatewayEnabled, testedAt: business.smsGatewayTestedAt, lastError: business.smsGatewayLastError, mode: business.smsGatewayMode, paired: Boolean(business.smsDeviceTokenHash), lastSeenAt: business.smsDeviceLastSeenAt }}
+          smsEnabled={business.smsGatewayEnabled}
         />}
 
         <div className="card p-5 mb-5 break-inside-avoid">

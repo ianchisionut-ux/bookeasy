@@ -100,7 +100,7 @@ export default function BookingEditModal({
         setError(data.error ?? 'Nu am putut trimite cererea de reconfirmare.')
         return
       }
-      alert(channel === 'FACEBOOK' ? 'Cererea de reconfirmare a fost trimisă pe Messenger.' : data.message || 'SMS adăugat în coadă. Așteaptă preluarea de către telefonul gateway.')
+      alert(channel === 'FACEBOOK' ? 'Cererea de reconfirmare a fost trimisă pe Messenger.' : data.message || 'Cererea SMS a fost înregistrată.')
       router.refresh()
       onClose()
     } catch {
@@ -121,7 +121,7 @@ export default function BookingEditModal({
         setError(data.error ?? 'Nu am putut trimite reminderul SMS.')
         return
       }
-      alert(data.message || 'SMS adăugat în coadă. Așteaptă preluarea de către telefonul gateway.')
+      alert(data.message || 'Cererea SMS a fost înregistrată.')
     } catch {
       setError('Conexiune eșuată. Încearcă din nou.')
     } finally {

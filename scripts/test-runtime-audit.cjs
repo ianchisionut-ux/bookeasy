@@ -146,8 +146,6 @@ async function testSmsApiPreflight() {
     '@/lib/private-json': load('lib/private-json.ts'),
     '@/lib/prisma': { prisma: new Proxy({}, { get: () => assert.fail('Dry-run must not touch the database') }) },
     '@/lib/auth': { auth: async () => ({ isSuperAdmin }) },
-    '@/lib/sms-gateway': { normalizeSmsPhone: value => value },
-    '@/lib/sms-device-auth': {},
     '@/lib/sms-job-status': {},
     '@/lib/smsapi': smsApi,
   })
@@ -174,6 +172,7 @@ async function testSmsApiPreflight() {
     assert.equal((await POST(request())).status, 403)
     isSuperAdmin = true
     assert.equal((await POST(request('https://example.invalid'))).status, 403)
+    assert.equal((await POST(request(undefined, { action: 'pair' }))).status, 400)
     assert.equal((await POST(request(undefined, { action: 'test-smsapi', to: '40700000000' }))).status, 400)
     const unconfigured = await POST(request())
     assert.equal(unconfigured.status, 409)
@@ -206,6 +205,38 @@ async function testSmsApiPreflight() {
     }
   }
   console.log('PASS SMSAPI preflight: gated by role and origin, fixed no-send request, works while disabled, no database or raw provider data')
+}
+
+async function testAndroidSmsRetirement() {
+  const privateJson = load('lib/private-json.ts')
+  const retired = load('app/api/sms-device/jobs/route.ts', { '@/lib/private-json': privateJson })
+  for (const handler of [retired.GET, retired.POST]) {
+    const response = await handler()
+    assert.equal(response.status, 410)
+    assert.equal(response.headers.get('Cache-Control'), 'private, no-store')
+    assert.deepEqual(Object.keys(await response.json()), ['error'])
+  }
+
+  const savedProvider = process.env.BOOKEASY_SMS_PROVIDER
+  try {
+    delete process.env.BOOKEASY_SMS_PROVIDER
+    const smsApi = load('lib/smsapi.ts')
+    const gateway = load('lib/sms-gateway.ts', {
+      '@/lib/sms-routing': { readBusinessSmsSettings: async () => ({ accountActive: true, smsGatewayEnabled: true }) },
+      '@/lib/sms-limits': { enqueueLimitedSms: () => assert.fail('Inactive SMSAPI must not queue messages') },
+      '@/lib/sms-policy': load('lib/sms-policy.ts'),
+      '@/lib/prisma': {},
+      '@/lib/smsapi': smsApi,
+      '@/lib/sms-job-status': load('lib/sms-job-status.ts'),
+    })
+    await assert.rejects(gateway.sendBusinessSms({ business: { id: 'business' }, to: '+40700000000', text: 'fixture', idempotencyKey: 'fixture' }), /SMSAPI este dezactivată/)
+    const routing = load('lib/sms-routing.ts', { '@/lib/prisma': { prisma: new Proxy({}, { get: () => assert.fail('Readiness must not load the Android gateway') }) }, '@/lib/smsapi': smsApi })
+    assert.equal(await routing.isPlatformSmsReady(), false)
+  } finally {
+    if (savedProvider === undefined) delete process.env.BOOKEASY_SMS_PROVIDER
+    else process.env.BOOKEASY_SMS_PROVIDER = savedProvider
+  }
+  console.log('PASS retired Android gateway: no pairing or jobs, inactive SMSAPI never falls back')
 }
 
 async function testSmsEconomy() {
@@ -243,14 +274,20 @@ async function testSmsEconomy() {
     assert.equal(smsApi.smsApiDailyLimit(), 30)
     assert.deepEqual(await sendScheduledReconfirmations(now), { reconfirmations: 0, reconfirmationErrors: 0 })
     process.env.SMSAPI_DAILY_LIMIT = '1'
-    const job = { businessId: 'business-a', bookingId: 'booking-a', senderKey: 'smsapi', senderPhone: null,
+    const job = { businessId: 'business-a', bookingId: 'booking-a',
       recipient: '+40700000000', message: 'Programare de test', idempotencyKey: 'fixture-1', kind: 'REMINDER' }
+    const retired = { ...job, senderKey: 'platform', status: 'PENDING', createdAt: now, sentAt: null, dispatchedAt: null }
+    assert.equal(smsLimits.summarizeBookingSms([retired], now).lastReminder.status, 'RETIRED')
+    assert.equal(smsLimits.summarizeBookingSms([retired], now).reconfirmationsLeft, 1)
+    assert.equal(smsLimits.summarizeBookingSms([retired], now).canReconfirm, true)
+    const sent = { ...retired, status: 'SENT', sentAt: now, dispatchedAt: now }
+    assert.equal(smsLimits.summarizeBookingSms([sent], now).lastReminderSentAt, now.toISOString())
+    assert.equal(smsLimits.summarizeBookingSms([sent], now).reconfirmationsLeft, 0)
     const first = await smsLimits.enqueueLimitedSms(job)
     assert.deepEqual(await smsLimits.enqueueLimitedSms(job), first)
     await assert.rejects(smsLimits.enqueueLimitedSms({ ...job, idempotencyKey: 'fixture-2', kind: 'RECONFIRMATION' }), /a folosit deja SMS-ul/)
     await assert.rejects(smsLimits.enqueueLimitedSms({ ...job, businessId: 'business-b', bookingId: 'booking-b', idempotencyKey: 'fixture-3' }), /Plafonul BookEasy/)
     assert.equal(smsLimits.summarizeBookingSms([first], now).reconfirmationsLeft, 0)
-    assert.equal(smsLimits.summarizeBookingSms([first], now, false).reconfirmationsLeft, 2)
     assert.equal(attempts.length, 1)
   } finally {
     for (const [name, value] of Object.entries({ BOOKEASY_SMS_PROVIDER: savedEnv.provider, SMSAPI_DAILY_LIMIT: savedEnv.limit, SMSAPI_AUTO_RECONFIRMATION: savedEnv.auto })) {
@@ -260,4 +297,4 @@ async function testSmsEconomy() {
   }
   console.log('PASS SMS economy: automation off, single booking allowance, idempotency and platform-wide quota')
 }
-;(async()=>{await testCancellation();await testMeta();await testBusinessMapLocation();await testSmsApi();await testSmsApiPreflight();await testSmsEconomy()})().catch(e=>{console.error(e);process.exitCode=1});
+;(async()=>{await testCancellation();await testMeta();await testBusinessMapLocation();await testSmsApi();await testSmsApiPreflight();await testAndroidSmsRetirement();await testSmsEconomy()})().catch(e=>{console.error(e);process.exitCode=1});

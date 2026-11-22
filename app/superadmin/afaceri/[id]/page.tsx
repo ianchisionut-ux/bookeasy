@@ -86,17 +86,7 @@ export default async function SuperAdminBusinessDetail({ params }: { params: Pro
           billingEmail: business.billingEmail ?? business.users[0]?.email ?? null,
           contractRepresentativeName: business.contractRepresentativeName,
           contractRepresentativeRole: business.contractRepresentativeRole,
-          smsGatewayApiUrl: business.smsGatewayApiUrl,
-          smsGatewayHasApiKey: Boolean(business.smsGatewayApiKey),
-          smsGatewayDeviceId: business.smsGatewayDeviceId,
-          smsGatewayPhone: business.smsGatewayPhone,
           smsGatewayEnabled: business.smsGatewayEnabled,
-          smsGatewayTestedAt: business.smsGatewayTestedAt?.toISOString() ?? null,
-          smsGatewayLastError: business.smsGatewayLastError,
-          smsGatewayMode: business.smsGatewayMode,
-          smsSenderMode: business.smsSenderMode,
-          smsDevicePaired: Boolean(business.smsDeviceTokenHash),
-          smsDeviceLastSeenAt: business.smsDeviceLastSeenAt?.toISOString() ?? null,
         }}
         metaAppId={process.env.META_APP_ID ?? ''}
         metaWhatsappConfigId={process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_V4_CONFIG_ID ?? process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID ?? ''}

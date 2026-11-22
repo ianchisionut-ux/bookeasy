@@ -30,8 +30,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!social && !booking.business.smsReconfirmationEnabled) return NextResponse.json({ error: 'Reconfirmarea prin SMS este dezactivată în Setări.' }, { status: 409 })
 
   if (!social && booking.confirmationRequestToken) {
-    const pending = await prisma.smsJob.findUnique({ where: { businessId_idempotencyKey: { businessId, idempotencyKey: `confirm-${booking.id}-${booking.confirmationRequestToken}` } }, select: { id: true, status: true } })
-    if (pending && ['PENDING', 'DISPATCHED'].includes(pending.status)) return NextResponse.json({ success: true, channel: 'SMS', jobId: pending.id, status: pending.status, message: smsJobMessage(pending.status) }, { status: 202 })
+    const pending = await prisma.smsJob.findUnique({ where: { businessId_idempotencyKey: { businessId, idempotencyKey: `confirm-${booking.id}-${booking.confirmationRequestToken}` } }, select: { id: true, senderKey: true, status: true } })
+    if (pending?.senderKey === 'smsapi' && ['PENDING', 'DISPATCHED'].includes(pending.status)) return NextResponse.json({ success: true, channel: 'SMS', jobId: pending.id, status: pending.status, message: smsJobMessage(pending.status, null, pending.senderKey) }, { status: 202 })
   }
 
   const token = crypto.randomUUID()

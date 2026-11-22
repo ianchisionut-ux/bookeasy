@@ -36,14 +36,3 @@ export function reminderSms(brand: string, dateTime: string, service: string): s
   const detail = fit(service, 160 - smsUnits(prefix) - 1)
   return singleSms(`${prefix}${detail ? ` ${detail}` : ''}`)
 }
-
-export function matchesSmsSim(configured: string | null, detected: string | null): boolean {
-  function phone(value: string | null) {
-    let digits = (value || '').replace(/[^0-9]/g, '')
-    if (digits.startsWith('00')) digits = digits.slice(2)
-    if (/^0\d{9}$/.test(digits)) digits = `40${digits.slice(1)}`
-    return digits.length >= 8 && digits.length <= 15 ? digits : null
-  }
-  const expected = phone(configured), actual = phone(detected)
-  return Boolean(expected && actual && expected === actual)
-}

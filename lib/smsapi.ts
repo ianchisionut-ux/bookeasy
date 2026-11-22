@@ -16,6 +16,12 @@ export function smsApiConfig() {
   return token && sender ? { token, sender } : null
 }
 
+export function smsApiAvailability() {
+  if (!usesSmsApi()) return { online: false, lastError: 'Trimiterea prin SMSAPI este dezactivată.' }
+  if (!smsApiConfig()) return { online: false, lastError: 'SMSAPI nu este configurat complet.' }
+  return { online: true, lastError: null }
+}
+
 type Result = { status: 'SENT' | 'FAILED' | 'UNKNOWN'; error: string | null }
 type SmsApiConfig = NonNullable<ReturnType<typeof smsApiConfig>>
 

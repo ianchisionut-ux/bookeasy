@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import { prisma } from '@/lib/prisma'
 import { sendConfirmationRequest } from '@/lib/confirmation-request'
 import { effectiveBusinessPlan } from '@/lib/business-plans'
-import { usesSmsApi } from '@/lib/smsapi'
+import { smsApiAvailability } from '@/lib/smsapi'
 
 export function isReconfirmationDue(booking: { startAt: Date; createdAt: Date; business: { reminderMinutesBefore: number } }, now: Date): boolean {
   const minutes = booking.business.reminderMinutesBefore
@@ -15,7 +15,7 @@ export function isReconfirmationDue(booking: { startAt: Date; createdAt: Date; b
 
 export async function sendScheduledReconfirmations(now: Date) {
   const result = { reconfirmations: 0, reconfirmationErrors: 0 }
-  if (usesSmsApi() && process.env.SMSAPI_AUTO_RECONFIRMATION !== 'true') return result
+  if (process.env.SMSAPI_AUTO_RECONFIRMATION !== 'true' || !smsApiAvailability().online) return result
   const bookings = await prisma.booking.findMany({
     where: {
       status: { in: ['PENDING', 'CONFIRMED'] },

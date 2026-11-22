@@ -169,7 +169,7 @@ export default function IntegrationsCard({
   businessName,
   businessCategory,
   isIndividual,
-  smsGateway,
+  smsEnabled,
   adminBusinessId,
 }: {
   platformSmsReady?: boolean
@@ -179,7 +179,7 @@ export default function IntegrationsCard({
   businessCategory: string
   isIndividual: boolean
   instagramOAuthEnabled: boolean
-  smsGateway: { apiUrl: string | null; hasApiKey: boolean; deviceId: number | null; phone: string | null; enabled: boolean; testedAt: string | Date | null; lastError: string | null; mode: string; paired: boolean; lastSeenAt: string | Date | null }
+  smsEnabled: boolean
   adminBusinessId?: string
 }) {
   const searchParams = useSearchParams()
@@ -249,7 +249,7 @@ export default function IntegrationsCard({
           </div>}
         </section>
 
-        {platformSmsReady && <SmsBusinessToggle initial={smsGateway.enabled} businessId={adminBusinessId} />}
+        {platformSmsReady && <SmsBusinessToggle initial={smsEnabled} businessId={adminBusinessId} />}
 
         <section className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">

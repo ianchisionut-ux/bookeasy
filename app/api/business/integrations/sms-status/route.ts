@@ -1,6 +1,6 @@
 import { privateJson } from '@/lib/private-json'
-import { resolveSmsSender } from '@/lib/sms-routing'
-import { platformSmsReady } from '@/lib/sms-availability'
+import { readBusinessSmsSettings } from '@/lib/sms-routing'
+import { smsApiAvailability } from '@/lib/smsapi'
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma'
 import { smsJobMessage, visibleSmsStatus } from '@/lib/sms-job-status'
@@ -11,12 +11,13 @@ export async function GET(req: NextRequest) {
   const requestedId = req.nextUrl.searchParams.get('businessId')
   const businessId = session?.isSuperAdmin && requestedId ? requestedId : session?.businessId
   if (!businessId || session?.role === 'CUSTOMER' || (requestedId && requestedId !== businessId)) return privateJson({ error: 'unauthorized' }, { status: 401 })
-  const [jobs, sender] = await Promise.all([
+  const [jobs, settings] = await Promise.all([
     prisma.smsJob.findMany({ where: { businessId }, orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, recipient: true, status: true, error: true, createdAt: true, dispatchedAt: true, sentAt: true, idempotencyKey: true, senderKey: true } }),
-    resolveSmsSender({ id: businessId }),
+    readBusinessSmsSettings(businessId),
   ])
-  const online = Boolean(sender.businessEnabled && sender.accountActive && (sender.key === 'smsapi' ? sender.enabled : platformSmsReady(sender)))
-  return privateJson({ online, provider: sender.key, lastSeenAt: sender.lastSeenAt || null, lastError: sender.lastError || null, jobs: jobs.map(job => {
+  const availability = smsApiAvailability()
+  const online = settings.smsGatewayEnabled && settings.accountActive && availability.online
+  return privateJson({ online, provider: 'smsapi', lastSeenAt: null, lastError: availability.lastError, jobs: jobs.map(job => {
     const status = visibleSmsStatus(job)
     return { id: job.id, recipient: `•••• ${job.recipient.slice(-4)}`, status, provider: job.senderKey, message: smsJobMessage(status, job.error, job.senderKey), kind: job.idempotencyKey.startsWith('confirm-') ? 'Reconfirmare' : job.idempotencyKey.startsWith('reminder-') ? 'Reminder' : 'SMS', createdAt: job.createdAt, sentAt: job.sentAt }
   }) }, { headers: { 'Cache-Control': 'no-store' } })

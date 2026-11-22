@@ -200,7 +200,7 @@ export default function ProgramariManager({
         alert(data.error ?? 'Nu am putut trimite cererea de confirmare.')
         return
       }
-      alert(channel === 'INSTAGRAM' ? 'Cererea de reconfirmare a fost trimisă pe Instagram.' : channel === 'FACEBOOK' ? 'Cererea de reconfirmare a fost trimisă pe Messenger.' : data.message || 'SMS adăugat în coadă. Așteaptă preluarea de către telefonul gateway.')
+      alert(channel === 'INSTAGRAM' ? 'Cererea de reconfirmare a fost trimisă pe Instagram.' : channel === 'FACEBOOK' ? 'Cererea de reconfirmare a fost trimisă pe Messenger.' : data.message || 'Cererea SMS a fost înregistrată.')
       router.refresh()
     } catch {
       alert('Conexiune eșuată. Încearcă din nou.')
@@ -219,7 +219,7 @@ export default function ProgramariManager({
         alert(data.error ?? 'Nu am putut trimite reminderul SMS.')
         return
       }
-      alert(data.message || 'SMS adăugat în coadă. Așteaptă preluarea de către telefonul gateway.')
+      alert(data.message || 'Cererea SMS a fost înregistrată.')
     } catch {
       alert('Conexiune eșuată. Încearcă din nou.')
     } finally {

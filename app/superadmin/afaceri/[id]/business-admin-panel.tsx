@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button'
 import { Pill } from '@/components/ui/input'
 import BillingSection from './billing-section'
 import { CATEGORY_LABEL, type BusinessCategory } from '@/lib/business-categories'
-import SmsRoutingSettings from '@/components/admin/sms-routing-settings'
 import SharedIntegrationsCard from '@/app/dashboard/setari/integrations-card'
 import BillingModeCard from './billing-mode-card'
 
@@ -52,17 +51,7 @@ type Business = {
   billingEmail: string | null
   contractRepresentativeName: string | null
   contractRepresentativeRole: string | null
-  smsGatewayApiUrl: string | null
-  smsGatewayHasApiKey: boolean
-  smsGatewayDeviceId: number | null
-  smsGatewayPhone: string | null
   smsGatewayEnabled: boolean
-  smsGatewayTestedAt: string | null
-  smsGatewayLastError: string | null
-  smsSenderMode: string
-  smsGatewayMode: string
-  smsDevicePaired: boolean
-  smsDeviceLastSeenAt: string | null
 }
 
 export default function BusinessAdminPanel({ business, channels, practitioners, metaAppId, metaWhatsappConfigId, instagramOAuthEnabled, campaignManaged = false, billingMode, currentCampaignId, campaigns, platformSmsReady }: { business: Business; channels: Channel[]; practitioners: CalendarPractitioner[]; metaAppId: string; metaWhatsappConfigId: string; instagramOAuthEnabled: boolean; campaignManaged?: boolean; billingMode: 'PAID' | 'FREE' | 'CAMPAIGN'; currentCampaignId: string | null; campaigns: { id: string; code: string; name: string; freeMonths: number; freeUntilNotice:boolean; open: boolean }[]; platformSmsReady: boolean }) {
@@ -394,8 +383,7 @@ export default function BusinessAdminPanel({ business, channels, practitioners, 
 
       {/* Coloana dreaptă — integrări unificate, plată */}
       <div className="flex flex-col gap-5">
-        <SharedIntegrationsCard platformSmsReady={platformSmsReady} adminBusinessId={business.id} businessName={business.name} businessCategory={business.category} isIndividual={business.category === 'FITNESS' || business.teamSize <= 1} channels={channels} practitioners={practitioners} instagramOAuthEnabled={instagramOAuthEnabled} smsGateway={{ apiUrl: business.smsGatewayApiUrl, hasApiKey: business.smsGatewayHasApiKey, deviceId: business.smsGatewayDeviceId, phone: business.smsGatewayPhone, enabled: business.smsGatewayEnabled, testedAt: business.smsGatewayTestedAt, lastError: business.smsGatewayLastError, mode: business.smsGatewayMode, paired: business.smsDevicePaired, lastSeenAt: business.smsDeviceLastSeenAt }} />
-        {platformSmsReady && <SmsRoutingSettings businessId={business.id} initial={business.smsSenderMode} />}
+        <SharedIntegrationsCard platformSmsReady={platformSmsReady} adminBusinessId={business.id} businessName={business.name} businessCategory={business.category} isIndividual={business.category === 'FITNESS' || business.teamSize <= 1} channels={channels} practitioners={practitioners} instagramOAuthEnabled={instagramOAuthEnabled} smsEnabled={business.smsGatewayEnabled} />
       </div>
     </div>
   )
