@@ -97,4 +97,94 @@ async function testBusinessMapLocation() {
   assert.deepEqual(await visiblePins(), [])
   console.log('PASS map pins: legacy hidden, address changes preserve coordinates, admin save publishes, explicit removal hides')
 }
-;(async()=>{await testCancellation();await testMeta();await testBusinessMapLocation()})().catch(e=>{console.error(e);process.exitCode=1});
+async function testSmsApi() {
+  const { submitSmsApi } = load('lib/smsapi.ts')
+  const { reminderSms, smsUnits } = load('lib/sms-policy.ts')
+  const reminder = reminderSms('Salon Démo', '25.11, 14:30', '')
+  assert.equal(reminder, 'Salon Demo: programare 25.11, 14:30.')
+  assert.ok(smsUnits(reminderSms('Salon '.repeat(30), '25.11, 14:30', '')) <= 160)
+
+  const config = { token: 'test-token', sender: 'BookEasy' }
+  const job = { id: 'sms-fixture', recipient: '+40700000000', message: reminder }
+  const originalFetch = global.fetch
+  try {
+    global.fetch = async (url, options) => {
+      assert.equal(url, 'https://api.smsapi.ro/sms.do')
+      assert.equal(options.method, 'POST')
+      assert.equal(options.headers.Authorization, 'Bearer test-token')
+      assert.equal(options.body.get('to'), '40700000000')
+      assert.equal(options.body.get('message'), reminder)
+      assert.equal(options.body.get('max_parts'), '1')
+      assert.equal(options.body.get('idx'), job.id)
+      assert.equal(options.body.get('check_idx'), '1')
+      return Response.json({ count: 1, list: [{ id: 'provider-id', status: 'QUEUE', error: null }] })
+    }
+    assert.deepEqual(await submitSmsApi(config, job), { status: 'SENT', error: null })
+    global.fetch = async () => Response.json({ error: 14, message: 'private provider payload' })
+    const rejected = await submitSmsApi(config, job)
+    assert.equal(rejected.status, 'FAILED')
+    assert.match(rejected.error, /cod 14/)
+    assert.doesNotMatch(rejected.error, /private provider payload/)
+    global.fetch = async () => Response.json({ error: 53 })
+    assert.equal((await submitSmsApi(config, job)).status, 'UNKNOWN')
+    global.fetch = async () => { throw Error('network interrupted') }
+    assert.equal((await submitSmsApi(config, job)).status, 'UNKNOWN')
+  } finally {
+    global.fetch = originalFetch
+  }
+  console.log('PASS SMSAPI: single-segment reminder, protected request, accepted, rejected, duplicate and ambiguous outcomes')
+}
+
+async function testSmsEconomy() {
+  const smsApi = load('lib/smsapi.ts')
+  const savedEnv = { provider: process.env.BOOKEASY_SMS_PROVIDER, limit: process.env.SMSAPI_DAILY_LIMIT, auto: process.env.SMSAPI_AUTO_RECONFIRMATION }
+  const now = new Date()
+  const attempts = []
+  const prisma = {
+    $executeRaw: async () => {},
+    $transaction: async operation => operation(prisma),
+    booking: { findFirst: async () => ({ id: 'booking-a' }) },
+    smsJob: {
+      findUnique: async ({ where: { businessId_idempotencyKey: key } }) => attempts.find(row => row.businessId === key.businessId && row.idempotencyKey === key.idempotencyKey) ?? null,
+      findMany: async ({ where }) => attempts.filter(row => row.businessId === where.businessId && row.bookingId === where.OR[0].bookingId),
+      count: async ({ where }) => attempts.filter(row => (!where.businessId || where.businessId === row.businessId)
+        && (!where.recipient || where.recipient === row.recipient) && (!where.senderKey || where.senderKey === row.senderKey)).length,
+      create: async ({ data }) => {
+        const row = { ...data, id: 'test-sms', createdAt: now, status: 'PENDING' }
+        attempts.push(row)
+        return row
+      },
+    },
+  }
+  const smsLimits = load('lib/sms-limits.ts', {
+    '@/lib/prisma': { prisma }, '@/lib/sms-job-status': load('lib/sms-job-status.ts'), '@/lib/smsapi': smsApi,
+  })
+  const { sendScheduledReconfirmations } = load('lib/scheduled-reconfirmation.ts', {
+    '@/lib/prisma': { prisma: { booking: { findMany: () => assert.fail('Paid automation must be disabled by default') } } },
+    '@/lib/confirmation-request': {}, '@/lib/business-plans': {}, '@/lib/smsapi': smsApi,
+  })
+  try {
+    process.env.BOOKEASY_SMS_PROVIDER = 'smsapi'
+    delete process.env.SMSAPI_AUTO_RECONFIRMATION
+    delete process.env.SMSAPI_DAILY_LIMIT
+    assert.equal(smsApi.smsApiDailyLimit(), 30)
+    assert.deepEqual(await sendScheduledReconfirmations(now), { reconfirmations: 0, reconfirmationErrors: 0 })
+    process.env.SMSAPI_DAILY_LIMIT = '1'
+    const job = { businessId: 'business-a', bookingId: 'booking-a', senderKey: 'smsapi', senderPhone: null,
+      recipient: '+40700000000', message: 'Programare de test', idempotencyKey: 'fixture-1', kind: 'REMINDER' }
+    const first = await smsLimits.enqueueLimitedSms(job)
+    assert.deepEqual(await smsLimits.enqueueLimitedSms(job), first)
+    await assert.rejects(smsLimits.enqueueLimitedSms({ ...job, idempotencyKey: 'fixture-2', kind: 'RECONFIRMATION' }), /a folosit deja SMS-ul/)
+    await assert.rejects(smsLimits.enqueueLimitedSms({ ...job, businessId: 'business-b', bookingId: 'booking-b', idempotencyKey: 'fixture-3' }), /Plafonul BookEasy/)
+    assert.equal(smsLimits.summarizeBookingSms([first], now).reconfirmationsLeft, 0)
+    assert.equal(smsLimits.summarizeBookingSms([first], now, false).reconfirmationsLeft, 2)
+    assert.equal(attempts.length, 1)
+  } finally {
+    for (const [name, value] of Object.entries({ BOOKEASY_SMS_PROVIDER: savedEnv.provider, SMSAPI_DAILY_LIMIT: savedEnv.limit, SMSAPI_AUTO_RECONFIRMATION: savedEnv.auto })) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+  }
+  console.log('PASS SMS economy: automation off, single booking allowance, idempotency and platform-wide quota')
+}
+;(async()=>{await testCancellation();await testMeta();await testBusinessMapLocation();await testSmsApi();await testSmsEconomy()})().catch(e=>{console.error(e);process.exitCode=1});

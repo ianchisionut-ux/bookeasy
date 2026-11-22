@@ -2,6 +2,7 @@ import { sendBusinessSms } from '@/lib/sms-gateway'
 import { confirmationSms } from '@/lib/sms-policy'
 import { compactConfirmationToken } from '@/lib/confirmation-link'
 import { smsJobMessage } from '@/lib/sms-job-status'
+import { usesSmsApi } from '@/lib/smsapi'
 
 export async function sendConfirmationRequest(booking: any): Promise<{ success: boolean; error?: string; channel?: 'SMS'; jobId?: string; status?: string; message?: string }> {
   const recipient = booking.customer?.phone
@@ -15,9 +16,9 @@ export async function sendConfirmationRequest(booking: any): Promise<{ success: 
   try {
     const appUrl = (process.env.APP_URL || 'https://bookeasy.ro').replace(/\/$/, '').replace('https://www.bookeasy.ro', 'https://bookeasy.ro')
     const link = `${appUrl}/confirmare/${compactConfirmationToken(booking.confirmationRequestToken)}`
-    const text = confirmationSms(booking.business.name, dateTime, link, booking.service.name)
+    const text = confirmationSms(booking.business.name, dateTime, link, usesSmsApi() ? 'Programare' : booking.service.name)
     const job = await sendBusinessSms({ business: booking.business, to: recipient, text, bookingId: booking.id, kind: 'RECONFIRMATION', expiresAt: booking.startAt, idempotencyKey: `confirm-${booking.id}-${booking.confirmationRequestToken}` })
-    return { success: true, channel: 'SMS', jobId: job.id, status: job.status, message: smsJobMessage(job.status) }
+    return { success: true, channel: 'SMS', jobId: job.id, status: job.status, message: smsJobMessage(job.status, job.error, job.senderKey) }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Eroare necunoscută la trimiterea SMS-ului.' }
   }

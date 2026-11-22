@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { auth } from '@/lib/business-auth'
 import { prisma } from '@/lib/prisma'
 import { bookingSmsWhere, summarizeBookingSms, SMS_LIMITS } from '@/lib/sms-limits'
+import { usesSmsApi } from '@/lib/smsapi'
 
 export async function GET(req: NextRequest) {
   const session = await auth() as any
@@ -16,5 +17,6 @@ export async function GET(req: NextRequest) {
     const active = ['PENDING', 'CONFIRMED'].includes(b.status) && b.startAt > new Date()
     return [b.id, { ...allowance, canRemind: active && allowance.canRemind, canReconfirm: active && b.customerConfirmed !== true && allowance.canReconfirm }]
   }))
-  return privateJson({ allowances, limits: { reminders: SMS_LIMITS.reminders, reconfirmations: SMS_LIMITS.reconfirmations } }, { headers: { 'Cache-Control': 'no-store' } })
+  const limits = usesSmsApi() ? { reminders: 1, reconfirmations: 1 } : { reminders: SMS_LIMITS.reminders, reconfirmations: SMS_LIMITS.reconfirmations }
+  return privateJson({ allowances, limits }, { headers: { 'Cache-Control': 'no-store' } })
 }

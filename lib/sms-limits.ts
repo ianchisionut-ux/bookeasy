@@ -1,5 +1,7 @@
 import { visibleSmsStatus } from '@/lib/sms-job-status'
 import { prisma } from '@/lib/prisma'
+import type { Prisma } from '@prisma/client'
+import { smsApiDailyLimit, usesSmsApi } from '@/lib/smsapi'
 
 export const SMS_LIMITS = { reminders: 3, reconfirmations: 2, bookingCooldownMs: 15 * 60_000, businessDaily: 50, recipientDaily: 10, dispatchGapMs: 60_000, senderHourly: 30, senderDaily: 200 } as const
 export type SmsPurpose = 'REMINDER' | 'RECONFIRMATION' | 'OTHER'
@@ -10,14 +12,15 @@ export function bookingSmsWhere(businessId: string, bookingId: string) {
   return { businessId, OR: [{ bookingId }, { bookingId: null, idempotencyKey: { startsWith: `confirm-${bookingId}-` } }, { bookingId: null, idempotencyKey: { startsWith: `reminder-${bookingId}-` } }] }
 }
 
-export function summarizeBookingSms(jobs: { kind: string; idempotencyKey: string; createdAt: Date; status?: string; sentAt?: Date | null; dispatchedAt?: Date | null }[], now = new Date()): SmsAllowance {
+export function summarizeBookingSms(jobs: { kind: string; idempotencyKey: string; createdAt: Date; status?: string; sentAt?: Date | null; dispatchedAt?: Date | null }[], now = new Date(), economy = usesSmsApi()): SmsAllowance {
   // Attempts already handed to the queue count even if the phone later reports an error.
   const reminders = jobs.filter(j => j.kind === 'REMINDER' || j.idempotencyKey.startsWith('reminder-')).length
   const confirmations = jobs.filter(j => j.kind === 'RECONFIRMATION' || j.idempotencyKey.startsWith('confirm-')).length
   const latest = jobs.reduce((value, job) => Math.max(value, job.createdAt.getTime()), 0)
   const cooldown = latest ? latest + SMS_LIMITS.bookingCooldownMs : 0
-  const remindersLeft = Math.max(0, SMS_LIMITS.reminders - reminders)
-  const reconfirmationsLeft = Math.max(0, SMS_LIMITS.reconfirmations - confirmations)
+  const sharedRemaining = jobs.some(job => !['FAILED', 'EXPIRED'].includes(job.status ?? 'PENDING')) ? 0 : 1
+  const remindersLeft = economy ? sharedRemaining : Math.max(0, SMS_LIMITS.reminders - reminders)
+  const reconfirmationsLeft = economy ? sharedRemaining : Math.max(0, SMS_LIMITS.reconfirmations - confirmations)
   const newest = (kind: string) => [...jobs].filter(j => j.kind === kind || j.idempotencyKey.startsWith(kind === 'REMINDER' ? 'reminder-' : 'confirm-')).sort((a,b)=>b.createdAt.getTime()-a.createdAt.getTime())
   const activity = (j: typeof jobs[number] | undefined): SmsActivity | null => j ? {status: visibleSmsStatus({status:j.status || 'PENDING',dispatchedAt:j.dispatchedAt || null},now.getTime()),requestedAt:j.createdAt.toISOString(),sentAt:j.sentAt?.toISOString() || null} : null
   const remindersHistory=newest('REMINDER'), confirmationHistory=newest('RECONFIRMATION')
@@ -29,7 +32,7 @@ export async function readBookingSmsAllowance(businessId: string, bookingId: str
   return summarizeBookingSms(await db.smsJob.findMany({ where: bookingSmsWhere(businessId, bookingId), select: { kind: true, idempotencyKey: true, createdAt: true, status:true, sentAt:true, dispatchedAt:true } }))
 }
 
-export async function enqueueLimitedSms(data: { businessId: string; senderKey: string; senderPhone: string; recipient: string; message: string; idempotencyKey: string; bookingId?: string; kind: SmsPurpose; expiresAt?: Date }) {
+export async function enqueueLimitedSms(data: { businessId: string; senderKey: string; senderPhone: string | null; recipient: string; message: string; idempotencyKey: string; bookingId?: string; kind: SmsPurpose; expiresAt?: Date }) {
   return prisma.$transaction(async tx => {
     // The same lock protects all entry points, including cron, retries and multiple tabs.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`sms-quota:${data.businessId}`}, 0))`
@@ -46,19 +49,57 @@ export async function enqueueLimitedSms(data: { businessId: string; senderKey: s
       const booking = await tx.booking.findFirst({ where: { id: data.bookingId, businessId: data.businessId, status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { gt: now } }, select: { id: true } })
       if (!booking) throw new Error('Programarea nu mai este activă sau este în trecut.')
       const allowance = await readBookingSmsAllowance(data.businessId, data.bookingId, tx)
-      if (data.kind === 'REMINDER' && !allowance.remindersLeft) throw new Error('Limita de 3 remindere SMS pentru această programare a fost atinsă.')
-      if (data.kind === 'RECONFIRMATION' && !allowance.reconfirmationsLeft) throw new Error('Limita de 2 reconfirmări SMS pentru această programare a fost atinsă.')
+      if (data.senderKey === 'smsapi' && !allowance.remindersLeft) throw new Error('Programarea a folosit deja SMS-ul disponibil pentru reminder sau reconfirmare.')
+      if (data.senderKey !== 'smsapi' && data.kind === 'REMINDER' && !allowance.remindersLeft) throw new Error('Limita de 3 remindere SMS pentru această programare a fost atinsă.')
+      if (data.senderKey !== 'smsapi' && data.kind === 'RECONFIRMATION' && !allowance.reconfirmationsLeft) throw new Error('Limita de 2 reconfirmări SMS pentru această programare a fost atinsă.')
       if (allowance.cooldownUntil) throw new Error('Așteaptă 15 minute între solicitările SMS pentru aceeași programare.')
+    }
+    if (data.senderKey === 'smsapi') {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('smsapi:daily-quota', 0))`
+      const attempts = await tx.smsJob.count({ where: { senderKey: 'smsapi', createdAt: { gte: since } } })
+      if (attempts >= smsApiDailyLimit()) throw new Error('Plafonul BookEasy pentru SMSAPI în ultimele 24 de ore a fost atins.')
     }
     return tx.smsJob.create({ data })
   }, { timeout: 15_000 })
+}
+
+async function smsHasExpired(tx: Prisma.TransactionClient, candidate: { bookingId: string | null; idempotencyKey: string; businessId: string; expiresAt: Date | null; kind: string }, now: Date) {
+  if (candidate.expiresAt && candidate.expiresAt <= now) return true
+  const bookingId = candidate.bookingId || /^(?:confirm|reminder)-([a-z0-9]+)-/i.exec(candidate.idempotencyKey)?.[1]
+  if (!bookingId) return false
+  const booking = await tx.booking.findFirst({ where: { id: bookingId, businessId: candidate.businessId }, select: { status: true, startAt: true, confirmationRequestToken: true } })
+  return !booking
+    || !['PENDING', 'CONFIRMED'].includes(booking.status)
+    || booking.startAt <= now
+    || Boolean(candidate.expiresAt && candidate.expiresAt.getTime() !== booking.startAt.getTime())
+    || ((candidate.kind === 'RECONFIRMATION' || candidate.idempotencyKey.startsWith('confirm-')) && candidate.idempotencyKey !== `confirm-${bookingId}-${booking.confirmationRequestToken}`)
+}
+
+export async function claimSmsApiJob(id: string, allowDisabled: boolean) {
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('smsapi:daily-quota', 0))`
+    const now = new Date()
+    const where = { id, senderKey: 'smsapi', status: 'PENDING', business: { accountActive: true, ...(allowDisabled ? {} : { smsGatewayEnabled: true }) } }
+    const job = await tx.smsJob.findFirst({ where })
+    if (!job) return false
+    const expired = await smsHasExpired(tx, job, now)
+    if (!expired) {
+      const dispatched = await tx.smsJob.count({ where: { senderKey: 'smsapi', dispatchedAt: { gte: new Date(now.getTime() - 86_400_000) } } })
+      if (dispatched >= smsApiDailyLimit()) throw new Error('Plafonul BookEasy pentru SMSAPI în ultimele 24 de ore a fost atins.')
+    }
+    const updated = await tx.smsJob.updateMany({ where, data: expired
+      ? { status: 'EXPIRED', error: 'Programarea sau linkul nu mai este valabil. SMS-ul nu a fost trimis.' }
+      : { status: 'DISPATCHED', dispatchedAt: now },
+    })
+    return !expired && updated.count === 1
+  })
 }
 
 export async function claimNextSms(device: { id: string; smsGatewayPhone: string | null }) {
   const phone = device.smsGatewayPhone
   if (device.id !== 'platform' || !phone) return { job: null, nextPollSeconds: 30 }
   // Pending legacy jobs also move to the single central sender when atomically claimed.
-  const scope = {}
+  const scope = { OR: [{ senderKey: null }, { senderKey: { not: 'smsapi' } }] }
   return prisma.$transaction(async tx => {
     // Lock by verified telephone number so two tokens/apps cannot bypass the dispatch pace.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`sms-dispatch:${phone}`}, 0))`
@@ -75,14 +116,9 @@ export async function claimNextSms(device: { id: string; smsGatewayPhone: string
     if (wait > 0) return { job: null, nextPollSeconds: Math.min(60, Math.max(12, Math.ceil(wait / 1000))), queueState: 'SPACING' }
     const candidates = await tx.smsJob.findMany({ where: { ...scope, status: 'PENDING', business: { accountActive: true, smsGatewayEnabled: true } }, orderBy: { createdAt: 'asc' }, take: 10 })
     for (const candidate of candidates) {
-      const bookingId = candidate.bookingId || /^(?:confirm|reminder)-([a-z0-9]+)-/i.exec(candidate.idempotencyKey)?.[1]
-      if (bookingId) {
-        const booking = await tx.booking.findFirst({ where: { id: bookingId, businessId: candidate.businessId }, select: { status: true, startAt: true, confirmationRequestToken: true } })
-        const stale = !booking || !['PENDING', 'CONFIRMED'].includes(booking.status) || booking.startAt <= now || (candidate.expiresAt && (candidate.expiresAt <= now || candidate.expiresAt.getTime() !== booking.startAt.getTime())) || ((candidate.kind === 'RECONFIRMATION' || candidate.idempotencyKey.startsWith('confirm-')) && candidate.idempotencyKey !== `confirm-${bookingId}-${booking.confirmationRequestToken}`)
-        if (stale) {
-          await tx.smsJob.updateMany({ where: { id: candidate.id, status: 'PENDING' }, data: { status: 'EXPIRED', error: 'Programarea sau linkul nu mai este valabil. SMS-ul nu a fost trimis.' } })
-          continue
-        }
+      if (await smsHasExpired(tx, candidate, now)) {
+        await tx.smsJob.updateMany({ where: { id: candidate.id, ...scope, status: 'PENDING' }, data: { status: 'EXPIRED', error: 'Programarea sau linkul nu mai este valabil. SMS-ul nu a fost trimis.' } })
+        continue
       }
       const claimed = await tx.smsJob.updateMany({ where: { id: candidate.id, ...scope, status: 'PENDING', business: { accountActive: true, smsGatewayEnabled: true } }, data: { status: 'DISPATCHED', dispatchedAt: now, senderPhone: phone, senderKey: 'platform' } })
       if (claimed.count === 1) return { job: { id: candidate.id, to: candidate.recipient, text: candidate.message }, nextPollSeconds: 60 }

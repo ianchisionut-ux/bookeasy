@@ -32,7 +32,7 @@ export function confirmationSms(brand: string, dateTime: string, link: string, s
 }
 
 export function reminderSms(brand: string, dateTime: string, service: string): string {
-  const prefix = `${fit(brand || 'BookEasy', 28)}: reminder ${smsPlainText(dateTime)}.`
+  const prefix = `${fit(brand, 28) || 'BookEasy'}: ${service ? 'reminder' : 'programare'} ${smsPlainText(dateTime)}.`
   const detail = fit(service, 160 - smsUnits(prefix) - 1)
   return singleSms(`${prefix}${detail ? ` ${detail}` : ''}`)
 }

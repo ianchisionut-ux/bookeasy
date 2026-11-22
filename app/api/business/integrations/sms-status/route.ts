@@ -12,12 +12,12 @@ export async function GET(req: NextRequest) {
   const businessId = session?.isSuperAdmin && requestedId ? requestedId : session?.businessId
   if (!businessId || session?.role === 'CUSTOMER' || (requestedId && requestedId !== businessId)) return privateJson({ error: 'unauthorized' }, { status: 401 })
   const [jobs, sender] = await Promise.all([
-    prisma.smsJob.findMany({ where: { businessId }, orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, recipient: true, status: true, error: true, createdAt: true, dispatchedAt: true, sentAt: true, idempotencyKey: true } }),
+    prisma.smsJob.findMany({ where: { businessId }, orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, recipient: true, status: true, error: true, createdAt: true, dispatchedAt: true, sentAt: true, idempotencyKey: true, senderKey: true } }),
     resolveSmsSender({ id: businessId }),
   ])
-  const online = Boolean(sender.businessEnabled && sender.accountActive && platformSmsReady(sender))
-  return privateJson({ online, lastSeenAt: sender.lastSeenAt || null, lastError: sender.lastError || null, jobs: jobs.map(job => {
+  const online = Boolean(sender.businessEnabled && sender.accountActive && (sender.key === 'smsapi' ? sender.enabled : platformSmsReady(sender)))
+  return privateJson({ online, provider: sender.key, lastSeenAt: sender.lastSeenAt || null, lastError: sender.lastError || null, jobs: jobs.map(job => {
     const status = visibleSmsStatus(job)
-    return { id: job.id, recipient: `•••• ${job.recipient.slice(-4)}`, status, message: smsJobMessage(status, job.error), kind: job.idempotencyKey.startsWith('confirm-') ? 'Reconfirmare' : job.idempotencyKey.startsWith('reminder-') ? 'Reminder' : 'SMS', createdAt: job.createdAt, sentAt: job.sentAt }
+    return { id: job.id, recipient: `•••• ${job.recipient.slice(-4)}`, status, provider: job.senderKey, message: smsJobMessage(status, job.error, job.senderKey), kind: job.idempotencyKey.startsWith('confirm-') ? 'Reconfirmare' : job.idempotencyKey.startsWith('reminder-') ? 'Reminder' : 'SMS', createdAt: job.createdAt, sentAt: job.sentAt }
   }) }, { headers: { 'Cache-Control': 'no-store' } })
 }

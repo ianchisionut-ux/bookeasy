@@ -6,6 +6,7 @@ import { normalizeSmsPhone } from '@/lib/sms-gateway'
 import { createSmsDeviceToken } from '@/lib/sms-device-auth'
 import { z } from 'zod'
 import { smsJobMessage, visibleSmsStatus } from '@/lib/sms-job-status'
+import { smsApiConfig, usesSmsApi } from '@/lib/smsapi'
 
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('settings'), phone: z.string().transform(normalizeSmsPhone).refine(v => /^\+[1-9]\d{7,14}$/.test(v)), enabled: z.boolean() }),
@@ -32,12 +33,14 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   if (!(await auth() as any)?.isSuperAdmin) return privateJson({ error: 'unauthorized' }, { status: 403 })
+  const provider = usesSmsApi() ? 'smsapi' : 'platform'
   const [gateway, jobs] = await Promise.all([
     prisma.platformSmsGateway.findUnique({ where: { id: 'central' } }),
-    prisma.smsJob.findMany({ where: { senderKey: 'platform' }, orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, recipient: true, status: true, error: true, createdAt: true, dispatchedAt: true, sentAt: true, kind: true } }),
+    prisma.smsJob.findMany({ where: { senderKey: { in: ['platform', 'smsapi'] } }, orderBy: { createdAt: 'desc' }, take: 10, select: { id: true, recipient: true, status: true, error: true, createdAt: true, dispatchedAt: true, sentAt: true, kind: true, senderKey: true } }),
   ])
-  return privateJson({ online: Boolean(gateway?.enabled && gateway.lastSeenAt && Date.now() - gateway.lastSeenAt.getTime() < 120_000), lastSeenAt: gateway?.lastSeenAt ?? null, lastError: gateway?.lastError ?? null, jobs: jobs.map(job => {
+  const online = provider === 'smsapi' ? Boolean(smsApiConfig()) : Boolean(gateway?.enabled && gateway.lastSeenAt && Date.now() - gateway.lastSeenAt.getTime() < 120_000)
+  return privateJson({ online, provider, lastSeenAt: provider === 'platform' ? gateway?.lastSeenAt ?? null : null, lastError: provider === 'platform' ? gateway?.lastError ?? null : online ? null : 'SMSAPI nu este configurat complet.', jobs: jobs.map(job => {
     const status = visibleSmsStatus(job)
-    return { id: job.id, recipient: `•••• ${job.recipient.slice(-4)}`, status, message: smsJobMessage(status, job.error), kind: job.kind === 'REMINDER' ? 'Reminder' : job.kind === 'RECONFIRMATION' ? 'Reconfirmare' : 'SMS', createdAt: job.createdAt, sentAt: job.sentAt }
+    return { id: job.id, recipient: `•••• ${job.recipient.slice(-4)}`, status, provider: job.senderKey, message: smsJobMessage(status, job.error, job.senderKey), kind: job.kind === 'REMINDER' ? 'Reminder' : job.kind === 'RECONFIRMATION' ? 'Reconfirmare' : 'SMS', createdAt: job.createdAt, sentAt: job.sentAt }
   }) }, { headers: { 'Cache-Control': 'no-store' } })
 }
