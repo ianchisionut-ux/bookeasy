@@ -51,10 +51,14 @@ export default function PatientDocuments({
   async function handleDelete(docId: string) {
     if (!confirm('Ștergi acest document?')) return
     try {
-      await fetchWithTimeout(`/api/business/patients/${customerId}/documents/${docId}`, { method: 'DELETE' })
+      const response = await fetchWithTimeout(`/api/business/patients/${customerId}/documents/${docId}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        throw new Error(typeof result.error === 'string' ? result.error : 'Documentul nu a putut fi șters.')
+      }
       router.refresh()
-    } catch {
-      alert('Conexiune eșuată. Încearcă din nou.')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Conexiune eșuată. Încearcă din nou.')
     }
   }
 

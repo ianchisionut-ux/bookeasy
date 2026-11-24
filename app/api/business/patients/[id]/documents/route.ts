@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'node:crypto'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/business-auth'
 import { rateLimit } from '@/lib/rate-limit'
@@ -38,10 +39,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Sunt acceptate doar fișiere PDF, JPG, PNG, DOC și DOCX.' }, { status: 400 })
   }
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-120) || 'document'
-  const filename = `patients/${businessId}/${id}/${Date.now()}-${safeName}`
+  const filename = `patients/${businessId}/${id}/${Date.now()}-${randomUUID()}-${safeName}`
 
   try {
-    await putR2File(filename, file)
+    await putR2File(filename, file, { allowOverwrite: false })
 
     const doc = await prisma.patientDocument.create({
       data: { customerId: id, businessId, url: r2Url(filename), filename: file.name },

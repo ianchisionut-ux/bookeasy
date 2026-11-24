@@ -39,18 +39,6 @@ async function testDaylightSaving() {
   console.log('PASS Bucharest slots stay at 09:00 across both DST transitions')
 }
 
-async function testBookingNumber() {
-  let queried
-  const { getNextSequenceNumber } = load('lib/booking-number.ts', {
-    './prisma': { prisma: { booking: { count: async ({ where }) => { queried = where; return 2 } } } },
-  })
-  assert.equal(await getNextSequenceNumber('business'), 3)
-  const now = new Date()
-  assert.equal(queried.createdAt.gte.getMonth(), now.getMonth())
-  assert.equal(queried.createdAt.gte.getFullYear(), now.getFullYear())
-  console.log('PASS reference numbers use creation month')
-}
-
 async function testRescheduleLink() {
   const booking = {
     id: 'old', status: 'PENDING', startAt: new Date('2027-12-10T10:00:00Z'),
@@ -121,13 +109,13 @@ async function testAtomicTransfer() {
       isWithinWorkingHours: async () => true,
     },
     '@/lib/venue-services': { venueServiceId: () => 'venue' },
-    '@/lib/booking-number': { getNextSequenceNumber: async () => 1 },
     '@/lib/google-calendar': { syncBookingToGoogle: async () => {} },
+    '@/lib/public-booking-calendar-sync': { schedulePublicBookingCalendarSync: () => {} },
     '@/lib/rate-limit': { getClientIp: () => '127.0.0.1', rateLimit: async () => ({ allowed: true }) },
     '@/lib/client-profile': { clientIdentity: () => null, saveBookingClientProfile: async () => null },
     '@/lib/customer-phone': { canonicalCustomerPhone: value => value },
     '@/lib/customer-lookup': { findCustomerByPhone: async () => null },
-    '@/lib/google-wallet': { createBookingWalletLink: async () => null },
+    '@/lib/google-wallet': { createBookingWalletRedirectUrl: () => null },
   })
   const input = {
     businessId: 'business', serviceId: 'service', startAt: startAt.toISOString(),
@@ -148,7 +136,6 @@ async function testAtomicTransfer() {
 
 async function main() {
   await testDaylightSaving()
-  await testBookingNumber()
   await testRescheduleLink()
   await testAtomicTransfer()
 }

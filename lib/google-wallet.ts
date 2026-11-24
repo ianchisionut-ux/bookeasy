@@ -55,6 +55,28 @@ function qrSignature(secret: string, bookingId: string, businessId: string) {
   return createHmac('sha256', secret).update(`${bookingId}:${businessId}`).digest('hex')
 }
 
+function walletLinkSignature(secret: string, bookingId: string, businessId: string) {
+  return createHmac('sha256', secret).update(`wallet-link:${bookingId}:${businessId}`).digest('hex')
+}
+
+export function createBookingWalletRedirectUrl(booking: { id: string; business: WalletBusiness }, origin: string) {
+  const settings = publishedConfig()
+  if (!settings || !isWalletEligibleCategory(booking.business.category) || effectiveBusinessPlan(booking.business) !== 'PRO') return null
+  const url = new URL(origin)
+  if (!['https:', 'http:'].includes(url.protocol)) return null
+  url.pathname = `/api/public/bookings/${encodeURIComponent(booking.id)}/wallet`
+  url.search = ''
+  url.searchParams.set('token', walletLinkSignature(settings.qrSecret, booking.id, booking.business.id))
+  return url.toString()
+}
+
+export function verifyBookingWalletRedirectToken(bookingId: string, businessId: string, token: string) {
+  const settings = publishedConfig()
+  if (!settings || !/^[a-f0-9]{64}$/.test(token)) return false
+  const expected = Buffer.from(walletLinkSignature(settings.qrSecret, bookingId, businessId), 'hex')
+  return timingSafeEqual(expected, Buffer.from(token, 'hex'))
+}
+
 export function verifyWalletQr(code: string, businessId: string) {
   const settings = publishedConfig()
   if (!settings) return null

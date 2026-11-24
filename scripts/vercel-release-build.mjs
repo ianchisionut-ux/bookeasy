@@ -9,6 +9,7 @@ run('node', ['scripts/prepare-campaign-management.mjs'])
 run('node', ['scripts/prepare-service-prices.mjs'])
 run('node', ['scripts/prepare-recurring-bookings.mjs'])
 run('node', ['scripts/prepare-business-map-location.mjs'])
+run('node', ['scripts/prepare-booking-sequences.mjs'])
 
 // Existing production releases prepare the database before building. A
 // targeted release applies only the invitation schema update before building.

@@ -182,6 +182,7 @@ model Business {
   services           Service[]
   customers          Customer[]
   bookings           Booking[]
+  bookingSequences   BookingSequence[]
   smsJobs            SmsJob[]
   googleCalendarConnections GoogleCalendarConnection[]
   waitlistEntries    WaitlistEntry[]
@@ -591,6 +592,15 @@ model Booking {
   @@index([businessId, arrivedAt])
   @@index([practitionerId])
   @@index([seriesId, startAt])
+}
+
+model BookingSequence {
+  businessId String
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  month String
+  lastNumber Int
+
+  @@id([businessId, month])
 }
 
 model BookingSeries {

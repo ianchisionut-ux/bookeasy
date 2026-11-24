@@ -3,7 +3,6 @@ import { after, NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/business-auth'
 import { hasActiveBookingConflict, isIntervalBlocked, isWithinWorkingHours } from '@/lib/availability'
-import { getNextSequenceNumber } from '@/lib/booking-number'
 import { z } from 'zod'
 import { syncBookingToGoogle } from '@/lib/google-calendar'
 import { canonicalCustomerPhone } from '@/lib/customer-phone'
@@ -214,8 +213,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const sequenceNumber = await getNextSequenceNumber(businessId)
-
   if (recurringSlots && parsed.data.recurrence) {
     const slots = recurringSlots
     const recurrence = parsed.data.recurrence
@@ -245,7 +242,7 @@ export async function POST(req: NextRequest) {
             untilDate: new Date(`${recurrence.untilDate}T00:00:00Z`),
           },
         })
-        await tx.booking.createMany({ data: slots.map((slot, index) => ({
+        await tx.booking.createMany({ data: slots.map((slot) => ({
           businessId,
           customerId: customerId!,
           serviceId: parsed.data.serviceId,
@@ -256,7 +253,6 @@ export async function POST(req: NextRequest) {
           endAt: slot.endAt,
           status: 'CONFIRMED',
           channel: 'MANUAL',
-          sequenceNumber: sequenceNumber + index,
           seriesId: created.id,
         })) })
         return created
@@ -292,7 +288,6 @@ export async function POST(req: NextRequest) {
       // Programările operatorului pornesc mereu confirmate; statusul nu vine din browser.
       status: 'CONFIRMED',
       channel: 'MANUAL', // rezervare adăugată manual de admin din dashboard, nu de client prin bot
-      sequenceNumber,
     },
   })
 

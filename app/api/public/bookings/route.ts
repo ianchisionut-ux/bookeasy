@@ -13,15 +13,14 @@ import {
   isWithinWorkingHours,
 } from '@/lib/availability'
 import { venueServiceId } from '@/lib/venue-services'
-import { getNextSequenceNumber } from '@/lib/booking-number'
-import { syncBookingToGoogle } from '@/lib/google-calendar'
+import { schedulePublicBookingCalendarSync } from '@/lib/public-booking-calendar-sync'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { z } from 'zod'
 import { clientIdentity, saveBookingClientProfile } from '@/lib/client-profile'
 import { canonicalCustomerPhone } from '@/lib/customer-phone'
 import { findCustomerByPhone } from '@/lib/customer-lookup'
 import { createHash, randomBytes } from 'node:crypto'
-import { createBookingWalletLink } from '@/lib/google-wallet'
+import { createBookingWalletRedirectUrl } from '@/lib/google-wallet'
 
 const schema = z.object({
   businessId: z.string(),
@@ -176,7 +175,6 @@ export async function POST(req: NextRequest) {
     update: { archivedAt: null }, // O rezervare nouă readuce fișa în lista activă fără a schimba datele existente.
   })
 
-  const sequenceNumber = await getNextSequenceNumber(businessId)
   const reviewerGoogleSub = (session as any)?.role === 'CUSTOMER' && typeof (session as any)?.googleSub === 'string'
     ? (session as any).googleSub as string
     : null
@@ -197,7 +195,6 @@ export async function POST(req: NextRequest) {
     endAt,
     status: 'PENDING' as const,
     channel: 'WEB' as const,
-    sequenceNumber,
     confirmationSeenByAdmin: false,
   }
   const booking = reschedule
@@ -220,15 +217,8 @@ export async function POST(req: NextRequest) {
         return tx.booking.create({ data: bookingData })
       })
     : await prisma.booking.create({ data: bookingData })
-  if (reschedule) await syncBookingToGoogle(reschedule.bookingId).catch((error) => console.error('[google-calendar] sync rescheduled booking:', error))
-  await syncBookingToGoogle(booking.id).catch((error) => console.error('[google-calendar] sync public booking:', error))
-
-  let walletUrl: string | null = null
-  try {
-    walletUrl = await createBookingWalletLink({ id: booking.id, startAt: booking.startAt, endAt: booking.endAt, serviceName: service.name, business }, req.nextUrl.origin)
-  } catch (error) {
-    console.error('[google-wallet] unable to prepare booking pass:', error)
-  }
+  schedulePublicBookingCalendarSync(booking.id, reschedule?.bookingId)
+  const walletUrl = createBookingWalletRedirectUrl({ id: booking.id, business }, req.nextUrl.origin)
 
 
   return NextResponse.json({

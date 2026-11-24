@@ -1,6 +1,5 @@
 import { prisma } from './prisma'
 import { getAvailableSlots, isSlotStillAvailable, getPractitionerDaySlotsWithStatus, isPractitionerSlotStillAvailable } from './availability'
-import { getNextSequenceNumber } from './booking-number'
 import { syncBookingToGoogle } from './google-calendar'
 import { practitionerLabel } from './business-categories'
 import { canonicalCustomerPhone } from './customer-phone'
@@ -664,8 +663,6 @@ async function createBooking({
     throw error
   }
 
-  const sequenceNumber = await getNextSequenceNumber(businessId)
-
   const booking = await prisma.booking.create({
     data: {
       businessId,
@@ -676,7 +673,6 @@ async function createBooking({
       endAt: endDate,
       status: 'PENDING',
       channel,
-      sequenceNumber,
       confirmationSeenByAdmin: false,
     },
   })
