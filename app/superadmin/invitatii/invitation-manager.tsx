@@ -3,6 +3,13 @@
 import {formatPlanPrice,type PlanPrices} from '@/lib/plan-pricing-display'
 import { useEffect, useState } from 'react'
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout'
+import {
+  INVITATION_HEADER_MAX_BYTES,
+  INVITATION_HEADER_MAX_HEIGHT,
+  INVITATION_HEADER_MAX_WIDTH,
+  INVITATION_HEADER_MIN_HEIGHT,
+  INVITATION_HEADER_MIN_WIDTH,
+} from '@/lib/invitation-header-image'
 
 type Invite = {
   id: string
@@ -20,6 +27,45 @@ type Invite = {
 type Promotion = { code: string; name: string; freeMonths: number; freeUntilNotice: boolean }
 type Action = { action: 'invite'; email: string; name: string; offeredPlan: Invite['offeredPlan']; promoCode?: string; headerImageUrl?: string } | { action: 'resend' | 'revoke' | 'delete' | 'restore'; id: string }
 const defaultHeader = '/email/bookeasy-invitation-header-wide.jpg'
+const acceptedHeaderTypes = ['image/jpeg', 'image/png', 'image/webp']
+
+async function normalizeInvitationHeader(file: File) {
+  if (!acceptedHeaderTypes.includes(file.type) || file.size === 0 || file.size > INVITATION_HEADER_MAX_BYTES) {
+    throw new Error('Alege o imagine JPG, PNG sau WebP de maximum 3 MB.')
+  }
+
+  const source = URL.createObjectURL(file)
+  try {
+    const image = new Image()
+    image.src = source
+    await image.decode().catch(() => { throw new Error('Imaginea nu a putut fi procesată.') })
+    const { naturalWidth: width, naturalHeight: height } = image
+    if (width < INVITATION_HEADER_MIN_WIDTH || height < INVITATION_HEADER_MIN_HEIGHT) {
+      throw new Error('Imaginea trebuie să aibă cel puțin 600 × 200 px.')
+    }
+    if (width * height > 12_000_000) throw new Error('Imaginea trebuie să aibă maximum 12 megapixeli.')
+
+    const ratio = Math.min(1, INVITATION_HEADER_MAX_WIDTH / width, INVITATION_HEADER_MAX_HEIGHT / height)
+    const scaledWidth = Math.max(1, Math.round(width * ratio))
+    const scaledHeight = Math.max(1, Math.round(height * ratio))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(INVITATION_HEADER_MIN_WIDTH, scaledWidth)
+    canvas.height = Math.max(INVITATION_HEADER_MIN_HEIGHT, scaledHeight)
+    const context = canvas.getContext('2d', { alpha: false })
+    if (!context) throw new Error('Imaginea nu a putut fi procesată.')
+    context.fillStyle = '#fff'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.drawImage(image, (canvas.width - scaledWidth) / 2, (canvas.height - scaledHeight) / 2, scaledWidth, scaledHeight)
+
+    const jpeg = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85))
+    if (!jpeg || jpeg.type !== 'image/jpeg' || jpeg.size > INVITATION_HEADER_MAX_BYTES) {
+      throw new Error('Imaginea nu a putut fi procesată în limita de 3 MB.')
+    }
+    return jpeg
+  } finally {
+    URL.revokeObjectURL(source)
+  }
+}
 
 export default function InvitationManager() {
   const [items, setItems] = useState<Invite[]>([])
@@ -54,7 +100,8 @@ export default function InvitationManager() {
     setError('')
     try {
       const form = new FormData()
-      form.set('image', file)
+      const jpeg = await normalizeInvitationHeader(file)
+      form.set('image', jpeg, 'antet-invitatie.jpg')
       const response = await fetchWithTimeout('/api/superadmin/invitations/header', { method: 'POST', body: form })
       const data = await response.json()
       if (!response.ok) throw Error(data.error)

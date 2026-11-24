@@ -1,4 +1,15 @@
-# BookEasy migration status
+# BookEasy on Cloudflare Workers
+
+## Migration from the November 2026 production release
+
+The migration starts from the live Vercel revision `175fa19`. The authoritative nameservers for `bookeasy.ro` are currently `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
+
+- Use `wrangler.preview.jsonc` to deploy the isolated `bookeasy-preview` Worker. Its resources are separate from production and its responses are marked `noindex`.
+- For the production Worker, keep the current Neon database and the matching `AUTH_SECRET` and `ENCRYPTION_KEY`. Provision the current provider secrets directly in Cloudflare, including the Vercel Blob token used for existing uploads and the SMSAPI credentials. Configure client-side `NEXT_PUBLIC_` variables when building.
+- Before switching nameservers, compare the Cloudflare DNS zone with the live zone, including mail and domain-verification records. Verify TLS and the authenticated booking, calendar, media, and integration flows. Switch scheduled jobs with the application traffic and retain the Vercel deployment as the rollback origin.
+- BT iPay stays in its current disabled checkout state. Configure the merchant sandbox and confirm any IP allowlist requirement with BT before enabling a payment flow.
+
+## Historical migration from September 2026
 
 Worker: `https://bookeasy.ianchisionut.workers.dev`
 

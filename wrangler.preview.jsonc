@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "bookeasy-preview",
+  "workers_dev": true,
+  "preview_urls": false,
+  "main": "./cloudflare-worker.ts",
+  "compatibility_date": "2026-09-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "vars": {
+    "BOOKEASY_CLOUDFLARE_PREVIEW": "true",
+    "ENABLE_CRON_TRIGGERS": "false"
+  }
+}

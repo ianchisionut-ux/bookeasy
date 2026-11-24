@@ -1,7 +1,8 @@
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { del, get, list, put } from '@vercel/blob'
 
-// Keep legacy r2:// references already stored in the database. File contents
-// now live in Vercel Blob, so no database rewrite is required.
+// Keep the existing keys and Blob writes so the Vercel rollback can read new files.
+// Workers can also access older objects that still live in the private R2 bucket.
 const R2_SCHEME = 'r2://'
 const PUBLIC_ROUTE = '/api/storage/public/'
 
@@ -10,6 +11,17 @@ type StoredBody = {
   httpEtag: string
   httpMetadata?: { contentType?: string }
   writeHttpMetadata(headers: Headers): void
+}
+
+type LegacyFilesBucket = {
+  get(key: string): Promise<StoredBody | null>
+  delete(key: string): Promise<void>
+  head(key: string): Promise<{ etag: string } | null>
+}
+
+function legacyFilesBucket() {
+  if (typeof navigator === 'undefined' || navigator.userAgent !== 'Cloudflare-Workers') return
+  return (getCloudflareContext().env as { BOOKEASY_FILES?: LegacyFilesBucket }).BOOKEASY_FILES
 }
 
 function blobToken() {
@@ -46,9 +58,13 @@ export async function putR2File(key: string, file: File, options?: { allowOverwr
   return key
 }
 
-export async function getR2File(key: string) {
-  const result = await get(key, { access: 'private', token: blobToken() })
-  if (!result?.stream || result.statusCode !== 200) return null
+export async function getR2File(key: string, options?: { includeLegacyR2?: boolean }) {
+  const legacy = options?.includeLegacyR2 === false ? undefined : legacyFilesBucket()
+  // An earlier cached Blob miss could otherwise expose an older R2 object
+  // even after the current Blob has been written.
+  const result = await get(key, { access: 'private', token: blobToken(), useCache: legacy ? false : undefined })
+  if (!result) return (await legacy?.get(key)) ?? null
+  if (!result.stream || result.statusCode !== 200) return null
   return {
     body: result.stream,
     httpEtag: result.blob.etag,
@@ -63,15 +79,25 @@ export async function deleteR2File(value: string | null | undefined) {
   const key = r2Key(value)
   if (!key) return false
   await del(key, { token: blobToken() })
+  await legacyFilesBucket()?.delete(key)
   return true
 }
 
-// Medical files keep their database record until every exact-path Blob entry is
-// gone and an origin read confirms the pathname is absent.
 export async function deleteR2FileAndVerify(value: string | null | undefined) {
   const key = r2Key(value)
   if (!key) return false
-  const token = blobToken()
+  const legacy = legacyFilesBucket()
+  await deleteBlobAndVerify(key, blobToken())
+  if (legacy) {
+    await legacy.delete(key)
+    if (await legacy.head(key)) throw new Error('Fișierul există încă în stocarea R2 după ștergere.')
+  }
+  return true
+}
+
+// Keep the medical record until every exact-path Blob entry is gone and an
+// origin read confirms that the pathname is absent.
+async function deleteBlobAndVerify(key: string, token: string) {
 
   for (let attempt = 0; attempt < 3; attempt++) {
     let cursor: string | undefined
@@ -89,7 +115,7 @@ export async function deleteR2FileAndVerify(value: string | null | undefined) {
     }
 
     const current = await get(key, { access: 'private', token, useCache: false })
-    if (!current) return true
+    if (!current) return
     if (current.statusCode !== 200) throw new Error('Starea fișierului nu a putut fi verificată.')
     await current.stream.cancel()
     await del(key, { token, ifMatch: current.blob.etag })

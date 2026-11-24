@@ -1,0 +1,105 @@
+name: Build Cloudflare Workers preview
+
+on:
+  push:
+    branches:
+      - codex/cloudflare-workers
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-workers-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run migration regression checks
+        run: |
+          node scripts/test-cloudflare-cron.cjs
+          npx --no-install tsx scripts/test-prisma-request-scope.ts
+          node scripts/test-patient-document-deletion.cjs
+          node scripts/test-invitation-header.cjs
+      - name: Build the isolated Worker
+        run: npm run build:cloudflare -- --config wrangler.preview.jsonc
+      - name: Package only the Worker and its assets
+        run: |
+          artifact="$RUNNER_TEMP/bookeasy-worker-preview"
+          mkdir -p "$artifact/worker"
+          npx --no-install wrangler deploy --config wrangler.preview.jsonc --dry-run --outdir "$artifact/worker"
+          cp -R .open-next/assets "$artifact/assets"
+          node --input-type=module - "$artifact" <<'NODE'
+          import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+          import { join } from 'node:path'
+          const artifact = process.argv[2]
+          const workerDir = join(artifact, 'worker')
+          const entry = 'cloudflare-worker.js'
+          if (!statSync(join(workerDir, entry)).isFile()) throw new Error('Wrangler did not emit the Worker entry')
+          const original = JSON.parse(readFileSync('wrangler.preview.jsonc', 'utf8'))
+          if (original.routes || original.triggers || original.name !== 'bookeasy-preview') throw new Error('Invalid isolated preview config')
+          const { $schema, ...config } = original
+          config.main = `./worker/${entry}`
+          config.base_dir = './worker'
+          config.find_additional_modules = true
+          config.rules = [{ type: 'ESModule', globs: ['**/*.js', '**/*.mjs'], fallthrough: true }]
+          config.assets.directory = './assets'
+          const sizes = (root) => readdirSync(root, { recursive: true, withFileTypes: true })
+            .filter((item) => item.isFile() && !item.name.endsWith('.map'))
+            .map((item) => ({ name: item.name, bytes: statSync(join(item.parentPath, item.name)).size }))
+          const assets = sizes(join(artifact, 'assets'))
+          const modules = sizes(workerDir).filter(({ name }) => !/^readme(?:\.md)?$/i.test(name))
+          const metadata = {
+            commit: process.env.GITHUB_SHA,
+            entry,
+            workerBytes: modules.reduce((sum, { bytes }) => sum + bytes, 0),
+            assetsCount: assets.length,
+            assetsBytes: assets.reduce((sum, { bytes }) => sum + bytes, 0),
+            largestAssetBytes: Math.max(0, ...assets.map(({ bytes }) => bytes)),
+          }
+          if (metadata.workerBytes > 64 * 1024 * 1024) throw new Error('Worker exceeds the 64 MiB limit')
+          if (metadata.assetsCount > 20000 || metadata.largestAssetBytes > 25 * 1024 * 1024) throw new Error('Assets exceed Workers Free limits')
+          writeFileSync(join(artifact, 'wrangler.preview.jsonc'), JSON.stringify(config, null, 2) + '\n')
+          writeFileSync(join(artifact, 'preview-metadata.json'), JSON.stringify(metadata, null, 2) + '\n')
+          console.log(metadata)
+          NODE
+          npx --no-install wrangler deploy --config "$artifact/wrangler.preview.jsonc" --dry-run --no-bundle
+      - name: Smoke test on workerd
+        run: |
+          artifact="$RUNNER_TEMP/bookeasy-worker-preview"
+          npx --no-install wrangler dev --config "$artifact/wrangler.preview.jsonc" --local --no-bundle --port 8787 > "$RUNNER_TEMP/workerd-preview.log" 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
+          if ! curl -fsS --retry 20 --retry-delay 1 --retry-connrefused --max-time 8 -D "$RUNNER_TEMP/preview-headers" http://127.0.0.1:8787/login -o /dev/null; then
+            cat "$RUNNER_TEMP/workerd-preview.log"
+            exit 1
+          fi
+          grep -qi '^x-robots-tag: noindex, nofollow' "$RUNNER_TEMP/preview-headers"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' 'http://127.0.0.1:8787/api/public/bookings/preview/wallet?token=invalid')" = 404
+      - name: Archive preview bundle
+        run: |
+          artifact="$RUNNER_TEMP/bookeasy-worker-preview"
+          tar --exclude='*.map' -czf "$RUNNER_TEMP/bookeasy-worker-preview.tar.gz" -C "$artifact" .
+          wc -c "$RUNNER_TEMP/bookeasy-worker-preview.tar.gz"
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: bookeasy-worker-preview
+          path: ${{ runner.temp }}/bookeasy-worker-preview.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1

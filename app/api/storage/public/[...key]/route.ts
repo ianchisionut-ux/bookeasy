@@ -6,7 +6,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ key
   const key = segments.join('/')
   if (!key.startsWith('public/')) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  const object = await getR2File(key)
+  // A public URL can outlive its database record. A copy left in R2 must
+  // never make a photo removed from Blob accessible again.
+  const object = await getR2File(key, { includeLegacyR2: false })
   if (!object) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
   const headers = new Headers()
