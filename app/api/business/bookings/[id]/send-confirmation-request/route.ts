@@ -4,7 +4,7 @@ import { auth } from '@/lib/business-auth'
 import { sendConfirmationRequest } from '@/lib/confirmation-request'
 import crypto from 'crypto'
 import { sendMessengerReconfirmation } from '@/lib/messenger-reconfirmation'
-import { smsJobMessage } from '@/lib/sms-job-status'
+import { smsJobMessage, visibleSmsStatus } from '@/lib/sms-job-status'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth('STANDARD')
@@ -30,8 +30,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!social && !booking.business.smsReconfirmationEnabled) return NextResponse.json({ error: 'Reconfirmarea prin SMS este dezactivată în Setări.' }, { status: 409 })
 
   if (!social && booking.confirmationRequestToken) {
-    const pending = await prisma.smsJob.findUnique({ where: { businessId_idempotencyKey: { businessId, idempotencyKey: `confirm-${booking.id}-${booking.confirmationRequestToken}` } }, select: { id: true, senderKey: true, status: true } })
-    if (pending?.senderKey === 'smsapi' && ['PENDING', 'DISPATCHED'].includes(pending.status)) return NextResponse.json({ success: true, channel: 'SMS', jobId: pending.id, status: pending.status, message: smsJobMessage(pending.status, null, pending.senderKey) }, { status: 202 })
+    const previous = await prisma.smsJob.findUnique({
+      where: { businessId_idempotencyKey: { businessId, idempotencyKey: `confirm-${booking.id}-${booking.confirmationRequestToken}` } },
+      select: { id: true, senderKey: true, status: true, createdAt: true, dispatchedAt: true, error: true },
+    })
+    if (previous?.senderKey === 'smsapi') {
+      const status = visibleSmsStatus(previous)
+      if (['PENDING', 'DISPATCHED', 'UNKNOWN'].includes(status)) {
+        return NextResponse.json({ success: true, channel: 'SMS', jobId: previous.id, status, message: smsJobMessage(status, previous.error, previous.senderKey) }, { status: 202 })
+      }
+    }
   }
 
   const token = crypto.randomUUID()

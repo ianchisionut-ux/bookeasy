@@ -137,10 +137,13 @@ async function testSmsApi() {
 
 async function testSmsApiPreflight() {
   const smsApi = load('lib/smsapi.ts')
+  const { smsUnits } = load('lib/sms-policy.ts')
   const env = { SMSAPI_TOKEN: process.env.SMSAPI_TOKEN, SMSAPI_SENDER: process.env.SMSAPI_SENDER, BOOKEASY_SMS_PROVIDER: process.env.BOOKEASY_SMS_PROVIDER }
   const originalFetch = global.fetch
   let isSuperAdmin = false
-  let calls = 0
+  const messages = []
+  const reminder = 'Salon Demo: programare 25.11, 14:30.'
+  const confirmationLink = 'https://bookeasy.ro/confirmare/TEST-verificare-smsapi'
   let providerResponse = () => Response.json({ count: 1, list: [{ id: 'dry-run-example' }] })
   const { POST } = load('app/api/superadmin/sms/route.ts', {
     '@/lib/private-json': load('lib/private-json.ts'),
@@ -158,16 +161,18 @@ async function testSmsApiPreflight() {
     delete process.env.SMSAPI_TOKEN
     delete process.env.SMSAPI_SENDER
     global.fetch = async (url, options) => {
-      calls++
       assert.equal(url, 'https://api.smsapi.ro/sms.do')
       assert.equal(options.method, 'POST')
       assert.equal(options.headers.Authorization, 'Bearer fixture-token')
       assert.equal(options.body.get('to'), '48500000000')
       assert.equal(options.body.get('from'), 'BookEasy')
-      assert.equal(options.body.get('message'), 'Salon Demo: programare 25.11, 14:30.')
+      const message = options.body.get('message')
+      assert.equal(typeof message, 'string')
+      assert.ok(smsUnits(message) <= 160)
+      messages.push(message)
       assert.equal(options.body.get('test'), '1')
       assert.equal(options.body.get('max_parts'), '1')
-      return providerResponse()
+      return providerResponse(message)
     }
     assert.equal((await POST(request())).status, 403)
     isSuperAdmin = true
@@ -177,26 +182,39 @@ async function testSmsApiPreflight() {
     const unconfigured = await POST(request())
     assert.equal(unconfigured.status, 409)
     assert.equal((await unconfigured.json()).status, 'unconfigured')
-    assert.equal(calls, 0)
+    assert.equal(messages.length, 0)
 
     process.env.SMSAPI_TOKEN = 'fixture-token'
     process.env.SMSAPI_SENDER = 'BookEasy'
     const accepted = await POST(request())
     assert.equal(accepted.status, 200)
     assert.equal(accepted.headers.get('Cache-Control'), 'private, no-store')
-    assert.deepEqual(await accepted.json(), { status: 'accepted', message: 'SMSAPI a acceptat testul. Nu a fost trimis niciun SMS.' })
+    assert.deepEqual(await accepted.json(), {
+      status: 'accepted',
+      message: 'SMSAPI a acceptat reminderul și reconfirmarea cu link în modul de test. Nu a fost trimis niciun SMS. Trimiterea către clienți necesită un cont aprobat de SMSAPI.',
+    })
+    assert.equal(messages.length, 2)
+    assert.equal(messages[0], reminder)
+    assert.ok(messages[1].endsWith(confirmationLink))
+    providerResponse = (message) => message.endsWith(confirmationLink)
+      ? Response.json({ error: 94 })
+      : Response.json({ count: 1, list: [{ id: 'dry-run-example' }] })
+    const linkRejected = await POST(request())
+    assert.equal(linkRejected.status, 422)
+    assert.match((await linkRejected.json()).message, /reconfirmare \(cod 94\).*mesajelor cu link/)
+    assert.equal(messages.length, 4)
     providerResponse = () => Response.json({ error: 14, message: 'secret upstream payload' })
     const rejected = await POST(request())
     assert.equal(rejected.status, 422)
     const rejectedResult = await rejected.json()
     assert.equal(rejectedResult.status, 'rejected')
-    assert.match(rejectedResult.message, /cod 14/)
+    assert.match(rejectedResult.message, /reminder \(cod 14\)/)
     assert.doesNotMatch(rejectedResult.message, /secret upstream payload/)
     providerResponse = () => new Response('unknown payload')
     const unavailable = await POST(request())
     assert.equal(unavailable.status, 502)
     assert.equal((await unavailable.json()).status, 'unavailable')
-    assert.equal(calls, 3)
+    assert.equal(messages.length, 6)
   } finally {
     global.fetch = originalFetch
     for (const [name, value] of Object.entries(env)) {
@@ -204,7 +222,7 @@ async function testSmsApiPreflight() {
       else process.env[name] = value
     }
   }
-  console.log('PASS SMSAPI preflight: gated by role and origin, fixed no-send request, works while disabled, no database or raw provider data')
+  console.log('PASS SMSAPI preflight: gated by role and origin, fixed no-send tests for reminder and confirmation link, no database or raw provider data')
 }
 
 async function testAndroidSmsRetirement() {
@@ -250,6 +268,13 @@ async function testSmsEconomy() {
     booking: { findFirst: async () => ({ id: 'booking-a' }) },
     smsJob: {
       findUnique: async ({ where: { businessId_idempotencyKey: key } }) => attempts.find(row => row.businessId === key.businessId && row.idempotencyKey === key.idempotencyKey) ?? null,
+      findFirst: async ({ where }) => attempts.find(row => row.id === where.id && row.senderKey === where.senderKey && row.status === where.status && row.dispatchedAt === where.dispatchedAt) ?? null,
+      updateMany: async ({ where, data }) => {
+        const row = attempts.find(item => item.id === where.id && item.status === where.status && item.dispatchedAt === where.dispatchedAt)
+        if (!row) return { count: 0 }
+        Object.assign(row, data)
+        return { count: 1 }
+      },
       findMany: async ({ where }) => attempts.filter(row => row.businessId === where.businessId && row.bookingId === where.OR[0].bookingId),
       count: async ({ where }) => attempts.filter(row => (!where.businessId || where.businessId === row.businessId)
         && (!where.recipient || where.recipient === row.recipient) && (!where.senderKey || where.senderKey === row.senderKey)).length,
@@ -289,12 +314,22 @@ async function testSmsEconomy() {
     await assert.rejects(smsLimits.enqueueLimitedSms({ ...job, businessId: 'business-b', bookingId: 'booking-b', idempotencyKey: 'fixture-3' }), /Plafonul BookEasy/)
     assert.equal(smsLimits.summarizeBookingSms([first], now).reconfirmationsLeft, 0)
     assert.equal(attempts.length, 1)
+    first.createdAt = new Date(now.getTime() - 16 * 60_000)
+    first.dispatchedAt = null
+    const stale = smsLimits.summarizeBookingSms([first], now)
+    assert.equal(stale.lastReminder.status, 'EXPIRED')
+    assert.equal(stale.canReconfirm, true)
+    const uncertain = smsLimits.summarizeBookingSms([{ ...first, status: 'DISPATCHED', dispatchedAt: first.createdAt }], now)
+    assert.equal(uncertain.lastReminder.status, 'UNKNOWN')
+    assert.equal(uncertain.canReconfirm, false)
+    assert.equal(await smsLimits.claimSmsApiJob(first.id), false)
+    assert.equal(first.status, 'EXPIRED')
   } finally {
     for (const [name, value] of Object.entries({ BOOKEASY_SMS_PROVIDER: savedEnv.provider, SMSAPI_DAILY_LIMIT: savedEnv.limit, SMSAPI_AUTO_RECONFIRMATION: savedEnv.auto })) {
       if (value === undefined) delete process.env[name]
       else process.env[name] = value
     }
   }
-  console.log('PASS SMS economy: automation off, single booking allowance, idempotency and platform-wide quota')
+  console.log('PASS SMS economy: automation off, booking and platform quotas, no duplicate dispatch, expiry of unclaimed requests')
 }
 ;(async()=>{await testCancellation();await testMeta();await testBusinessMapLocation();await testSmsApi();await testSmsApiPreflight();await testAndroidSmsRetirement();await testSmsEconomy()})().catch(e=>{console.error(e);process.exitCode=1});

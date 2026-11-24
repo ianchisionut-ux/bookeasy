@@ -25,7 +25,9 @@ type SmsHistoryEntry = {
 
 export function summarizeBookingSms(jobs: SmsHistoryEntry[], now = new Date()): SmsAllowance {
   const currentTime = now.getTime()
-  const attempts = jobs.filter(job => visibleSmsStatus(job, currentTime) !== 'RETIRED')
+  const attempts = jobs
+    .map(job => ({ createdAt: job.createdAt, status: visibleSmsStatus(job, currentTime) }))
+    .filter(job => job.status !== 'RETIRED')
   const latest = attempts.reduce((value, job) => Math.max(value, job.createdAt.getTime()), 0)
   const cooldown = latest ? latest + SMS_LIMITS.bookingCooldownMs : 0
   const remaining = attempts.some(job => !['FAILED', 'EXPIRED'].includes(job.status)) ? 0 : 1
@@ -110,16 +112,19 @@ export async function claimSmsApiJob(id: string) {
   return prisma.$transaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('smsapi:daily-quota', 0))`
     const now = new Date()
-    const where = { id, senderKey: 'smsapi', status: 'PENDING', business: { accountActive: true, smsGatewayEnabled: true } }
+    const where = { id, senderKey: 'smsapi', status: 'PENDING', dispatchedAt: null, business: { accountActive: true, smsGatewayEnabled: true } }
     const job = await tx.smsJob.findFirst({ where })
     if (!job) return false
-    const expired = await smsHasExpired(tx, job, now)
+    const expiredBeforeDispatch = visibleSmsStatus(job, now.getTime()) === 'EXPIRED'
+    const expired = expiredBeforeDispatch || await smsHasExpired(tx, job, now)
     if (!expired) {
       const dispatched = await tx.smsJob.count({ where: { senderKey: 'smsapi', dispatchedAt: { gte: new Date(now.getTime() - 86_400_000) } } })
       if (dispatched >= smsApiDailyLimit()) throw new Error('Plafonul BookEasy pentru SMSAPI în ultimele 24 de ore a fost atins.')
     }
     const updated = await tx.smsJob.updateMany({ where, data: expired
-      ? { status: 'EXPIRED', error: 'Programarea sau linkul nu mai este valabil. SMS-ul nu a fost trimis.' }
+      ? { status: 'EXPIRED', error: expiredBeforeDispatch
+        ? 'Cererea a expirat înainte de expediere. SMS-ul nu a fost trimis.'
+        : 'Programarea sau linkul nu mai este valabil. SMS-ul nu a fost trimis.' }
       : { status: 'DISPATCHED', dispatchedAt: now },
     })
     return !expired && updated.count === 1

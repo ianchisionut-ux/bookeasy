@@ -14,8 +14,12 @@ export function smsJobMessage(status?: string, error?: string | null, senderKey?
   return 'Trimiterea SMS nu a fost confirmată.'
 }
 
-export function visibleSmsStatus(job: { status: string; dispatchedAt: Date | string | null; senderKey: string | null }, now = Date.now()) {
-  if (job.status === 'PENDING' && job.senderKey !== 'smsapi') return 'RETIRED'
+export function visibleSmsStatus(job: { status: string; createdAt: Date | string; dispatchedAt: Date | string | null; senderKey: string | null }, now = Date.now()) {
+  if (job.status === 'PENDING') {
+    if (job.senderKey !== 'smsapi') return 'RETIRED'
+    if (job.dispatchedAt) return 'UNKNOWN'
+    if (now - new Date(job.createdAt).getTime() >= 180_000) return 'EXPIRED'
+  }
   if (job.status === 'DISPATCHED' && (job.senderKey !== 'smsapi'
     || (job.dispatchedAt && now - new Date(job.dispatchedAt).getTime() > 180_000))) return 'UNKNOWN'
   return job.status

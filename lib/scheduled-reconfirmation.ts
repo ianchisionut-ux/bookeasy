@@ -43,7 +43,7 @@ export async function sendScheduledReconfirmations(now: Date) {
     else {
       await prisma.booking.updateMany({
         where: { id: booking.id, confirmationRequestToken: token, customerConfirmed: null },
-        data: { confirmationRequestSent: false },
+        data: { confirmationRequestSent: false, confirmationRequestToken: null },
       })
       result.reconfirmationErrors++
     }

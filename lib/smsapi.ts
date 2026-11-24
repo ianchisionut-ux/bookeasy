@@ -71,6 +71,7 @@ export async function submitSmsApi(
 const testRejectionDetails: Record<string, string> = {
   '13': 'Furnizorul nu a acceptat numărul fictiv folosit în test.',
   '14': 'Verifică dacă expeditorul este aprobat în portalul SMSAPI și dacă numele coincide cu SMSAPI_SENDER.',
+  '94': 'SMSAPI nu permite trimiterea mesajelor cu link din această configurație. Cere furnizorului să activeze trimiterea mesajelor cu link.',
   '98': 'Contul poate trimite doar către numărul folosit la înregistrare.',
   '101': 'Verifică tokenul configurat în SMSAPI_TOKEN.',
   '102': 'Verifică tokenul configurat în SMSAPI_TOKEN.',
@@ -80,23 +81,17 @@ const testRejectionDetails: Record<string, string> = {
   '401': 'Verifică permisiunea SMS a tokenului.',
 }
 
-export async function testSmsApiConnection() {
-  const config = smsApiConfig()
-  if (!config) return {
-    status: 'unconfigured',
-    message: 'Configurează SMSAPI_TOKEN și SMSAPI_SENDER în variabilele de mediu ale aplicației.',
-  } as const
-
+async function checkSmsApiMessage(config: SmsApiConfig, type: 'reminder' | 'reconfirmare', message: string) {
   const unavailable = {
     status: 'unavailable',
-    message: 'SMSAPI nu a confirmat testul. Încearcă din nou.',
+    message: `SMSAPI nu a confirmat testul pentru ${type}. Încearcă din nou.`,
   } as const
 
   try {
     const response = await requestSmsApi(config, {
       // SMSAPI uses this fictitious number in its dry-run examples.
       to: '48500000000',
-      message: 'Salon Demo: programare 25.11, 14:30.',
+      message,
       test: '1',
     })
     if (response.status >= 500 || response.status === 408 || response.status === 429) return unavailable
@@ -110,14 +105,35 @@ export async function testSmsApiConnection() {
       const detail = providerCode && testRejectionDetails[providerCode]
       return {
         status: 'rejected',
-        message: `SMSAPI a respins testul (${diagnostic}).${detail ? ` ${detail}` : ''}`,
+        message: `SMSAPI a respins testul pentru ${type} (${diagnostic}).${detail ? ` ${detail}` : ''}`,
       } as const
     }
 
     if (data?.count !== 1 || data.list?.length !== 1 || !item || typeof item !== 'object'
       || ['UNKNOWN', 'NOT_FOUND'].includes(item.status)) return unavailable
-    return { status: 'accepted', message: 'SMSAPI a acceptat testul. Nu a fost trimis niciun SMS.' } as const
+    return { status: 'accepted' } as const
   } catch {
     return unavailable
   }
+}
+
+export async function testSmsApiConnection() {
+  const config = smsApiConfig()
+  if (!config) return {
+    status: 'unconfigured',
+    message: 'Configurează SMSAPI_TOKEN și SMSAPI_SENDER în variabilele de mediu ale aplicației.',
+  } as const
+
+  const reminder = await checkSmsApiMessage(config, 'reminder', 'Salon Demo: programare 25.11, 14:30.')
+  if (reminder.status !== 'accepted') return reminder
+  const reconfirmation = await checkSmsApiMessage(
+    config,
+    'reconfirmare',
+    'Salon Demo Programare 25.11.2026, 14:30 Pentru confirmare, accesati linkul de mai jos: https://bookeasy.ro/confirmare/TEST-verificare-smsapi',
+  )
+  if (reconfirmation.status !== 'accepted') return reconfirmation
+  return {
+    status: 'accepted',
+    message: 'SMSAPI a acceptat reminderul și reconfirmarea cu link în modul de test. Nu a fost trimis niciun SMS. Trimiterea către clienți necesită un cont aprobat de SMSAPI.',
+  } as const
 }
