@@ -14,7 +14,7 @@ async function main() {
   const code = ts.transpileModule(fs.readFileSync('cloudflare-worker.ts', 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText
-  vm.runInNewContext(code, { exports, Headers, Request, Response, require: () => mock })
+  vm.runInNewContext(code, { exports, Headers, Request, Response, URL, require: () => mock })
   const worker = exports.default
   const pending = []
   const ctx = { waitUntil: promise => pending.push(promise) }

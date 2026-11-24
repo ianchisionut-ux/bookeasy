@@ -91,6 +91,19 @@ jobs:
           fi
           grep -qi '^x-robots-tag: noindex, nofollow' "$RUNNER_TEMP/preview-headers"
           test "$(curl -sS -o /dev/null -w '%{http_code}' 'http://127.0.0.1:8787/api/public/bookings/preview/wallet?token=invalid')" = 404
+          video='http://127.0.0.1:8787/tutorials/integrari.mp4'
+          range_body="$RUNNER_TEMP/video-range"
+          range_headers="$RUNNER_TEMP/video-range-headers"
+          test "$(curl -sS --max-time 15 -H 'Range: bytes=0-1023' -D "$range_headers" -o "$range_body" -w '%{http_code}' "$video")" = 206
+          grep -qi '^content-range: bytes 0-1023/' "$range_headers"
+          grep -qi '^content-length: 1024' "$range_headers"
+          grep -qi '^accept-ranges: bytes' "$range_headers"
+          grep -qi '^x-robots-tag: noindex, nofollow' "$range_headers"
+          test "$(wc -c < "$range_body")" = 1024
+          head -c 1024 public/tutorials/integrari.mp4 | cmp - "$range_body"
+          test "$(curl -sS --max-time 15 -H 'Range: bytes=-1024' -o "$range_body" -w '%{http_code}' "$video")" = 206
+          tail -c 1024 public/tutorials/integrari.mp4 | cmp - "$range_body"
+          test "$(curl -sS --max-time 15 -H 'Range: bytes=999999999-' -o /dev/null -w '%{http_code}' "$video")" = 416
       - name: Archive preview bundle
         run: |
           artifact="$RUNNER_TEMP/bookeasy-worker-preview"
