@@ -136,9 +136,13 @@ function isPublicKind(kind: Kind) {
   return kind === 'business-public' || kind === 'invitation-header' || kind === 'tutorial-poster'
 }
 
+function safePublicImageType(contentType: string) {
+  return ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'].includes(contentType.toLowerCase())
+}
+
 async function verifiedPublicAlias(bucket: MigrationBucket, sourceKey: string, targetKey: string,
   size: number, contentType: string, create: boolean) {
-  if (size <= 0 || size > maxPublicAliasBytes || !contentType.startsWith('image/')) return false
+  if (size <= 0 || size > maxPublicAliasBytes || !safePublicImageType(contentType)) return false
   const source = await bucket.get(sourceKey)
   if (!source || source.size !== size) return false
   const sourceBytes = new Uint8Array(await new Response(source.body).arrayBuffer())
@@ -349,7 +353,7 @@ export async function POST(request: NextRequest) {
         let publicBlob: Awaited<ReturnType<typeof readPublicBlob>>
         try { publicBlob = await readPublicBlob(row.url) } catch { publicBlob = null }
         if (!publicBlob) { unmatched(row.field, 'sourceUnavailable'); continue }
-        if (isPublicKind(source.kind) && !publicBlob.contentType.startsWith('image/')) {
+        if (isPublicKind(source.kind) && !safePublicImageType(publicBlob.contentType)) {
           unmatched(row.field, 'unsupported'); continue
         }
         // Check is read-only. Rewrite may copy the public object directly to
@@ -372,7 +376,7 @@ export async function POST(request: NextRequest) {
         // route. A URL resolving to another object is never rewritten.
         if (original.url !== row.url) { unmatched(row.field, 'unsupported'); continue }
         target = newReference(source.kind, original.pathname, row.ownerId)
-        if (!target || original.size <= 0 || (isPublicKind(source.kind) && !original.contentType.startsWith('image/'))) {
+        if (!target || original.size <= 0 || (isPublicKind(source.kind) && !safePublicImageType(original.contentType))) {
           unmatched(row.field, 'unsupported'); continue
         }
         const copied = await destination.head(original.pathname)
