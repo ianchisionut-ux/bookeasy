@@ -103,7 +103,11 @@ async function deleteBusiness(tx: Prisma.TransactionClient, target: DeletionTarg
   const urls = [business.heroImageUrl, ...photos.map(p => p.url), ...documents.map(d => d.url), ...practitioners.map(p => p.photoUrl)]
   const ownedUrls = urls.filter((value): value is string => {
     const key = r2Key(value)
-    return Boolean(key && (key.startsWith(`public/businesses/${businessId}/`) || key.startsWith(`patients/${businessId}/`)))
+    return Boolean(key && (
+      key.startsWith(`public/businesses/${businessId}/`) ||
+      key.startsWith(`public/${businessId}/`) ||
+      key.startsWith(`patients/${businessId}/`)
+    ))
   })
   for (const url of new Set(ownedUrls)) {
     const id = hashToken(url)
