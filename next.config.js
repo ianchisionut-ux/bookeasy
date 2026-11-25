@@ -7,7 +7,6 @@ const nextConfig = {
   serverExternalPackages: ['@prisma/client', '.prisma/client'],
   images: {
     qualities: [75, 90, 95],
-    remotePatterns: [{ protocol: 'https', hostname: '*.public.blob.vercel-storage.com' }],
   },
   async redirects() {
     return [{
@@ -60,21 +59,6 @@ const nextConfig = {
       },
     ]
   },
-}
-
-if (process.env.BOOKEASY_CLOUDFLARE_BUILD === 'true') {
-  const { dirname, join } = require('node:path')
-  const blobFetch = join(dirname(require.resolve('@vercel/blob')), 'undici-browser.js')
-  nextConfig.webpack = (config, { isServer, webpack }) => {
-    if (isServer) {
-      // Blob ships a global-fetch adapter. Let Workers handle its outbound
-      // HTTP while keeping Undici as-is for other dependencies.
-      config.plugins.push(new webpack.NormalModuleReplacementPlugin(/^undici$/, resource => {
-        if (/[\\/]@vercel[\\/]blob[\\/]dist$/.test(resource.context)) resource.request = blobFetch
-      }))
-    }
-    return config
-  }
 }
 
 module.exports = nextConfig

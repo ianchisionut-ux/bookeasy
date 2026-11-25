@@ -28,7 +28,6 @@
     "@prisma/client": "^6.0.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
-    "@vercel/blob": "^2.8.1",
     "bcryptjs": "^2.4.3",
     "date-fns": "^4.1.0",
     "euplatesc": "^1.0.5",

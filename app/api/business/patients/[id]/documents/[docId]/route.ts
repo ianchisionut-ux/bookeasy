@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/business-auth'
-import { deleteR2FileAndVerify, getR2File, isLegacyPublicBlobUrl, publicR2Url, r2Key, r2Url } from '@/lib/r2-storage'
+import { deleteR2FileAndVerify, getR2File, publicR2Url, r2Key, r2Url } from '@/lib/r2-storage'
 
 async function getOwnedDocument(docId: string, customerId: string, businessId: string) {
   return prisma.patientDocument.findFirst({ where: { id: docId, customerId, businessId } })
@@ -17,39 +17,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
   try {
-    let stream: ReadableStream | null = null
-    let contentType = 'application/octet-stream'
-
     const key = r2Key(doc.url)
-    if (isLegacyPublicBlobUrl(doc.url)) {
-      // This older public-store URL has a different Vercel Blob token. Keep
-      // access working until its exact object is copied and its URL rewritten.
-      const response = await fetch(doc.url, { redirect: 'error', cache: 'no-store' })
-      if (!response.ok || !response.body) {
-        return NextResponse.json({ error: 'Documentul nu a fost găsit în stocare.' }, { status: 404 })
-      }
-      stream = response.body
-      contentType = response.headers.get('content-type') || contentType
-    } else if (key) {
-      const object = await getR2File(key)
-      if (!object) {
-        return NextResponse.json({ error: 'Documentul nu a fost găsit în stocare.' }, { status: 404 })
-      }
-      stream = object.body
-      contentType = object.httpMetadata?.contentType || contentType
-    } else {
-      // Compatibilitate de citire pentru fișierele publice vechi, până la migrare.
-      const response = await fetch(doc.url, { cache: 'no-store' })
-      if (!response.ok || !response.body) {
-        return NextResponse.json({ error: 'Documentul nu a fost găsit în stocare.' }, { status: 404 })
-      }
-      stream = response.body
-      contentType = response.headers.get('content-type') || contentType
-    }
+    const object = key ? await getR2File(key) : null
+    if (!object) return NextResponse.json({ error: 'Documentul nu a fost găsit în stocare.' }, { status: 404 })
 
-    return new NextResponse(stream, {
+    return new NextResponse(object.body, {
       headers: {
-        'Content-Type': contentType,
+        'Content-Type': object.httpMetadata?.contentType || 'application/octet-stream',
         'Content-Disposition': `attachment; filename="document"; filename*=UTF-8''${encodeURIComponent(doc.filename)}`,
         'Cache-Control': 'private, no-store',
         'X-Content-Type-Options': 'nosniff',
@@ -75,10 +49,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       const rows = await tx.$queryRaw<{ url: string }[]>`SELECT "url" FROM "PatientDocument" WHERE "id" = ${docId} AND "customerId" = ${id} AND "businessId" = ${businessId} FOR UPDATE`
       const doc = rows[0]
       if (!doc) return { status: 404, body: { error: 'not found' } }
-      if (isLegacyPublicBlobUrl(doc.url)) return { status: 409, body: { error: 'Acest document trebuie migrat înainte de ștergere. Contactează echipa BookEasy.' } }
       const key = r2Key(doc.url)
-      if (!key) return { status: 409, body: { error: 'Acest document vechi nu poate fi șters din stocarea actuală. Contactează echipa BookEasy pentru migrare.' } }
-      // Both reference formats name the same Blob. Do not remove it while another
+      if (!key) return { status: 409, body: { error: 'Referința documentului nu este validă. Contactează echipa BookEasy pentru corectare.' } }
+      // Both reference formats name the same R2 object. Keep it while another
       // medical record still points at either format.
       const aliases = [...new Set([doc.url, r2Url(key), publicR2Url(key)])]
       const otherReferences = await tx.patientDocument.count({ where: { url: { in: aliases }, id: { not: docId } } })
