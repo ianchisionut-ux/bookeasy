@@ -1,10 +1,14 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import StorageMigrationControls from './storage-migration-controls'
+import StorageUrlMigrationControls from './storage-url-migration-controls'
 
 // Temporary operator console for the one-time Blob to R2 transfer.
 export default async function StorageMigrationPage() {
   const session = await auth()
   if (!session || !(session as { isSuperAdmin?: boolean }).isSuperAdmin) redirect('/login')
-  return <StorageMigrationControls />
+  return <>
+    <StorageMigrationControls />
+    <div className="mx-auto max-w-3xl px-6 pb-10 text-sm text-slate-800"><StorageUrlMigrationControls /></div>
+  </>
 }
