@@ -61,7 +61,7 @@ export async function reconcileIpayBusiness(business: Awaited<ReturnType<typeof 
           where: {
             id: period.id,
             invoiceUrl: business.billingInvoiceUrl,
-            amountMinor: business.billingIpayAmountMinor,
+            amountMinor: business.billingIpayAmountMinor!,
             paidAt: null,
           },
           data: { paidAt },
