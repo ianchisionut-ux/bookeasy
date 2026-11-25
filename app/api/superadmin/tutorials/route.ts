@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server'
 import {randomUUID} from 'node:crypto'
 import {z} from 'zod'
-import {head} from '@vercel/blob'
+import {getR2File} from '@/lib/r2-storage'
 import {auth} from '@/lib/auth'
 import {prisma} from '@/lib/prisma'
 import {usageTutorials} from '@/lib/usage-guide'
@@ -16,7 +16,11 @@ export async function POST(req:NextRequest){
  const d=parsed.data
  if(!validURL(d.videoUrl,'mp4')||d.captionsUrl&&!validURL(d.captionsUrl,'vtt')||d.published&&!d.captionsUrl)return NextResponse.json({error:'Publicarea necesită un videoclip MP4 și subtitrări VTT încărcate.'},{status:400})
  try{
-  for(const url of [d.videoUrl,d.captionsUrl])if(url?.startsWith(prefix)){const file=await head(url.slice(prefix.length),{token:process.env.BLOB_READ_WRITE_TOKEN});if(!file.size)throw Error('empty')}
+  for(const url of [d.videoUrl,d.captionsUrl])if(url?.startsWith(prefix)){
+   const file=await getR2File(url.slice(prefix.length))
+   if(!file||!file.size)throw Error('empty')
+   await file.body.cancel()
+  }
   const id=d.id??randomUUID(),title=d.title,description=d.description,videoUrl=d.videoUrl,captionsUrl=d.captionsUrl,duration=d.duration,published=d.published
   if(d.id){const changed=await prisma.$executeRaw`UPDATE "UsageTutorial" SET "title"=${title},"description"=${description},"videoUrl"=${videoUrl},"captionsUrl"=${captionsUrl},"duration"=${duration},"publishedAt"=CASE WHEN ${published} AND (NOT "published" OR "videoUrl"<>${videoUrl} OR "captionsUrl" IS DISTINCT FROM ${captionsUrl}) THEN clock_timestamp() ELSE "publishedAt" END,"published"=${published} WHERE "id"=${id}`;if(!changed)return NextResponse.json({error:'Tutorialul nu există.'},{status:404})}
   else await prisma.$executeRaw`INSERT INTO "UsageTutorial" ("id","title","description","videoUrl","captionsUrl","duration","published","publishedAt") VALUES (${id},${title},${description},${videoUrl},${captionsUrl},${duration},${published},clock_timestamp())`

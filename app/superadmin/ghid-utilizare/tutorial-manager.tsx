@@ -1,13 +1,46 @@
 'use client'
 import {useState} from 'react'
-import {upload} from '@vercel/blob/client'
 import {useRouter} from 'next/navigation'
 type Entry={id:string;title:string;description:string;videoUrl:string;captionsUrl:string|null;duration:string;published:boolean}
 const empty={title:'',description:'',videoUrl:'',captionsUrl:null as string|null,duration:'',published:false}
+const PART_BYTES=8*1024*1024
+
+async function uploadRequest(url:string,init:RequestInit){
+ const response=await fetch(url,init)
+ const data=await response.json().catch(()=>({}))
+ if(!response.ok)throw Error(data.error||'Încărcarea a eșuat.')
+ return data
+}
+
+async function uploadTutorialFile(file:File,type:'video'|'captions',onProgress:(value:number)=>void){
+ const key=`tutorials/${crypto.randomUUID()}/${type==='video'?'video.mp4':'captions.vtt'}`
+ const endpoint='/api/superadmin/tutorial-upload'
+ if(type==='captions'){
+  const result=await uploadRequest(`${endpoint}?key=${encodeURIComponent(key)}`,{method:'PUT',body:file,headers:{'Content-Type':'text/vtt'}})
+  return '/api/tutorials/media/'+result.pathname
+ }
+ let uploadId:string|undefined
+ try{
+  const created=await uploadRequest(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create',key,size:file.size})})
+  uploadId=created.uploadId
+  const parts:{partNumber:number;etag:string}[]=[]
+  for(let offset=0;offset<file.size;offset+=PART_BYTES){
+   const partNumber=parts.length+1
+   const part=await uploadRequest(`${endpoint}?key=${encodeURIComponent(key)}&uploadId=${encodeURIComponent(uploadId!)}&partNumber=${partNumber}`,{method:'PUT',body:file.slice(offset,offset+PART_BYTES)})
+   parts.push(part)
+   onProgress(Math.min(100,Math.round((offset+PART_BYTES)/file.size*100)))
+  }
+  const result=await uploadRequest(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'complete',key,uploadId,parts})})
+  return '/api/tutorials/media/'+result.pathname
+ }catch(error){
+  if(uploadId)await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'abort',key,uploadId})}).catch(()=>{})
+  throw error
+ }
+}
 export default function TutorialManager({initial}:{initial:Entry[]}){
  const router=useRouter(),[draft,setDraft]=useState<typeof empty&{id?:string}>(empty),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('')
  async function fileUpload(file:File|undefined,type:'video'|'captions'){if(!file)return;setBusy(true);setError('');setNotice('')
-  try{if(file.size>(type==='video'?250:2)*1024*1024)throw Error(type==='video'?'Videoclipul poate avea maximum 250 MB.':'Subtitrările pot avea maximum 2 MB.');const result=await upload(`tutorials/${crypto.randomUUID()}/${type==='video'?'video.mp4':'captions.vtt'}`,file,{access:'private',contentType:type==='video'?'video/mp4':'text/vtt',handleUploadUrl:'/api/superadmin/tutorial-upload',multipart:type==='video'});setDraft(old=>({...old,[type==='video'?'videoUrl':'captionsUrl']:'/api/tutorials/media/'+result.pathname}));setNotice('Fișier încărcat. Salvează sau publică tutorialul.')}
+  try{if(file.size>(type==='video'?250:2)*1024*1024)throw Error(type==='video'?'Videoclipul poate avea maximum 250 MB.':'Subtitrările pot avea maximum 2 MB.');const url=await uploadTutorialFile(file,type,percent=>setNotice(`Se încarcă în R2: ${percent}%`));setDraft(old=>({...old,[type==='video'?'videoUrl':'captionsUrl']:url}));setNotice('Fișier încărcat. Salvează sau publică tutorialul.')}
   catch(e){setError(e instanceof Error?e.message:'Încărcare eșuată.')}finally{setBusy(false)}
  }
  async function save(published:boolean){setBusy(true);setError('');setNotice('');try{const r=await fetch('/api/superadmin/tutorials',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...draft,published})});const d=await r.json();if(!r.ok)throw Error(d.error);setDraft({...draft,id:d.id,published});setNotice(published?'Tutorial publicat. Afacerile vor vedea bulina roșie în Ghid de utilizare.':'Tutorial salvat ca ciornă.');router.refresh()}catch(e){setError(e instanceof Error?e.message:'Salvare eșuată.')}finally{setBusy(false)}}

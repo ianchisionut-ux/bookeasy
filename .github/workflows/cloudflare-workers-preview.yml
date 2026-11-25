@@ -35,6 +35,7 @@ jobs:
           node scripts/test-cloudflare-cron.cjs
           npx --no-install tsx scripts/test-prisma-request-scope.ts
           node scripts/test-patient-document-deletion.cjs
+          node scripts/test-tutorial-r2.cjs
           node scripts/test-invitation-header.cjs
       - name: Build the isolated Worker
         run: npm run build:cloudflare -- --config wrangler.preview.jsonc

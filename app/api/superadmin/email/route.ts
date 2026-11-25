@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { CONTACT_EMAIL } from '@/lib/platform-email'
+import { r2StorageConfigured } from '@/lib/r2-storage'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -25,5 +26,5 @@ export async function GET(req: NextRequest) {
     prisma.platformEmail.count({ where: { folder: 'inbox', isRead: false } }),
   ])
   return NextResponse.json({ rows, total, unread, page, pages: Math.max(1, Math.ceil(total / 50)), address: CONTACT_EMAIL,
-    configured: Boolean(process.env.RESEND_API_KEY && process.env.RESEND_WEBHOOK_SECRET && process.env.BLOB_READ_WRITE_TOKEN) })
+    configured: Boolean(process.env.RESEND_API_KEY && process.env.RESEND_WEBHOOK_SECRET && r2StorageConfigured()) })
 }

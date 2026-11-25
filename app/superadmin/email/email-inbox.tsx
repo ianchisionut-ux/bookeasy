@@ -103,7 +103,7 @@ export default function EmailInbox() {
         <p className="text-sm text-gray-500">Inboxul platformei, vizibil doar pentru Super Admin.</p></div>
       <button className="btn-primary" onClick={() => { setCompose(true); setSelected(null) }}>Scrie email</button>
     </div>
-    {list && !list.configured && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 mb-4">Configurarea Resend nu este completă. Verifică RESEND_API_KEY, RESEND_WEBHOOK_SECRET și BLOB_READ_WRITE_TOKEN în Vercel.</p>}
+    {list && !list.configured && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 mb-4">Configurarea emailului nu este completă. Verifică Resend și conexiunea Cloudflare R2.</p>}
     {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700 mb-4">{error}</p>}
     <div className="flex flex-wrap gap-2 mb-4">
       {folders.map((item) => <button key={item.id} onClick={() => { setFolder(item.id); setPage(1); setSelected(null); setCompose(false) }}

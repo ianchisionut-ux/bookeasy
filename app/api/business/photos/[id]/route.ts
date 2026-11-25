@@ -13,7 +13,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (id === 'hero') {
     const business = await prisma.business.findUnique({ where: { id: businessId } })
     if (business?.heroImageUrl) {
-      await deleteR2File(business.heroImageUrl).catch(() => {})
+      try {
+        await deleteR2File(business.heroImageUrl)
+      } catch {
+        return NextResponse.json({ error: 'Fotografia nu a putut fi ștearsă. Încearcă din nou.' }, { status: 503 })
+      }
       await prisma.business.update({ where: { id: businessId }, data: { heroImageUrl: null } })
     }
     return NextResponse.json({ success: true })
@@ -24,7 +28,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
-  await deleteR2File(photo.url).catch(() => {})
+  try {
+    await deleteR2File(photo.url)
+  } catch {
+    return NextResponse.json({ error: 'Fotografia nu a putut fi ștearsă. Încearcă din nou.' }, { status: 503 })
+  }
   await prisma.businessPhoto.delete({ where: { id } })
 
   return NextResponse.json({ success: true })

@@ -5,6 +5,7 @@ import { decrypt } from '@/lib/crypto'
 import {walletAvailable,walletConfigured} from '@/lib/google-wallet'
 import {googleBusinessCredentials,refreshGoogleBusinessToken} from '@/lib/google-business-oauth'
 import {isPlatformSmsReady} from '@/lib/sms-routing'
+import {r2StorageConfigured} from '@/lib/r2-storage'
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -83,7 +84,7 @@ export async function GET(req: NextRequest) {
     platform={
       googleLoginAndCalendarConfigured:configured('GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET'),googleBusinessConfigured:Boolean(googleBusinessCredentials()),
       metaOAuthConfigured:configured('META_APP_ID','META_APP_SECRET'),metaWebhookVerificationConfigured:configured('META_VERIFY_TOKEN'),instagramDirectOAuthConfigured:configured('INSTAGRAM_APP_ID','INSTAGRAM_APP_SECRET'),
-      smsReady:await isPlatformSmsReady(),geocoding,storageConfigured:configured('BLOB_READ_WRITE_TOKEN'),
+      smsReady:await isPlatformSmsReady(),geocoding,storageConfigured:r2StorageConfigured(),
       wallet:{enabled:process.env.GOOGLE_WALLET_ENABLED==='true',credentialsConfigured:walletConfigured(),available:walletAvailable(),productionApproval:'Confirm publishing access in Google Wallet Console before enabling GOOGLE_WALLET_PUBLISHING_APPROVED.'},
       subscriptionOnlinePayments:'disabled',
     }
