@@ -70,6 +70,19 @@ export function r2Key(value: string | null | undefined) {
   if (value.startsWith(PUBLIC_ROUTE)) {
     return value.slice(PUBLIC_ROUTE.length).split('/').map(decodeURIComponent).join('/')
   }
+  // Existing database rows still contain Blob URLs during the verified copy.
+  // Only the official Blob host is accepted; never turn an arbitrary URL into
+  // a storage key. The migration endpoint replaces these rows after R2 HEAD.
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'https:' || url.username || url.password || url.port ||
+      !/^[a-z0-9-]+\.(?:private|public)\.blob\.vercel-storage\.com$/.test(url.hostname) ||
+      url.search || url.hash) return null
+    const key = url.pathname.slice(1).split('/').map(decodeURIComponent).join('/')
+    return key && !key.split('/').some(part => part === '.' || part === '..') ? key : null
+  } catch {
+    // Plain strings that are not R2 references are not managed storage keys.
+  }
   return null
 }
 
@@ -130,7 +143,7 @@ export async function getR2File(key: string, options?: { includeLegacyBlob?: boo
     ...(options?.range ? { headers: { Range: options.range } } : {}),
   })
   if (!result) return null
-  if (!result.stream || (result.statusCode !== 200 && result.statusCode !== 206)) return null
+  if (!result.stream || (result.statusCode !== 200 && Number(result.statusCode) !== 206)) return null
   const contentRange = result.headers.get('content-range') ?? undefined
   const contentLength = Number(result.headers.get('content-length'))
   return {
