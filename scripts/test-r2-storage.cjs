@@ -145,6 +145,12 @@ async function testTombstonesAndVerifiedDeletion() {
     assert.equal(f.storage.r2Key(`/api/storage/public/${key}`), key)
     assert.equal(f.storage.r2Key(`https://store123.private.blob.vercel-storage.com/${key}`), key)
     assert.equal(f.storage.r2Key(`https://store123.public.blob.vercel-storage.com/${key}`), key)
+    const publicUrl = 'https://store123.public.blob.vercel-storage.com/patients/demo/legacy.pdf'
+    const priorDeletes = f.blobDeletes
+    assert.equal(f.storage.isLegacyPublicBlobUrl(publicUrl), true)
+    await assert.rejects(f.storage.deleteR2File(publicUrl), /migrat înainte de ștergere/)
+    await assert.rejects(f.storage.deleteR2FileAndVerify(publicUrl), /migrat înainte de ștergere/)
+    assert.equal(f.blobDeletes, priorDeletes)
     assert.equal(f.storage.r2Key(`https://store123.private.blob.vercel-storage.com/${key}?token=bad`), null)
     assert.equal(f.storage.r2Key(`https://store123.private.blob.vercel-storage.com.evil.test/${key}`), null)
     assert.equal(await f.storage.deleteR2FileAndVerify('https://external.invalid/file'), false)

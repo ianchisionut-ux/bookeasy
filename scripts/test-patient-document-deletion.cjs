@@ -41,6 +41,7 @@ async function testDeleteRoute() {
     '@/lib/prisma': { prisma: { $transaction: callback => callback(tx) } },
     '@/lib/business-auth': { auth: async () => authenticated ? { businessId: 'business-1' } : null },
     '@/lib/r2-storage': {
+      isLegacyPublicBlobUrl: value => /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//.test(value || ''),
       r2Key: value => value?.startsWith('r2://') ? value.slice(5) : value?.startsWith('/api/storage/public/') ? value.slice(20) : null,
       r2Url: key => 'r2://' + key,
       publicR2Url: key => '/api/storage/public/' + key,
@@ -55,6 +56,10 @@ async function testDeleteRoute() {
   assert.equal((await route.DELETE({}, params)).status, 404)
   rowExists = true
   url = 'https://legacy.invalid/document.pdf'
+  assert.equal((await route.DELETE({}, params)).status, 409)
+  assert.equal(storageCalls, 0)
+  assert.equal(dbDeletes, 0)
+  url = 'https://legacy.public.blob.vercel-storage.com/patients/business-1/file.pdf'
   assert.equal((await route.DELETE({}, params)).status, 409)
   assert.equal(storageCalls, 0)
   assert.equal(dbDeletes, 0)

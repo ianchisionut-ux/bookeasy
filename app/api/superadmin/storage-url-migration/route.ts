@@ -1,4 +1,5 @@
-import { head } from '@vercel/blob'
+import { createHash } from 'node:crypto'
+import { get, head } from '@vercel/blob'
 import { Prisma } from '@prisma/client'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextRequest, NextResponse } from 'next/server'
@@ -140,6 +141,43 @@ function safePublicImageType(contentType: string) {
   return ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'].includes(contentType.toLowerCase())
 }
 
+function sha256(bytes: Uint8Array) {
+  const copy = new Uint8Array(bytes.byteLength)
+  copy.set(bytes)
+  return crypto.subtle.digest('SHA-256', copy.buffer)
+}
+
+async function sha256Stream(stream: ReadableStream<Uint8Array>) {
+  const hash = createHash('sha256')
+  let size = 0
+  const reader = stream.getReader()
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      hash.update(value)
+    }
+  } finally { reader.releaseLock() }
+  return { size, digest: hash.digest('hex') }
+}
+
+async function verifiedPrivateCopy(bucket: MigrationBucket, url: string, key: string,
+  expected: { size: number; etag: string }, token: string) {
+  const source = await get(url, { access: 'private', token, useCache: false })
+  if (!source || !source.stream || source.blob.etag !== expected.etag || source.blob.size !== expected.size) {
+    await source?.stream?.cancel()
+    return false
+  }
+  const destination = await bucket.get(key)
+  if (!destination || destination.size !== expected.size) {
+    await source.stream.cancel()
+    return false
+  }
+  const [left, right] = await Promise.all([sha256Stream(source.stream), sha256Stream(destination.body)])
+  return left.size === expected.size && right.size === expected.size && left.digest === right.digest
+}
+
 async function verifiedPublicAlias(bucket: MigrationBucket, sourceKey: string, targetKey: string,
   size: number, contentType: string, create: boolean) {
   if (size <= 0 || size > maxPublicAliasBytes || !safePublicImageType(contentType)) return false
@@ -147,7 +185,7 @@ async function verifiedPublicAlias(bucket: MigrationBucket, sourceKey: string, t
   if (!source || source.size !== size) return false
   const sourceBytes = new Uint8Array(await new Response(source.body).arrayBuffer())
   if (sourceBytes.byteLength !== size) return false
-  const sourceHash = new Uint8Array(await crypto.subtle.digest('SHA-256', sourceBytes))
+  const sourceHash = new Uint8Array(await sha256(sourceBytes))
   if (!(await bucket.head(targetKey))) {
     if (!create) return false
     await bucket.put(targetKey, sourceBytes, {
@@ -159,7 +197,7 @@ async function verifiedPublicAlias(bucket: MigrationBucket, sourceKey: string, t
   if (!target || target.size !== size) return false
   const targetBytes = new Uint8Array(await new Response(target.body).arrayBuffer())
   if (targetBytes.byteLength !== size) return false
-  const targetHash = new Uint8Array(await crypto.subtle.digest('SHA-256', targetBytes))
+  const targetHash = new Uint8Array(await sha256(targetBytes))
   return sourceHash.every((byte, index) => byte === targetHash[index])
 }
 
@@ -214,7 +252,7 @@ async function verifyPublicSourceInR2(bucket: MigrationBucket, target: Target,
   const copiedBytes = new Uint8Array(await new Response(object.body).arrayBuffer())
   if (copiedBytes.byteLength !== bytes.byteLength) return false
   const [sourceHash, destinationHash] = await Promise.all([
-    crypto.subtle.digest('SHA-256', bytes), crypto.subtle.digest('SHA-256', copiedBytes),
+    sha256(bytes), sha256(copiedBytes),
   ])
   const left = new Uint8Array(sourceHash), right = new Uint8Array(destinationHash)
   return left.every((byte, index) => byte === right[index])
@@ -242,7 +280,7 @@ async function counts() {
   `)
   return {
     total: rows.reduce((sum, row) => sum + Number(row.count), 0),
-    byField: Object.fromEntries(sources.map(source => [source.field, Number(rows.find(row => row.field === source.field)?.count ?? 0n)])),
+    byField: Object.fromEntries(sources.map(source => [source.field, Number(rows.find(row => row.field === source.field)?.count ?? 0)])),
   }
 }
 
@@ -382,6 +420,9 @@ export async function POST(request: NextRequest) {
         const copied = await destination.head(original.pathname)
         if (!copied || copied.size !== original.size ||
           (copied.httpMetadata?.contentType && copied.httpMetadata.contentType !== original.contentType)) {
+          unmatched(row.field, 'destinationMissing'); continue
+        }
+        if (!(await verifiedPrivateCopy(destination, row.url, original.pathname, original, token))) {
           unmatched(row.field, 'destinationMissing'); continue
         }
         if (target.key !== original.pathname) {

@@ -64,6 +64,15 @@ export function publicR2Url(key: string) {
   return `${PUBLIC_ROUTE}${key.split('/').map(encodeURIComponent).join('/')}`
 }
 
+export function isLegacyPublicBlobUrl(value: string | null | undefined) {
+  if (!value) return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && !url.username && !url.password && !url.port &&
+      !url.search && !url.hash && /^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/.test(url.hostname)
+  } catch { return false }
+}
+
 export function r2Key(value: string | null | undefined) {
   if (!value) return null
   if (value.startsWith(R2_SCHEME)) return value.slice(R2_SCHEME.length)
@@ -165,6 +174,7 @@ async function markDeleted(bucket: FilesBucket, key: string) {
 }
 
 export async function deleteR2File(value: string | null | undefined) {
+  if (isLegacyPublicBlobUrl(value)) throw new Error('Fișierul public vechi trebuie migrat înainte de ștergere.')
   const key = r2Key(value)
   if (!key) return false
   const bucket = filesBucket()
@@ -176,6 +186,7 @@ export async function deleteR2File(value: string | null | undefined) {
 }
 
 export async function deleteR2FileAndVerify(value: string | null | undefined) {
+  if (isLegacyPublicBlobUrl(value)) throw new Error('Fișierul public vechi trebuie migrat înainte de ștergere.')
   const key = r2Key(value)
   if (!key) return false
   const bucket = filesBucket()
