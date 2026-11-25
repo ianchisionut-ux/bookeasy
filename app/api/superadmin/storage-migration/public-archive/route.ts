@@ -101,15 +101,19 @@ export async function POST(request: NextRequest) {
   if (body?.mode !== 'dry-run' && body?.mode !== 'copy') {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400, headers })
   }
+  let stage = 'destination'
   try {
     const destination = bucket()
+    stage = 'database'
     const databaseReferences = await countStorageReferences(sourceUrl)
+    stage = 'source'
     const source = await readSource()
     // The legacy cover migration already stored this image under a
     // content-addressed public key and rewrote the business profile URL.
     // Check that exact R2 object first; do not create a duplicate original key.
     const digest = sha256(source)
     const targetKey = `public/${businessId}/migrated-cover-${digest}.jpg`
+    stage = 'r2-verification'
     let status = await destinationMatches(destination, targetKey, source)
     if (status.present && !status.verified) throw new ArchiveIssue('destination_changed')
     if (body.mode === 'copy' && !status.present) {
@@ -126,6 +130,6 @@ export async function POST(request: NextRequest) {
       copyNeeded: !status.present }, { headers })
   } catch (error) {
     const issue = error instanceof ArchiveIssue ? error : new ArchiveIssue('archive_check_failed', 503)
-    return NextResponse.json({ error: issue.code }, { status: issue.status, headers })
+    return NextResponse.json({ error: issue.code, stage }, { status: issue.status, headers })
   }
 }

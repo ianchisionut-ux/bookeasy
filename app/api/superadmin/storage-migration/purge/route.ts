@@ -95,10 +95,18 @@ async function verify(item: BlobItem, token: string, destination: Bucket) {
   const tombstone = `_deleted/${hashText(item.pathname)}`
   if (await destination.head(tombstone)) throw new PurgeIssue('destination_marked_deleted')
   const source = await get(item.pathname, { access: 'private', token, useCache: false })
-  if (!source || source.statusCode !== 200 || !source.stream || source.blob.url !== item.url ||
-    source.blob.etag !== item.etag || source.blob.size !== item.size) {
-    await source?.stream?.cancel()
-    throw new PurgeIssue('source_changed')
+  if (!source || source.statusCode !== 200 || !source.stream) throw new PurgeIssue('source_unavailable')
+  if (source.blob.url !== item.url) {
+    await source.stream.cancel()
+    throw new PurgeIssue('source_url_mismatch')
+  }
+  if (source.blob.etag !== item.etag) {
+    await source.stream.cancel()
+    throw new PurgeIssue('source_etag_mismatch')
+  }
+  if (source.blob.size !== item.size) {
+    await source.stream.cancel()
+    throw new PurgeIssue('source_size_mismatch')
   }
   const targetHead = await destination.head(item.pathname)
   if (!targetHead || targetHead.size !== item.size ||
