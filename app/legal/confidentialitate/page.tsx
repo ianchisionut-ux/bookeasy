@@ -18,7 +18,7 @@ const processors = [
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Politică de confidențialitate" updatedAt="25 noiembrie 2026" version="3.0" description="Ce date prelucrează BookEasy, în ce scop și cum îți poți exercita drepturile.">
+    <LegalPage title="Politică de confidențialitate" updatedAt="25 noiembrie 2026" version="3.1" description="Ce date prelucrează BookEasy, în ce scop și cum îți poți exercita drepturile.">
       <h2>1. Identitatea operatorului</h2><p>Operatorul platformei este <strong>{company.legalName}</strong>, CUI {company.cui}, {company.tradeRegistryNumber}, cu sediul în {company.registeredAddress}. Pentru întrebări sau exercitarea drepturilor: <a href={`mailto:${company.privacyEmail}`}>{company.privacyEmail}</a>.</p>
       <h2>2. Rolurile privind datele</h2>
       <p>BookEasy acționează ca operator pentru administrarea conturilor, facturare, securitate, suport și relația contractuală. Pentru evidența programărilor, clienților și pacienților gestionată în numele afacerii, afacerea stabilește scopurile și temeiurile, iar BookEasy acționează ca persoană împuternicită, conform <Link href="/dpa">DPA</Link>.</p>

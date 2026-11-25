@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: 'Termeni și condiții | BookEasy', d
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Termeni și condiții de utilizare" updatedAt="21 noiembrie 2026" version="2.4" description="Regulile BookEasy pentru afaceri și pentru persoanele care fac rezervări.">
+    <LegalPage title="Termeni și condiții de utilizare" updatedAt="25 noiembrie 2026" version="2.5" description="Regulile BookEasy pentru afaceri și pentru persoanele care fac rezervări.">
       <div className="legal-callout">Dacă folosești BookEasy pentru a face o programare, consultă <a href="#rezervari-clienti">regulile pentru rezervările clienților</a>. Secțiunile despre abonamente se adresează afacerilor.</div>
       <nav className="legal-toc" aria-label="Cuprins"><strong>Cuprins</strong>{['Definiții','Obiectul contractului','Conturi și securitate','Nivelul serviciilor','Prețuri și plăți','Suspendare și încetare','Răspundere','Utilizare acceptabilă','Proprietate intelectuală','Modificări','Lege aplicabilă'].map((item, i) => <a key={item} href={`#cap-${i + 1}`}>{i + 1}. {item}</a>)}</nav>
       <h2 id="cap-1">1. Definiții</h2><p><strong>Platforma</strong> înseamnă serviciul software accesibil la bookeasy.ro, aplicația web progresivă, interfețele și funcțiile asociate. <strong>Furnizorul</strong> este {company.legalName}, CUI {company.cui}, {company.tradeRegistryNumber}, cu sediul în {company.registeredAddress}. <strong>Clientul</strong> este profesionistul sau persoana juridică ce contractează un abonament BookEasy. <strong>Utilizator final</strong> este persoana autorizată de Client să folosească Platforma.</p>

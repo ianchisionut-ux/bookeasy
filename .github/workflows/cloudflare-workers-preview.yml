@@ -5,6 +5,7 @@ on:
     branches:
       - codex/cloudflare-workers
       - codex/cloudflare-final-20261125
+      - codex/ipay-subscription-20261125
   workflow_dispatch:
 
 permissions:
@@ -33,6 +34,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Run migration regression checks
         run: |
+          npm run test:ipay
           node scripts/test-cloudflare-cron.cjs
           npx --no-install tsx scripts/test-prisma-request-scope.ts
           node scripts/test-prisma-preview-db.cjs
