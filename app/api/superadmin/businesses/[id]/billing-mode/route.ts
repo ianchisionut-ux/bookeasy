@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { resetIpayPaymentFields } from '@/lib/billing-ipay'
+import { hasUnresolvedIpayPayment, resetIpayPaymentFields } from '@/lib/billing-ipay'
 import {getPlanPrices} from '@/lib/plan-pricing'
 import {promotionVersion} from '@/lib/promotion-campaigns'
 import { launchMonth } from '@/lib/launch-policy'
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const mode = parsed.data.mode === 'PAID' ? 'STANDARD' : parsed.data.mode
     const currentMode = enrollment && !enrollment.cancelledAt ? 'CAMPAIGN' : business.billingStatus === 'GRATUIT' ? 'FREE' : business.planName?.toUpperCase() === 'PRO' ? 'PRO' : 'STANDARD'
     if (mode === currentMode && (parsed.data.mode !== 'CAMPAIGN' || enrollment?.campaignId === parsed.data.campaignId)) return { status: 200, success: true }
+    if (hasUnresolvedIpayPayment(business)) return { status: 409, error: 'Plata iPay este în curs. Verifică rezultatul înainte de a schimba planul.' }
     if(enrollment?.freeUntilNotice&&!enrollment.cancelledAt&&mode!=='CAMPAIGN'&&mode!=='FREE')return {status:409,error:'Campania gratuită nu poate fi trecută direct la plată. Este necesară notificarea și acceptarea expresă a noii oferte de către afacere.'}
     const prices=await getPlanPrices(tx)
     if (mode === 'PRO' && prices.proMinor === null) return { status: 409, error: 'Configurează tariful PRO în Planuri și prețuri înainte de schimbarea planului.' }

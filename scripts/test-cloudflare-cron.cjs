@@ -42,7 +42,7 @@ async function main() {
     assert.equal(call.ctx, ctx)
   }
   const productionConfig = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'))
-  assert.deepEqual(productionConfig.triggers.crons, ['0 3-7 * * *'])
+  assert.deepEqual(productionConfig.triggers.crons, ['0 3-7 * * *', '*/5 * * * *'])
   const previewConfig = JSON.parse(fs.readFileSync('wrangler.preview.jsonc', 'utf8'))
   assert.equal(previewConfig.routes, undefined)
   assert.equal(previewConfig.triggers, undefined)

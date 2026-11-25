@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
 import { BUSINESS_CATEGORIES } from '@/lib/business-categories'
-import { resetIpayPaymentFields } from '@/lib/billing-ipay'
+import { hasUnresolvedIpayPayment, resetIpayPaymentFields } from '@/lib/billing-ipay'
 
 const patchSchema = z.object({
   name: z.string().min(2).optional(),
@@ -47,8 +47,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = patchSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const current = await prisma.business.findUnique({ where: { id }, select: { category: true, billingSuspendedAt: true, billingDueAt: true, billingInvoiceUrl: true, billingAmount: true, billingSubtotal: true, billingVatRate: true, billingStatus: true } })
+  const current = await prisma.business.findUnique({ where: { id }, select: { category: true, billingSuspendedAt: true, billingDueAt: true, billingInvoiceUrl: true, billingAmount: true, billingSubtotal: true, billingVatRate: true, billingStatus: true, billingIpayOrderId: true, billingIpayPaymentState: true } })
   if (!current) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
+  if (hasUnresolvedIpayPayment(current) && ['planName', 'billingStatus', 'billingAmount', 'billingSubtotal', 'billingVatRate', 'billingDueAt'].some(key => key in parsed.data)) {
+    return NextResponse.json({ error: 'Plata iPay este în curs. Verifică rezultatul înainte de a modifica facturarea.' }, { status: 409 })
+  }
   const campaign = await prisma.launchEnrollment.findUnique({ where: { businessId: id }, select: { cancelledAt: true } })
   if (campaign && !campaign.cancelledAt && ['planName', 'billingStatus', 'billingAmount', 'billingSubtotal', 'billingVatRate', 'billingDueAt'].some(key => key in parsed.data)) return NextResponse.json({ error: 'Tariful este gestionat de campanie. Înregistrează plata în cardul campaniei sau treci afacerea la facturare manuală.' }, { status: 409 })
   if (parsed.data.billingStatus === 'GRATUIT' || (current.billingStatus === 'GRATUIT' && parsed.data.billingStatus !== undefined)) return NextResponse.json({ error: 'Schimbă tipul contului din cardul „Tipul contului”.' }, { status: 409 })
@@ -113,7 +116,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.billingInvoiceExternalId = null
   }
 
-  await prisma.business.update({ where: { id }, data })
+  const updated = await prisma.business.updateMany({
+    where: { id, billingIpayOrderId: current.billingIpayOrderId, billingIpayPaymentState: current.billingIpayPaymentState },
+    data,
+  })
+  if (updated.count !== 1) return NextResponse.json({ error: 'Starea plății s-a modificat. Reîncarcă pagina.' }, { status: 409 })
 
   return NextResponse.json({ success: true })
 }
@@ -128,6 +135,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const business = await prisma.business.findUnique({ where: { id: businessId } })
   if (!business) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
+  if (hasUnresolvedIpayPayment(business)) return NextResponse.json({ error: 'Plata iPay este în curs. Verifică rezultatul înainte de a șterge afacerea.' }, { status: 409 })
   const signedContracts = await prisma.contractSignature.count({ where: { businessId } })
   if (signedContracts) return NextResponse.json({ error: 'Businessul are contracte semnate. Arhivează documentele contractuale înainte de ștergerea definitivă a contului.' }, { status: 409 })
 

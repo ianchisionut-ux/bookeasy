@@ -15,7 +15,7 @@
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "test:ipay": "node --experimental-strip-types scripts/test-ipay.ts",
+    "test:ipay": "node --experimental-strip-types scripts/test-ipay.ts && node scripts/test-ipay-checkout.cjs && node scripts/test-ipay-reconciliation.cjs",
     "test:core": "node scripts/test-runtime-audit.cjs"
   },
   "prisma": {

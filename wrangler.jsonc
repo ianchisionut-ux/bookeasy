@@ -34,6 +34,6 @@
     "CLOUDFLARE_WEB_ANALYTICS_TOKEN": "e8f89610dbac47ba9950572038f70d6c"
   },
   "triggers": {
-    "crons": ["0 3-7 * * *"]
+    "crons": ["0 3-7 * * *", "*/5 * * * *"]
   }
 }

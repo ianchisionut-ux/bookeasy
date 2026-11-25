@@ -4,7 +4,7 @@ import { LAUNCH_OFFER, launchCycle, launchMonth, launchPrice, launchView } from 
 import {findPromotion,promotionIsOpen,promotionVersion} from './promotion-campaigns'
 import {getPlanPrices} from './plan-pricing'
 import {FREE_CAMPAIGN_TERMS_VERSION} from './free-campaign-terms'
-import { resetIpayPaymentFields } from './billing-ipay'
+import { hasUnresolvedIpayPayment, resetIpayPaymentFields } from './billing-ipay'
 
 type Tx = Prisma.TransactionClient
 
@@ -82,6 +82,8 @@ export async function syncLaunchInTransaction(tx: Tx, businessId: string, now: D
   const unpaid = await tx.launchBillingPeriod.findFirst({ where: { enrollmentId: enrollment.id, amountMinor: { gt: 0 }, paidAt: null, startsAt: { lte: now } }, orderBy: { cycle: 'asc' } })
   const selected = unpaid ?? await tx.launchBillingPeriod.findUniqueOrThrow({ where: { enrollmentId_cycle: { enrollmentId: enrollment.id, cycle: currentCycle } } })
   const changedCycle = enrollment.billingCycle !== selected.cycle
+  // Keep the invoice attached to a bank attempt until it is reconciled.
+  if (changedCycle && hasUnresolvedIpayPayment(business)) return false
   const gross = selected.amountMinor / 100
   const status = gross === 0 ? 'GRATUIT' : selected.paidAt ? 'PLATIT' : !changedCycle && business.billingStatus === 'RESTANT' ? 'RESTANT' : 'NEPLATIT'
   await tx.business.update({ where: { id: businessId }, data: {

@@ -21,6 +21,7 @@ import Link from 'next/link'
 import { isPlatformSmsReady } from '@/lib/sms-routing'
 import ServicesManager from '../servicii/services-manager'
 import BusinessPhotosUploader from '@/components/business-photos-uploader'
+import { isPlatformIpayConfigured } from '@/lib/billing-ipay'
 
 // Luni primul, Duminică ultima — ordinea de afișare a programului de lucru
 // (valorile 'weekday' rămân 0=Duminică...6=Sâmbătă, standardul JS getDay(), doar ordinea vizuală se schimbă)
@@ -105,6 +106,8 @@ export default async function SetariPage({ searchParams }: { searchParams: Promi
           paymentState={business.billingIpayPaymentState}
           paymentError={business.billingIpayPaymentError}
           paymentResult={query.payment}
+          paymentAvailable={isPlatformIpayConfigured()}
+          canInitiatePayment={(session as any).role === 'OWNER' && !(session as any).isSuperAdmin}
         />
 
         <SettingsForm

@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { rateLimit } from '@/lib/rate-limit'
 import { deleteR2File, putR2File, r2Url } from '@/lib/r2-storage'
-import { resetIpayPaymentFields } from '@/lib/billing-ipay'
+import { hasUnresolvedIpayPayment, resetIpayPaymentFields } from '@/lib/billing-ipay'
 import { lockLaunchBusiness, refreshLaunchIfDue } from '@/lib/launch-campaign'
 
 const MAX_SIZE = 10 * 1024 * 1024
@@ -14,8 +14,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!(session as any)?.isSuperAdmin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const { id } = await params
   await refreshLaunchIfDue(id)
-  const business = await prisma.business.findUnique({ where: { id }, select: { billingInvoiceUrl: true, billingDueAt: true, billingAmount: true } })
+  const business = await prisma.business.findUnique({ where: { id }, select: { billingInvoiceUrl: true, billingDueAt: true, billingAmount: true, billingIpayOrderId: true, billingIpayPaymentState: true } })
   if (!business) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
+  if (hasUnresolvedIpayPayment(business)) return NextResponse.json({ error: 'Plata iPay este în curs. Verifică rezultatul înainte de a înlocui factura.' }, { status: 409 })
   const enrollment = await prisma.launchEnrollment.findUnique({ where: { businessId: id } })
   const managed = Boolean(enrollment && !enrollment.cancelledAt)
   if (managed && !Number(business.billingAmount)) return NextResponse.json({ error: 'Nu este necesară o factură pentru perioada gratuită.' }, { status: 400 })
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await lockLaunchBusiness(tx, id)
     const fresh = await tx.business.findUniqueOrThrow({ where: { id } })
     const freshEnrollment = await tx.launchEnrollment.findUnique({ where: { businessId: id } })
+    if (hasUnresolvedIpayPayment(fresh)) throw new Error('Plata iPay este în curs. Verifică rezultatul înainte de a înlocui factura.')
     if (fresh.billingInvoiceUrl !== business.billingInvoiceUrl || fresh.billingDueAt?.getTime() !== business.billingDueAt?.getTime() || freshEnrollment?.billingCycle !== enrollment?.billingCycle) throw new Error('Perioada de facturare s-a schimbat. Reîncarcă pagina înainte de încărcare.')
     await tx.business.update({
       where: { id },
@@ -49,7 +51,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   } catch (error) {
     console.error('Eroare upload factură:', error)
-    return NextResponse.json({ error: 'Factura nu a putut fi încărcată în stocarea privată.' }, { status: 500 })
+    const conflict = error instanceof Error && error.message.startsWith('Plata iPay este în curs.')
+    return NextResponse.json({ error: conflict ? error.message : 'Factura nu a putut fi încărcată în stocarea privată.' }, { status: conflict ? 409 : 500 })
   }
   return NextResponse.json({ success: true })
 }
@@ -58,8 +61,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const session = await auth()
   if (!(session as any)?.isSuperAdmin) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const { id } = await params
-  const business = await prisma.business.findUnique({ where: { id }, select: { billingInvoiceUrl: true } })
+  const business = await prisma.business.findUnique({ where: { id }, select: { billingInvoiceUrl: true, billingIpayOrderId: true, billingIpayPaymentState: true } })
   if (!business) return NextResponse.json({ error: 'Business-ul nu există.' }, { status: 404 })
+  if (hasUnresolvedIpayPayment(business)) return NextResponse.json({ error: 'Plata iPay este în curs. Verifică rezultatul înainte de a șterge factura.' }, { status: 409 })
   if (!business.billingInvoiceUrl) return NextResponse.json({ success: true })
   if (business.billingInvoiceUrl.startsWith('signal:')) {
     return NextResponse.json({ error: 'Factura fiscală emisă în Signal nu poate fi ștearsă. Pentru corecții folosește storno în Signal.' }, { status: 409 })
@@ -68,6 +72,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     await prisma.$transaction(async tx => {
     await lockLaunchBusiness(tx, id)
+    const fresh = await tx.business.findUniqueOrThrow({ where: { id } })
+    if (hasUnresolvedIpayPayment(fresh)) throw new Error('Plata iPay este în curs. Verifică rezultatul înainte de a șterge factura.')
     const enrollment = await tx.launchEnrollment.findUnique({ where: { businessId: id } })
     const managed = Boolean(enrollment && !enrollment.cancelledAt)
     await tx.business.updateMany({
@@ -81,6 +87,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Eroare ștergere factură:', error)
-    return NextResponse.json({ error: 'Factura nu a putut fi ștearsă.' }, { status: 500 })
+    const conflict = error instanceof Error && error.message.startsWith('Plata iPay este în curs.')
+    return NextResponse.json({ error: conflict ? error.message : 'Factura nu a putut fi ștearsă.' }, { status: conflict ? 409 : 500 })
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getIpayInvoiceFinish, isPlatformIpayConfigured } from '@/lib/billing-ipay'
+import { canReconcilePlatformIpay, getIpayInvoiceFinish } from '@/lib/billing-ipay'
 import { loadIpayBusiness, reconcileIpayBusiness } from '@/lib/billing-ipay-reconciliation'
 
 const RETRY_DELAYS_MS = [0, 250, 750, 1500]
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ busi
   let business = await loadIpayBusiness(businessId)
   if (
     !business ||
-    !isPlatformIpayConfigured() ||
+    !canReconcilePlatformIpay() ||
     !/^[a-f0-9-]{36}$/i.test(orderId) ||
     !token || token.length > 512 ||
     orderId !== business.billingIpayOrderId

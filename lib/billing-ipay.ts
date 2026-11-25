@@ -13,6 +13,11 @@ import {
 export const ACTIVE_IPAY_STATES = ['REGISTERING', 'REGISTERED', 'VERIFYING'] as const
 export const IPAY_ATTEMPT_TTL_MS = 30 * 60 * 1000
 
+export function hasUnresolvedIpayPayment(invoice: { billingIpayOrderId: string | null; billingIpayPaymentState: string | null }) {
+  if (invoice.billingIpayPaymentState === 'DECLINED' || invoice.billingIpayPaymentState === 'DEPOSITED') return false
+  return Boolean(invoice.billingIpayPaymentState || invoice.billingIpayOrderId)
+}
+
 export function resetIpayPaymentFields() {
   return {
     billingIpayOrderId: null,
@@ -73,7 +78,17 @@ export function getPlatformIpayMerchant(): IpayMerchant {
 
 export function isPlatformIpayConfigured() {
   const merchant = getPlatformIpayMerchant()
-  return Boolean(merchant.username && merchant.password && process.env.APP_URL)
+  // Credentials alone must never expose a live payment button. This flag is
+  // the operational kill switch for new orders; reconciliation remains active
+  // for orders already registered with the bank.
+  return process.env.PLATFORM_IPAY_ENABLED === 'true'
+    && !(process.env.BOOKEASY_CLOUDFLARE_PREVIEW === 'true' && merchant.live)
+    && Boolean(merchant.username && merchant.password && process.env.APP_URL)
+}
+
+export function canReconcilePlatformIpay() {
+  const merchant = getPlatformIpayMerchant()
+  return Boolean(merchant.username && merchant.password)
 }
 
 export function isActiveIpayAttempt(state: string | null, startedAt: Date | null, now = Date.now()) {
