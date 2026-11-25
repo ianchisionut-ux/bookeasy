@@ -44,6 +44,7 @@ const scripts = [
   'prepare-dual-accounts.mjs',
   'prepare-signup-funnel.mjs',
   'prepare-campaign-management.mjs',
+  'prepare-central-sms.mjs',
   'prepare-sms-limits.mjs',
   'prepare-service-prices.mjs',
   'ensure-billing-mode-history.mjs',
