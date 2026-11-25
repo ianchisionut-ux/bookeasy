@@ -143,7 +143,7 @@ export async function getR2File(key: string, options?: { includeLegacyBlob?: boo
     ...(options?.range ? { headers: { Range: options.range } } : {}),
   })
   if (!result) return null
-  if (!result.stream || (result.statusCode !== 200 && Number(result.statusCode) !== 206)) return null
+  if (!result.stream) return null
   const contentRange = result.headers.get('content-range') ?? undefined
   const contentLength = Number(result.headers.get('content-length'))
   return {
