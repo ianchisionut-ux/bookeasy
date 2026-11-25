@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 type Result = { databaseReferences: number; sourceBytes: number; sourceSha256: string;
-  r2Present: boolean; r2Verified: boolean; copyNeeded: boolean; error?: string }
+  r2Present: boolean; r2Verified: boolean; copyNeeded: boolean; error?: string; stage?: string }
 
 export default function PublicArchiveControls() {
   const [running, setRunning] = useState(false)
@@ -20,7 +20,9 @@ export default function PublicArchiveControls() {
         body: JSON.stringify({ mode }), cache: 'no-store',
       })
       const value = await response.json() as Result
-      if (!response.ok || value.error) throw new Error(value.error || `HTTP ${response.status}`)
+      if (!response.ok || value.error) {
+        throw new Error(`${value.error || `HTTP ${response.status}`}${value.stage ? ` (${value.stage})` : ''}`)
+      }
       setResult(value)
       setMessage(value.r2Verified
         ? 'Fișierul public este copiat și identic în R2. Sursa Vercel rămâne neatinsă.'

@@ -94,7 +94,7 @@ async function verify(item: BlobItem, token: string, destination: Bucket) {
   assertPrivateItem(item)
   const tombstone = `_deleted/${hashText(item.pathname)}`
   if (await destination.head(tombstone)) throw new PurgeIssue('destination_marked_deleted')
-  const source = await get(item.pathname, { access: 'private', token, useCache: false })
+  const source = await get(item.url, { access: 'private', token, useCache: false })
   if (!source || source.statusCode !== 200 || !source.stream) throw new PurgeIssue('source_unavailable')
   if (source.blob.url !== item.url) {
     await source.stream.cancel()
