@@ -4,9 +4,14 @@ import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const cli = fileURLToPath(new URL('../node_modules/@opennextjs/cloudflare/dist/cli/index.js', import.meta.url))
+// Cloudflare builds must never inherit the legacy Vercel production migration gate.
+const buildEnv = { ...process.env }
+for (const key of Object.keys(buildEnv)) {
+  if (key.toUpperCase() === 'VERCEL_ENV') delete buildEnv[key]
+}
 const result = spawnSync(process.execPath, [cli, 'build', ...process.argv.slice(2)], {
   stdio: 'inherit',
-  env: process.env,
+  env: buildEnv,
 })
 if (result.error) throw result.error
 if (result.status !== 0) process.exit(result.status ?? 1)

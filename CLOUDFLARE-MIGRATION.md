@@ -1,12 +1,14 @@
 # BookEasy on Cloudflare Workers
 
-## Migration from the November 2026 production release
+## Current deployment and production builds
 
-The migration starts from the live Vercel revision `175fa19`. The authoritative nameservers for `bookeasy.ro` are currently `ns1.vercel-dns.com` and `ns2.vercel-dns.com`.
+Production runs on Cloudflare Workers with Neon and the `BOOKEASY_FILES` R2 bucket. The November 2026 migration started from Vercel revision `175fa19`; its Blob objects and database references have been transferred to R2. The Worker no longer needs a Vercel Blob token.
 
-- Use `wrangler.preview.jsonc` to deploy the isolated `bookeasy-preview` Worker. Its resources are separate from production and its responses are marked `noindex`.
-- For the production Worker, keep the current Neon database and the matching `AUTH_SECRET` and `ENCRYPTION_KEY`. Provision the current provider secrets directly in Cloudflare, including the Vercel Blob token used for existing uploads and the SMSAPI credentials. Configure client-side `NEXT_PUBLIC_` variables when building.
-- Before switching nameservers, compare the Cloudflare DNS zone with the live zone, including mail and domain-verification records. Verify TLS and the authenticated booking, calendar, media, and integration flows. Switch scheduled jobs with the application traffic and retain the Vercel deployment as the rollback origin.
+- Use `wrangler.preview.jsonc` for the isolated `bookeasy-preview` Worker and its separate R2 bucket. Its responses are marked `noindex`.
+- Keep the production Neon database and the matching `AUTH_SECRET` and `ENCRYPTION_KEY`. Provision the current provider secrets directly in Cloudflare, including SMSAPI credentials. Configure client-side `NEXT_PUBLIC_` variables when building.
+- Before a release that needs schema changes, run `npm run migrate:cloudflare` separately with the intended production `DATABASE_URL` and `BOOKEASY_CLOUDFLARE_PRODUCTION_MIGRATION=true` supplied only to that command. It checks both values, rejects Preview markers, and then runs the existing preparation scripts in order. Check the database target before running it.
+- Keep `BOOKEASY_CLOUDFLARE_PRODUCTION_MIGRATION` and the legacy `VERCEL_ENV=production` setting out of automatic Workers Builds and Preview. `npm run build:cloudflare` strips `VERCEL_ENV` before invoking OpenNext, so those builds only compile the app.
+- Before a deployment, verify TLS and authenticated booking, calendar, media, and integration flows. Keep scheduled jobs aligned with the application deployment.
 - BT iPay stays in its current disabled checkout state. Configure the merchant sandbox and confirm any IP allowlist requirement with BT before enabling a payment flow.
 
 ## Historical migration from September 2026
@@ -19,7 +21,7 @@ The existing proxied web DNS records remain as fallback origins; Worker routes s
 
 ## Runtime
 
-- Next.js is packaged with OpenNext; uploads use the private `BOOKEASY_FILES` R2 binding.
+- Next.js is packaged with OpenNext; all managed uploads and downloads use the `BOOKEASY_FILES` R2 binding.
 - Prisma clients are cached per Cloudflare execution context, not globally or per model access. This preserves client identity for transactions and isolates WebSocket I/O between requests.
 - Auth.js trusts the deployment proxy. Preserve the production `AUTH_SECRET` and `ENCRYPTION_KEY`; replacing these arbitrarily invalidates sessions or existing integration tokens.
 - Runtime secrets must contain real values. Vercel sensitive variables cannot be recovered using `env pull`; never bulk-import redacted placeholders.
@@ -31,18 +33,18 @@ The existing proxied web DNS records remain as fallback origins; Worker routes s
 2. Keep the persisted Worker routes active; removing them sends traffic to the fallback DNS origin.
 4. Verify authenticated dashboard access, Google Calendar and Meta callbacks, email, and file upload/download on the production hostname. Public HTTP 200 checks do not validate these integrations.
 5. Observe the next scheduled executions. Configuration was verified; jobs were not manually run because they send notifications and may suspend overdue accounts.
-6. Validate the first Workers Builds deployment. GitHub is connected to `cloudflare-migration`, with preview builds disabled, build command `npm run build:cloudflare`, deploy command `npx wrangler deploy --config wrangler.jsonc`, root `/`, and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` configured at build time. The user approved Cloudflare's generated `bookeasy build token`. Keep using this branch until a merge can be performed without triggering an incompatible Vercel production build.
+6. Validate Workers Builds deployments. Use build command `npm run build:cloudflare`, deploy command `npx wrangler deploy --config wrangler.jsonc`, root `/`, and configure `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` at build time. Run the separate production database migration step before deploying a release that needs it.
 
 ## File migration completed on 2026-09-05
 
 The legacy clinic cover was copied from public Vercel Blob to `BOOKEASY_FILES` R2. Source and destination SHA-256 matched, and the database URL was updated with a compare-and-set guard. A local backup and rollback manifest are under `.wrangler/cover-migration-6bpNML/`. The original Blob was not deleted.
 
-`scripts/audit-vercel-files.cjs` scanned every public-schema text column after the update and found no remaining Vercel references. R2 public URLs bypass the Next image optimizer because its local API image lookup returned 404; the R2 endpoint itself returned 200 image/jpeg.
+The cutover audit scanned every public-schema text column after the update and found no remaining Vercel references. R2 public URLs bypass the Next image optimizer because its local API image lookup returned 404; the R2 endpoint itself returned 200 image/jpeg. The one-time Blob copy and audit scripts were removed after their results were recorded.
 
 Local DNS now resolves both Cloudflare IPv4 addresses. The production Worker routes and R2 do not require the Vercel project. The existing A-record origin addresses are only fallbacks when Worker routes are absent; keep the Worker routes in place. Delete only the Vercel BookEasy project, not the independently used Neon database or any external integration account. Authenticated happy-path and external message/email/calendar tests remain unverified and are separate from removal of the Vercel file dependency.
 
 ## Checks
 
-`npm run build:cloudflare` builds and checks types. `npx tsx scripts/test-prisma-request-scope.ts` tests request isolation and client identity without executing the WASM database engine. It does not test database transactions end to end.
+`npm run build:cloudflare` builds and checks types without preparing the database. `npx tsx scripts/test-prisma-request-scope.ts` tests request isolation and client identity without executing the WASM database engine. It does not test database transactions end to end.
 
 `node scripts/check-cloudflare-source.cjs <local-env-file>` is a read-only database audit that prints counts and decryptability results, never token values. The source checked on 2026-09-05 contained zero invoice/document/photo records, zero channel records, and one Google Calendar connection whose token could be decrypted with the source encryption key. Public business slugs matched the Vercel API; this is not a complete database identity or integration audit.
