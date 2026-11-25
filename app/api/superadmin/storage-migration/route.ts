@@ -143,13 +143,18 @@ export async function POST(request: NextRequest) {
   }
   if (!bucket) return NextResponse.json({ error: 'destination_not_configured' }, { status: 503, headers })
 
-  const totals = { examined: 0, missing: 0, present: 0, copied: 0, verifiedExisting: 0, verifiedBytes: 0 }
+  const totals = { examined: 0, deleted: 0, missing: 0, present: 0, copied: 0, verifiedExisting: 0, verifiedBytes: 0 }
   try {
     const page = await list({ mode: 'expanded', limit: input.limit, cursor: input.cursor, token })
     if (page.hasMore && !page.cursor) throw new MigrationIssue('source_cursor_missing')
 
     for (const item of page.blobs) {
       totals.examined++
+      const deletedMarker = `_deleted/${createHash('sha256').update(item.pathname).digest('hex')}`
+      if (await bucket.head(deletedMarker)) {
+        totals.deleted++
+        continue
+      }
       const current = await bucket.head(item.pathname)
       if (current) totals.present++
       else totals.missing++

@@ -103,6 +103,9 @@ async function testR2PrimaryAndLegacyFallback() {
     process.env.BLOB_READ_WRITE_TOKEN = 'legacy-test-token'
     f.versions.push({ pathname: key, url: 'https://blob.invalid/1', etag: 'etag-1', bytes: Buffer.from('old image'), contentType: 'image/jpeg' })
     assert.equal(await new Response((await f.storage.getR2File(key)).body).text(), 'old image')
+    const legacyRange = await f.storage.getR2File(key, { range: 'bytes=2-4' })
+    assert.equal(legacyRange.contentRange, 'bytes 2-4/9')
+    assert.equal(await new Response(legacyRange.body).text(), 'd i')
     assert.equal((await f.storage.getR2File(key, { includeLegacyBlob: false })), null)
     await assert.rejects(f.storage.putR2File(key, file, { allowOverwrite: false }), /stocarea veche/)
     await f.storage.putR2File(key, file)

@@ -31,7 +31,8 @@
   },
   "vars": {
     "ENABLE_CRON_TRIGGERS": "true",
-    "CLOUDFLARE_WEB_ANALYTICS_TOKEN": "e8f89610dbac47ba9950572038f70d6c"
+    "CLOUDFLARE_WEB_ANALYTICS_TOKEN": "e8f89610dbac47ba9950572038f70d6c",
+    "STORAGE_MIGRATION_ENABLED": "true"
   },
   "triggers": {
     "crons": ["0 3-7 * * *"]
