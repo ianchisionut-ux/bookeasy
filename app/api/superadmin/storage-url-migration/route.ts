@@ -329,8 +329,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(await allColumnsAudit(Number(offsetText)), { headers: responseHeaders })
     }
     return NextResponse.json(await counts(), { headers: responseHeaders })
-  } catch {
-    return NextResponse.json({ error: 'audit_failed' }, { status: 503, headers: responseHeaders })
+  } catch (error) {
+    const detail = error instanceof Error ? error.message.slice(0, 700) : 'unknown'
+    console.error('Storage URL audit failed:', detail)
+    return NextResponse.json({ error: 'audit_failed', detail }, { status: 503, headers: responseHeaders })
   }
 }
 
