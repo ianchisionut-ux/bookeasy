@@ -57,7 +57,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
   for (const attachment of email.attachments) {
     if (attachment.storageKey) await deleteR2File(r2Url(attachment.storageKey)).catch((error) =>
-      console.error('[email] Blob cleanup failed:', error))
+      console.error('[email] R2 cleanup failed:', error))
   }
   await prisma.platformEmail.delete({ where: { id } })
   return NextResponse.json({ ok: true })

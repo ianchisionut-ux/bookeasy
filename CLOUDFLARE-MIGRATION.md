@@ -4,10 +4,10 @@
 
 Production runs on Cloudflare Workers with Neon and the `BOOKEASY_FILES` R2 bucket. The November 2026 migration started from Vercel revision `175fa19`; its Blob objects and database references have been transferred to R2. The Worker no longer needs a Vercel Blob token.
 
-- Use `wrangler.preview.jsonc` for the isolated `bookeasy-preview` Worker and its separate R2 bucket. Its responses are marked `noindex`.
+- Use `wrangler.preview.jsonc` for the isolated `bookeasy-preview` Worker and its separate R2 bucket. Set `BOOKEASY_PREVIEW_DATABASE_URL` as a secret on that Worker with a separate Neon database. Preview database access fails closed if the secret is missing or equals `DATABASE_URL`. Its responses are marked `noindex`.
 - Keep the production Neon database and the matching `AUTH_SECRET` and `ENCRYPTION_KEY`. Provision the current provider secrets directly in Cloudflare, including SMSAPI credentials. Configure client-side `NEXT_PUBLIC_` variables when building.
 - Before a release that needs schema changes, run `npm run migrate:cloudflare` separately with the intended production `DATABASE_URL` and `BOOKEASY_CLOUDFLARE_PRODUCTION_MIGRATION=true` supplied only to that command. It checks both values, rejects Preview markers, and then runs the existing preparation scripts in order. Check the database target before running it.
-- Keep `BOOKEASY_CLOUDFLARE_PRODUCTION_MIGRATION` and the legacy `VERCEL_ENV=production` setting out of automatic Workers Builds and Preview. `npm run build:cloudflare` strips `VERCEL_ENV` before invoking OpenNext, so those builds only compile the app.
+- Keep `BOOKEASY_CLOUDFLARE_PRODUCTION_MIGRATION` and the legacy `VERCEL_ENV=production` setting out of automatic Workers Builds and Preview. Both `npm run build` and `npm run build:cloudflare` only compile the app; the Cloudflare wrapper also strips `VERCEL_ENV` as a safeguard.
 - Before a deployment, verify TLS and authenticated booking, calendar, media, and integration flows. Keep scheduled jobs aligned with the application deployment.
 - BT iPay stays in its current disabled checkout state. Configure the merchant sandbox and confirm any IP allowlist requirement with BT before enabling a payment flow.
 
@@ -47,4 +47,4 @@ Local DNS now resolves both Cloudflare IPv4 addresses. The production Worker rou
 
 `npm run build:cloudflare` builds and checks types without preparing the database. `npx tsx scripts/test-prisma-request-scope.ts` tests request isolation and client identity without executing the WASM database engine. It does not test database transactions end to end.
 
-`node scripts/check-cloudflare-source.cjs <local-env-file>` is a read-only database audit that prints counts and decryptability results, never token values. The source checked on 2026-09-05 contained zero invoice/document/photo records, zero channel records, and one Google Calendar connection whose token could be decrypted with the source encryption key. Public business slugs matched the Vercel API; this is not a complete database identity or integration audit.
+`node scripts/check-cloudflare-source.cjs <local-env-file>` is a narrow, read-only database audit that prints selected record counts and decryptability results, never token values. The source checked on 2026-09-05 contained zero invoice/document/photo records, zero channel records, and one Google Calendar connection whose token could be decrypted with the source encryption key. A separate live audit checked all 432 text/JSON columns and found zero Blob references; the source-check script does not repeat that global audit. Public business slugs matched the Vercel API; this is not a complete database identity or integration audit.

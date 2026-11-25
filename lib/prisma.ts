@@ -6,8 +6,16 @@ import { retryDatabaseRead } from './database-read-retry'
 const globalForPrisma = globalThis as unknown as { bookeasyPrisma?: PrismaClient }
 const workerClients = new WeakMap<object, PrismaClient>()
 
-function createPrismaClient(inWorker: boolean) {
-  const connectionString = process.env.DATABASE_URL
+type DatabaseEnv = { DATABASE_URL?: string; BOOKEASY_CLOUDFLARE_PREVIEW?: string; BOOKEASY_PREVIEW_DATABASE_URL?: string }
+
+function createPrismaClient(inWorker: boolean, env?: DatabaseEnv) {
+  const preview = inWorker && env?.BOOKEASY_CLOUDFLARE_PREVIEW === 'true'
+  // Preview must opt in to its own database secret. Ignore DATABASE_URL even if
+  // a production secret was accidentally copied onto the preview Worker.
+  const connectionString = preview ? env?.BOOKEASY_PREVIEW_DATABASE_URL : process.env.DATABASE_URL
+  if (preview && (!connectionString || connectionString === (env?.DATABASE_URL ?? process.env.DATABASE_URL))) {
+    throw new Error('BOOKEASY_PREVIEW_DATABASE_URL trebuie configurat separat de DATABASE_URL pentru Preview.')
+  }
   if (!connectionString) throw new Error('DATABASE_URL nu este configurat.')
   const client = new PrismaClient({
     adapter: new PrismaNeon({
@@ -36,13 +44,14 @@ function currentPrismaClient() {
   try {
     executionContext = getCloudflareContext().ctx as object
   } catch {
-    // Next build, local Next server and Vercel use ordinary Node processes.
+    // Next build and the local Next server use ordinary Node processes.
     return globalForPrisma.bookeasyPrisma ??= createPrismaClient(false)
   }
 
   const existing = workerClients.get(executionContext)
   if (existing) return existing
-  const client = createPrismaClient(true)
+  const env = getCloudflareContext().env as DatabaseEnv
+  const client = createPrismaClient(true, env)
   workerClients.set(executionContext, client)
   return client
 }

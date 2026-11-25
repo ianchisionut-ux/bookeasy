@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - codex/cloudflare-workers
+      - codex/cloudflare-final-20261125
   workflow_dispatch:
 
 permissions:
@@ -34,7 +35,9 @@ jobs:
         run: |
           node scripts/test-cloudflare-cron.cjs
           npx --no-install tsx scripts/test-prisma-request-scope.ts
+          node scripts/test-prisma-preview-db.cjs
           node scripts/test-patient-document-deletion.cjs
+          node scripts/test-account-deletion-r2.cjs
           node scripts/test-tutorial-r2.cjs
           node scripts/test-invitation-header.cjs
       - name: Build the isolated Worker

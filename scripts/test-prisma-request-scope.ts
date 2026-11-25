@@ -8,6 +8,7 @@ async function main() {
   const previousDatabaseUrl = process.env.DATABASE_URL
   let firstDisconnect: (() => Promise<void>) | undefined
   let secondDisconnect: (() => Promise<void>) | undefined
+  let previewDisconnect: (() => Promise<void>) | undefined
   let nodeDisconnect: (() => Promise<void>) | undefined
   try {
     process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test'
@@ -21,6 +22,16 @@ async function main() {
     secondDisconnect = prisma.$disconnect
     assert.notEqual(first, prisma.business, 'Different requests must use different clients')
     assert.equal(prisma.business, prisma.business, 'Second request must also reuse its client')
+    state[symbol] = { env: { BOOKEASY_CLOUDFLARE_PREVIEW: 'true', DATABASE_URL: process.env.DATABASE_URL }, ctx: {} }
+    assert.throws(() => prisma.business, /BOOKEASY_PREVIEW_DATABASE_URL/, 'Preview must reject a missing dedicated database')
+    state[symbol] = { env: { BOOKEASY_CLOUDFLARE_PREVIEW: 'true', DATABASE_URL: process.env.DATABASE_URL,
+      BOOKEASY_PREVIEW_DATABASE_URL: process.env.DATABASE_URL }, ctx: {} }
+    assert.throws(() => prisma.business, /BOOKEASY_PREVIEW_DATABASE_URL/, 'Preview must reject the production URL')
+    state[symbol] = { env: { BOOKEASY_CLOUDFLARE_PREVIEW: 'true', DATABASE_URL: process.env.DATABASE_URL,
+      BOOKEASY_PREVIEW_DATABASE_URL: 'postgresql://test:test@localhost:5432/preview' }, ctx: {} }
+    const preview = prisma.business
+    previewDisconnect = prisma.$disconnect
+    assert.notEqual(preview, first, 'Preview must use a separate client')
     delete state[symbol]
     const nodeClient = prisma.business
     nodeDisconnect = prisma.$disconnect
@@ -34,6 +45,7 @@ async function main() {
     else process.env.DATABASE_URL = previousDatabaseUrl
     await firstDisconnect?.()
     await secondDisconnect?.()
+    await previewDisconnect?.()
     await nodeDisconnect?.()
   }
 }

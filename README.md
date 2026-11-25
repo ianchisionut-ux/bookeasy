@@ -8,7 +8,7 @@ Instalează dependențele cu npm ci, configurează mediul local după .env.examp
 
 - npm run test:core verifică anularea cererilor și webhook-ul Meta cu furnizori și bază de date simulate. Nu trimite mesaje și nu face cereri de rețea.
 - npm run test:ipay verifică regulile tranzacțiilor istorice BT iPay.
-- npm run build compilează proiectul și verifică tipurile. `npm run build:cloudflare` elimină gate-ul vechi `VERCEL_ENV` pentru a nu rula migrări în build, inclusiv în Preview.
+- npm run build compilează proiectul și verifică tipurile; nici această comandă, nici `npm run build:cloudflare` nu rulează migrări de bază de date. Preview folosește `BOOKEASY_PREVIEW_DATABASE_URL` configurat ca secret al Workerului `bookeasy-preview`; fără el, accesul la baza de date este blocat.
 - Înaintea unei publicări care necesită modificări de schemă, rulează separat `npm run migrate:cloudflare` dintr-un mediu controlat, cu `DATABASE_URL` pentru baza Neon de producție și `BOOKEASY_CLOUDFLARE_PRODUCTION_MIGRATION=true` setate explicit doar pentru acea comandă. Nu configura markerul în Workers Builds sau Preview. Comanda se oprește dacă markerul sau baza lipsesc. Nu șterge migrațiile sau istoricul pentru a reveni la o versiune anterioară.
 
 Comenzile vechi de test pentru Fitness și campania de lansare nu sunt incluse în această copie a sursei publicate; nu sunt expuse ca scripturi npm funcționale.

@@ -6,8 +6,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ key
   const key = segments.join('/')
   if (!key.startsWith('public/')) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  // R2 is primary. During the copy, old files are served from Blob only when
-  // absent in R2; a deletion tombstone blocks either copy from reappearing.
+  // The R2 tombstone keeps deleted files unavailable during a concurrent write.
   const object = await getR2File(key)
   if (!object) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
