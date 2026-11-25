@@ -290,7 +290,7 @@ function quoteIdentifier(value: string) {
 
 async function allColumnsAudit(offset: number) {
   const columns = await prisma.$queryRaw<{ table_name: string; column_name: string }[]>`
-    SELECT c.table_name, c.column_name
+    SELECT c.table_name::text AS table_name, c.column_name::text AS column_name
     FROM information_schema.columns AS c
     JOIN information_schema.tables AS t
       ON t.table_schema = c.table_schema AND t.table_name = c.table_name
