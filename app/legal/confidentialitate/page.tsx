@@ -6,8 +6,7 @@ import { company } from '@/lib/company'
 export const metadata: Metadata = { title: 'Politică de confidențialitate | BookEasy', description: 'Cum prelucrează BookEasy datele cu caracter personal și cum îți poți exercita drepturile.' }
 
 const processors = [
-  ['Vercel', 'Găzduire, distribuție, stocarea fișierelor în Vercel Blob și statistici Vercel Web Analytics cu acord', 'Conform regiunii configurate și operațiunilor furnizorului'],
-  ['Cloudflare', 'Infrastructură de rețea și sarcini tehnice, acolo unde sunt configurate', 'Rețea globală'],
+  ['Cloudflare', 'Găzduire și distribuție prin Workers, stocarea fișierelor în R2 și statistici Web Analytics după acord', 'Conform regiunii configurate și operațiunilor furnizorului'],
   ['Neon', 'Baza de date PostgreSQL', 'Conform regiunii configurate și operațiunilor furnizorului'],
   ['Resend Inc.', 'E-mail tranzacțional', 'UE/SUA'],
   ['Google LLC', 'Autentificare opțională a clienților, Hărți, Calendar și Business Profile', 'UE/SUA'],
@@ -19,7 +18,7 @@ const processors = [
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Politică de confidențialitate" updatedAt="22 noiembrie 2026" version="2.9" description="Ce date prelucrează BookEasy, în ce scop și cum îți poți exercita drepturile.">
+    <LegalPage title="Politică de confidențialitate" updatedAt="25 noiembrie 2026" version="3.0" description="Ce date prelucrează BookEasy, în ce scop și cum îți poți exercita drepturile.">
       <h2>1. Identitatea operatorului</h2><p>Operatorul platformei este <strong>{company.legalName}</strong>, CUI {company.cui}, {company.tradeRegistryNumber}, cu sediul în {company.registeredAddress}. Pentru întrebări sau exercitarea drepturilor: <a href={`mailto:${company.privacyEmail}`}>{company.privacyEmail}</a>.</p>
       <h2>2. Rolurile privind datele</h2>
       <p>BookEasy acționează ca operator pentru administrarea conturilor, facturare, securitate, suport și relația contractuală. Pentru evidența programărilor, clienților și pacienților gestionată în numele afacerii, afacerea stabilește scopurile și temeiurile, iar BookEasy acționează ca persoană împuternicită, conform <Link href="/dpa">DPA</Link>.</p>
@@ -35,7 +34,7 @@ export default function PrivacyPage() {
         <tr><td>Oraș preferat și locație opțională</td><td>Filtrarea afacerilor din apropiere folosește locația în browser. Dacă soliciți direcții către o afacere și permiți accesul la locație, coordonatele de pornire sunt incluse în linkul deschis în Google Maps. Orașul ales manual rămâne în stocarea locală a browserului.</td><td>Orașul ales rămâne până la ștergerea datelor din browser sau la reluarea detectării.</td></tr>
         <tr><td>Anunț opțional de sosire</td><td>După rezervare, browserul poate cere acces la locație. Dacă îl permiți, BookEasy verifică locația cât pagina este deschisă pe telefon, în apropierea programării, pentru a anunța afacerea când ajungi. Coordonatele și precizia sunt trimise temporar pentru compararea cu sediul afacerii; nu sunt salvate în baza de date. Sunt păstrate doar momentele verificărilor și faptul că ai ajuns. Poți opri verificarea din aplicație.</td><td>Opțiunea de pe telefon este eliminată după sosire sau la scurt timp după programare. Marcajul sosirii urmează retenția rezervării.</td></tr>
         <tr><td>Jurnale tehnice, IP, dispozitiv</td><td>Securitate, prevenirea abuzului și diagnosticare; interes legitim</td><td>Perioada necesară investigației și politicilor furnizorilor</td></tr>
-        <tr><td>Statistici și marketing</td><td>Vercel Web Analytics pentru vizite și Meta Pixel pentru reclame se activează pe baza unor acorduri separate. Contoarele proprii ale înscrierii păstrează ziua, codul promoțional, campania UTM, etapa și numărul de evenimente, fără email, IP sau identificator individual în contoare.</td><td>Curățarea contoarelor elimină înregistrările mai vechi de 365 de zile. Preferințele rămân în browser până la schimbare sau ștergere.</td></tr>
+        <tr><td>Statistici și marketing</td><td>Cloudflare Web Analytics pentru vizite pe pagini publice selectate și Meta Pixel pentru reclame se activează pe baza unor acorduri separate. Contoarele proprii ale înscrierii păstrează ziua, codul promoțional, campania UTM, etapa și numărul de evenimente, fără email, IP sau identificator individual în contoare.</td><td>Curățarea contoarelor elimină înregistrările mai vechi de 365 de zile. Preferințele rămân în browser până la schimbare sau ștergere.</td></tr>
         <tr><td>Solicitări și mesaje</td><td>Executarea contractului pentru suportul contractual sau interesul legitim de a răspunde la solicitări și de a gestiona reclamații.</td><td>Cât timp este necesar scopului și apărării drepturilor</td></tr>
       </tbody></table>
       <div className="legal-callout">Plățile online noi sunt dezactivate. BookEasy nu colectează și nu stochează datele complete ale cardului. Tranzacțiile începute anterior pot fi finalizate de procesatorul folosit la inițiere.</div>

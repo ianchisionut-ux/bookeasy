@@ -31,7 +31,7 @@ export default function CookieConsent() {
   }, [onSignup])
 
   function save(nextFunctional: boolean, nextAnalytics: boolean, nextMarketing: boolean) {
-    const consent: CookieConsentValue = { essential: true, functional: nextFunctional, analytics: nextAnalytics, marketing: nextMarketing, version: 2, savedAt: new Date().toISOString() }
+    const consent: CookieConsentValue = { essential: true, functional: nextFunctional, analytics: nextAnalytics, marketing: nextMarketing, version: 3, savedAt: new Date().toISOString() }
     try {
       localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify(consent))
       if (!nextFunctional) localStorage.removeItem('bookeasy_customer_info')
@@ -48,7 +48,7 @@ export default function CookieConsent() {
       <p className="pr-6 text-sm font-semibold text-[var(--brand-ink)]">Preferințe de stocare</p>
       <p className="mt-1 pr-3 text-xs leading-snug text-gray-600">Alegi separat ce date se memorează și ce instrumente de analiză se activează. <Link href="/legal/cookies" className="font-semibold text-[var(--brand-teal-dark)] underline">Detalii</Link></p>
       <label className="mt-2 flex items-start gap-2 text-xs"><input type="checkbox" checked={functional} onChange={event => setFunctional(event.target.checked)} />Memorează numele și telefonul pentru rezervări viitoare</label>
-      <label className="mt-1 flex items-start gap-2 text-xs"><input type="checkbox" checked={analytics} onChange={event => setAnalytics(event.target.checked)} />Permite statisticile de vizitare Vercel</label>
+      <label className="mt-1 flex items-start gap-2 text-xs"><input type="checkbox" checked={analytics} onChange={event => setAnalytics(event.target.checked)} />Permite statisticile de vizitare Cloudflare</label>
       <label className="mt-1 flex items-start gap-2 text-xs"><input type="checkbox" checked={marketing} onChange={event => setMarketing(event.target.checked)} />Permite măsurarea reclamelor prin Meta Pixel</label>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <button type="button" onClick={() => save(false, false, false)} className="btn-secondary min-h-10 !px-2 !py-2 text-xs">Fără opționale</button>
@@ -64,13 +64,13 @@ export default function CookieConsent() {
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--brand-teal-soft)] text-[var(--brand-teal-dark)]"><Cookie size={19} /></span>
         <div>
           <p className="font-semibold text-[var(--brand-ink)]">Preferințe pentru site</p>
-          <p className="mt-1 text-xs leading-relaxed text-gray-600 sm:text-sm">Sesiunea este necesară pentru autentificare. Statisticile Vercel și măsurarea reclamelor prin Meta Pixel sunt opționale și le poți alege separat.</p>
+          <p className="mt-1 text-xs leading-relaxed text-gray-600 sm:text-sm">Sesiunea este necesară pentru autentificare. Statisticile Cloudflare și măsurarea reclamelor prin Meta Pixel sunt opționale și le poți alege separat.</p>
           <Link href="/legal/cookies" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--brand-teal-dark)] hover:underline"><Settings2 size={13} /> Detalii și politica de cookie-uri</Link>
         </div>
       </div>
       <div className="mt-4 grid gap-2 text-sm">
         <label className="flex items-start gap-2"><input type="checkbox" checked={functional} onChange={event => setFunctional(event.target.checked)} />Memorarea numelui și telefonului pentru rezervări viitoare</label>
-        <label className="flex items-start gap-2"><input type="checkbox" checked={analytics} onChange={event => setAnalytics(event.target.checked)} />Statistici de vizitare prin Vercel</label>
+        <label className="flex items-start gap-2"><input type="checkbox" checked={analytics} onChange={event => setAnalytics(event.target.checked)} />Statistici de vizitare prin Cloudflare</label>
         <label className="flex items-start gap-2"><input type="checkbox" checked={marketing} onChange={event => setMarketing(event.target.checked)} />Măsurarea reclamelor prin Meta Pixel</label>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">

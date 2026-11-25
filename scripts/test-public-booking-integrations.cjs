@@ -33,13 +33,11 @@ async function main() {
     GOOGLE_WALLET_ISSUER_ID: 'issuer',
     GOOGLE_WALLET_CLASS_ID: 'issuer.class',
     GOOGLE_WALLET_QR_SECRET: '0123456789abcdef0123456789abcdef',
-    GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL: 'wallet@example.invalid',
-    GOOGLE_WALLET_WIF_AUDIENCE: '//iam.googleapis.com/projects/test/locations/global/workloadIdentityPools/pool/providers/provider',
+    GOOGLE_WALLET_SERVICE_ACCOUNT_JSON: JSON.stringify({ client_email: 'wallet@example.invalid', private_key: 'fixture-key' }),
   }
   for (const [key, value] of Object.entries(config)) { previous[key] = process.env[key]; process.env[key] = value }
   try {
     const wallet = load('lib/google-wallet.ts', {
-      '@vercel/oidc': { getVercelOidcToken: async () => 'unused' },
       './business-plans': { effectiveBusinessPlan: () => 'PRO' },
       './wallet-eligibility': { isWalletEligibleCategory: () => true },
     })

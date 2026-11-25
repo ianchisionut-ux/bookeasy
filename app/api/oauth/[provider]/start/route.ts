@@ -67,7 +67,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   const instagramEnabled = process.env.META_INSTAGRAM_OAUTH_ENABLED === 'true'
   if (provider === 'instagram' && (!instagramEnabled || !process.env.INSTAGRAM_APP_ID || !process.env.INSTAGRAM_APP_SECRET)) {
     const redirectTo = isSuperAdmin && targetBusinessId ? `/superadmin/afaceri/${businessId}` : '/dashboard/setari'
-    return NextResponse.redirect(new URL(`${redirectTo}?error=${encodeURIComponent('Conectarea Instagram necesită configurarea aplicației Instagram în Vercel.')}`, req.url))
+    return NextResponse.redirect(new URL(`${redirectTo}?error=${encodeURIComponent('Conectarea Instagram necesită configurarea aplicației Meta pentru BookEasy.')}`, req.url))
   }
   const redirectUri = `${origin}/api/oauth/${provider}/callback`
 

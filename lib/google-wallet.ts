@@ -1,5 +1,4 @@
 import { createHmac, createPrivateKey, sign, timingSafeEqual } from 'node:crypto'
-import { getVercelOidcToken } from '@vercel/oidc'
 import { effectiveBusinessPlan } from './business-plans'
 import { isWalletEligibleCategory } from './wallet-eligibility'
 
@@ -26,17 +25,12 @@ function config() {
   const classId = process.env.GOOGLE_WALLET_CLASS_ID
   const qrSecret = process.env.GOOGLE_WALLET_QR_SECRET
   if (!issuerId || !classId?.startsWith(`${issuerId}.`) || !qrSecret || qrSecret.length < 32) return null
-  const clientEmail = process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL
-  const wifAudience = process.env.GOOGLE_WALLET_WIF_AUDIENCE
-  if (clientEmail && wifAudience?.startsWith('//iam.googleapis.com/projects/')) {
-    return { issuerId, classId, qrSecret, clientEmail, wifAudience, privateKey: null }
-  }
   const accountJson = process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON
   if (accountJson) {
     try {
       const account = JSON.parse(accountJson) as { client_email?: string; private_key?: string }
       if (account.client_email && account.private_key) {
-        return { issuerId, classId, qrSecret, clientEmail: account.client_email, wifAudience: null, privateKey: account.private_key }
+        return { issuerId, classId, qrSecret, clientEmail: account.client_email, privateKey: account.private_key }
       }
     } catch { /* An invalid credential must never enable Wallet. */ }
   }
@@ -91,41 +85,11 @@ function base64url(value: string | Buffer) { return Buffer.from(value).toString(
 function localized(value: string) { return { defaultValue: { language: 'ro-RO', value } } }
 
 async function signWalletJwt(payload: object, settings: NonNullable<ReturnType<typeof config>>) {
-  if (settings.privateKey) {
-    const header = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
-    const body = base64url(JSON.stringify(payload))
-    const input = `${header}.${body}`
-    const signature = sign('RSA-SHA256', Buffer.from(input), createPrivateKey(settings.privateKey)).toString('base64url')
-    return `${input}.${signature}`
-  }
-  if (!settings.wifAudience) throw new Error('Wallet signer is not configured')
-  const subjectToken = await getVercelOidcToken()
-  const exchange = await fetch('https://sts.googleapis.com/v1/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-      audience: settings.wifAudience,
-      scope: 'https://www.googleapis.com/auth/cloud-platform',
-      requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-      subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
-      subject_token: subjectToken,
-    }),
-    cache: 'no-store',
-  })
-  if (!exchange.ok) throw new Error(`Wallet OIDC exchange failed (${exchange.status})`)
-  const token = await exchange.json() as { access_token?: string }
-  if (!token.access_token) throw new Error('Wallet OIDC exchange returned no access token')
-  const signed = await fetch(`https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(settings.clientEmail)}:signJwt`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token.access_token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ payload: JSON.stringify(payload) }),
-    cache: 'no-store',
-  })
-  if (!signed.ok) throw new Error(`Wallet JWT signing failed (${signed.status})`)
-  const result = await signed.json() as { signedJwt?: string }
-  if (!result.signedJwt) throw new Error('Wallet JWT signing returned no token')
-  return result.signedJwt
+  const header = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+  const body = base64url(JSON.stringify(payload))
+  const input = `${header}.${body}`
+  const signature = sign('RSA-SHA256', Buffer.from(input), createPrivateKey(settings.privateKey)).toString('base64url')
+  return `${input}.${signature}`
 }
 
 export async function createBookingWalletLink(booking: WalletBooking, origin: string) {

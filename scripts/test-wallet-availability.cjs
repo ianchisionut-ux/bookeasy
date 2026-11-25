@@ -22,7 +22,6 @@ async function main() {
   const wallet = load('lib/google-wallet.ts', {
     './wallet-eligibility': eligibility,
     './business-plans': load('lib/business-plans.ts'),
-    '@vercel/oidc': { getVercelOidcToken() { throw new Error('No provider call expected') } },
   })
   const route = load('app/api/business/wallet/check-in/route.ts', {
     '@/lib/google-wallet': wallet,

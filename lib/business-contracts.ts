@@ -3,7 +3,7 @@ import type { Business, ContractDocumentType } from '@prisma/client'
 import { company } from '@/lib/company'
 import { CATEGORY_LABEL } from '@/lib/business-categories'
 
-export const CONTRACT_VERSION = '2026-10-09.1'
+export const CONTRACT_VERSION = '2026-11-25.1'
 
 export type ContractSection = { heading: string; paragraphs: string[] }
 export type ContractDocument = {
@@ -129,7 +129,7 @@ function dpaDocument(b: ContractBusiness): ContractDocument {
         'Măsurile se adaptează riscului și pot fi înlocuite cu măsuri echivalente fără reducerea nivelului general de protecție. Datele medicale și documentele încărcate trebuie accesate numai de personalul autorizat de operator.',
       ] },
       { heading: '4. Subîmputerniciți și transferuri', paragraphs: [
-        'Operatorul acordă autorizare generală pentru furnizorii necesari găzduirii, bazei de date, stocării fișierelor, e-mailului și comunicațiilor activate. La data acestei versiuni, infrastructura BookEasy folosește Vercel pentru găzduire și stocarea fișierelor, Neon pentru baza de date și Resend pentru e-mailurile activate. Integrările Meta, Google și procesatorii de plată se aplică numai când sunt activate pentru business și pot avea roluri juridice distincte. Schimbările de subîmputerniciți sunt comunicate prin platformă sau e-mail, cu posibilitatea unei obiecții motivate.',
+        'Operatorul acordă autorizare generală pentru furnizorii necesari găzduirii, bazei de date, stocării fișierelor, e-mailului și comunicațiilor activate. La data acestei versiuni, infrastructura BookEasy folosește Cloudflare Workers pentru găzduire și Cloudflare R2 pentru stocarea fișierelor, Neon pentru baza de date și Resend pentru e-mailurile activate. Integrările Meta, Google și procesatorii de plată se aplică numai când sunt activate pentru business și pot avea roluri juridice distincte. Schimbările de subîmputerniciți sunt comunicate prin platformă sau e-mail, cu posibilitatea unei obiecții motivate.',
         'Transferurile în afara SEE sunt efectuate numai în baza unui mecanism legal aplicabil, precum decizia de adecvare sau clauzele contractuale standard, cu măsuri suplimentare când sunt necesare. Integrările alese de operator pot implica furnizori care au roluri contractuale distincte.',
       ] },
       { heading: '5. Asistență, incidente și audit', paragraphs: [

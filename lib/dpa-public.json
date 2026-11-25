@@ -1,6 +1,6 @@
 {
-  "version": "1.1",
-  "updatedAt": "21 noiembrie 2026",
+  "version": "1.2",
+  "updatedAt": "25 noiembrie 2026",
   "notice": "Acesta este un model public informativ. Pentru afacerea ta, consultă exemplarul completat și semnat în secțiunea Contracte și semnături din Setări. Acordul încheiat între părți se aplică prelucrării și prevalează dacă textele diferă.",
   "sections": [
     {
@@ -34,7 +34,7 @@
       "heading": "5. Subîmputerniciți și transferuri",
       "paragraphs": [
         "Subîmputerniciții se folosesc în baza autorizării operatorului. În cazul unei autorizări generale, operatorul este informat în prealabil despre adăugarea sau înlocuirea unui subîmputernicit și are posibilitatea de a formula obiecții. Subîmputerniciților li se impun obligații de protecție echivalente. Persoana împuternicită rămâne răspunzătoare față de operator pentru îndeplinirea acestor obligații.",
-        "Infrastructura BookEasy folosește Vercel pentru găzduire și stocarea fișierelor, Neon pentru baza de date și Resend pentru servicii de e-mail. Un furnizor folosit de afacere printr-o integrare poate avea un rol distinct. Transferurile în afara SEE urmează capitolul V din GDPR."
+        "Infrastructura BookEasy folosește Cloudflare Workers pentru găzduire și Cloudflare R2 pentru stocarea fișierelor, Neon pentru baza de date și Resend pentru servicii de e-mail. Un furnizor folosit de afacere printr-o integrare poate avea un rol distinct. Transferurile în afara SEE urmează capitolul V din GDPR."
       ]
     },
     {
