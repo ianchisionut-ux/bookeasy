@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react'
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar'
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
@@ -15,6 +15,7 @@ import type { BookingDetail } from '@/components/booking-edit-modal'
 import { useSmsAvailability } from '@/components/use-sms-availability'
 import { Lock, X, Search, SlidersHorizontal, Users, AlertTriangle, Clock3, CalendarDays, ChevronLeft, ChevronRight, ClipboardCheck } from 'lucide-react'
 import { PrintButton } from '@/components/print-button'
+import MobileCalendar from './mobile-calendar'
 import { allPractitionersLabel, bookingTerminology, isAppointmentCategory, isPatientCategory, offerLabel, practitionerLabel, type BusinessCategory } from '@/lib/business-categories'
 
 const locales = { ro }
@@ -52,7 +53,7 @@ function getISOWeekNumber(date: Date) {
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
 }
 
-type Event = {
+export type Event = {
   id: string
   title: string
   start: Date
@@ -74,7 +75,7 @@ type Event = {
   isBlocked?: false
 }
 
-type BlockedEvent = {
+export type BlockedEvent = {
   id: string
   title: string
   start: Date
@@ -83,8 +84,27 @@ type BlockedEvent = {
 }
 
 type BlockedSlot = { id: string; startAt: string; endAt: string; reason: string | null }
-type BreakEvent = { id: string; title: string; start: Date; end: Date; isBreak: true }
+export type BreakEvent = { id: string; title: string; start: Date; end: Date; isBreak: true }
 type BreakRange = { label: string; startTime: string; endTime: string }
+
+const mobileCalendarQuery = '(max-width: 767px)'
+
+function subscribeToCalendarWidth(onChange: () => void) {
+  const query = window.matchMedia(mobileCalendarQuery)
+  query.addEventListener('change', onChange)
+  return () => query.removeEventListener('change', onChange)
+}
+
+function isMobileCalendarWidth() {
+  return window.matchMedia(mobileCalendarQuery).matches
+}
+
+function shiftCalendarMonth(date: Date, direction: number) {
+  const target = new Date(date.getFullYear(), date.getMonth() + direction, 1)
+  const days = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
+  target.setDate(Math.min(date.getDate(), days))
+  return target
+}
 
 export default function CalendarClient({
   initialSmsAvailable,
@@ -190,13 +210,16 @@ export default function CalendarClient({
       .then(async (response) => {
         if (!response.ok) throw new Error('range request failed')
         const data = await response.json()
+        if (controller.signal.aborted) return
         const incoming: Event[] = (data.events ?? []).map((event: Event & { start: string; end: string }) => ({
           ...event,
           start: new Date(event.start),
           end: new Date(event.end),
         }))
         setCalendarEvents((current) => {
-          const merged = new Map(current.map((event) => [event.id, event]))
+          const merged = new Map(current
+            .filter((event) => event.start < from || event.start > to)
+            .map((event) => [event.id, event]))
           incoming.forEach((event) => merged.set(event.id, event))
           return Array.from(merged.values())
         })
@@ -204,9 +227,9 @@ export default function CalendarClient({
       .catch((error) => {
         if (error?.name !== 'AbortError') console.error('[calendar] Nu am putut încărca intervalul:', error)
       })
-      .finally(() => setLoadingRange(false))
+      .finally(() => { if (!controller.signal.aborted) setLoadingRange(false) })
     return () => controller.abort()
-  }, [calendarYear, calendarMonth])
+  }, [calendarYear, calendarMonth, events])
 
   function changePractitionerFilter(value: string) {
     setPractitionerFilter(value)
@@ -229,12 +252,13 @@ export default function CalendarClient({
   }), [calendarEvents, practitionerFilter, practitioners.length, hiddenPractitionerIds, serviceFilter, hiddenServiceIds, resourceFilter, search])
   const [blockMode, setBlockMode] = useState(false)
   const [showBookingModal, setShowBookingModal] = useState(false)
+  const [showTimeline, setShowTimeline] = useState(false)
+  const isMobile = useSyncExternalStore(subscribeToCalendarWidth, isMobileCalendarWidth, () => false)
+  const showMobileAgenda = isMobile && !showTimeline
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setView(Views.DAY)
-    }
-  }, [])
+  const serviceColors = useMemo(() => new Map(services.map((service, index) => [
+    service.id, SERVICE_COLORS[index % SERVICE_COLORS.length],
+  ])), [services])
 
   const blockedEvents: BlockedEvent[] = blockedSlots.map((b) => ({
     id: b.id,
@@ -417,9 +441,12 @@ export default function CalendarClient({
       : format(currentDate, 'EEEE d MMMM yyyy', { locale: ro })
 
   function navigatePeriod(direction: number) {
+    if (view === Views.MONTH) {
+      setCurrentDate(shiftCalendarMonth(currentDate, direction))
+      return
+    }
     const next = new Date(currentDate)
-    if (view === Views.MONTH) next.setMonth(next.getMonth() + direction)
-    else next.setDate(next.getDate() + direction * (view === Views.WEEK ? 7 : 1))
+    next.setDate(next.getDate() + direction * (view === Views.WEEK ? 7 : 1))
     setCurrentDate(next)
   }
 
@@ -430,7 +457,62 @@ export default function CalendarClient({
   }
 
   return (
-    <div className="calendar-page calendar-modern dashboard-page flex h-[calc(100dvh-138px)] min-h-[540px] flex-col gap-3 md:h-[calc(100vh-56px)] lg:h-screen">
+    <div className={`calendar-page calendar-modern dashboard-page flex h-[calc(100dvh-138px)] min-h-[540px] flex-col gap-3 md:h-[calc(100vh-56px)] lg:h-screen ${showMobileAgenda ? 'calendar-mobile-agenda-active' : ''}`}>
+      {showMobileAgenda ? (
+        <MobileCalendar
+          date={currentDate}
+          today={today}
+          events={visibleEvents}
+          blockedEvents={blockedEvents}
+          breaks={breakEvents}
+          serviceColors={serviceColors}
+          bookingSingular={bookingSingular}
+          bookingPlural={bookingPlural}
+          loading={busy || loadingRange}
+          hasFilters={Boolean(search.trim() || serviceFilter !== 'all' || resourceFilter !== 'all' ||
+            (practitioners.length > 1 && practitionerFilter !== 'all') || hiddenPractitionerIds.length || hiddenServiceIds.length)}
+          onSelectDate={setCurrentDate}
+          onChangeMonth={(direction) => setCurrentDate((date) => shiftCalendarMonth(date, direction))}
+          onSelectBooking={setSelected}
+          onUnblock={unblockSlot}
+          onAddBooking={() => setShowBookingModal(true)}
+          onOpenTimeline={(blocking) => {
+            setView(Views.DAY)
+            setBlockMode(blocking)
+            setShowTimeline(true)
+          }}
+          filters={
+            <>
+              <label className="calendar-mobile-search">
+                <Search size={17} aria-hidden="true" />
+                <input type="search" value={search} onChange={(event) => setSearch(event.target.value)}
+                  placeholder={`Caută ${customerSingular}`} aria-label={`Caută ${customerSingular}`} />
+              </label>
+              <input type="date" value={dateValue} onChange={(event) => chooseDate(event.target.value)}
+                className="input-field" aria-label="Alege data" />
+              {practitioners.length > 0 && (
+                <select value={practitionerFilter} onChange={(event) => changePractitionerFilter(event.target.value)}
+                  className="input-field" aria-label="Filtrează după persoană">
+                  <option value="all">{allPractitionersLabel(category)}</option>
+                  {practitioners.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+                </select>
+              )}
+              <select value={serviceFilter} onChange={(event) => setServiceFilter(event.target.value)}
+                className="input-field" aria-label="Filtrează după serviciu">
+                <option value="all">Toate {offerLabel(category).plural}</option>
+                {services.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}
+              </select>
+              {resources.length > 0 && (
+                <select value={resourceFilter} onChange={(event) => setResourceFilter(event.target.value)}
+                  className="input-field" aria-label="Filtrează după sală">
+                  <option value="all">Toate sălile</option>
+                  {resources.map((resource) => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
+                </select>
+              )}
+            </>
+          }
+        />
+      ) : <>
       <header className="calendar-overview screen-only">
         <div className="calendar-overview-title">
           <h1>Calendar {bookingPlural}</h1>
@@ -505,6 +587,12 @@ export default function CalendarClient({
       <div className="calendar-view-switch screen-only md:hidden" role="group" aria-label="Vizualizare calendar">
         {[[Views.DAY, 'Zi'], [Views.WEEK, 'Săptămână'], [Views.MONTH, 'Lună'], [Views.AGENDA, 'Agendă']].map(([value, label]) => <button type="button" key={value} onClick={() => setView(value)} aria-pressed={view === value} className={view === value ? 'active' : ''}>{label}</button>)}
       </div>
+      {isMobile && (
+        <button type="button" className="btn-secondary min-h-11 self-start text-sm screen-only"
+          onClick={() => { setBlockMode(false); setShowTimeline(false) }}>
+          <CalendarDays size={17} aria-hidden="true" /> Lună și agendă
+        </button>
+      )}
       {blockMode && <p className="text-xs text-amber-700 screen-only">Selectează un interval din calendar pentru a-l bloca.</p>}
       {(busy || loadingRange) && <p className="text-xs text-gray-500 screen-only">Se actualizează calendarul...</p>}
       {search && visibleEvents.length === 0 && <div className="mb-2 text-sm text-amber-700 flex items-center gap-2"><AlertTriangle size={15}/> Nu există {bookingPlural} care corespund căutării.</div>}
@@ -582,8 +670,7 @@ export default function CalendarClient({
                 },
               }
             }
-            const serviceIndex = services.findIndex((service) => service.id === event.serviceId)
-            const color = SERVICE_COLORS[(serviceIndex < 0 ? 0 : serviceIndex) % SERVICE_COLORS.length]
+            const color = serviceColors.get(event.serviceId) ?? SERVICE_COLORS[0]
             const isInactive = event.status === 'CANCELLED' || event.status === 'NO_SHOW'
             return {
               className: event.arrivedAt ? 'calendar-arrived-event' : undefined,
@@ -602,6 +689,7 @@ export default function CalendarClient({
         />
         </div>
       </div>
+      </>}
 
       {selected && (
         <BookingEditModal
@@ -636,6 +724,8 @@ export default function CalendarClient({
           isClinic={isClinic}
           businessWorkingHours={businessWorkingHours}
           stepMinutes={slotIntervalMinutes}
+          initialStart={showMobileAgenda ? mobileBookingStart(currentDate, today, effectiveMinTime) : undefined}
+          initialPractitionerId={showMobileAgenda ? selectedPractitioner?.id : undefined}
           onClose={() => setShowBookingModal(false)}
           onCreated={() => {
             setShowBookingModal(false)
@@ -645,6 +735,14 @@ export default function CalendarClient({
       )}
     </div>
   )
+}
+
+function mobileBookingStart(date: Date, today: Date, minTime: string) {
+  if (sameDay(date, today)) return today
+  const start = new Date(date)
+  const [hour, minute] = minTime.split(':').map(Number)
+  start.setHours(hour, minute, 0, 0)
+  return start
 }
 
 function CalendarEventCard({ event }: { event: Event | BreakEvent | BlockedEvent }) {
@@ -681,7 +779,7 @@ function MiniCalendar({ date, onSelect }: { date: Date; onSelect: (date: Date) =
   const count = Math.ceil((offset + days) / 7) * 7
   const cells = Array.from({ length: count }, (_, index) => new Date(date.getFullYear(), date.getMonth(), index - offset + 1))
   return <div className="calendar-sidebar-card calendar-mini-month">
-    <div className="calendar-mini-heading"><strong>{format(date, 'LLLL yyyy', { locale: ro })}</strong><span><button type="button" onClick={() => onSelect(new Date(date.getFullYear(), date.getMonth() - 1, Math.min(date.getDate(), new Date(date.getFullYear(), date.getMonth(), 0).getDate())))} aria-label="Luna anterioară"><ChevronLeft size={16}/></button><button type="button" onClick={() => onSelect(new Date(date.getFullYear(), date.getMonth() + 1, Math.min(date.getDate(), new Date(date.getFullYear(), date.getMonth() + 2, 0).getDate())))} aria-label="Luna următoare"><ChevronRight size={16}/></button></span></div>
+    <div className="calendar-mini-heading"><strong>{format(date, 'LLLL yyyy', { locale: ro })}</strong><span><button type="button" onClick={() => onSelect(shiftCalendarMonth(date, -1))} aria-label="Luna anterioară"><ChevronLeft size={16}/></button><button type="button" onClick={() => onSelect(shiftCalendarMonth(date, 1))} aria-label="Luna următoare"><ChevronRight size={16}/></button></span></div>
     <div className="calendar-mini-grid">{['Lu', 'Ma', 'Mi', 'Jo', 'Vi', 'Sâ', 'Du'].map((day) => <span key={day} className="calendar-mini-weekday">{day}</span>)}{cells.map((cell) => <button type="button" key={cell.toISOString()} onClick={() => onSelect(cell)} className={`${cell.getMonth() !== date.getMonth() ? 'outside' : ''} ${sameDay(cell, date) ? 'selected' : ''}`} aria-label={format(cell, 'd MMMM yyyy', { locale: ro })} aria-current={sameDay(cell, new Date()) ? 'date' : undefined}>{cell.getDate()}</button>)}</div>
   </div>
 }
